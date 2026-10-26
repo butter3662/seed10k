@@ -1,27 +1,17 @@
-name: Supabase 설정 확인 (임시)
+name: Supabase 함수 확인 (임시)
 on:
   push:
     branches: [tmp-yahoo-test]
 jobs:
   check:
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    timeout-minutes: 3
     steps:
       - name: 확인
         env:
           U: https://ictjkqbbcaigdvlysdaw.supabase.co
           K: sb_publishable_C7jZEKJn_nF2Y3Ngq5f80Q_RA5Wrfux
         run: |
-          r() { curl -s -m 25 -o /tmp/b -w "%{http_code} %{time_total}s" "$@"; }
-          c=$(r "$U/rest/v1/seed10k_quotes?select=id,m,p,updated_at&order=id" -H "apikey: $K")
-          m=$(python3 -c "import json,collections;d=json.load(open('/tmp/b'));print('행', len(d), dict(collections.Counter(x['m'] for x in d)), '값있음', sum(1 for x in d if x['p'] is not None), '_run', [x['updated_at'] for x in d if x['id']=='_run'])" 2>&1 | tail -1)
-          echo "::notice title=1 시세 표::HTTP $c, $m $(head -c 150 /tmp/b)"
-          c=$(r "$U/rest/v1/seed10k_daily?select=id&limit=1" -H "apikey: $K"); echo "::notice title=2 일별 표::HTTP $c $(head -c 200 /tmp/b)"
-          c=$(r "$U/rest/v1/seed10k_saves?select=user_id&limit=1" -H "apikey: $K"); echo "::notice title=3 저장 표::HTTP $c $(head -c 200 /tmp/b)"
-          c=$(r "$U/rest/v1/seed10k_ranks?select=nickname,mode,return_pct&limit=5" -H "apikey: $K"); echo "::notice title=4 랭킹 표::HTTP $c $(head -c 300 /tmp/b)"
-          c=$(r -X POST "$U/functions/v1/seed10k-quotes" -H "Content-Type: application/json" -d '{}'); echo "::notice title=5a 함수 호출(키 없음)::HTTP $c $(head -c 300 /tmp/b)"
-          c=$(r -X OPTIONS "$U/functions/v1/seed10k-quotes" -H "apikey: $K"); echo "::notice title=5b OPTIONS::HTTP $c $(head -c 300 /tmp/b)"
-          c=$(r "$U/functions/v1/seed10k-quotes" -H "apikey: $K"); echo "::notice title=5e GET apikey::HTTP $c $(head -c 300 /tmp/b)"
-          c=$(r -X POST "$U/functions/v1/seed10k-quotes" -H "Content-Type: application/json" -H "Authorization: Bearer $K" -d '{}'); echo "::notice title=5c 함수 호출(Authorization 헤더)::HTTP $c $(head -c 300 /tmp/b)"
-          c=$(r -X POST "$U/functions/v1/seed10k-quotes" -H "Content-Type: application/json" -H "apikey: $K" -H "Authorization: Bearer $K" -d '{}'); echo "::notice title=5d 함수 호출(둘 다)::HTTP $c $(head -c 300 /tmp/b)"
-          c=$(r -X POST "$U/functions/v1/no-such-function-xyz" -H "Content-Type: application/json" -H "apikey: $K" -H "Authorization: Bearer $K" -d '{}'); echo "::notice title=6 없는 함수(비교용)::HTTP $c $(head -c 300 /tmp/b)"
+          r() { curl -s -m 20 -o /tmp/b -w "%{http_code} %{time_total}s" "$@" || true; }
+          c=$(r -X POST "$U/functions/v1/no-such-function-xyz" -H "apikey: $K" -H "Content-Type: application/json" -d '{}'); echo "::notice title=A 없는 함수::$c $(head -c 200 /tmp/b)"
+          c=$(r -X POST "$U/functions/v1/seed10k-quotes" -H "apikey: $K" -H "Content-Type: application/json" -d '{}'); echo "::notice title=B seed10k-quotes::$c $(head -c 200 /tmp/b)"
