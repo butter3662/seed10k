@@ -1,21 +1,20 @@
-name: 한 줄 불러오기 함수 시험 (임시)
+name: Supabase 설정 확인 (임시)
 on:
   push:
     branches: [tmp-yahoo-test]
 jobs:
-  test:
+  check:
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    timeout-minutes: 3
     steps:
-      - uses: actions/checkout@v7
-      - uses: denoland/setup-deno@v2
-        with:
-          deno-version: v2.x
-      - name: 시험
+      - name: 확인
+        env:
+          U: https://ictjkqbbcaigdvlysdaw.supabase.co
+          K: sb_publishable_C7jZEKJn_nF2Y3Ngq5f80Q_RA5Wrfux
         run: |
-          for f in raw jsd; do
-            (deno run -A loadertest/$f.ts > /tmp/$f.log 2>&1 &) ; sleep 12
-            out=$(curl -s -m 10 -X POST localhost:8000 -d '{}' || true)
-            echo "::notice title=$f::응답 $out / 로그 $(head -c 300 /tmp/$f.log | tr '\n' ' ')"
-            pkill -f "loadertest/$f.ts" || true; sleep 2
-          done
+          r() { curl -s -m 30 -o /tmp/b -w "%{http_code} %{time_total}s" "$@" || true; }
+          c=$(r "$U/rest/v1/seed10k_quotes?select=id,m,p,updated_at&order=id" -H "apikey: $K")
+          m=$(python3 -c "import json,collections;d=json.load(open('/tmp/b'));print('행', len(d), dict(collections.Counter(x['m'] for x in d)), '값있음', sum(1 for x in d if x['p'] is not None), '_run', [x['updated_at'] for x in d if x['id']=='_run'])" 2>&1 | tail -1)
+          echo "::notice title=1 시세 표::$c, $m"
+          c=$(r "$U/rest/v1/seed10k_daily?select=id&limit=1" -H "apikey: $K"); echo "::notice title=2 일별 표::$c $(head -c 200 /tmp/b)"
+          c=$(r -X POST "$U/functions/v1/seed10k-quotes" -H "apikey: $K" -H "Content-Type: application/json" -d '{}'); echo "::notice title=3 함수 (예약 작업과 같은 방식)::$c $(head -c 300 /tmp/b)"
