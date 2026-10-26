@@ -93,8 +93,7 @@ main{max-width:1180px;margin:0 auto;padding:16px}
 /* ───────── hero ───────── */
 .home-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:12px}
 .col-a,.col-b{display:contents}
-.hero{order:1} .pulse{order:2} .c-movers{order:3} .c-news{order:4}
-html[data-game=live] .c-news{order:2}
+.hero{order:1} .pulse{order:3} .c-movers{order:4} .c-news{order:5}
 .wcol{display:none}
 .list-head{display:none}
 .hero{
@@ -385,6 +384,44 @@ html.gated body{overflow:hidden}
 .rank-foot{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px solid var(--rule);font-size:13.5px;color:var(--ink-2)}
 .rank-foot .amt{flex:1 1 160px}
 
+
+/* ───────── 통장·환전 ───────── */
+.wallets{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.wl{display:flex;gap:10px;align-items:flex-start;background:var(--surface-2);border-radius:var(--r-md);padding:12px}
+.wl-flag{font-family:var(--f-num);font-weight:800;font-size:11px;letter-spacing:.02em;background:var(--slab);color:var(--brass-hi);border-radius:7px;padding:3px 6px;flex:none}
+.wl-flag.kr{background:#2346A8;color:#fff}
+.wl-b{min-width:0}
+.wl-n{font-size:12.5px;color:var(--ink-2);font-weight:650}
+.wl-v{font-family:var(--f-num);font-weight:780;font-size:18px;font-stretch:106%;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wl-s{font-size:11.5px;color:var(--ink-3)}
+.wl-go{width:100%;margin-top:10px}
+.fx-seg{width:100%;grid-auto-columns:1fr;margin:4px 0 10px}
+.fx-amt{margin-bottom:8px;height:50px}
+.fx-amt input{font-size:20px}
+#fxBox .quick{margin-bottom:10px}
+#fxBox .bd{margin-bottom:8px}
+#fxBox .alert{margin-top:6px}
+.fxneed span{color:var(--warn)}
+.c-wallet{order:2}
+html[data-game=live] .c-news{order:3}
+/* ───────── 상세 차트 ───────── */
+.ap-head{margin:14px 0 2px}
+.ap-head .big{font-family:var(--f-num);font-weight:780;font-stretch:115%;font-size:34px;line-height:1.05;letter-spacing:-.02em}
+.ap-chg{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;margin-top:4px;font-size:14px;font-weight:700}
+.ap-when{color:var(--ink-3);font-weight:600;font-size:13px}
+.ap-chart{position:relative;margin:10px 0 6px;touch-action:pan-y;user-select:none;-webkit-user-select:none;min-height:210px}
+.ap-chart svg{display:block;overflow:visible}
+.ap-grid{stroke:var(--rule);stroke-width:1}
+.ap-vgrid{stroke:var(--rule);stroke-width:1;stroke-dasharray:2 4;opacity:.7}
+.ap-yl,.ap-xl{fill:var(--ink-3);font-size:11px;font-family:var(--f-ui);font-variant-numeric:tabular-nums}
+.ap-ref{stroke:var(--ink-3);stroke-width:1;stroke-dasharray:2 3}
+.ap-refl{fill:var(--ink-3);font-size:10.5px;font-family:var(--f-ui)}
+.ap-cx{stroke:var(--ink-2);stroke-width:1}
+.ap-ranges{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;background:var(--surface-2);border-radius:10px;padding:3px;margin-bottom:12px}
+.ap-ranges::-webkit-scrollbar{display:none}
+.ap-ranges button{flex:1 0 auto;border:0;background:none;border-radius:8px;padding:6px 8px;font-size:12.5px;font-weight:700;color:var(--ink-2);white-space:nowrap}
+.ap-ranges button[aria-pressed=true]{background:var(--surface);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+
 /* ───────── modal / toast ───────── */
 .modal{position:fixed;z-index:90;left:50%;top:50%;transform:translate(-50%,-50%) scale(.98);width:min(420px,calc(100vw - 32px));background:var(--surface);border-radius:20px;padding:22px 20px 18px;opacity:0;transition:opacity .18s,transform .18s;border:1px solid var(--rule)}
 .modal.on{opacity:1;transform:translate(-50%,-50%) scale(1)}
@@ -544,7 +581,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 100 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.2.0';
+const VERSION = '1.3.0';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -559,7 +596,6 @@ const META = {
   fx0: 1324.6,                 // 10/26 15:30 1,323.10원(전일 대비 -1.5원)에서 역산한 10/23 원/달러
   seed: 10000,
   feeRate: 0.001,              // 거래 수수료 0.1% (게임 설정)
-  fxSpread: 0.002,             // 환전 수수료 0.2% (게임 설정)
   baseRate0: 3.0,              // 게임 기준금리 (%)
   krLimit: 0.30,               // 한국 가격제한폭 ±30% (시뮬레이션)
   creditTerm: 60,              // 신용대출 만기 (시뮬레이션: 거래일, 실제 시세: 일)
@@ -678,7 +714,7 @@ const LIVE = {ok:false, loading:false, err:null, updated:null, fetchedAt:null, d
 
 function newGame(mode){
   const base = {
-    v:1, mode, cash:META.seed, pos:{}, realized:0, interestPaid:0, feesPaid:0,
+    v:1, mode, usd:META.seed, krw:0, pos:{}, realized:0, interestPaid:0, feesPaid:0, fxFees:0, fxLog:[],
     loans:{ credit:{bal:0, due:null, overdue:0, clean:true}, margin:{bal:0}, od:{bal:0} },
     grade:4, base:META.baseRate0, trades:[], news:[], warnedDay:-1, over:false, peak:META.seed, started:Date.now()
   };
@@ -692,7 +728,17 @@ function newGame(mode){
           nw:[META.seed], idx:{KR:[1000], US:[1000]}, dates:[META.baseDate], rng:(Math.random() * 2**31) | 0};
 }
 function accKey(mode){ return ACC.user ? `seed10k.u.${ACC.user.id}.${mode}` : SAVE_KEYS[mode]; }
+function migrate(s){
+  if (s && s.cash !== undefined && s.usd === undefined){
+    s.usd = s.cash; s.krw = 0; delete s.cash;
+    const fx = s.fx || META.fx0;
+    for (const id in s.pos || {}) if (id.startsWith('KR:')) s.pos[id].cost *= fx;   // 원화 기준 매입 금액으로
+    s.fxFees = 0; s.fxLog = [];
+  }
+  return s;
+}
 function validSave(s, mode){
+  s = migrate(s);
   if (mode === 'sim' && s && s.v === 1 && s.px && STOCKS.every(x => s.px[x.id])){ s.mode = 'sim'; return s; }
   if (mode === 'live' && s && s.v === 1 && s.mode === 'live' && s.nwD) return s;
   return null;
@@ -753,7 +799,8 @@ function holdingsUSD(filter){
   return v;
 }
 const debt = () => S.loans.credit.bal + S.loans.margin.bal + S.loans.od.bal;
-const netWorth = () => S.cash + holdingsUSD() - debt();
+const cashUSD = () => S.usd + S.krw / FX();
+const netWorth = () => cashUSD() + holdingsUSD() - debt();
 function capUSD(s){ const r = price(s.id) / basePrice(s); return s.cur === 'KRW' ? s.mc * r / FX() : s.mc * r; }
 function capNative(s){ return s.mc * price(s.id) / basePrice(s); }
 function g(){ return clamp(Math.round(S.grade), 1, 10); }
@@ -777,69 +824,128 @@ function limits(){
 const odAvail = () => Math.max(0, limits().odLimit - S.loans.od.bal);
 const marginRatio = () => S.loans.margin.bal > 0 ? holdingsUSD() / S.loans.margin.bal : Infinity;
 
+/* ───────── 통장·환전 ───────── */
+/* 달러 통장(S.usd)과 원화 통장(S.krw)을 따로 둔다. 한국 주식은 원화로만, 미국 주식과 대출은 달러로만 오간다.
+   환율: 매매기준율 X 에 스프레드 s(1%)를 붙이되, 신용등급에 따른 우대율 p 만큼 깎아 준다. */
+const FX_SPREAD = 0.01;
+function fxPref(){ return clamp(0.9 - 0.1 * (g() - 1), 0, 0.9); }
+function fxFeeRate(){ return FX_SPREAD * (1 - fxPref()); }
+function fxRates(){ const X = FX(), f = fxFeeRate(); return {base:X, f, buy:X * (1 + f), sell:X * (1 - f)}; }   // buy: 달러 살 때, sell: 달러 팔 때
+function exQuote(dir, amt){
+  const r = fxRates();
+  if (dir === 'u2k'){ const to = Math.floor(amt * r.sell); return {dir, from:amt, to, rate:r.sell, feeUSD:amt - to / r.base, r}; }
+  const to = Math.floor(amt / r.buy * 100) / 100;
+  return {dir, from:amt, to, rate:r.buy, feeUSD:amt / r.base - to, r};
+}
+function spendUSD(x){ if (x <= S.usd + 1e-9){ S.usd -= x; return 0; } const od = x - S.usd; S.usd = 0; S.loans.od.bal += od; return od; }
+function receiveUSD(x){ if (S.loans.od.bal > 0){ const r = Math.min(x, S.loans.od.bal); S.loans.od.bal -= r; x -= r; } S.usd += x; }
+function exchange(dir, amt, silent){
+  if (S.over) return toast('파산해서 환전할 수 없습니다', true);
+  amt = dir === 'u2k' ? Math.floor(amt * 100) / 100 : Math.floor(amt);
+  if (!(amt > 0)) return toast('금액을 입력하세요', true);
+  const q = exQuote(dir, amt);
+  if (dir === 'u2k'){
+    if (amt > S.usd + odAvail() + 1e-6) return toast(`달러가 부족합니다 (쓸 수 있는 달러 ${fmtUSD(S.usd + odAvail())})`, true);
+    const od = spendUSD(amt);
+    S.krw += q.to;
+    if (od > 0 && !silent) toast(`마이너스통장에서 ${fmtUSD(od)}을 끌어 썼습니다`);
+  } else {
+    if (amt > S.krw) return toast(`원화가 부족합니다 (원화 통장 ${fmtKRW(S.krw)})`, true);
+    S.krw -= amt;
+    receiveUSD(q.to);
+  }
+  S.feesPaid += q.feeUSD; S.fxFees = (S.fxFees || 0) + q.feeUSD;
+  (S.fxLog = S.fxLog || []).unshift({dt:tradeDateLabel(), at:Date.now(), dir, from:q.from, to:q.to, rate:q.rate});
+  if (S.fxLog.length > 200) S.fxLog.length = 200;
+  if (!silent) toast(dir === 'u2k' ? `${fmtUSD(q.from)}를 ${fmtKRW(q.to)}으로 바꿨습니다` : `${fmtKRW(q.from)}을 ${fmtUSD(q.to)}로 바꿨습니다`);
+  return q;
+}
+/* 원화가 need 만큼 더 필요할 때, 달러를 팔아 채운다 */
+function usdForKRW(need){ return Math.ceil(need / fxRates().sell * 100) / 100 + 0.01; }
+/* 달러가 need 만큼 필요할 때 원화 통장에서 자동으로 바꿔 채운다 (대출 만기·반대매매용). 채운 달러를 돌려준다 */
+function coverUSDfromKRW(need){
+  if (!(need > 0) || S.krw <= 0) return 0;
+  const r = fxRates();
+  const krw = Math.min(S.krw, Math.ceil(need * r.buy) + 1);
+  const q = exchange('k2u', krw, true);
+  return q ? q.to : 0;
+}
+
 /* ───────── 주문 ───────── */
 function quote(id, side, q){
-  const s = BY_ID[id], p = price(id), fx = FX();
-  const gross = p * q, fee = gross * META.feeRate;
-  let usd, fxFee = 0;
-  if (s.cur === 'KRW'){
-    const net = side === 'buy' ? gross + fee : gross - fee;
-    const base = net / fx;
-    fxFee = base * META.fxSpread;
-    usd = side === 'buy' ? base + fxFee : base - fxFee;
-  } else {
-    usd = side === 'buy' ? gross + fee : gross - fee;
-  }
-  return {gross, fee, fxFee, usd, p};
+  const s = BY_ID[id], p = price(id);
+  const gross = p * q, fee = s.cur === 'KRW' ? Math.round(gross * META.feeRate) : Math.round(gross * META.feeRate * 100) / 100;
+  const total = side === 'buy' ? gross + fee : gross - fee;
+  return {gross, fee, total, p, cur:s.cur};
 }
+const walletOf = s => s.cur === 'KRW' ? S.krw : S.usd;
 function maxBuy(id, withOd = true){
-  const one = quote(id, 'buy', 1).usd;
-  return Math.max(0, Math.floor((S.cash + (withOd ? odAvail() : 0)) / one + 1e-9));
+  const s = BY_ID[id], one = quote(id, 'buy', 1).total;
+  const avail = s.cur === 'KRW' ? S.krw : S.usd + (withOd ? odAvail() : 0);
+  return Math.max(0, Math.floor(avail / one + 1e-9));
+}
+/* 한국 주식: 원화가 모자라면 달러를 바꿔서 살 수 있는 최대 수량 */
+function maxBuyWithFX(id){
+  const s = BY_ID[id]; if (s.cur !== 'KRW') return maxBuy(id, true);
+  const one = quote(id, 'buy', 1).total;
+  const krw = S.krw + Math.max(0, S.usd + odAvail() - 0.02) * fxRates().sell;
+  return Math.max(0, Math.floor(krw / one + 1e-9));
 }
 function tradeDateLabel(){ return isLive() ? kstDate() : S.date; }
-function doBuy(id, q, tag){
-  const ct = canTrade(BY_ID[id]);
+function doBuy(id, q, tag, autoFX){
+  const s = BY_ID[id];
+  const ct = canTrade(s);
   if (!ct.ok) return toast(ct.why, true);
   q = Math.floor(q);
   if (q < 1) return toast('수량을 1주 이상 입력하세요', true);
   const o = quote(id, 'buy', q);
-  const avail = S.cash + odAvail();
-  if (o.usd > avail + 1e-6) return toast('주문 가능 금액이 부족합니다', true);
   let useOd = 0;
-  if (o.usd > S.cash){ useOd = o.usd - S.cash; S.cash = 0; S.loans.od.bal += useOd; }
-  else S.cash -= o.usd;
+  if (s.cur === 'KRW'){
+    if (o.total > S.krw){
+      if (!autoFX) return toast(`원화 통장 잔액이 ${fmtKRW(o.total - S.krw)} 부족합니다. 먼저 환전하세요`, true);
+      const usd = usdForKRW(o.total - S.krw);
+      if (usd > S.usd + odAvail() + 1e-6) return toast('환전할 달러가 부족합니다', true);
+      const x = exchange('u2k', usd, true); if (!x) return false;
+      toast(`${fmtUSD(x.from)}를 ${fmtKRW(x.to)}으로 환전했습니다`);
+    }
+    S.krw -= o.total;
+  } else {
+    if (o.total > S.usd + odAvail() + 1e-6) return toast('주문 가능 금액이 부족합니다', true);
+    useOd = spendUSD(o.total);
+  }
   const P = S.pos[id] || (S.pos[id] = {q:0, avg:0, cost:0});
   P.avg = (P.avg * P.q + o.p * q) / (P.q + q);
-  P.q += q; P.cost += o.usd;
-  S.feesPaid += (BY_ID[id].cur === 'KRW' ? o.fee / FX() : o.fee) + o.fxFee;
-  S.trades.unshift({d:S.day || 0, dt:tradeDateLabel(), at:Date.now(), id, side:'buy', q, p:o.p, usd:o.usd, tag:tag||''});
+  P.q += q; P.cost += o.total;
+  S.feesPaid += toUSD(s, o.fee);
+  S.trades.unshift({d:S.day || 0, dt:tradeDateLabel(), at:Date.now(), id, side:'buy', q, p:o.p, amt:o.total, cur:s.cur, tag:tag||''});
   trimLog();
   if (useOd > 0) toast(`마이너스통장에서 ${fmtUSD(useOd)}을 끌어 썼습니다`);
   return true;
 }
+/* 매도대금은 그 나라 통화 통장으로 들어간다. tag(반대매매)가 있으면 입금하지 않고 금액만 돌려준다 */
 function doSell(id, q, tag, haircut = 0){
-  const P = S.pos[id];
+  const s = BY_ID[id], P = S.pos[id];
   if (!P || P.q < 1) return false;
-  if (!tag){ const ct = canTrade(BY_ID[id]); if (!ct.ok) return toast(ct.why, true); }
+  if (!tag){ const ct = canTrade(s); if (!ct.ok) return toast(ct.why, true); }
   q = Math.min(Math.floor(q), P.q);
   if (q < 1) return toast('수량을 1주 이상 입력하세요', true);
   const o = quote(id, 'sell', q);
-  const usd = o.usd * (1 - haircut);
+  const proceeds = s.cur === 'KRW' ? Math.floor(o.total * (1 - haircut)) : Math.round(o.total * (1 - haircut) * 100) / 100;
   const costPart = P.cost * (q / P.q);
-  S.realized += usd - costPart;
+  S.realized += toUSD(s, proceeds - costPart);
   P.cost -= costPart; P.q -= q;
   if (P.q === 0) delete S.pos[id];
-  S.feesPaid += (BY_ID[id].cur === 'KRW' ? o.fee / FX() : o.fee) + o.fxFee;
-  S.trades.unshift({d:S.day || 0, dt:tradeDateLabel(), at:Date.now(), id, side:'sell', q, p:o.p*(1-haircut), usd, tag:tag||''});
+  S.feesPaid += toUSD(s, o.fee);
+  S.trades.unshift({d:S.day || 0, dt:tradeDateLabel(), at:Date.now(), id, side:'sell', q, p:o.p*(1-haircut), amt:proceeds, cur:s.cur, tag:tag||''});
   trimLog();
-  let rest = usd;
-  if (!tag && S.loans.od.bal > 0){ const r = Math.min(rest, S.loans.od.bal); S.loans.od.bal -= r; rest -= r; }
-  S.cash += rest;
-  return usd;
+  if (tag) return proceeds;
+  if (s.cur === 'KRW') S.krw += proceeds; else receiveUSD(proceeds);
+  return proceeds;
 }
 function trimLog(){ if (S.trades.length > 400) S.trades.length = 400; }
 
-/* 반대매매: 거래 가능한 시장의 보유 종목 중 평가액 큰 것부터 매도해 target(USD, 매도대금 기준) 확보 */
+/* 반대매매: 거래 가능한 시장의 보유 종목 중 평가액 큰 것부터 매도해 target(달러)을 마련한다.
+   한국 주식 매도대금(원화)은 달러 살 때 환율로 바로 바꾼다 */
 function forceSell(target, tag){
   let raised = 0;
   const ids = Object.keys(S.pos)
@@ -847,18 +953,20 @@ function forceSell(target, tag){
     .sort((a, b) => S.pos[b].q*toUSD(BY_ID[b], price(b)) - S.pos[a].q*toUSD(BY_ID[a], price(a)));
   for (const id of ids){
     if (raised >= target) break;
-    const P = S.pos[id];
-    const per = quote(id, 'sell', 1).usd * (1 - META.sellHaircut);
+    const s = BY_ID[id], P = S.pos[id];
+    const r = fxRates();
+    const perNat = quote(id, 'sell', 1).total * (1 - META.sellHaircut);
+    const per = s.cur === 'KRW' ? perNat / r.buy : perNat;
     const need = Math.ceil((target - raised) / per);
     const q = Math.min(P.q, Math.max(1, need));
-    const cashBefore = S.cash;
-    const got = doSell(id, q, tag, META.sellHaircut);
-    S.cash = cashBefore; // 매도대금은 호출자가 대출 상환에 직접 사용
-    raised += got || 0;
+    const nat = doSell(id, q, tag, META.sellHaircut) || 0;
+    let usd = nat;
+    if (s.cur === 'KRW'){ usd = Math.floor(nat / r.buy * 100) / 100; S.feesPaid += nat / r.base - usd; S.fxFees = (S.fxFees || 0) + nat / r.base - usd; }
+    raised += usd;
   }
   return raised;
 }
-const kappa = () => (1 - META.sellHaircut) * (1 - META.feeRate - META.fxSpread);
+const kappa = () => (1 - META.sellHaircut) * (1 - META.feeRate) * (1 - fxFeeRate());
 /* 담보유지비율을 marginRestore까지 되돌리는 데 필요한 매도대금 y: (V − y/κ) ÷ (L − y) = R* */
 function marginNeed(){
   const V = holdingsUSD(), L = S.loans.margin.bal;
@@ -882,17 +990,17 @@ function borrow(kind, amt){
     if (amt > L.margin + 1e-6) return toast(`주식담보대출 한도는 ${fmtUSD(L.margin)}입니다`, true);
     S.loans.margin.bal += amt;
   } else return;
-  S.cash += amt;
-  toast(`${kind === 'credit' ? '신용대출' : '주식담보대출'} ${fmtUSD(amt)}을 받았습니다`);
+  S.usd += amt;
+  toast(`${kind === 'credit' ? '신용대출' : '주식담보대출'} ${fmtUSD(amt)}을 달러 통장으로 받았습니다`);
   commit();
 }
 function repay(kind, amt){
   const ln = S.loans[kind];
   if (!ln || ln.bal <= 0) return;
-  amt = Math.min(amt, ln.bal, S.cash);
-  if (!(amt > 0)) return toast(S.cash <= 0 ? '상환할 현금이 없습니다' : '금액을 입력하세요', true);
+  amt = Math.min(amt, ln.bal, S.usd);
+  if (!(amt > 0)) return toast(S.usd <= 0 ? '달러 통장에 상환할 돈이 없습니다. 원화가 있다면 먼저 달러로 환전하세요' : '금액을 입력하세요', true);
   ln.bal = Math.round((ln.bal - amt) * 100) / 100;
-  S.cash -= amt;
+  S.usd -= amt;
   if (ln.bal < 0.005){
     ln.bal = 0;
     if (kind === 'credit'){
@@ -1019,13 +1127,14 @@ function creditDueReached(){
 function creditDue(alerts){
   const C = S.loans.credit;
   if (!creditDueReached()) return;
-  const pay = Math.min(S.cash, C.bal);
-  C.bal -= pay; S.cash -= pay;
+  if (S.usd < C.bal) coverUSDfromKRW(C.bal - S.usd);
+  const pay = Math.min(S.usd, C.bal);
+  C.bal -= pay; S.usd -= pay;
   if (C.bal < .005){
     C.bal = 0;
     if (C.clean && C.overdue === 0) S.grade = clamp(S.grade - .5, 1, 10);
     C.due = null; C.overdue = 0; C.clean = true;
-    alerts.push({t:'신용대출 만기 상환', b:`만기가 되어 현금 ${fmtUSD(pay)}으로 신용대출을 자동 상환했습니다.`});
+    alerts.push({t:'신용대출 만기 상환', b:`만기가 되어 달러 통장에서 ${fmtUSD(pay)}을 꺼내 신용대출을 자동 상환했습니다. 달러가 모자란 만큼은 원화 통장에서 자동으로 환전했습니다.`});
     return;
   }
   C.overdue += 1; C.clean = false;
@@ -1034,14 +1143,14 @@ function creditDue(alerts){
     if (isLive()) S.pend.credit = true;
     else creditLiquidate(alerts);
   } else {
-    alerts.push({t:`신용대출 연체 ${C.overdue}${termUnit()}째`, b:`만기가 지났는데 현금이 부족해 ${fmtUSD(C.bal)}이 남았습니다. 연체 중에는 금리가 연 5%p 더 붙고 신용등급이 매일 떨어집니다. ${5 - C.overdue}${termUnit()} 안에 갚지 않으면 보유 주식이 반대매매됩니다.`, bad:true});
+    alerts.push({t:`신용대출 연체 ${C.overdue}${termUnit()}째`, b:`만기가 지났는데 달러와 원화를 모두 써도 ${fmtUSD(C.bal)}이 남았습니다. 연체 중에는 금리가 연 5%p 더 붙고 신용등급이 매일 떨어집니다. ${5 - C.overdue}${termUnit()} 안에 갚지 않으면 보유 주식이 반대매매됩니다.`, bad:true});
   }
 }
 function creditLiquidate(alerts){
   const C = S.loans.credit;
   const got = forceSell(C.bal / kappa(), '연체 반대매매');
   if (got <= 0) return false;
-  const use = Math.min(got, C.bal); C.bal -= use; S.cash += got - use;
+  const use = Math.min(got, C.bal); C.bal -= use; S.usd += got - use;
   if (!S.liqHit || !S.liqHit.credit){ S.grade = clamp(S.grade + 1.5, 1, 10); (S.liqHit = S.liqHit || {}).credit = true; }
   alerts.push({t:'연체 반대매매', b:`신용대출 연체로 보유 주식을 매도해 ${fmtUSD(use)}을 상환했습니다. 신용등급이 크게 떨어졌습니다.`, bad:true});
   if (C.bal < .005){ C.bal = 0; C.due = null; C.overdue = 0; if (S.pend) S.pend.credit = false; if (S.liqHit) S.liqHit.credit = false; }
@@ -1055,7 +1164,7 @@ function marginCheck(alerts){
     const y = marginNeed();
     const got = forceSell(Math.min(y, V * kappa()), '담보 반대매매');
     if (got > 0){
-      const use = Math.min(got, M.bal); M.bal -= use; S.cash += got - use;
+      const use = Math.min(got, M.bal); M.bal -= use; S.usd += got - use;
       if (M.bal < .005) M.bal = 0;
       S.grade = clamp(S.grade + 1, 1, 10);
       if (S.pend) S.pend.margin = marginRatio() < META.marginCall;
@@ -1065,7 +1174,7 @@ function marginCheck(alerts){
       const key = kstDate();
       if (S.warnedDate !== key + 'm'){
         S.warnedDate = key + 'm';
-        alerts.push({t:'반대매매 대기', b:`담보유지비율이 ${(ratio*100).toFixed(0)}%입니다. 지금은 보유 종목의 시장이 열려 있지 않아, 다음에 장이 열리면 바로 반대매매됩니다. 그 전에 현금으로 대출을 갚으면 피할 수 있습니다.`, bad:true});
+        alerts.push({t:'반대매매 대기', b:`담보유지비율이 ${(ratio*100).toFixed(0)}%입니다. 지금은 보유 종목의 시장이 열려 있지 않아, 다음에 장이 열리면 바로 반대매매됩니다. 그 전에 달러 통장으로 대출을 갚으면 피할 수 있습니다.`, bad:true});
       }
     }
   } else {
@@ -1104,6 +1213,7 @@ async function loadLive(silent){
     LIVE.loading = false;
     LIVE.fetchedAt = new Date();
   }
+  if (isLive() && UI.sheet && !UI.refreshing) await loadChart(UI.sheet, false);
   if (isLive()) liveTick();
 }
 function applyLive(j){
@@ -1321,6 +1431,7 @@ function renderHome(){
           <div id="eqWrap"></div>
           <div class="equity-cap"><span id="eqL"></span><span id="eqR"></span></div>
         </article>
+        <section class="card c-wallet" id="walletCard"></section>
         <section class="card c-news"><div class="card-h"><h2 id="newsH"></h2><small id="newsS"></small></div><div id="newsBody"></div></section>
       </div>
       <div class="col-b">
@@ -1337,9 +1448,9 @@ function renderHome(){
   const started = live || S.day > 0;
   $('#hGrade').textContent = `신용 ${g()}등급`;
   $('#hSub').innerHTML = `<span class="ret ${cls(ret)}">${fmtPct(ret)}</span><span>시드 <b>${fmtUSD(META.seed, 0)}</b> 대비</span><span>${live ? '어제보다' : '오늘'} <b>${signUSD(started ? dToday : 0)}</b></span>`;
-  const kr = holdingsUSD('KR'), us = holdingsUSD('US'), cash = S.cash;
-  const tot = kr + us + cash || 1;
-  const seg = [{l:'한국 주식', v:kr, c:'#6E8BFF'}, {l:'미국 주식', v:us, c:'#E2B45E'}, {l:'현금', v:cash, c:'#B9C3D6'}];
+  const kr = holdingsUSD('KR'), us = holdingsUSD('US'), cu = S.usd, ck = S.krw / FX();
+  const tot = kr + us + cu + ck || 1;
+  const seg = [{l:'한국 주식', v:kr, c:'#6E8BFF'}, {l:'미국 주식', v:us, c:'#E2B45E'}, {l:'달러', v:cu, c:'#B9C3D6'}, {l:'원화', v:ck, c:'#8FA0BF'}];
   $('#mixBar').innerHTML = seg.map(s => `<i style="width:${(s.v/tot*100).toFixed(2)}%;background:${s.c}"></i>`).join('');
   $('#mixLeg').innerHTML = seg.map(s => `<span><i style="background:${s.c}"></i>${s.l} <b>${fmtUSD(s.v, 0)}</b></span>`).join('')
     + (D > 0 ? `<span><i style="background:#FF8A96"></i>대출 <b>${MINUS}${fmtUSD(D, 0)}</b></span>` : '');
@@ -1349,6 +1460,7 @@ function renderHome(){
   $('#eqR').textContent = live ? (S.nw.length > 1 ? `최고 ${fmtUSD(S.peak, 0)}` : '하루가 지나면 순자산 그래프가 쌓입니다')
                                : (S.day ? `최고 ${fmtUSD(S.peak, 0)}` : '다음 거래일을 눌러 시장을 열어보세요');
 
+  $('#walletCard').innerHTML = walletHTML();
   const tiles = [{l:'한국 100 지수', a:idxHist('KR')}, {l:'미국 100 지수', a:idxHist('US')}, {l:'원/달러 환율', a:fxHist(), fx:true}];
   $('#pulse').innerHTML = tiles.map(t => {
     const a = t.a, cur = last(a), prev = a.length > 1 ? a[a.length-2] : a[0];
@@ -1472,7 +1584,7 @@ function renderMarketList(){
 function renderAssets(){
   const v = $('#v-assets');
   const N = netWorth(), V = holdingsUSD(), D = debt();
-  let cost = 0; for (const id in S.pos) cost += S.pos[id].cost;
+  let cost = 0; for (const id in S.pos) cost += toUSD(BY_ID[id], S.pos[id].cost);
   const unreal = V - cost;
   const ret = (N - META.seed) / META.seed;
   const kRet = last(idxHist('KR'))/1000 - 1, uRet = last(idxHist('US'))/1000 - 1;
@@ -1484,17 +1596,17 @@ function renderAssets(){
   const ids = Object.keys(S.pos).sort((a, b) => S.pos[b].q*toUSD(BY_ID[b], price(b)) - S.pos[a].q*toUSD(BY_ID[a], price(a)));
   const holdRows = ids.map(id => {
     const s = BY_ID[id], P = S.pos[id], p = price(id);
-    const val = P.q * toUSD(s, p), pl = val - P.cost, plr = P.cost ? pl / P.cost : 0;
+    const val = P.q * toUSD(s, p), plN = P.q * p - P.cost, plr = P.cost ? plN / P.cost : 0;
     return `<button class="hold" data-open="${id}">
       <span class="mono" style="--h:${SECTORS[s.s].h}">${esc(monoText(s))}</span>
       <span class="nmb"><div class="n">${esc(s.n)}</div><div class="s">${P.q.toLocaleString()}주, 평균 ${fmtPx(s, P.avg)}</div></span>
-      <span class="px"><div class="p num">${fmtUSD(val)}</div><div class="c num ${cls(pl)}">${signUSD(pl)} (${fmtPct(plr)})</div></span>
+      <span class="px"><div class="p num">${s.cur === 'KRW' ? fmtKRW(P.q * p) : fmtUSD(val)}</div><div class="c num ${cls(plN)}">${s.cur === 'KRW' ? (plN > 0 ? '+' : '') + fmtKRW(plN) : signUSD(plN)} (${fmtPct(plr)})</div></span>
     </button>`;
   }).join('');
   const tr = S.trades.slice(0, 60).map(t => {
     const s = BY_ID[t.id];
     const when = isLive() && t.at ? `${fmtDate(t.dt, false)}<br><span class="muted">${kstTime(new Date(t.at))}</span>` : fmtDate(t.dt, false);
-    return `<tr><td>${when}</td><td><span class="side ${t.side === 'buy' ? 'up' : 'down'}">${t.side === 'buy' ? '매수' : '매도'}</span>${t.tag ? `<br><span class="tag" style="margin:2px 0 0">${esc(t.tag)}</span>` : ''}</td><td>${esc(s.n)}<br><span class="muted">${t.q.toLocaleString()}주 × ${fmtPx(s, t.p)}</span></td><td class="r num">${t.side === 'buy' ? MINUS : '+'}${fmtUSD(t.usd)}</td></tr>`;
+    return `<tr><td>${when}</td><td><span class="side ${t.side === 'buy' ? 'up' : 'down'}">${t.side === 'buy' ? '매수' : '매도'}</span>${t.tag ? `<br><span class="tag" style="margin:2px 0 0">${esc(t.tag)}</span>` : ''}</td><td>${esc(s.n)}<br><span class="muted">${t.q.toLocaleString()}주 × ${fmtPx(s, t.p)}</span></td><td class="r num">${t.side === 'buy' ? MINUS : '+'}${t.amt !== undefined ? fmtPx(s, t.amt) : fmtUSD(t.usd)}</td></tr>`;
   }).join('');
   v.innerHTML = `
   <div class="stack">
@@ -1503,10 +1615,12 @@ function renderAssets(){
       <div><dt>총수익률</dt><dd class="num ${cls(ret)}">${fmtPct(ret)}</dd></div>
       <div><dt>주식 평가액</dt><dd class="num">${fmtUSD(V)}</dd></div>
       <div><dt>평가손익</dt><dd class="num ${cls(unreal)}">${signUSD(unreal)}</dd></div>
-      <div><dt>현금</dt><dd class="num">${fmtUSD(S.cash)}</dd></div>
+      <div><dt>달러 통장</dt><dd class="num">${fmtUSD(S.usd)}</dd></div>
+      <div><dt>원화 통장</dt><dd class="num">${fmtKRW(S.krw)}</dd></div>
       <div><dt>대출 잔액</dt><dd class="num">${fmtUSD(D)}</dd></div>
       <div><dt>실현손익</dt><dd class="num ${cls(S.realized)}">${signUSD(S.realized)}</dd></div>
-      <div><dt>낸 이자와 수수료</dt><dd class="num">${fmtUSD(S.interestPaid + S.feesPaid)}</dd></div>
+      <div><dt>낸 이자</dt><dd class="num">${fmtUSD(S.interestPaid)}</dd></div>
+      <div><dt>낸 수수료 (환전 포함)</dt><dd class="num">${fmtUSD(S.feesPaid)}</dd></div>
     </dl>
     <div class="assets-grid">
       <section class="card"><div class="card-h"><h2>보유 종목</h2><small>${ids.length}개</small></div>
@@ -1518,7 +1632,10 @@ function renderAssets(){
           <div class="bench">${benchRow('내 순자산', ret, 'var(--brass)')}${benchRow('한국 100', kRet, '#6E8BFF')}${benchRow('미국 100', uRet, '#8A93A6')}</div>
         </section>
         <section class="card"><div class="card-h"><h2>거래 내역</h2><small>최근 60건</small></div>
-          ${tr ? `<div class="tbl-wrap"><table class="trades"><thead><tr><th>날짜</th><th>구분</th><th>종목</th><th class="r">결제(USD)</th></tr></thead><tbody>${tr}</tbody></table></div>` : '<p class="empty">거래 내역이 없습니다.</p>'}
+          ${tr ? `<div class="tbl-wrap"><table class="trades"><thead><tr><th>날짜</th><th>구분</th><th>종목</th><th class="r">결제 금액</th></tr></thead><tbody>${tr}</tbody></table></div>` : '<p class="empty">거래 내역이 없습니다.</p>'}
+        </section>
+        <section class="card"><div class="card-h"><h2>환전 내역</h2><small>최근 20건</small></div>
+          ${(S.fxLog || []).length ? `<div class="tbl-wrap"><table class="trades"><thead><tr><th>날짜</th><th>방향</th><th class="r">낸 금액</th><th class="r">받은 금액</th></tr></thead><tbody>${S.fxLog.slice(0, 20).map(x => `<tr><td>${fmtDate(x.dt, false)}</td><td>${x.dir === 'u2k' ? '달러 → 원화' : '원화 → 달러'}<br><span class="muted">1달러 = ${fmtFX(x.rate)}원</span></td><td class="r num">${x.dir === 'u2k' ? fmtUSD(x.from) : fmtKRW(x.from)}</td><td class="r num">${x.dir === 'u2k' ? fmtKRW(x.to) : fmtUSD(x.to)}</td></tr>`).join('')}</tbody></table></div>` : '<p class="empty">환전 내역이 없습니다.</p>'}
         </section>
       </div>
     </div>
@@ -1544,7 +1661,7 @@ function renderLoans(){
   const remain = C.due === null ? null : live ? daysBetween(kstDate(), C.due) : C.due - S.day;
   let cWarn = '';
   if (C.overdue > 0) cWarn = `<div class="alert bad">연체 ${C.overdue}${U}째입니다. ${Math.max(0, 5 - C.overdue)}${U} 안에 갚지 않으면 반대매매됩니다.${live && S.pend.credit ? ' 연체 반대매매가 대기 중이어서 장이 열리면 바로 실행됩니다.' : ''}</div>`;
-  else if (C.bal > 0 && C.due !== null) cWarn = `<div class="alert">만기${live ? `(${fmtDate(C.due, false)})` : ''}까지 ${Math.max(0, remain)}${U} 남았습니다. 만기일에 현금으로 자동 상환됩니다.</div>`;
+  else if (C.bal > 0 && C.due !== null) cWarn = `<div class="alert">만기${live ? `(${fmtDate(C.due, false)})` : ''}까지 ${Math.max(0, remain)}${U} 남았습니다. 만기일에 달러 통장에서 자동 상환되고, 달러가 모자라면 원화를 자동 환전합니다.</div>`;
   let mWarn = '';
   if (M.bal > 0){
     mWarn = `<div><div class="gauge" role="img" aria-label="담보유지비율 ${isFinite(ratio) ? (ratio*100).toFixed(0) : '-'}%"><i style="left:${gaugePos}%"></i></div><div class="gauge-cap"><span>100%</span><span>반대매매 120%</span><span>경고 140%</span><span>300%+</span></div></div>`
@@ -1568,7 +1685,7 @@ function renderLoans(){
     ${card('margin', '주식담보대출', `보유 주식 평가액의 ${META.ltv*100}%까지 빌립니다. 담보유지비율이 120% 아래로 떨어지면 자동 반대매매됩니다.`, R.margin,
       [['대출 잔액', fmtUSD(M.bal)], ['추가 한도', fmtUSD(L.margin)], ['담보유지비율', M.bal > 0 ? (ratio*100).toFixed(0) + '%' : '해당 없음']],
       `<div class="act">${amtBox('margin')}<button class="btn brass" data-borrow="margin" ${L.margin > 1 ? '' : 'disabled'}>빌리기</button><button class="btn" data-repay="margin" ${M.bal > 0 ? '' : 'disabled'}>갚기</button><button class="btn" data-repayall="margin" ${M.bal > 0 ? '' : 'disabled'}>전액 상환</button></div>`, mWarn)}
-    ${card('od', '마이너스통장', '현금보다 큰 주문을 넣으면 한도 안에서 자동으로 빌려집니다. 주식을 팔면 매도대금으로 먼저 갚습니다.', R.od,
+    ${card('od', '마이너스통장', '달러 통장에 연결된 한도 대출입니다. 달러보다 큰 미국 주식 주문이나 환전을 하면 자동으로 빌려지고, 달러가 들어오면 먼저 갚습니다.', R.od,
       [['사용액', fmtUSD(O.bal)], ['한도', fmtUSD(L.odLimit)], ['남은 한도', fmtUSD(Math.max(0, L.odLimit - O.bal))]],
       `<div class="act">${amtBox('od')}<button class="btn" data-repay="od" ${O.bal > 0 ? '' : 'disabled'}>갚기</button><button class="btn" data-repayall="od" ${O.bal > 0 ? '' : 'disabled'}>전액 상환</button></div>`)}
     <section class="card wide">
@@ -1616,7 +1733,7 @@ function renderInfo(){
     <section class="card prose">
       <div class="card-h"><h2>게임 규칙</h2></div>
       <ul>
-        <li>시드머니는 <b>$10,000</b>이고, 계좌는 달러로 관리합니다.</li>
+        <li>시드머니는 달러 통장에 들어 있는 <b>$10,000</b>입니다.</li>
         ${live ? `
         <li><b>실제 시세 모드</b>: 실제 주가를 따라갑니다. 장중에는 약 5분마다 시세를 수집하지만, GitHub 예약 실행 사정으로 5~30분 늦을 수 있습니다.</li>
         <li>각 시장의 <b>정규장</b>에만 거래할 수 있습니다. 한국 ${sessInKST('KR')}, 미국 ${sessInKST('US')}(한국 시각, 서머타임 반영). 공휴일은 그날 시세가 들어오지 않는 것으로 판단합니다.</li>
@@ -1625,7 +1742,9 @@ function renderInfo(){
         <li><b>시뮬레이션 모드</b>: 다음 거래일을 누를 때마다 하루치 시세가 시뮬레이션됩니다. 주말은 건너뛰고, 공휴일은 따로 반영하지 않습니다.</li>
         <li>한국 주식은 하루 ±30% 가격제한폭과 호가 단위를 적용합니다.</li>`}
         <li>주문은 정수 주 단위 시장가로 즉시 체결됩니다. 거래 수수료는 체결 금액의 0.1%입니다.</li>
-        <li>한국 주식은 원화로 표시되며, 매수할 때 달러를 원화로, 매도할 때 원화를 달러로 바꿉니다. 이때 환전 수수료 0.2%가 붙습니다.</li>
+        <li>계좌는 <b>달러 통장</b>과 <b>원화 통장</b>으로 나뉩니다. 한국 주식은 원화 통장으로, 미국 주식과 대출은 달러 통장으로 오갑니다. 두 통장 사이는 홈의 환전하기로 옮깁니다.</li>
+        <li>환전할 때는 매매기준율에 수수료가 붙은 환율이 적용되고, 신용등급이 좋을수록 환전 우대율이 높습니다.</li>
+        <li>대출 만기에 달러가 모자라면 원화 통장에서 자동으로 환전해 갚고, 반대매매로 판 한국 주식 대금도 자동으로 달러로 바꿔 대출을 갚습니다.</li>
         <li>순자산이 0 이하가 되면 파산하고 게임이 끝납니다.</li>
         <li>진행 상황은 이 브라우저에 자동 저장됩니다. 다른 기기와는 공유되지 않습니다.</li>
       </ul>
@@ -1634,17 +1753,23 @@ function renderInfo(){
       <div class="card-h"><h2>계산식</h2></div>
       <div class="fx-block">
         <div class="fx-item"><h4>순자산과 수익률</h4>
-          <div class="eq"><i>N</i> = <i>C</i> + <i>V</i> − (<i>L</i><sub>c</sub> + <i>L</i><sub>m</sub> + <i>L</i><sub>o</sub>),&nbsp;&nbsp; 수익률 = (<i>N</i> − 10000) ÷ 10000 × 100 (%)</div>
-          <ul class="defs"><li><span class="sym">N</span><span>순자산(달러)</span></li><li><span class="sym">C</span><span>현금(달러)</span></li><li><span class="sym">V</span><span>보유 주식 평가액의 합(달러)</span></li><li><span class="sym">L<sub>c</sub></span><span>신용대출 잔액</span></li><li><span class="sym">L<sub>m</sub></span><span>주식담보대출 잔액</span></li><li><span class="sym">L<sub>o</sub></span><span>마이너스통장 사용액</span></li></ul>
+          <div class="eq"><i>N</i> = <i>C</i><sub>$</sub> + <i>C</i><sub>₩</sub> ÷ <i>X</i> + <i>V</i> − (<i>L</i><sub>c</sub> + <i>L</i><sub>m</sub> + <i>L</i><sub>o</sub>),&nbsp;&nbsp; 수익률 = (<i>N</i> − 10000) ÷ 10000 × 100 (%)</div>
+          <ul class="defs"><li><span class="sym">N</span><span>순자산(달러)</span></li><li><span class="sym">C<sub>$</sub></span><span>달러 통장 잔액(달러)</span></li><li><span class="sym">C<sub>₩</sub></span><span>원화 통장 잔액(원)</span></li><li><span class="sym">X</span><span>매매기준율(1달러당 원). 순자산을 셀 때는 수수료를 빼지 않습니다.</span></li><li><span class="sym">V</span><span>보유 주식 평가액의 합(달러)</span></li><li><span class="sym">L<sub>c</sub></span><span>신용대출 잔액</span></li><li><span class="sym">L<sub>m</sub></span><span>주식담보대출 잔액</span></li><li><span class="sym">L<sub>o</sub></span><span>마이너스통장 사용액</span></li></ul>
         </div>
         <div class="fx-item"><h4>한국 주식 평가액(달러 환산)</h4>
           <div class="eq"><i>V</i><sub>i</sub> = <i>q</i><sub>i</sub> × <i>P</i><sub>i</sub> ÷ <i>X</i></div>
           <ul class="defs"><li><span class="sym">V<sub>i</sub></span><span>종목 i의 평가액(달러)</span></li><li><span class="sym">q<sub>i</sub></span><span>종목 i의 보유 수량(주)</span></li><li><span class="sym">P<sub>i</sub></span><span>종목 i의 현재가(원)</span></li><li><span class="sym">X</span><span>원/달러 환율(1달러당 원)${live ? '. 실제 시세 모드에서는 야후 파이낸스의 원/달러 시세' : ''}</span></li></ul>
         </div>
-        <div class="fx-item"><h4>한국 주식 매수 결제액</h4>
-          <div class="eq"><i>U</i> = <i>P</i> × <i>q</i> × (1 + <i>f</i>) ÷ <i>X</i> × (1 + <i>h</i>)</div>
-          <ul class="defs"><li><span class="sym">U</span><span>계좌에서 빠지는 달러</span></li><li><span class="sym">P</span><span>체결가(원)</span></li><li><span class="sym">q</span><span>주문 수량(주)</span></li><li><span class="sym">f</span><span>거래 수수료율 0.001</span></li><li><span class="sym">X</span><span>원/달러 환율</span></li><li><span class="sym">h</span><span>환전 수수료율 0.002</span></li></ul>
-          <p class="prose" style="margin:8px 0 0">매도할 때는 (1 + <i>f</i>)와 (1 + <i>h</i>)가 각각 (1 − <i>f</i>)와 (1 − <i>h</i>)로 바뀝니다. 미국 주식은 환전 단계 없이 <i>U</i> = <i>P</i> × <i>q</i> × (1 ± <i>f</i>)입니다.</p>
+        <div class="fx-item"><h4>환전</h4>
+          <div class="eq"><i>f</i> = <i>s</i> × (1 − <i>p</i>),&nbsp;&nbsp; <i>X</i><sub>살 때</sub> = <i>X</i>(1 + <i>f</i>),&nbsp;&nbsp; <i>X</i><sub>팔 때</sub> = <i>X</i>(1 − <i>f</i>)</div>
+          <div class="eq" style="margin-top:6px"><i>W</i> = <i>A</i><sub>$</sub> × <i>X</i><sub>팔 때</sub>,&nbsp;&nbsp; <i>D</i> = <i>A</i><sub>₩</sub> ÷ <i>X</i><sub>살 때</sub></div>
+          <ul class="defs"><li><span class="sym">X</span><span>매매기준율(1달러당 원)</span></li><li><span class="sym">s</span><span>기본 스프레드 0.01 (1%)</span></li><li><span class="sym">p</span><span>환전 우대율. 신용등급 <i>G</i>에 따라 0.9 − 0.1(<i>G</i> − 1), 최소 0</span></li><li><span class="sym">f</span><span>실제로 적용되는 수수료율</span></li><li><span class="sym">X<sub>살 때</sub></span><span>달러를 살 때(원화 → 달러) 환율</span></li><li><span class="sym">X<sub>팔 때</sub></span><span>달러를 팔 때(달러 → 원화) 환율</span></li><li><span class="sym">A<sub>$</sub></span><span>원화로 바꿀 달러 금액</span></li><li><span class="sym">W</span><span>받는 원화 (원 단위 내림)</span></li><li><span class="sym">A<sub>₩</sub></span><span>달러로 바꿀 원화 금액</span></li><li><span class="sym">D</span><span>받는 달러 (센트 단위 내림)</span></li></ul>
+          <p class="prose" style="margin:8px 0 0">예: 매매기준율 1,320원, 4등급(우대율 60%)이면 <i>f</i> = 0.01 × 0.4 = 0.004이고, 달러 팔 때 환율은 1,320 × 0.996 = 1,314.72원입니다.</p>
+        </div>
+        <div class="fx-item"><h4>주식 결제 금액</h4>
+          <div class="eq"><i>T</i> = <i>P</i> × <i>q</i> × (1 ± <i>c</i>)</div>
+          <ul class="defs"><li><span class="sym">T</span><span>통장에서 빠지거나(매수, +) 들어오는(매도, −) 금액. 한국 주식은 원화 통장, 미국 주식은 달러 통장</span></li><li><span class="sym">P</span><span>체결가</span></li><li><span class="sym">q</span><span>수량(주)</span></li><li><span class="sym">c</span><span>거래 수수료율 0.001</span></li></ul>
+          <p class="prose" style="margin:8px 0 0">한국 주식을 살 때 원화가 모자라면, 주문 화면에서 부족한 만큼만 달러를 원화로 바꾼 뒤 사는 버튼을 쓸 수 있습니다.</p>
         </div>
         <div class="fx-item"><h4>한국 100·미국 100 지수</h4>
           <div class="eq"><i>I</i><sub>t</sub> = 1000 × Σ<sub>i</sub> <i>W</i><sub>i</sub> (<i>P</i><sub>i,t</sub> ÷ <i>P</i><sub>i,0</sub>) ÷ Σ<sub>i</sub> <i>W</i><sub>i</sub></div>
@@ -1688,12 +1813,15 @@ function renderInfo(){
 
 /* ───────── 종목 상세 시트 ───────── */
 function openSheet(id){
-  UI.sheet = id; UI.side = S.pos[id] ? UI.side : 'buy'; UI.qty = 1;
+  UI.sheet = id; UI.side = S.pos[id] ? UI.side : 'buy'; UI.qty = 1; UI.scrub = null;
+  if (!UI.crange || !rangeList().some(r => r.k === UI.crange)) UI.crange = isLive() ? '1D' : '1M';
   const sh = $('#sheet'), sc = $('#scrim');
   sh.hidden = false; sc.hidden = false;
   renderSheet();
-  requestAnimationFrame(() => { sh.classList.add('on'); sc.classList.add('on'); });
+  requestAnimationFrame(() => { sh.classList.add('on'); sc.classList.add('on'); renderChartBox(); });
   setTimeout(() => { const c = sh.querySelector('.close'); c && c.focus({preventScroll:true}); }, 50);
+  // 종목을 열면 바로 최신 시세와 차트를 새로 받는다
+  if (isLive()){ UI.refreshing = true; Promise.all([loadLive(true), loadChart(id, true)]).finally(() => { UI.refreshing = false; if (UI.sheet === id) renderSheet(); }); }
 }
 function closeSheet(){
   const sh = $('#sheet'), sc = $('#scrim');
@@ -1701,21 +1829,222 @@ function closeSheet(){
   UI.sheet = null;
   setTimeout(() => { if (!UI.sheet){ sh.hidden = true; if ($('#modal').hidden) sc.hidden = true; } }, 280);
 }
+
+/* ───────── 상세 차트 (애플 주식 앱 방식) ───────── */
+const CH = {};   // 종목별 차트 파일 캐시
+async function loadChart(id, force){
+  if (!isLive()) return;
+  const c = CH[id];
+  if (!force && c && Date.now() - c.at < 60000) return;
+  try {
+    const r = await fetch(`data/c/${id.replace(':', '_')}.json?t=${Date.now()}`, {cache:'no-store'});
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    CH[id] = {d:await r.json(), at:Date.now()};
+  } catch(e){ CH[id] = {d:null, at:Date.now(), err:String(e.message || e)}; }
+}
+const RANGES_LIVE = [['1D','1일'],['1W','1주'],['1M','1개월'],['3M','3개월'],['6M','6개월'],['YTD','YTD'],['1Y','1년'],['2Y','2년'],['5Y','5년'],['10Y','10년'],['ALL','전체']];
+const RANGES_SIM = [['1W','1주'],['1M','1개월'],['3M','3개월'],['6M','6개월'],['1Y','1년'],['ALL','전체']];
+const RANGE_TEXT = {'1D':'오늘','1W':'지난 1주','1M':'지난 1개월','3M':'지난 3개월','6M':'지난 6개월','YTD':'올해','1Y':'지난 1년','2Y':'지난 2년','5Y':'지난 5년','10Y':'지난 10년','ALL':'전체 기간'};
+function rangeList(){ return (isLive() ? RANGES_LIVE : RANGES_SIM).map(([k, l]) => ({k, l})); }
+const DAY = 864e5;
+/* 일 단위 시계열(정수 일수)에 오늘 시세를 붙인다 */
+function patchDaily(ser, id, m){
+  if (!ser || !ser.d || !ser.d.length) return null;
+  const d = ser.d.slice(), c = ser.c.slice();
+  const ld = last(LIVE.dates[m]);
+  if (ld){
+    const dn = Math.round(parseD(ld) / DAY), p = price(id);
+    if (last(d) === dn) c[c.length - 1] = p;
+    else if (last(d) < dn){ d.push(dn); c.push(p); }
+  }
+  return {t:d.map(x => x * DAY), c, daily:true};
+}
+function sliceFrom(ser, fromMs){
+  const i = ser.t.findIndex(t => t >= fromMs);
+  if (i <= 0) return ser;
+  return {...ser, t:ser.t.slice(i - 1 >= 0 ? i : 0), c:ser.c.slice(i)};
+}
+/* 기간별 시계열. t: ms, c: 가격, ref: 등락 기준값, kind: intraday|daily */
+function getSeries(id, range){
+  const s = BY_ID[id];
+  if (!isLive()){
+    const a = S.px[id], ds = S.dates;
+    const n = {'1W':6, '1M':22, '3M':64, '6M':127, '1Y':253}[range] || a.length;
+    const c = a.slice(-n), t = ds.slice(-n).map(x => parseD(x).getTime());
+    return {t, c, ref:c[0], kind:'daily'};
+  }
+  const doc = CH[id] && CH[id].d;
+  const fallbackDaily = () => ({t:LIVE.dates[s.m].map(x => parseD(x).getTime()), c:hist(id).slice(), daily:true});
+  const nowMs = now().getTime();
+  if ((range === '1D' || range === '1W') && doc && doc.i5 && doc.i5.t.length){
+    const t = doc.i5.t.map(x => x * 1000), c = doc.i5.c.slice();
+    if (range === '1D'){
+      const tz = SESS[s.m].tz, lastDate = zoneParts(tz, new Date(last(t))).date;
+      let i = t.length - 1; while (i > 0 && zoneParts(tz, new Date(t[i - 1])).date === lastDate) i--;
+      // 전일 종가: 일봉에서 그 세션 날짜보다 앞선 마지막 값
+      let ref = null;
+      if (doc.d1 && doc.d1.d.length){
+        const dn = Math.round(parseD(lastDate) / DAY);
+        for (let k = doc.d1.d.length - 1; k >= 0; k--){ if (doc.d1.d[k] < dn){ ref = doc.d1.c[k]; break; } }
+      }
+      if (ref === null) ref = prevPrice(id);
+      return {t:t.slice(i), c:c.slice(i), ref, kind:'intraday', session:lastDate};
+    }
+    return {t, c, ref:c[0], kind:'intraday'};
+  }
+  if (range === '1M' && doc && doc.h1 && doc.h1.t.length){
+    const t = doc.h1.t.map(x => x * 1000), c = doc.h1.c;
+    return {t, c, ref:c[0], kind:'intraday'};
+  }
+  let base;
+  if (['1D','1W','1M','3M','6M','YTD','1Y','2Y'].includes(range)) base = (doc && patchDaily(doc.d1, id, s.m)) || fallbackDaily();
+  else if (range === '5Y' || range === '10Y') base = (doc && patchDaily(doc.wk, id, s.m)) || (doc && patchDaily(doc.d1, id, s.m)) || fallbackDaily();
+  else base = (doc && patchDaily(doc.mo, id, s.m)) || (doc && patchDaily(doc.wk, id, s.m)) || fallbackDaily();
+  const y = new Date(nowMs).getUTCFullYear();
+  const from = {'1D':nowMs - 3*DAY, '1W':nowMs - 8*DAY, '1M':nowMs - 31*DAY, '3M':nowMs - 92*DAY, '6M':nowMs - 183*DAY, 'YTD':Date.UTC(y, 0, 1), '1Y':nowMs - 366*DAY, '2Y':nowMs - 731*DAY, '5Y':nowMs - 1827*DAY, '10Y':nowMs - 3653*DAY}[range];
+  let ser = from ? sliceFrom(base, from) : base;
+  if (ser.c.length < 2) ser = base;
+  return {t:ser.t, c:ser.c, ref:ser.c[0], kind:'daily'};
+}
+function niceTicks(lo, hi, n){
+  const span = hi - lo || Math.abs(hi) * .02 || 1;
+  const raw = span / n, mag = Math.pow(10, Math.floor(Math.log10(raw)));
+  const step = [1, 2, 2.5, 5, 10].map(x => x * mag).find(x => x >= raw) || 10 * mag;
+  const out = [];
+  for (let v = Math.ceil(lo / step) * step; v <= hi + 1e-9; v += step) out.push(+v.toFixed(10));
+  return out;
+}
+function fmtAxis(s, v){ return s.cur === 'KRW' ? Math.round(v).toLocaleString('ko-KR') : v >= 1000 ? Math.round(v).toLocaleString('en-US') : v.toFixed(v >= 100 ? 0 : 2); }
+function xLabels(ser, range, xs){
+  const out = [], seen = new Set();
+  const lab = (i, text) => { if (!seen.has(text)){ seen.add(text); out.push({x:xs(i), text}); } };
+  ser.t.forEach((t, i) => {
+    const d = new Date(t);
+    if (ser.kind === 'intraday'){
+      const k = zoneParts('Asia/Seoul', d);
+      if (range === '1D'){ if (k.mi === 0) lab(i, `${k.h}시`); }
+      else if (range === '1W'){ const key = k.date; if (!seen.has(key) && (i === 0 || zoneParts('Asia/Seoul', new Date(ser.t[i-1])).date !== key)){ seen.add(key); out.push({x:xs(i), text:`${+key.slice(5,7)}/${+key.slice(8,10)}`}); } }
+      else { const key = k.date; if (i === 0 || zoneParts('Asia/Seoul', new Date(ser.t[i-1])).date !== key){ if (DOW[new Date(Date.UTC(+key.slice(0,4), +key.slice(5,7)-1, +key.slice(8,10))).getUTCDay()] === '월') out.push({x:xs(i), text:`${+key.slice(5,7)}/${+key.slice(8,10)}`}); } }
+    } else {
+      const y = d.getUTCFullYear(), m = d.getUTCMonth();
+      const pd = i ? new Date(ser.t[i-1]) : null;
+      const newMonth = !pd || pd.getUTCMonth() !== m, newYear = !pd || pd.getUTCFullYear() !== y;
+      if (['5Y','10Y','ALL'].includes(range)){ if (newYear && i) out.push({x:xs(i), text:`${y}`}); }
+      else if (range === '2Y'){ if (newMonth && i && m % 3 === 0) out.push({x:xs(i), text: m === 0 ? `${y}` : `${m+1}월`}); }
+      else if (['1W','1M'].includes(range)){ if (i && (range === '1W' || d.getUTCDay() === 1)) out.push({x:xs(i), text:`${m+1}/${d.getUTCDate()}`}); }
+      else if (newMonth && i) out.push({x:xs(i), text: m === 0 ? `${y}` : `${m+1}월`});
+    }
+  });
+  // 겹치지 않게 솎아낸다 (최대 6개)
+  const maxN = 6;
+  if (out.length > maxN){ const step = Math.ceil(out.length / maxN); return out.filter((_, i) => i % step === 0); }
+  return out;
+}
+function chartTimeLabel(ser, i, range){
+  const t = ser.t[i]; if (t === undefined) return '';
+  if (ser.kind === 'intraday'){ const k = zoneParts('Asia/Seoul', new Date(t)); return `${+k.date.slice(5,7)}월 ${+k.date.slice(8,10)}일 ${String(k.h).padStart(2,'0')}:${String(k.mi).padStart(2,'0')}`; }
+  const d = new Date(t); return `${d.getUTCFullYear()}년 ${d.getUTCMonth()+1}월 ${d.getUTCDate()}일`;
+}
+function renderChartBox(){
+  const id = UI.sheet; if (!id) return;
+  const box = $('#apChart'); if (!box) return;
+  const s = BY_ID[id];
+  const ser = getSeries(id, UI.crange);
+  UI.ser = ser;
+  const W = Math.max(260, Math.round(box.clientWidth || 340)), H = W < 420 ? 210 : 240;
+  const padR = 54, padT = 12, padB = 22, plotW = W - padR, plotH = H - padT - padB;
+  const v = ser.c.length >= 2 ? ser.c : [ser.c[0], ser.c[0]];
+  let lo = Math.min(...v), hi = Math.max(...v);
+  if (UI.crange === '1D' && ser.ref) { lo = Math.min(lo, ser.ref); hi = Math.max(hi, ser.ref); }
+  const pad = (hi - lo) * .1 || hi * .01; lo -= pad; hi += pad;
+  // 1일 차트는 장 시간 전체를 가로축으로 쓴다 (장중이면 선이 중간에서 끝난다)
+  let slots = v.length - 1, xIndex = i => i;
+  if (UI.crange === '1D' && ser.kind === 'intraday' && ser.t.length){
+    const z = SESS[s.m], p0 = zoneParts(z.tz, new Date(ser.t[0]));
+    const open = ser.t[0] - ((p0.h * 60 + p0.mi) - z.o) * 6e4;
+    slots = (z.c - z.o) / 5;
+    xIndex = i => (ser.t[i] - open) / 3e5;
+  }
+  const X = i => 2 + (plotW - 4) * (slots ? xIndex(i) / slots : 0);
+  const Y = val => padT + plotH * (1 - (val - lo) / (hi - lo));
+  const lastV = last(v), refV = ser.ref ?? v[0];
+  const c = cls(lastV - refV), col = c === 'flat' ? 'var(--ink-3)' : `var(--${c})`;
+  let d = ''; v.forEach((val, i) => { d += (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(val).toFixed(1); });
+  const area = d + `L${X(v.length-1).toFixed(1)} ${padT + plotH}L${X(0).toFixed(1)} ${padT + plotH}Z`;
+  const yt = niceTicks(lo, hi, 4);
+  const xl = xLabels({...ser, c:v}, UI.crange, X);
+  const gid = 'ag' + id.replace(/\W/g, '');
+  box.innerHTML = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(s.n)} ${RANGE_TEXT[UI.crange]} 가격 차트">
+    <defs><linearGradient id="${gid}" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="${col}" stop-opacity=".22"/><stop offset="1" stop-color="${col}" stop-opacity="0"/></linearGradient></defs>
+    ${yt.map(t => `<line x1="0" x2="${plotW}" y1="${Y(t).toFixed(1)}" y2="${Y(t).toFixed(1)}" class="ap-grid"/><text x="${W - 4}" y="${(Y(t) + 4).toFixed(1)}" text-anchor="end" class="ap-yl">${fmtAxis(s, t)}</text>`).join('')}
+    ${xl.map(l => `<line x1="${l.x.toFixed(1)}" x2="${l.x.toFixed(1)}" y1="${padT}" y2="${padT + plotH}" class="ap-vgrid"/><text x="${l.x.toFixed(1)}" y="${H - 6}" text-anchor="middle" class="ap-xl">${esc(l.text)}</text>`).join('')}
+    ${UI.crange === '1D' ? `<line x1="0" x2="${plotW}" y1="${Y(refV).toFixed(1)}" y2="${Y(refV).toFixed(1)}" class="ap-ref"/><text x="${plotW - 4}" y="${(Y(refV) - 5).toFixed(1)}" text-anchor="end" class="ap-refl">전일 종가</text>` : ''}
+    <path d="${area}" fill="url(#${gid})"/>
+    <path d="${d}" fill="none" stroke="${col}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+    <line id="apCx" x1="0" x2="0" y1="${padT}" y2="${padT + plotH}" class="ap-cx" visibility="hidden"/>
+    <circle id="apDot" r="4.5" fill="${col}" stroke="var(--surface)" stroke-width="2" visibility="hidden"/>
+    <rect id="apHit" x="0" y="0" width="${plotW}" height="${H}" fill="transparent"/>
+  </svg>`;
+  const svg = box.querySelector('svg'), hit = svg.querySelector('#apHit');
+  const nearest = clientX => {
+    const r = svg.getBoundingClientRect(), x = clientX - r.left;
+    let best = 0, bd = Infinity;
+    for (let i = 0; i < v.length; i++){ const dd = Math.abs(X(i) - x); if (dd < bd){ bd = dd; best = i; } }
+    return best;
+  };
+  const show = e => {
+    const i = nearest(e.clientX);
+    const cx = svg.querySelector('#apCx'), dot = svg.querySelector('#apDot');
+    cx.setAttribute('x1', X(i)); cx.setAttribute('x2', X(i)); cx.setAttribute('visibility', 'visible');
+    dot.setAttribute('cx', X(i)); dot.setAttribute('cy', Y(v[i])); dot.setAttribute('visibility', 'visible');
+    UI.scrub = i; renderChartHead();
+  };
+  const hide = () => { UI.scrub = null; svg.querySelector('#apCx').setAttribute('visibility', 'hidden'); svg.querySelector('#apDot').setAttribute('visibility', 'hidden'); renderChartHead(); };
+  hit.addEventListener('pointerdown', e => { show(e); try { hit.setPointerCapture(e.pointerId); } catch(_){} });
+  hit.addEventListener('pointermove', e => { if (e.pointerType === 'mouse' || e.buttons || e.pressure) show(e); });
+  hit.addEventListener('pointerup', hide); hit.addEventListener('pointercancel', hide); hit.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') hide(); });
+  renderChartHead();
+}
+function renderChartHead(){
+  const id = UI.sheet, el = $('#apHead'), ser = UI.ser; if (!id || !el || !ser) return;
+  const s = BY_ID[id];
+  const v = ser.c, refV = ser.ref ?? v[0];
+  const i = UI.scrub;
+  const val = i === null || i === undefined ? price(id) : v[i];
+  const ch = val - refV, pct = refV ? ch / refV : 0;
+  const when = i === null || i === undefined
+    ? (UI.crange === '1D' && ser.session ? `${RANGE_TEXT['1D']}` : RANGE_TEXT[UI.crange])
+    : chartTimeLabel(ser, i, UI.crange);
+  const chTxt = s.cur === 'KRW' ? `${ch > 0 ? '+' : ch < 0 ? MINUS : ''}${Math.abs(Math.round(ch)).toLocaleString('ko-KR')}원` : `${ch > 0 ? '+' : ch < 0 ? MINUS : ''}$${Math.abs(ch).toFixed(2)}`;
+  el.innerHTML = `<div class="big num">${fmtPx(s, val)}</div><div class="ap-chg"><span class="num ${cls(ch)}">${chTxt} (${fmtPct(pct)})</span><span class="ap-when">${esc(when)}</span></div>`;
+}
+function todayRange(id){
+  const doc = CH[id] && CH[id].d;
+  if (!doc || !doc.i5 || !doc.i5.t.length) return null;
+  const s = BY_ID[id], tz = SESS[s.m].tz;
+  const t = doc.i5.t, c = doc.i5.c, lastDate = zoneParts(tz, new Date(last(t) * 1000)).date;
+  const today = c.filter((_, i) => zoneParts(tz, new Date(t[i] * 1000)).date === lastDate);
+  return {open:today[0], hi:Math.max(...today), lo:Math.min(...today)};
+}
+function wk52(id){
+  const doc = CH[id] && CH[id].d;
+  const a = doc && doc.d1 && doc.d1.c.length ? doc.d1.c.slice(-252) : hist(id);
+  return {hi:Math.max(...a, price(id)), lo:Math.min(...a, price(id))};
+}
 function renderSheet(){
   const id = UI.sheet; if (!id) return;
   const live = isLive();
-  const s = BY_ID[id], p = price(id), a = hist(id);
-  const dc = p / prevPrice(id) - 1, bc = p / basePrice(s) - 1;
+  const s = BY_ID[id], p = price(id);
   const P = S.pos[id];
-  const rng = UI.range === 0 ? a : a.slice(-UI.range - 1);
-  const hi = Math.max(...a), lo = Math.min(...a);
   const sh = $('#sheet');
-  const val = P ? P.q * toUSD(s, p) : 0, pl = P ? val - P.cost : 0;
-  const hasPrev = a.length > 1;
+  const val = P ? P.q * toUSD(s, p) : 0, plN = P ? P.q * p - P.cost : 0;
   const st = live ? mstate(s.m) : null;
-  const priceNote = live
-    ? (LIVE.miss.has(id) ? '실제 시세를 받지 못한 종목입니다.' : `${SESS[s.m].ko} 시장 ${st.label}, 시세 ${LIVE.updated ? kstTime(LIVE.updated) : '-'} 기준`)
+  const tr = live ? todayRange(id) : null, w52 = wk52(id);
+  const chErr = live && CH[id] && CH[id].err;
+  const note = live
+    ? (LIVE.miss.has(id) ? '실제 시세를 받지 못한 종목입니다.' : `${SESS[s.m].ko} 시장 ${st.label}, 시세 ${LIVE.updated ? kstTime(LIVE.updated) : '-'} 기준${UI.refreshing ? ', 새로고침 중' : ''}`)
     : '';
+  const scrollTop = sh.scrollTop;
   sh.innerHTML = `
     <div class="grab"></div>
     <div class="sh-top">
@@ -1723,99 +2052,70 @@ function renderSheet(){
       <div><h2>${esc(s.n)}</h2><p>${esc(s.t)} <span class="sep"></span>${s.m === 'KR' ? s.x : '미국'} <span class="sep"></span>${SECTORS[s.s].ko}</p></div>
       <button class="close" aria-label="닫기"><svg viewBox="0 0 14 14"><path d="M2 2l10 10M12 2L2 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
     </div>
-    <div class="sh-price"><span class="big num">${fmtPx(s, p)}</span><span class="chg num ${cls(dc)}">${hasPrev ? `전일 대비 ${fmtPct(dc)}` : '기준가'}</span></div>
-    <div class="sh-sub">10/23 종가 대비 <b class="${cls(bc)}">${fmtPct(bc)}</b>${s.cur === 'KRW' ? `,&nbsp; 약 ${fmtUSD(p / FX())}` : ''}${priceNote ? `<br>${esc(priceNote)}` : ''}</div>
-    <div class="chart" id="chartBox">${chartSVG(rng, s)}<div class="read" id="chartRead" hidden></div></div>
-    <div class="ranges" role="group" aria-label="차트 기간">${[[20,'20일'],[60,'60일'],[0,'전체']].map(([r, l]) => `<button data-range="${r}" aria-pressed="${UI.range === r}">${l}</button>`).join('')}</div>
+    <div class="ap-head" id="apHead"></div>
+    ${note ? `<div class="sh-sub">${esc(note)}${s.cur === 'KRW' ? `,&nbsp; 약 ${fmtUSD(p / FX())}` : ''}</div>` : (s.cur === 'KRW' ? `<div class="sh-sub">약 ${fmtUSD(p / FX())}</div>` : '')}
+    <div class="ap-chart" id="apChart"></div>
+    <div class="ap-ranges" role="group" aria-label="차트 기간">${rangeList().map(r => `<button data-crange="${r.k}" aria-pressed="${UI.crange === r.k}">${r.l}</button>`).join('')}</div>
+    ${chErr ? `<p class="muted" style="margin:4px 0 0">상세 차트 파일을 받지 못해 일별 종가로 그렸습니다.</p>` : ''}
     <dl class="stats">
+      ${tr ? `<div><dt>오늘 시작</dt><dd class="num">${fmtPx(s, tr.open)}</dd></div><div><dt>전일 종가</dt><dd class="num">${fmtPx(s, prevPrice(id))}</dd></div><div><dt>오늘 최고</dt><dd class="num">${fmtPx(s, tr.hi)}</dd></div><div><dt>오늘 최저</dt><dd class="num">${fmtPx(s, tr.lo)}</dd></div>` : `<div><dt>전일 종가</dt><dd class="num">${fmtPx(s, prevPrice(id))}</dd></div><div><dt>10/23 종가</dt><dd class="num">${fmtPx(s, basePrice(s))}</dd></div>`}
+      <div><dt>${live ? '52주 최고' : '게임 중 최고'}</dt><dd class="num">${fmtPx(s, live ? w52.hi : Math.max(...hist(id)))}</dd></div>
+      <div><dt>${live ? '52주 최저' : '게임 중 최저'}</dt><dd class="num">${fmtPx(s, live ? w52.lo : Math.min(...hist(id)))}</dd></div>
       <div><dt>시가총액</dt><dd class="num">${s.cur === 'KRW' ? fmtCapKRW(capNative(s)) : fmtCapUSD(capNative(s))}</dd></div>
-      <div><dt>10/23 종가</dt><dd class="num">${fmtPx(s, basePrice(s))}</dd></div>
-      <div><dt>${live ? '10/23 이후 최고' : '게임 중 최고'}</dt><dd class="num">${fmtPx(s, hi)}</dd></div>
-      <div><dt>${live ? '10/23 이후 최저' : '게임 중 최저'}</dt><dd class="num">${fmtPx(s, lo)}</dd></div>
+      <div><dt>10/23 대비</dt><dd class="num ${cls(p / basePrice(s) - 1)}">${fmtPct(p / basePrice(s) - 1)}</dd></div>
     </dl>
     ${s.note && !live ? `<p class="note">${esc(s.note)}</p>` : ''}
-    ${P ? `<dl class="pos"><div><dt>보유 수량</dt><dd class="num">${P.q.toLocaleString()}주</dd></div><div><dt>평균 단가</dt><dd class="num">${fmtPx(s, P.avg)}</dd></div><div><dt>평가액</dt><dd class="num">${fmtUSD(val)}</dd></div><div><dt>평가손익</dt><dd class="num ${cls(pl)}">${signUSD(pl)} (${fmtPct(P.cost ? pl / P.cost : 0)})</dd></div></dl>` : ''}
+    ${P ? `<dl class="pos"><div><dt>보유 수량</dt><dd class="num">${P.q.toLocaleString()}주</dd></div><div><dt>평균 단가</dt><dd class="num">${fmtPx(s, P.avg)}</dd></div><div><dt>평가액</dt><dd class="num">${fmtPx(s, P.q * p)}${s.cur === 'KRW' ? ` <small class="muted">(${fmtUSD(val)})</small>` : ''}</dd></div><div><dt>평가손익</dt><dd class="num ${cls(plN)}">${s.cur === 'KRW' ? (plN > 0 ? '+' : '') + fmtKRW(plN) : signUSD(plN)} (${fmtPct(P.cost ? plN / P.cost : 0)})</dd></div></dl>` : ''}
     <div class="order" id="orderBox"></div>`;
   renderOrder();
-  bindChart(rng, s);
-}
-function chartSVG(vals, s){
-  const w = 600, h = 190;
-  const c = cls(last(vals) - vals[0]);
-  const col = c === 'flat' ? 'var(--ink-3)' : `var(--${c})`;
-  const base = basePrice(s);
-  const v = vals.length < 2 ? [vals[0], vals[0]] : vals;
-  const lo = Math.min(...v, base), hi = Math.max(...v, base);
-  const pad = (hi - lo) * .08 || hi * .01;
-  const P = pathFor(v, w, h, 6, lo - pad, hi + pad);
-  const area = P.d + `L${P.x(v.length-1).toFixed(2)} ${h}L${P.x(0).toFixed(2)} ${h}Z`;
-  const by = P.y(base).toFixed(1);
-  const gid = 'g' + Math.random().toString(36).slice(2, 7);
-  return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" role="img" aria-label="가격 차트">
-    <defs><linearGradient id="${gid}" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="${col}" stop-opacity=".18"/><stop offset="1" stop-color="${col}" stop-opacity="0"/></linearGradient></defs>
-    <line x1="0" x2="${w}" y1="${by}" y2="${by}" stroke="var(--ink-3)" stroke-opacity=".6" stroke-dasharray="4 5" vector-effect="non-scaling-stroke"/>
-    <path d="${area}" fill="url(#${gid})"/>
-    <path d="${P.d}" fill="none" stroke="${col}" stroke-width="2" vector-effect="non-scaling-stroke" stroke-linejoin="round"/>
-    <line id="cx" x1="0" x2="0" y1="0" y2="${h}" stroke="var(--ink-2)" stroke-width="1" vector-effect="non-scaling-stroke" visibility="hidden"/>
-    <circle id="cdot" r="4" fill="${col}" visibility="hidden"/>
-  </svg>`;
-}
-function bindChart(vals, s){
-  const box = $('#chartBox'), svg = box.querySelector('svg'), read = $('#chartRead');
-  const v = vals.length < 2 ? [vals[0], vals[0]] : vals;
-  const dates = histDates(s.m).slice(-v.length);
-  const w = 600, h = 190, base = basePrice(s);
-  const lo = Math.min(...v, base), hi = Math.max(...v, base), pad = (hi - lo) * .08 || hi * .01;
-  const P = pathFor(v, w, h, 6, lo - pad, hi + pad);
-  const move = e => {
-    const r = svg.getBoundingClientRect();
-    const fx = clamp((e.clientX - r.left) / r.width, 0, 1);
-    const i = Math.round(fx * (v.length - 1));
-    const x = P.x(i), y = P.y(v[i]);
-    const cx = svg.querySelector('#cx'), cd = svg.querySelector('#cdot');
-    cx.setAttribute('x1', x); cx.setAttribute('x2', x); cx.setAttribute('visibility', 'visible');
-    cd.setAttribute('cx', x); cd.setAttribute('cy', y); cd.setAttribute('visibility', 'visible');
-    read.hidden = false;
-    read.textContent = `${dates[i] ? fmtDate(dates[i], false) : ''}  ${fmtPx(s, v[i])}`;
-    const px = x / w * r.width;
-    read.style.left = clamp(px - read.offsetWidth / 2, 0, r.width - read.offsetWidth) + 'px';
-  };
-  const leave = () => { read.hidden = true; svg.querySelector('#cx').setAttribute('visibility', 'hidden'); svg.querySelector('#cdot').setAttribute('visibility', 'hidden'); };
-  svg.addEventListener('pointermove', move);
-  svg.addEventListener('pointerdown', move);
-  svg.addEventListener('pointerleave', leave);
+  renderChartBox();
+  sh.scrollTop = scrollTop;
 }
 function renderOrder(){
   const id = UI.sheet, s = BY_ID[id], box = $('#orderBox'); if (!box) return;
   const P = S.pos[id];
   const side = UI.side;
+  const krw = s.cur === 'KRW';
   const maxQ = side === 'buy' ? maxBuy(id, false) : (P ? P.q : 0);
-  const maxOd = side === 'buy' ? maxBuy(id, true) : 0;
+  const maxX = side === 'buy' ? maxBuyWithFX(id) : 0;
   const q = Math.max(0, Math.floor(UI.qty) || 0);
   const o = quote(id, side, Math.max(q, 0));
-  const krw = s.cur === 'KRW';
   const ct = canTrade(s);
-  let err = '';
+  const wallet = walletOf(s);
+  let err = '', needFX = 0, needUSD = 0, odUse = 0;
   if (!ct.ok) err = ct.why;
   else if (q < 1) err = '수량을 입력하세요.';
-  else if (side === 'buy' && o.usd > S.cash + odAvail() + 1e-6) err = `주문 가능 금액(${fmtUSD(S.cash + odAvail())})을 넘었습니다.`;
   else if (side === 'sell' && (!P || q > P.q)) err = P ? `보유 수량(${P.q}주)을 넘었습니다.` : '보유하지 않은 종목입니다.';
-  const odUse = side === 'buy' && !err && o.usd > S.cash ? o.usd - S.cash : 0;
+  else if (side === 'buy' && krw && o.total > S.krw){
+    needFX = o.total - S.krw; needUSD = usdForKRW(needFX);
+    if (needUSD > S.usd + odAvail() + 1e-6) err = `원화 통장과 달러를 모두 합쳐도 부족합니다.`;
+  } else if (side === 'buy' && !krw && o.total > S.usd + odAvail() + 1e-6) err = `주문 가능 금액(${fmtUSD(S.usd + odAvail())})을 넘었습니다.`;
+  if (side === 'buy' && !err){
+    if (!krw && o.total > S.usd) odUse = o.total - S.usd;
+    if (krw && needUSD > S.usd) odUse = needUSD - S.usd;
+  }
+  const r = fxRates();
+  const goLabel = !ct.ok ? '지금은 거래할 수 없습니다'
+    : side === 'sell' ? `${q ? q.toLocaleString() + '주 ' : ''}매도하기`
+    : needFX > 0 && !err ? `${fmtUSD(needUSD)} 환전하고 매수하기` : `${q ? q.toLocaleString() + '주 ' : ''}매수하기`;
   box.innerHTML = `
     ${!ct.ok ? `<div class="alert bad">${esc(ct.why)}</div>` : ''}
     <div class="seg" role="group" aria-label="주문 종류"><button data-side="buy" aria-pressed="${side === 'buy'}">매수</button><button data-side="sell" aria-pressed="${side === 'sell'}">매도</button></div>
     <div class="qty"><button data-qd="-1" aria-label="1주 줄이기">−</button><input id="qtyIn" type="number" inputmode="numeric" min="1" step="1" value="${q || ''}" aria-label="수량(주)"><button data-qd="1" aria-label="1주 늘리기">+</button></div>
-    <div class="quick">${side === 'buy' ? '<button data-qf=".25">현금 25%</button><button data-qf=".5">현금 50%</button>' : '<button data-qf=".5">절반</button>'}<button data-qf="1">${side === 'buy' ? '현금 최대' : '전량'} ${maxQ.toLocaleString()}주</button>${maxOd > maxQ ? `<button data-qn="${maxOd}" title="마이너스통장 한도까지 포함">마통 포함 ${maxOd.toLocaleString()}주</button>` : ''}</div>
+    <div class="quick">${side === 'buy'
+      ? `<button data-qf=".5">${krw ? '원화' : '달러'} 50%</button><button data-qf="1">${krw ? '원화' : '달러'} 최대 ${maxQ.toLocaleString()}주</button>${krw && maxX > maxQ ? `<button data-qn="${maxX}" title="달러를 원화로 바꾸는 것까지 포함">환전 포함 ${maxX.toLocaleString()}주</button>` : ''}${!krw && maxBuy(id, true) > maxQ ? `<button data-qn="${maxBuy(id, true)}" title="마이너스통장 한도까지 포함">마통 포함 ${maxBuy(id, true).toLocaleString()}주</button>` : ''}`
+      : `<button data-qf=".5">절반</button><button data-qf="1">전량 ${maxQ.toLocaleString()}주</button>`}</div>
     <div class="bd">
       <div><span>주문 금액</span><b class="num">${fmtPx(s, o.gross)}</b></div>
       <div><span>거래 수수료 0.1%</span><b class="num">${fmtPx(s, o.fee)}</b></div>
-      ${krw ? `<div><span>환전 (1달러 = ${fmtFX(FX())}원, 수수료 0.2%)</span><b class="num">${fmtUSD(o.fxFee)}</b></div>` : ''}
-      <div class="tot"><span>${side === 'buy' ? '결제할 금액' : '받을 금액'}</span><b class="num">${fmtUSD(o.usd)}</b></div>
-      ${side === 'buy' ? `<div><span>보유 현금</span><b class="num">${fmtUSD(S.cash)}</b></div>` : ''}
+      <div class="tot"><span>${side === 'buy' ? '결제할 금액' : '받을 금액'}</span><b class="num">${fmtPx(s, o.total)}</b></div>
+      <div><span>${krw ? '원화 통장' : '달러 통장'}</span><b class="num">${fmtPx(s, wallet)}</b></div>
+      ${needFX > 0 ? `<div class="fxneed"><span>원화 부족분 ${fmtKRW(needFX)}을 환전 (1달러 = ${fmtFX(r.sell)}원, 수수료 ${(r.f*100).toFixed(2)}%)</span><b class="num">${fmtUSD(needUSD)}</b></div>` : ''}
+      ${side === 'sell' && krw ? `<div><span>매도대금은 원화 통장으로 들어갑니다</span><b></b></div>` : ''}
       ${odUse > 0 ? `<div><span>마이너스통장 사용</span><b class="num" style="color:var(--warn)">${fmtUSD(odUse)}</b></div>` : ''}
     </div>
     <div class="err" role="status">${ct.ok && err && q >= 1 ? esc(err) : ''}</div>
-    <button class="go ${side}" id="goBtn" ${err ? 'disabled' : ''}>${!ct.ok ? '지금은 거래할 수 없습니다' : side === 'buy' ? `${q ? q.toLocaleString() + '주 ' : ''}매수하기` : `${q ? q.toLocaleString() + '주 ' : ''}매도하기`}</button>`;
+    <button class="go ${side}" id="goBtn" ${err ? 'disabled' : ''}>${goLabel}</button>`;
   const inp = $('#qtyIn');
   inp.addEventListener('input', () => { UI.qty = parseInt(inp.value, 10) || 0; const pos = inp.selectionStart; renderOrder(); const ni = $('#qtyIn'); ni.focus(); try { ni.setSelectionRange(pos, pos); } catch(e){} });
 }
@@ -1834,7 +2134,8 @@ function renderTab(){
 }
 function commit(){
   save(); renderHeader(); renderTab();
-  if (UI.sheet) renderSheet();
+  if (UI.sheet && (UI.scrub === null || UI.scrub === undefined)) renderSheet();
+  if ($('#fxBox')) renderFX();
 }
 function resetGame(){
   stopAuto();
@@ -1868,6 +2169,54 @@ function applyTheme(){
 }
 mq.addEventListener ? mq.addEventListener('change', applyTheme) : mq.addListener(applyTheme);
 
+
+
+/* ───────── 통장 카드와 환전 창 ───────── */
+function walletHTML(){
+  const r = fxRates();
+  return `<div class="card-h"><h2>통장</h2><small>매매기준율 1달러 = ${fmtFX(r.base)}원</small></div>
+    <div class="wallets">
+      <div class="wl"><span class="wl-flag">USD</span><div class="wl-b"><div class="wl-n">달러 통장</div><div class="wl-v num">${fmtUSD(S.usd)}</div>${S.loans.od.bal > 0 ? `<div class="wl-s" style="color:var(--warn)">마이너스통장 ${MINUS}${fmtUSD(S.loans.od.bal)}</div>` : '<div class="wl-s">미국 주식, 대출</div>'}</div></div>
+      <div class="wl"><span class="wl-flag kr">KRW</span><div class="wl-b"><div class="wl-n">원화 통장</div><div class="wl-v num">${fmtKRW(S.krw)}</div><div class="wl-s">약 ${fmtUSD(S.krw / r.base)}, 한국 주식</div></div></div>
+    </div>
+    <button class="btn solid wl-go" id="btnFX">환전하기</button>`;
+}
+function openFX(dir){
+  UI.fxDir = dir || UI.fxDir || 'u2k'; UI.fxAmt = '';
+  UI.fxClose = showModal(`<div id="fxBox"></div>`, () => { UI.fxClose = null; });
+  renderFX();
+  setTimeout(() => { const i = $('#fxIn'); i && i.focus(); }, 60);
+}
+function renderFX(){
+  const box = $('#fxBox'); if (!box) return;
+  const dir = UI.fxDir, r = fxRates(), u2k = dir === 'u2k';
+  const amt = parseFloat(UI.fxAmt) || 0;
+  const q = amt > 0 ? exQuote(dir, amt) : null;
+  const have = u2k ? S.usd : S.krw;
+  let err = '';
+  if (amt > 0 && u2k && amt > S.usd + odAvail() + 1e-6) err = `쓸 수 있는 달러는 ${fmtUSD(S.usd + odAvail())}입니다.`;
+  if (amt > 0 && !u2k && amt > S.krw) err = `원화 통장에는 ${fmtKRW(S.krw)}이 있습니다.`;
+  if (q && q.to <= 0) err = '금액이 너무 작습니다.';
+  box.innerHTML = `<h2>환전</h2>
+    <div class="seg fx-seg" role="group" aria-label="환전 방향"><button data-fxdir="u2k" aria-pressed="${u2k}">달러 → 원화</button><button data-fxdir="k2u" aria-pressed="${!u2k}">원화 → 달러</button></div>
+    <label class="amt fx-amt"><span>${u2k ? '$' : '₩'}</span><input id="fxIn" type="number" inputmode="decimal" min="0" step="${u2k ? '0.01' : '1'}" value="${esc(UI.fxAmt)}" placeholder="바꿀 금액" aria-label="바꿀 금액"></label>
+    <div class="quick"><button data-fxq=".25">25%</button><button data-fxq=".5">50%</button><button data-fxq="1">전액</button></div>
+    <div class="bd">
+      <div><span>보유 ${u2k ? '달러' : '원화'}</span><b class="num">${u2k ? fmtUSD(have) : fmtKRW(have)}</b></div>
+      <div><span>매매기준율</span><b class="num">${fmtFX(r.base)}원</b></div>
+      <div><span>수수료율 = 1% × (1 − 우대율 ${Math.round(fxPref() * 100)}%)</span><b class="num">${(r.f * 100).toFixed(2)}%</b></div>
+      <div><span>적용 환율 (${u2k ? '달러 팔 때' : '달러 살 때'})</span><b class="num">${fmtFX(u2k ? r.sell : r.buy)}원</b></div>
+      ${q ? `<div><span>수수료</span><b class="num">${fmtUSD(q.feeUSD)} 상당</b></div><div class="tot"><span>받을 금액</span><b class="num">${u2k ? fmtKRW(q.to) : fmtUSD(q.to)}</b></div>` : ''}
+    </div>
+    ${u2k && amt > S.usd && !err ? `<div class="alert">달러가 모자란 ${fmtUSD(amt - S.usd)}은 마이너스통장에서 빌립니다.</div>` : ''}
+    ${!u2k && S.loans.od.bal > 0 ? `<div class="alert">받은 달러는 마이너스통장 사용액(${fmtUSD(S.loans.od.bal)})을 먼저 갚는 데 씁니다.</div>` : ''}
+    <div class="err">${esc(err)}</div>
+    <div class="acts"><button class="btn" data-fxclose>닫기</button><button class="btn solid" id="fxGo" ${!q || err ? 'disabled' : ''}>환전하기</button></div>
+    <p class="muted" style="margin:10px 0 0">우대율은 신용등급으로 정해집니다. 1등급 90%에서 등급마다 10%p씩 줄어 10등급은 0%입니다. 지금 ${g()}등급.</p>`;
+  const inp = $('#fxIn');
+  inp.addEventListener('input', () => { UI.fxAmt = inp.value; const pos = inp.selectionStart; renderFX(); const ni = $('#fxIn'); ni.focus(); try { ni.setSelectionRange(pos, pos); } catch(e){} });
+  inp.addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); const b = $('#fxGo'); b && !b.disabled && b.click(); } });
+}
 
 /* ───────── 계정 (Supabase) ───────── */
 const ACC = {sb:null, user:null, nick:'', ready:false, err:null, loadedFor:undefined, cloudT:null, rankT:null,
@@ -2114,11 +2463,16 @@ document.addEventListener('click', e => {
   const t = e.target.closest('button, [data-open]');
   if (!t) return;
   if (t.dataset.pick) return;
+  if (t.id === 'btnFX'){ openFX(); return; }
+  if (t.dataset.fxdir){ UI.fxDir = t.dataset.fxdir; UI.fxAmt = ''; renderFX(); return; }
+  if (t.dataset.fxq){ const have = UI.fxDir === 'u2k' ? S.usd : S.krw; UI.fxAmt = UI.fxDir === 'u2k' ? String(Math.floor(have * +t.dataset.fxq * 100) / 100) : String(Math.floor(have * +t.dataset.fxq)); renderFX(); return; }
+  if (t.dataset.fxclose !== undefined){ UI.fxClose && UI.fxClose(); return; }
+  if (t.id === 'fxGo'){ const q = exchange(UI.fxDir, parseFloat(UI.fxAmt)); if (q){ UI.fxAmt = ''; UI.fxClose && UI.fxClose(); commit(); } return; }
   if (t.dataset.tab){ go(t.dataset.tab); return; }
   if (t.dataset.open){ openSheet(t.dataset.open); return; }
   if (t.dataset.mkt){ UI.mkt = t.dataset.mkt; renderMarket(); return; }
   if (t.classList.contains('close')){ closeSheet(); return; }
-  if (t.dataset.range !== undefined){ UI.range = +t.dataset.range; renderSheet(); return; }
+  if (t.dataset.crange){ UI.crange = t.dataset.crange; UI.scrub = null; $$('[data-crange]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.crange === UI.crange))); renderChartBox(); return; }
   if (t.dataset.side){ UI.side = t.dataset.side; UI.qty = 1; renderOrder(); return; }
   if (t.dataset.qn){ UI.qty = +t.dataset.qn; renderOrder(); return; }
   if (t.dataset.qd){ UI.qty = Math.max(1, (UI.qty || 0) + +t.dataset.qd); renderOrder(); return; }
@@ -2128,15 +2482,15 @@ document.addEventListener('click', e => {
   }
   if (t.id === 'goBtn'){
     const id = UI.sheet, s = BY_ID[id], q = UI.qty;
-    if (UI.side === 'buy'){ if (doBuy(id, q)){ toast(`${s.n} ${q.toLocaleString()}주를 매수했습니다`); UI.qty = 1; commit(); } }
-    else { const r = doSell(id, q); if (r){ toast(`${s.n} ${q.toLocaleString()}주를 매도했습니다 (${fmtUSD(r)})`); UI.qty = 1; if (!S.pos[id]) UI.side = 'buy'; commit(); } }
+    if (UI.side === 'buy'){ if (doBuy(id, q, '', true)){ toast(`${s.n} ${q.toLocaleString()}주를 매수했습니다`); UI.qty = 1; commit(); } }
+    else { const r = doSell(id, q); if (r){ toast(`${s.n} ${q.toLocaleString()}주를 매도했습니다 (${fmtPx(s, r)})`); UI.qty = 1; if (!S.pos[id]) UI.side = 'buy'; commit(); } }
     return;
   }
   if (t.dataset.borrow){ const k = t.dataset.borrow; borrow(k, parseFloat($('#amt-' + k).value)); return; }
   if (t.dataset.repay){ const k = t.dataset.repay; repay(k, parseFloat($('#amt-' + k).value)); return; }
   if (t.dataset.repayall){
     const k = t.dataset.repayall, b = S.loans[k].bal;
-    if (S.cash + 1e-6 < b) toast(`현금이 ${fmtUSD(b - S.cash)} 부족해 가진 현금만큼만 갚습니다`, true);
+    if (S.usd + 1e-6 < b) toast(`달러 통장이 ${fmtUSD(b - S.usd)} 부족해 가진 달러만큼만 갚습니다`, true);
     repay(k, b); return;
   }
   if (t.dataset.setmode){ if (t.dataset.setmode !== S.mode){ setMode(t.dataset.setmode); toast(t.dataset.setmode === 'live' ? '실제 시세 모드로 바꿨습니다' : '시뮬레이션 모드로 바꿨습니다'); } return; }
@@ -2169,6 +2523,8 @@ document.addEventListener('visibilitychange', () => {
 /* 실제 시세 모드: 1분마다 헤더의 시장 상태와 경과 시간을 다시 그린다 */
 setInterval(() => { if (isLive() && !document.hidden){ renderHeader(); if (UI.tab === 'home') renderHome(); } }, 30000);
 
+let rzT = null;
+window.addEventListener('resize', () => { clearTimeout(rzT); rzT = setTimeout(() => { if (UI.sheet) renderChartBox(); }, 120); });
 /* ───────── 시작 ───────── */
 applyTheme();
 S = load(SET.mode === 'live' ? 'live' : 'sim');

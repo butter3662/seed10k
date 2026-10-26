@@ -11,7 +11,7 @@ on:
     # 시간은 모두 UTC 기준이다.
     - cron: '*/5 0-6 * * 1-5'    # 한국 정규장 (한국 시각 09:00~15:55)
     - cron: '*/5 13-21 * * 1-5'  # 미국 정규장 (한국 시각 22:00~06:55, 서머타임과 평시 모두)
-    - cron: '17 7,22 * * 1-5'    # 장 마감 뒤 최종 종가 반영
+    - cron: '17 7,22 * * 1-5'    # 장 마감 뒤 최종 종가와 장기 차트 갱신
 
 permissions:
   contents: read
@@ -25,7 +25,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
@@ -39,26 +39,32 @@ jobs:
       - name: 라이브러리 설치
         run: pip install --quiet yfinance pandas
 
-      - name: 직전 시세 파일 받기 (이번에 못 받은 종목을 채우는 데 사용)
-        run: curl -fsSL "${{ steps.pages.outputs.base_url }}/data/prices.json" -o prev.json || echo "직전 파일 없음"
+      - name: 직전 배포본 받기 (못 받은 종목 채우기, 장기 차트 재사용)
+        run: |
+          mkdir -p prev
+          curl -fsSL "${{ steps.pages.outputs.base_url }}/data/prices.json" -o prev/prices.json || echo "직전 prices.json 없음"
+          curl -fsSL "${{ steps.pages.outputs.base_url }}/data/hist.json" -o prev/hist.json || echo "직전 hist.json 없음"
 
       - name: 시세 수집 스크립트 만들기
         run: |
           cat > fetch_prices.py <<'PY'
-          """SEED 10K 실제 시세 수집 스크립트.
+          """SEED 10K 실제 시세 수집 스크립트 (GitHub Actions 안에서 실행된다).
 
-          GitHub Actions에서 실행된다. 2026-10-23(기준일)부터 오늘까지의 일별 종가를
-          야후 파이낸스(yfinance)에서 받아 data/prices.json으로 저장한다.
-          장중에 실행하면 오늘 행의 종가 자리에 그 시점의 최신 가격이 들어간다.
+          만드는 파일
+            data/prices.json      2026-10-23부터의 일별 종가 + 장중 최신가, 원/달러 환율 (게임 전체가 1분마다 읽는다)
+            data/c/<종목>.json     종목 상세 차트용: 5분 봉(5거래일), 1시간 봉(1개월), 일봉(2년), 주봉(10년), 월봉(전체)
+            data/hist.json        일·주·월봉 묶음. 하루 한 번만 새로 받고, 나머지 실행에서는 직전 배포본을 재사용한다.
 
-          워크플로 안에서 실행된다: --out _site/data/prices.json --prev prev.json
-          --prev 로 직전 파일을 주면, 이번에 받지 못한 종목은 직전 값으로 채운다.
+          날짜는 1970-01-01부터의 일수(정수), 장중 시각은 유닉스 초(정수)로 저장해 파일 크기를 줄인다.
+          인자: --out _site/data --prev prev   (prev 폴더에 직전 prices.json, hist.json 이 있으면 사용)
           """
           import argparse
           import datetime as dt
           import json
           import math
+          import os
           import pathlib
+          import re
           import sys
           import time
 
@@ -66,7 +72,8 @@ jobs:
           import yfinance as yf
 
           START = "2026-10-23"
-          import re
+          FX_SYMBOL = "KRW=X"  # 1달러당 원
+
           _html = pathlib.Path("index.html").read_text(encoding="utf-8")
           _data = json.loads(re.search(r"const DATA = (\{.*?\});\n", _html, re.S).group(1))
           SYMBOLS = {}
@@ -74,31 +81,26 @@ jobs:
               SYMBOLS[_s["id"]] = {"y": _s["t"] + (".KQ" if _s["x"] == "KOSDAQ" else ".KS"), "m": "KR"}
           for _s in _data["us"]:
               SYMBOLS[_s["id"]] = {"y": _s["t"], "m": "US"}
-          FX_SYMBOL = "KRW=X"  # 1달러당 원
+          EPOCH = dt.date(1970, 1, 1)
 
 
-          def download(symbols, tries=3):
-              """여러 종목의 일별 종가를 {야후심볼: pd.Series} 로 돌려준다."""
+          def download(symbols, tries=3, **kw):
+              """여러 종목을 한 번에 받아 {야후심볼: 종가 Series} 로 돌려준다."""
               out = {}
               pending = list(symbols)
               for attempt in range(tries):
                   if not pending:
                       break
                   try:
-                      df = yf.download(
-                          pending, start=START, interval="1d", group_by="ticker",
-                          auto_adjust=False, actions=False, progress=False, threads=True, timeout=30,
-                      )
-                  except Exception as e:  # 네트워크 오류 등
-                      print(f"download error (try {attempt + 1}): {e}", file=sys.stderr)
+                      df = yf.download(pending, group_by="ticker", auto_adjust=False, actions=False,
+                                       progress=False, threads=True, timeout=30, **kw)
+                  except Exception as e:
+                      print(f"download error {kw} (try {attempt + 1}): {e}", file=sys.stderr)
                       time.sleep(5)
                       continue
                   for sym in pending:
                       try:
-                          if isinstance(df.columns, pd.MultiIndex):
-                              col = df[sym]["Close"]
-                          else:
-                              col = df["Close"]
+                          col = df[sym]["Close"] if isinstance(df.columns, pd.MultiIndex) else df["Close"]
                       except KeyError:
                           continue
                       col = col.dropna()
@@ -114,56 +116,76 @@ jobs:
               return pd.Timestamp(idx).strftime("%Y-%m-%d")
 
 
+          def day_num(idx):
+              return (pd.Timestamp(idx).date() - EPOCH).days
+
+
+          def rnd(m, v):
+              return round(float(v)) if m == "KR" else round(float(v), 2)
+
+
+          def series_days(m, s):
+              s = s[~s.index.duplicated(keep="last")]
+              return {"d": [day_num(i) for i in s.index], "c": [rnd(m, v) for v in s.values]}
+
+
+          def series_secs(m, s):
+              s = s[~s.index.duplicated(keep="last")]
+              return {"t": [int(pd.Timestamp(i).timestamp()) for i in s.index], "c": [rnd(m, v) for v in s.values]}
+
+
           def build_market(m, series_by_id):
-              """시장(KR/US)별 거래일 목록과 종목별 종가 배열을 만든다."""
+              """시장(KR/US)별 거래일 목록과 종목별 종가 배열 (prices.json 용)."""
               counts = {}
               for s in series_by_id.values():
                   for d in s.index:
                       k = to_date(d)
                       counts[k] = counts.get(k, 0) + 1
               n = max(1, len(series_by_id))
-              # 받은 종목의 30% 이상이 값을 가진 날만 거래일로 본다 (일부 종목의 잘못된 행 제거)
               dates = sorted(d for d, c in counts.items() if c >= 0.3 * n)
               rows = {}
               for sid, s in series_by_id.items():
                   s = s.copy()
                   s.index = [to_date(d) for d in s.index]
                   s = s[~s.index.duplicated(keep="last")]
-                  vals = []
-                  lastv = None
+                  vals, lastv = [], None
                   for d in dates:
                       v = s.get(d)
                       if v is not None and not (isinstance(v, float) and math.isnan(v)):
                           lastv = float(v)
-                      vals.append(None if lastv is None else (round(lastv) if m == "KR" else round(lastv, 2)))
+                      vals.append(None if lastv is None else rnd(m, lastv))
                   rows[sid] = vals
               return dates, rows
+
+
+          def load_json(path):
+              try:
+                  return json.loads(pathlib.Path(path).read_text(encoding="utf-8"))
+              except Exception:
+                  return None
 
 
           def main():
               ap = argparse.ArgumentParser()
               ap.add_argument("--out", required=True)
-              ap.add_argument("--prev")
+              ap.add_argument("--prev", default="prev")
               a = ap.parse_args()
-
-              prev = None
-              if a.prev and pathlib.Path(a.prev).exists():
-                  try:
-                      prev = json.loads(pathlib.Path(a.prev).read_text(encoding="utf-8"))
-                  except Exception:
-                      prev = None
+              out = pathlib.Path(a.out)
+              (out / "c").mkdir(parents=True, exist_ok=True)
+              prev = load_json(pathlib.Path(a.prev) / "prices.json")
+              prev_hist = load_json(pathlib.Path(a.prev) / "hist.json")
 
               ysyms = [v["y"] for v in SYMBOLS.values()]
-              got = download(ysyms + [FX_SYMBOL])
+              by_y = {v["y"]: sid for sid, v in SYMBOLS.items()}
+              now = dt.datetime.now(dt.timezone.utc)
 
-              result = {"v": 1, "updated": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-                        "start": START, "dates": {}, "s": {}, "miss": []}
-
+              # ── 1) 게임용 일별 종가 (기준일부터) ──
+              got = download(ysyms + [FX_SYMBOL], start=START, interval="1d")
+              result = {"v": 1, "updated": now.strftime("%Y-%m-%dT%H:%M:%SZ"), "start": START, "dates": {}, "s": {}, "miss": []}
               for m in ("KR", "US"):
                   series = {sid: got[v["y"]] for sid, v in SYMBOLS.items() if v["m"] == m and v["y"] in got}
                   dates, rows = build_market(m, series)
                   missing = [sid for sid, v in SYMBOLS.items() if v["m"] == m and sid not in rows]
-                  # 이번에 못 받은 종목은 직전 파일 값을 날짜에 맞춰 재사용한다
                   if prev and missing:
                       pdates = prev.get("dates", {}).get(m, [])
                       for sid in missing:
@@ -178,7 +200,7 @@ jobs:
                               vals.append(lastv)
                           if any(v is not None for v in vals):
                               rows[sid] = vals
-                  if not dates and prev:  # 이 시장 전체를 못 받았으면 직전 파일을 그대로 쓴다
+                  if not dates and prev:
                       dates = prev.get("dates", {}).get(m, [])
                       for sid, v in SYMBOLS.items():
                           if v["m"] == m and sid in prev.get("s", {}):
@@ -186,26 +208,52 @@ jobs:
                   result["dates"][m] = dates
                   result["s"].update(rows)
                   result["miss"] += [sid for sid, v in SYMBOLS.items() if v["m"] == m and sid not in rows]
-
               if FX_SYMBOL in got:
                   fx = got[FX_SYMBOL]
                   result["fx"] = {"d": [to_date(d) for d in fx.index], "c": [round(float(x), 2) for x in fx.values]}
               elif prev and prev.get("fx"):
                   result["fx"] = prev["fx"]
-
               total = len(SYMBOLS) - len(result["miss"])
-              if total == 0:
-                  print("no data at all — keeping previous file", file=sys.stderr)
-                  if prev:
-                      result = prev
-                  else:
-                      sys.exit(1)
+              if total == 0 and prev:
+                  print("no daily data — keeping previous prices.json", file=sys.stderr)
+                  result = prev
+              (out / "prices.json").write_text(json.dumps(result, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
 
-              out = pathlib.Path(a.out)
-              out.parent.mkdir(parents=True, exist_ok=True)
-              out.write_text(json.dumps(result, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+              # ── 2) 장기 봉 (하루 한 번) ──
+              today = now.strftime("%Y-%m-%d")
+              sched = os.environ.get("GITHUB_EVENT_SCHEDULE", "")
+              need_hist = (not prev_hist) or prev_hist.get("asof") != today or sched.startswith("17 ")
+              hist = prev_hist if (prev_hist and not need_hist) else {"asof": today, "s": {}}
+              if need_hist:
+                  d1 = download(ysyms, period="2y", interval="1d")
+                  wk = download(ysyms, period="10y", interval="1wk")
+                  mo = download(ysyms, period="max", interval="1mo")
+                  for sid, v in SYMBOLS.items():
+                      y, m = v["y"], v["m"]
+                      old = (prev_hist or {}).get("s", {}).get(sid, {})
+                      hist["s"][sid] = {
+                          "d1": series_days(m, d1[y]) if y in d1 else old.get("d1"),
+                          "wk": series_days(m, wk[y]) if y in wk else old.get("wk"),
+                          "mo": series_days(m, mo[y]) if y in mo else old.get("mo"),
+                      }
+                  print(f"hist refreshed: d1 {len(d1)}, wk {len(wk)}, mo {len(mo)}")
+              (out / "hist.json").write_text(json.dumps(hist, separators=(",", ":")), encoding="utf-8")
+
+              # ── 3) 장중 봉 (매번) ──
+              i5 = download(ysyms, period="5d", interval="5m")
+              h1 = download(ysyms, period="1mo", interval="60m")
+              for sid, v in SYMBOLS.items():
+                  y, m = v["y"], v["m"]
+                  hs = hist["s"].get(sid, {}) if hist else {}
+                  doc = {"v": 1, "t": result.get("updated"),
+                         "i5": series_secs(m, i5[y]) if y in i5 else None,
+                         "h1": series_secs(m, h1[y]) if y in h1 else None,
+                         "d1": hs.get("d1"), "wk": hs.get("wk"), "mo": hs.get("mo")}
+                  (out / "c" / (sid.replace(":", "_") + ".json")).write_text(json.dumps(doc, separators=(",", ":")), encoding="utf-8")
+
               print(f"ok: {total}/{len(SYMBOLS)} symbols, KR {len(result['dates'].get('KR', []))} days, "
-                    f"US {len(result['dates'].get('US', []))} days, missing: {result['miss']}")
+                    f"US {len(result['dates'].get('US', []))} days, intraday {len(i5)}/{len(ysyms)}, "
+                    f"hourly {len(h1)}/{len(ysyms)}, hist {'new' if need_hist else 'reused'}, missing: {result['miss']}")
 
 
           if __name__ == "__main__":
@@ -216,7 +264,7 @@ jobs:
         run: |
           mkdir -p _site/data
           cp index.html _site/
-          python fetch_prices.py --out _site/data/prices.json --prev prev.json > collect.log 2>&1 || echo "시세 수집 실패 — 게임은 '시세 없음'으로 표시된다" >> collect.log
+          python fetch_prices.py --out _site/data --prev prev > collect.log 2>&1 || echo "시세 수집 실패 — 게임은 '시세 없음'으로 표시된다" >> collect.log
           cat collect.log
           echo "::notice title=시세 수집 결과::$(tail -n 1 collect.log)"
 
