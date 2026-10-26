@@ -11,6 +11,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{
   --paper:#ECEEF2; --surface:#FFFFFF; --surface-2:#F4F5F8; --ink:#13203A; --ink-2:#56617A; --ink-3:#8A93A6; --rule:#DCE0E7;
@@ -49,11 +50,11 @@ button{cursor:pointer}
 
 /* ───────── header / session ───────── */
 .top{
-  position:sticky; top:0; z-index:30; background:color-mix(in srgb,var(--paper) 88%,transparent);
-  backdrop-filter:saturate(1.4) blur(14px); -webkit-backdrop-filter:saturate(1.4) blur(14px);
+  position:sticky; top:0; z-index:30; background:color-mix(in srgb,var(--paper) 97%,transparent);
+  backdrop-filter:saturate(1.2) blur(8px); -webkit-backdrop-filter:saturate(1.2) blur(8px);
   border-bottom:1px solid var(--rule);
 }
-.top-in{max-width:1180px;margin:0 auto;display:flex;align-items:center;gap:16px;padding:10px 16px;padding-top:calc(10px + env(safe-area-inset-top))}
+.top-in{max-width:1180px;margin:0 auto;display:flex;align-items:center;gap:16px;padding:12px 16px 11px;padding-top:calc(18px + env(safe-area-inset-top))}
 .brand{display:flex;align-items:center;gap:8px;font-family:var(--f-num);font-weight:800;font-stretch:125%;letter-spacing:-.01em;font-size:17px;white-space:nowrap}
 .brand svg{width:26px;height:26px;flex:none}
 .brand b{color:var(--brass);font-weight:800}
@@ -193,6 +194,7 @@ html[data-mode=dark] .mono{background:hsl(var(--h) 32% 22%);color:hsl(var(--h) 7
 .own-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--brass);margin-left:5px;vertical-align:2px}
 
 /* ───────── assets ───────── */
+.assets-grid{display:grid;gap:12px}
 .sum-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:var(--r-md);overflow:hidden}
 .sum-grid div{background:var(--surface);padding:12px 14px}
 .sum-grid dt{font-size:12px;color:var(--ink-2);font-weight:600}
@@ -343,13 +345,53 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
 .mode-card span{font-size:13.5px;color:var(--ink-2);line-height:1.55}
 .order .alert{margin:0}
 
+
+/* ───────── 로그인 화면 ───────── */
+html.gated body{overflow:hidden}
+.gate{position:fixed;inset:0;z-index:80;background:var(--paper);display:grid;place-items:center;padding:24px 16px calc(24px + env(safe-area-inset-bottom));overflow:auto}
+.gate[hidden]{display:none}
+.gate-card{width:min(400px,100%);display:grid;gap:14px}
+.gate-hero{border-radius:var(--r-lg);background:var(--slab);color:var(--slab-ink);padding:22px 20px 18px;
+  background-image:repeating-radial-gradient(circle at 115% -30%, rgba(255,255,255,.055) 0 1px, transparent 1px 10px),repeating-radial-gradient(circle at -20% 140%, rgba(226,180,94,.07) 0 1px, transparent 1px 13px)}
+.gate-hero .brand{font-size:22px;color:var(--slab-ink)}
+.gate-hero .brand svg{width:32px;height:32px}
+.gate-hero .brand span.wm,.gate-hero .brand b{display:inline}
+.gate-hero p{margin:10px 0 0;color:var(--slab-ink-2);font-size:14px;line-height:1.6}
+.gate-box{background:var(--surface);border:1px solid var(--rule);border-radius:var(--r-lg);padding:18px;display:grid;gap:10px}
+.gate-box h2{margin:0 0 2px;font-size:19px;font-weight:800}
+.gate-box input{height:48px;border-radius:12px;border:1px solid var(--rule);background:var(--surface);padding:0 14px;font-size:15.5px;width:100%;outline:0}
+.gate-box input:focus{border-color:var(--brass)}
+.gate-box input[hidden]{display:none}
+#gateForm{display:grid;gap:10px}
+#gateForm[hidden]{display:none}
+.gate-go{height:50px;border:0;border-radius:14px;background:var(--btn);color:var(--btn-ink);font-weight:800;font-size:15.5px}
+.gate-go:disabled{opacity:.5}
+.gate-sw{font-size:13.5px;color:var(--ink-2);text-align:center}
+.linkbtn{border:0;background:none;padding:0;color:var(--brass);font-weight:750;font-size:inherit;text-decoration:underline;text-underline-offset:3px}
+.gate-msg{font-size:13.5px;color:var(--ink-2);min-height:1.2em;text-align:center}
+.gate-msg.bad{color:var(--danger)}
+.gate-guest{text-align:center;font-size:13.5px;color:var(--ink-3)}
+/* ───────── 랭킹 ───────── */
+.seg-s button{padding:5px 11px;font-size:12.5px}
+.ranks{list-style:none;margin:0;padding:0}
+.ranks li{display:grid;grid-template-columns:28px minmax(0,1fr) auto;gap:10px;align-items:center;padding:9px 0;border-top:1px solid var(--rule)}
+.ranks li:first-child{border-top:0}
+.ranks li.me{background:var(--brass-soft);margin:0 -10px;padding:9px 10px;border-radius:10px}
+.ranks .rn{font-family:var(--f-num);font-weight:800;color:var(--ink-3);text-align:right}
+.ranks li:nth-child(-n+3) .rn{color:var(--brass)}
+.rk-n{font-weight:700;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rk-n small{font-size:11px;color:var(--brass);font-weight:800}
+.rk-d{display:block;font-size:12px;color:var(--ink-3);font-weight:500}
+.rank-foot{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px solid var(--rule);font-size:13.5px;color:var(--ink-2)}
+.rank-foot .amt{flex:1 1 160px}
+
 /* ───────── modal / toast ───────── */
-.modal{position:fixed;z-index:60;left:50%;top:50%;transform:translate(-50%,-50%) scale(.98);width:min(420px,calc(100vw - 32px));background:var(--surface);border-radius:20px;padding:22px 20px 18px;opacity:0;transition:opacity .18s,transform .18s;border:1px solid var(--rule)}
+.modal{position:fixed;z-index:90;left:50%;top:50%;transform:translate(-50%,-50%) scale(.98);width:min(420px,calc(100vw - 32px));background:var(--surface);border-radius:20px;padding:22px 20px 18px;opacity:0;transition:opacity .18s,transform .18s;border:1px solid var(--rule)}
 .modal.on{opacity:1;transform:translate(-50%,-50%) scale(1)}
 .modal h2{margin:0 0 8px;font-size:19px;font-weight:800}
 .modal p{margin:0 0 10px;color:var(--ink-2);font-size:14px;line-height:1.6}
 .modal .acts{display:flex;gap:8px;justify-content:flex-end;margin-top:14px}
-.toasts{position:fixed;z-index:70;left:50%;transform:translateX(-50%);bottom:calc(var(--tabbar) + 14px + env(safe-area-inset-bottom));display:grid;gap:8px;width:min(420px,calc(100vw - 32px));pointer-events:none}
+.toasts{position:fixed;z-index:95;left:50%;transform:translateX(-50%);bottom:calc(var(--tabbar) + 14px + env(safe-area-inset-bottom));display:grid;gap:8px;width:min(420px,calc(100vw - 32px));pointer-events:none}
 .toast{background:var(--ink);color:var(--paper);border-radius:14px;padding:11px 14px;font-size:13.5px;font-weight:600;box-shadow:0 10px 30px -10px rgba(0,0,0,.4);animation:tin .22s ease}
 .toast.bad{background:var(--danger);color:#fff}
 @keyframes tin{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
@@ -473,6 +515,28 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
 <div class="modal" id="modal" role="alertdialog" aria-modal="true" hidden></div>
 <div class="toasts" id="toasts" aria-live="polite"></div>
 
+<div class="gate" id="gate" role="dialog" aria-modal="true" aria-labelledby="gateTitle">
+  <div class="gate-card">
+    <div class="gate-hero">
+      <div class="brand"><svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="30" fill="#0A1428"/><circle cx="32" cy="32" r="21" fill="none" stroke="#E2B45E" stroke-width="4"/><path d="M24 38l8-12 8 12" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="wm">SEED</span><b>10K</b></div>
+      <p>한국·미국 시가총액 상위 100개 종목으로 하는 모의투자. 로그인하면 기기 사이에 기록이 이어지고 랭킹에 오릅니다.</p>
+    </div>
+    <div class="gate-box">
+      <h2 id="gateTitle">계정 확인 중</h2>
+      <div id="gateForm" hidden>
+        <input id="gEmail" type="email" placeholder="이메일" autocomplete="username" aria-label="이메일">
+        <input id="gPw" type="password" placeholder="비밀번호 (6자 이상)" autocomplete="current-password" aria-label="비밀번호">
+        <input id="gPw2" type="password" placeholder="비밀번호 확인" autocomplete="new-password" aria-label="비밀번호 확인" hidden>
+        <input id="gNick" type="text" maxlength="12" placeholder="랭킹 닉네임 (2~12자, 나중에 정해도 됨)" aria-label="닉네임" hidden>
+        <button class="gate-go" id="gSubmit">로그인</button>
+        <div class="gate-sw"><span id="gSwitchText">계정이 없나요?</span> <button class="linkbtn" id="gSwitch">회원가입</button></div>
+      </div>
+      <div class="gate-msg" id="gMsg" role="status"></div>
+    </div>
+    <div class="gate-guest">MAGI 계정이 있다면 그대로 로그인하면 됩니다.<br><button class="linkbtn" id="gGuest">로그인 없이 하기</button></div>
+  </div>
+</div>
+
 <script>
 const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsung Electronics","s":"semi","x":"KOSPI","p":215500,"mc":1402061600000000,"r":1},{"id":"KR:000660","t":"000660","n":"SK하이닉스","e":"SK hynix","s":"semi","x":"KOSPI","p":1277000,"mc":930767472000000,"r":2},{"id":"KR:402340","t":"402340","n":"SK스퀘어","e":"SK Square","s":"hold","x":"KOSPI","p":775000,"mc":102119912000000,"r":3},{"id":"KR:373220","t":"373220","n":"LG에너지솔루션","e":"LG Energy Solution","s":"battery","x":"KOSPI","p":383000,"mc":89623276000000,"r":4},{"id":"KR:005380","t":"005380","n":"현대차","e":"Hyundai Motor","s":"auto","x":"KOSPI","p":295500,"mc":77365176000000,"r":5},{"id":"KR:207940","t":"207940","n":"삼성바이오로직스","e":"Samsung Biologics","s":"bio","x":"KOSPI","p":1466000,"mc":68247800000000,"r":6},{"id":"KR:105560","t":"105560","n":"KB금융","e":"KB Financial","s":"fin","x":"KOSPI","p":153000,"mc":53379056000000,"r":7,"note":"ADR 대신 보통주 종가(10/26 종가 147,200원, 전일 대비 -5,800원으로 역산)"},{"id":"KR:028260","t":"028260","n":"삼성물산","e":"Samsung C&T","s":"hold","x":"KOSPI","p":288000,"mc":47124112000000,"r":8},{"id":"KR:068270","t":"068270","n":"셀트리온","e":"Celltrion","s":"bio","x":"KOSPI","p":194400,"mc":44327940000000,"r":9},{"id":"KR:032830","t":"032830","n":"삼성생명","e":"Samsung Life","s":"ins","x":"KOSPI","p":245000,"mc":43983388000000,"r":10},{"id":"KR:000270","t":"000270","n":"기아","e":"Kia","s":"auto","x":"KOSPI","p":106900,"mc":41545020000000,"r":11},{"id":"KR:055550","t":"055550","n":"신한지주","e":"Shinhan Financial","s":"fin","x":"KOSPI","p":88200,"mc":41359492000000,"r":12,"note":"ADR 대신 보통주 종가(10/26 장마감 기사 전일 대비 -2,400원, -2.72%로 역산)"},{"id":"KR:012450","t":"012450","n":"한화에어로스페이스","e":"Hanwha Aerospace","s":"defense","x":"KOSPI","p":792000,"mc":40736648000000,"r":13},{"id":"KR:034020","t":"034020","n":"두산에너빌리티","e":"Doosan Enerbility","s":"power","x":"KOSPI","p":59400,"mc":37953728000000,"r":14},{"id":"KR:329180","t":"329180","n":"HD현대중공업","e":"HD Hyundai Heavy","s":"ship","x":"KOSPI","p":305000,"mc":32003580000000,"r":15},{"id":"KR:086790","t":"086790","n":"하나금융지주","e":"Hana Financial","s":"fin","x":"KOSPI","p":116300,"mc":31062688000000,"r":16},{"id":"KR:009150","t":"009150","n":"삼성전기","e":"Samsung Electro-Mechanics","s":"parts","x":"KOSPI","p":1122000,"mc":29538708000000,"r":17,"note":"우선주 대신 보통주 종가(10/26 마감 1,118,000원, 전일 대비 -4,000원)"},{"id":"KR:012330","t":"012330","n":"현대모비스","e":"Hyundai Mobis","s":"auto","x":"KOSPI","p":328500,"mc":29048384000000,"r":18},{"id":"KR:066570","t":"066570","n":"LG전자","e":"LG Electronics","s":"hw","x":"KOSPI","p":157100,"mc":28173752000000,"r":19},{"id":"KR:035420","t":"035420","n":"NAVER","e":"NAVER","s":"internet","x":"KOSPI","p":173600,"mc":26000424000000,"r":20},{"id":"KR:000810","t":"000810","n":"삼성화재","e":"Samsung Fire & Marine","s":"ins","x":"KOSPI","p":602000,"mc":25589612000000,"r":21},{"id":"KR:034730","t":"034730","n":"SK","e":"SK Inc.","s":"hold","x":"KOSPI","p":465500,"mc":25377580000000,"r":22},{"id":"KR:096770","t":"096770","n":"SK이노베이션","e":"SK Innovation","s":"energy","x":"KOSPI","p":138100,"mc":23495796000000,"r":23},{"id":"KR:010120","t":"010120","n":"LS ELECTRIC","e":"LS ELECTRIC","s":"power","x":"KOSPI","p":156900,"mc":23336772000000,"r":24},{"id":"KR:316140","t":"316140","n":"우리금융지주","e":"Woori Financial","s":"fin","x":"KOSPI","p":30100,"mc":21441736000000,"r":25,"note":"ADR 대신 보통주 종가(10/26 종가 29,250원, 전일 대비 -850원)"},{"id":"KR:011200","t":"011200","n":"HMM","e":"HMM","s":"transport","x":"KOSPI","p":22650,"mc":21362224000000,"r":26},{"id":"KR:005490","t":"005490","n":"POSCO홀딩스","e":"POSCO Holdings","s":"material","x":"KOSPI","p":275500,"mc":20567104000000,"r":27,"note":"ADR 대신 보통주 종가(10/26 기사의 직전 거래일 종가)"},{"id":"KR:138040","t":"138040","n":"메리츠금융지주","e":"Meritz Financial","s":"fin","x":"KOSPI","p":127800,"mc":20553852000000,"r":28},{"id":"KR:033780","t":"033780","n":"KT&G","e":"KT&G","s":"staples","x":"KOSPI","p":189400,"mc":19652716000000,"r":29},{"id":"KR:042700","t":"042700","n":"한미반도체","e":"Hanmi Semiconductor","s":"semi","x":"KOSPI","p":191000,"mc":18115484000000,"r":30},{"id":"KR:015760","t":"015760","n":"한국전력","e":"KEPCO","s":"util","x":"KOSPI","p":28650,"mc":18009468000000,"r":31,"note":"ADR 대신 보통주 종가(10/26 종가 28,000원, 전일 대비 -650원)"},{"id":"KR:051910","t":"051910","n":"LG화학","e":"LG Chem","s":"chem","x":"KOSPI","p":229000,"mc":17916704000000,"r":32},{"id":"KR:009540","t":"009540","n":"HD한국조선해양","e":"HD KSOE","s":"ship","x":"KOSPI","p":248000,"mc":17532396000000,"r":33},{"id":"KR:298040","t":"298040","n":"효성중공업","e":"Hyosung Heavy Industries","s":"power","x":"KOSPI","p":1876000,"mc":17466136000000,"r":34},{"id":"KR:010130","t":"010130","n":"고려아연","e":"Korea Zinc","s":"material","x":"KOSPI","p":854000,"mc":17413128000000,"r":35},{"id":"KR:042660","t":"042660","n":"한화오션","e":"Hanwha Ocean","s":"ship","x":"KOSPI","p":55300,"mc":16936056000000,"r":36},{"id":"KR:267260","t":"267260","n":"HD현대일렉트릭","e":"HD Hyundai Electric","s":"power","x":"KOSPI","p":470000,"mc":16909552000000,"r":37},{"id":"KR:018260","t":"018260","n":"삼성에스디에스","e":"Samsung SDS","s":"itsvc","x":"KOSPI","p":213500,"mc":16511992000000,"r":38},{"id":"KR:000150","t":"000150","n":"두산","e":"Doosan","s":"hold","x":"KOSPI","p":964000,"mc":16419228000000,"r":39},{"id":"KR:006400","t":"006400","n":"삼성SDI","e":"Samsung SDI","s":"battery","x":"KOSPI","p":490500,"mc":15663864000000,"r":40,"note":"우선주 대신 보통주 종가(10/26 마감 483,500원, 전일 대비 -7,000원)"},{"id":"KR:196170","t":"196170","n":"알테오젠","e":"Alteogen","s":"bio","x":"KOSDAQ","p":224500,"mc":15624108000000,"r":41},{"id":"KR:017670","t":"017670","n":"SK텔레콤","e":"SK Telecom","s":"telecom","x":"KOSPI","p":74500,"mc":15571100000000,"r":42,"note":"ADR 대신 보통주 종가(10/26 기사의 직전 거래일 종가)"},{"id":"KR:024110","t":"024110","n":"기업은행","e":"IBK","s":"fin","x":"KOSPI","p":19450,"mc":15518092000000,"r":43},{"id":"KR:010950","t":"010950","n":"S-Oil","e":"S-Oil","s":"energy","x":"KOSPI","p":132400,"mc":15412076000000,"r":44},{"id":"KR:003550","t":"003550","n":"LG","e":"LG Corp.","s":"hold","x":"KOSPI","p":99000,"mc":15266304000000,"r":45},{"id":"KR:010140","t":"010140","n":"삼성중공업","e":"Samsung Heavy","s":"ship","x":"KOSPI","p":16830,"mc":14365168000000,"r":46},{"id":"KR:003670","t":"003670","n":"포스코퓨처엠","e":"POSCO Future M","s":"battery","x":"KOSPI","p":160800,"mc":14298908000000,"r":47},{"id":"KR:035720","t":"035720","n":"카카오","e":"Kakao","s":"internet","x":"KOSPI","p":29950,"mc":13238748000000,"r":48},{"id":"KR:086280","t":"086280","n":"현대글로비스","e":"Hyundai Glovis","s":"transport","x":"KOSPI","p":175900,"mc":13185740000000,"r":49},{"id":"KR:272210","t":"272210","n":"한화시스템","e":"Hanwha Systems","s":"defense","x":"KOSPI","p":66300,"mc":12390620000000,"r":50},{"id":"KR:028050","t":"028050","n":"삼성E&A","e":"Samsung E&A","s":"build","x":"KOSPI","p":59800,"mc":11714768000000,"r":51},{"id":"KR:005830","t":"005830","n":"DB손해보험","e":"DB Insurance","s":"ins","x":"KOSPI","p":184200,"mc":11158184000000,"r":52},{"id":"KR:030200","t":"030200","n":"KT","e":"KT Corp.","s":"telecom","x":"KOSPI","p":45900,"mc":10866640000000,"r":53,"note":"보통주 종가 미확인 — ADR 가격(17.32달러)을 1 ADR = 0.5주로 환산한 추정치","est":1},{"id":"KR:278470","t":"278470","n":"에이피알","e":"APR","s":"consumer","x":"KOSPI","p":284500,"mc":10641356000000,"r":54},{"id":"KR:000720","t":"000720","n":"현대건설","e":"Hyundai E&C","s":"build","x":"KOSPI","p":92500,"mc":10389568000000,"r":55},{"id":"KR:079550","t":"079550","n":"LIG디펜스앤에어로스페이스","e":"LIG Defense & Aerospace","s":"defense","x":"KOSPI","p":475500,"mc":10376316000000,"r":56},{"id":"KR:047810","t":"047810","n":"한국항공우주","e":"KAI","s":"defense","x":"KOSPI","p":102200,"mc":9952252000000,"r":57},{"id":"KR:086520","t":"086520","n":"에코프로","e":"Ecopro","s":"battery","x":"KOSDAQ","p":72700,"mc":9846236000000,"r":58},{"id":"KR:267250","t":"267250","n":"HD현대","e":"HD Hyundai","s":"hold","x":"KOSPI","p":137800,"mc":9726968000000,"r":59},{"id":"KR:323410","t":"323410","n":"카카오뱅크","e":"KakaoBank","s":"fin","x":"KOSPI","p":19980,"mc":9514936000000,"r":60},{"id":"KR:003230","t":"003230","n":"삼양식품","e":"Samyang Foods","s":"staples","x":"KOSPI","p":1225000,"mc":9223392000000,"r":61},{"id":"KR:247540","t":"247540","n":"에코프로비엠","e":"Ecopro BM","s":"battery","x":"KOSDAQ","p":92800,"mc":9077620000000,"r":62},{"id":"KR:005940","t":"005940","n":"NH투자증권","e":"NH Investment & Securities","s":"fin","x":"KOSPI","p":23300,"mc":9024612000000,"r":63},{"id":"KR:064350","t":"064350","n":"현대로템","e":"Hyundai Rotem","s":"defense","x":"KOSPI","p":82700,"mc":9024612000000,"r":64},{"id":"KR:011070","t":"011070","n":"LG이노텍","e":"LG Innotek","s":"parts","x":"KOSPI","p":379000,"mc":8958352000000,"r":65},{"id":"KR:307950","t":"307950","n":"현대오토에버","e":"Hyundai AutoEver","s":"itsvc","x":"KOSPI","p":324500,"mc":8892092000000,"r":66},{"id":"KR:090430","t":"090430","n":"아모레퍼시픽","e":"Amorepacific","s":"consumer","x":"KOSPI","p":128800,"mc":8865588000000,"r":67},{"id":"KR:443060","t":"443060","n":"HD현대마린솔루션","e":"HD Hyundai Marine Solution","s":"ship","x":"KOSPI","p":196500,"mc":8799328000000,"r":68},{"id":"KR:047050","t":"047050","n":"포스코인터내셔널","e":"POSCO International","s":"indust","x":"KOSPI","p":51500,"mc":8772824000000,"r":69},{"id":"KR:071050","t":"071050","n":"한국금융지주","e":"Korea Investment Holdings","s":"fin","x":"KOSPI","p":145200,"mc":8468028000000,"r":70},{"id":"KR:0126Z0","t":"0126Z0","n":"삼성에피스홀딩스","e":"Samsung Epis Holdings","s":"bio","x":"KOSPI","p":332000,"mc":8242744000000,"r":71},{"id":"KR:078930","t":"078930","n":"GS","e":"GS Holdings","s":"hold","x":"KOSPI","p":85600,"mc":8096972000000,"r":72},{"id":"KR:180640","t":"180640","n":"한진칼","e":"Hanjin KAL","s":"hold","x":"KOSPI","p":120100,"mc":8070468000000,"r":73},{"id":"KR:259960","t":"259960","n":"크래프톤","e":"Krafton","s":"game","x":"KOSPI","p":185600,"mc":8057216000000,"r":74},{"id":"KR:003490","t":"003490","n":"대한항공","e":"Korean Air","s":"transport","x":"KOSPI","p":25850,"mc":7831932000000,"r":75,"note":"우선주 대신 보통주 10/23 종가"},{"id":"KR:352820","t":"352820","n":"하이브","e":"HYBE","s":"media","x":"KOSPI","p":176500,"mc":7474128000000,"r":76},{"id":"KR:021240","t":"021240","n":"코웨이","e":"Coway","s":"consumer","x":"KOSPI","p":106000,"mc":7421120000000,"r":77},{"id":"KR:161390","t":"161390","n":"한국타이어앤테크놀로지","e":"Hankook Tire","s":"auto","x":"KOSPI","p":60100,"mc":7328356000000,"r":78},{"id":"KR:064400","t":"064400","n":"LG씨엔에스","e":"LG CNS","s":"itsvc","x":"KOSPI","p":72800,"mc":7050064000000,"r":79},{"id":"KR:016360","t":"016360","n":"삼성증권","e":"Samsung Securities","s":"fin","x":"KOSPI","p":77600,"mc":6917544000000,"r":80},{"id":"KR:277810","t":"277810","n":"레인보우로보틱스","e":"Rainbow Robotics","s":"robot","x":"KOSDAQ","p":352500,"mc":6838032000000,"r":81},{"id":"KR:009830","t":"009830","n":"한화솔루션","e":"Hanwha Solutions","s":"chem","x":"KOSPI","p":28450,"mc":6400716000000,"r":82},{"id":"KR:353200","t":"353200","n":"대덕전자","e":"Daeduck Electronics","s":"parts","x":"KOSPI","p":124200,"mc":6387464000000,"r":83},{"id":"KR:007660","t":"007660","n":"이수페타시스","e":"ISU Petasys","s":"parts","x":"KOSPI","p":87000,"mc":6374212000000,"r":84},{"id":"KR:000100","t":"000100","n":"유한양행","e":"Yuhan","s":"bio","x":"KOSPI","p":84700,"mc":6321204000000,"r":85},{"id":"KR:000880","t":"000880","n":"한화","e":"Hanwha Corp.","s":"hold","x":"KOSPI","p":93400,"mc":6268196000000,"r":86},{"id":"KR:047040","t":"047040","n":"대우건설","e":"Daewoo E&C","s":"build","x":"KOSPI","p":14700,"mc":6029660000000,"r":87},{"id":"KR:326030","t":"326030","n":"SK바이오팜","e":"SK Biopharm","s":"bio","x":"KOSPI","p":76900,"mc":6016408000000,"r":88},{"id":"KR:032640","t":"032640","n":"LG유플러스","e":"LG Uplus","s":"telecom","x":"KOSPI","p":14170,"mc":6003156000000,"r":89},{"id":"KR:006260","t":"006260","n":"LS","e":"LS Corp.","s":"hold","x":"KOSPI","p":216500,"mc":5910392000000,"r":90},{"id":"KR:039490","t":"039490","n":"키움증권","e":"Kiwoom Securities","s":"fin","x":"KOSPI","p":214500,"mc":5618848000000,"r":91},{"id":"KR:006800","t":"006800","n":"미래에셋증권","e":"Mirae Asset Securities","s":"fin","x":"KOSPI","p":24400,"mc":5512832000000,"r":92,"note":"우선주 대신 보통주 종가(10/26 기사의 전일 종가)"},{"id":"KR:062040","t":"062040","n":"산일전기","e":"Sanil Electric","s":"power","x":"KOSPI","p":165200,"mc":5035760000000,"r":93},{"id":"KR:241560","t":"241560","n":"두산밥캣","e":"Doosan Bobcat","s":"indust","x":"KOSPI","p":49400,"mc":4717712000000,"r":94},{"id":"KR:058470","t":"058470","n":"리노공업","e":"LEENO Industrial","s":"semi","x":"KOSDAQ","p":61600,"mc":4664704000000,"r":95},{"id":"KR:240810","t":"240810","n":"원익IPS","e":"Wonik IPS","s":"semi","x":"KOSDAQ","p":95600,"mc":4651452000000,"r":96},{"id":"KR:175330","t":"175330","n":"JB금융지주","e":"JB Financial","s":"fin","x":"KOSPI","p":25150,"mc":4624948000000,"r":97},{"id":"KR:377300","t":"377300","n":"카카오페이","e":"Kakao Pay","s":"fin","x":"KOSPI","p":34050,"mc":4598444000000,"r":98},{"id":"KR:128940","t":"128940","n":"한미약품","e":"Hanmi Pharm","s":"bio","x":"KOSPI","p":361500,"mc":4585192000000,"r":99},{"id":"KR:029780","t":"029780","n":"삼성카드","e":"Samsung Card","s":"fin","x":"KOSPI","p":42150,"mc":4492428000000,"r":100}],"us":[{"id":"US:NVDA","t":"NVDA","n":"엔비디아","e":"NVIDIA","s":"semi","p":210.96,"mc":5094000000000,"r":1},{"id":"US:AAPL","t":"AAPL","n":"애플","e":"Apple","s":"hw","p":347.72,"mc":5074000000000,"r":2},{"id":"US:MSFT","t":"MSFT","n":"마이크로소프트","e":"Microsoft","s":"software","p":524.51,"mc":3894000000000,"r":3},{"id":"US:GOOG","t":"GOOG","n":"알파벳","e":"Alphabet (Google)","s":"internet","p":317.28,"mc":3880000000000,"r":4},{"id":"US:AMZN","t":"AMZN","n":"아마존","e":"Amazon","s":"internet","p":248.0,"mc":2675000000000,"r":5},{"id":"US:SPCX","t":"SPCX","n":"스페이스X","e":"SpaceX","s":"space","p":147.49,"mc":2003000000000,"r":6},{"id":"US:META","t":"META","n":"메타 플랫폼스","e":"Meta Platforms","s":"internet","p":642.62,"mc":1637000000000,"r":7},{"id":"US:AVGO","t":"AVGO","n":"브로드컴","e":"Broadcom","s":"semi","p":321.68,"mc":1535000000000,"r":8},{"id":"US:TSLA","t":"TSLA","n":"테슬라","e":"Tesla","s":"auto","p":372.22,"mc":1471000000000,"r":9},{"id":"US:BRK-B","t":"BRK-B","n":"버크셔 해서웨이","e":"Berkshire Hathaway","s":"fin","p":542.19,"mc":1160000000000,"r":10},{"id":"US:LLY","t":"LLY","n":"일라이 릴리","e":"Eli Lilly","s":"bio","p":1273,"mc":1135000000000,"r":11},{"id":"US:MU","t":"MU","n":"마이크론 테크놀로지","e":"Micron Technology","s":"semi","p":877.55,"mc":992880000000,"r":12},{"id":"US:WMT","t":"WMT","n":"월마트","e":"Walmart","s":"retail","p":119.89,"mc":951170000000,"r":13},{"id":"US:JPM","t":"JPM","n":"JP모건 체이스","e":"JPMorgan Chase","s":"fin","p":331.58,"mc":880540000000,"r":14},{"id":"US:AMD","t":"AMD","n":"AMD","e":"AMD","s":"semi","p":516.79,"mc":843640000000,"r":15},{"id":"US:V","t":"V","n":"비자","e":"Visa","s":"fin","p":407.92,"mc":765810000000,"r":16},{"id":"US:XOM","t":"XOM","n":"엑슨모빌","e":"Exxon Mobil","s":"energy","p":183.21,"mc":753340000000,"r":17},{"id":"US:JNJ","t":"JNJ","n":"존슨앤드존슨","e":"Johnson & Johnson","s":"bio","p":263.81,"mc":635070000000,"r":18},{"id":"US:MA","t":"MA","n":"마스터카드","e":"Mastercard","s":"fin","p":623.6,"mc":546270000000,"r":19},{"id":"US:ABBV","t":"ABBV","n":"애브비","e":"AbbVie","s":"bio","p":285.64,"mc":504750000000,"r":20},{"id":"US:PLTR","t":"PLTR","n":"팔란티어","e":"Palantir","s":"software","p":196.75,"mc":472800000000,"r":21},{"id":"US:INTC","t":"INTC","n":"인텔","e":"Intel","s":"semi","p":86.96,"mc":459670000000,"r":22},{"id":"US:CVX","t":"CVX","n":"셰브론","e":"Chevron","s":"energy","p":233.21,"mc":457460000000,"r":23},{"id":"US:COST","t":"COST","n":"코스트코","e":"Costco","s":"retail","p":1003,"mc":444600000000,"r":24},{"id":"US:CSCO","t":"CSCO","n":"시스코","e":"Cisco","s":"hw","p":106.5,"mc":419880000000,"r":25},{"id":"US:KO","t":"KO","n":"코카콜라","e":"Coca-Cola","s":"staples","p":92.71,"mc":398880000000,"r":26},{"id":"US:ORCL","t":"ORCL","n":"오라클","e":"Oracle","s":"software","p":126.16,"mc":382450000000,"r":27},{"id":"US:UNH","t":"UNH","n":"유나이티드헬스","e":"UnitedHealth","s":"health","p":418.09,"mc":375270000000,"r":28},{"id":"US:PG","t":"PG","n":"프록터앤드갬블","e":"Procter & Gamble","s":"staples","p":161.02,"mc":373200000000,"r":29},{"id":"US:MRK","t":"MRK","n":"머크","e":"Merck","s":"bio","p":145.27,"mc":358400000000,"r":30},{"id":"US:BAC","t":"BAC","n":"뱅크오브아메리카","e":"Bank of America","s":"fin","p":50.56,"mc":353550000000,"r":31},{"id":"US:HD","t":"HD","n":"홈디포","e":"Home Depot","s":"retail","p":319.83,"mc":319090000000,"r":32},{"id":"US:CAT","t":"CAT","n":"캐터필러","e":"Caterpillar","s":"indust","p":687.0,"mc":315790000000,"r":33},{"id":"US:PANW","t":"PANW","n":"팔로알토 네트웍스","e":"Palo Alto Networks","s":"software","p":380.55,"mc":311280000000,"r":34},{"id":"US:PM","t":"PM","n":"필립모리스","e":"Philip Morris International","s":"staples","p":199.47,"mc":310890000000,"r":35},{"id":"US:AMAT","t":"AMAT","n":"어플라이드 머티어리얼즈","e":"Applied Materials","s":"semi","p":377.24,"mc":299370000000,"r":36},{"id":"US:GE","t":"GE","n":"제너럴 일렉트릭","e":"General Electric","s":"defense","p":285.64,"mc":296360000000,"r":37},{"id":"US:DELL","t":"DELL","n":"델","e":"Dell","s":"hw","p":456.44,"mc":290210000000,"r":38},{"id":"US:LRCX","t":"LRCX","n":"램리서치","e":"Lam Research","s":"semi","p":230.1,"mc":287950000000,"r":39},{"id":"US:MS","t":"MS","n":"모건스탠리","e":"Morgan Stanley","s":"fin","p":179.49,"mc":281900000000,"r":40},{"id":"US:NFLX","t":"NFLX","n":"넷플릭스","e":"Netflix","s":"media","p":65.85,"mc":274190000000,"r":41},{"id":"US:CRWD","t":"CRWD","n":"크라우드스트라이크","e":"CrowdStrike","s":"software","p":257.57,"mc":263730000000,"r":42},{"id":"US:TXN","t":"TXN","n":"텍사스 인스트루먼트","e":"Texas Instruments","s":"semi","p":284.69,"mc":259990000000,"r":43},{"id":"US:RTX","t":"RTX","n":"RTX","e":"RTX","s":"defense","p":191.01,"mc":257750000000,"r":44},{"id":"US:GS","t":"GS","n":"골드만삭스","e":"Goldman Sachs","s":"fin","p":875.68,"mc":254970000000,"r":45},{"id":"US:TMO","t":"TMO","n":"써모 피셔 사이언티픽","e":"Thermo Fisher Scientific","s":"health","p":673.82,"mc":249140000000,"r":46},{"id":"US:WFC","t":"WFC","n":"웰스파고","e":"Wells Fargo","s":"fin","p":82.39,"mc":247300000000,"r":47},{"id":"US:IBM","t":"IBM","n":"IBM","e":"IBM","s":"software","p":253.56,"mc":239640000000,"r":48},{"id":"US:AMGN","t":"AMGN","n":"암젠","e":"Amgen","s":"bio","p":439.26,"mc":237470000000,"r":49},{"id":"US:ANET","t":"ANET","n":"아리스타 네트웍스","e":"Arista Networks","s":"hw","p":172.37,"mc":217390000000,"r":50},{"id":"US:GEV","t":"GEV","n":"GE 버노바","e":"GE Vernova","s":"power","p":815.0,"mc":217060000000,"r":51},{"id":"US:AXP","t":"AXP","n":"아메리칸 익스프레스","e":"American Express","s":"fin","p":313.22,"mc":211520000000,"r":52},{"id":"US:MRVL","t":"MRVL","n":"마벨 테크놀로지","e":"Marvell Technology","s":"semi","p":228.51,"mc":205360000000,"r":53},{"id":"US:CRM","t":"CRM","n":"세일즈포스","e":"Salesforce","s":"software","p":248.57,"mc":204570000000,"r":54},{"id":"US:C","t":"C","n":"씨티그룹","e":"Citigroup","s":"fin","p":120.62,"mc":202330000000,"r":55},{"id":"US:DIS","t":"DIS","n":"월트 디즈니","e":"Walt Disney","s":"media","p":112.52,"mc":194280000000,"r":56},{"id":"US:GILD","t":"GILD","n":"길리어드 사이언스","e":"Gilead Sciences","s":"bio","p":156.04,"mc":193480000000,"r":57},{"id":"US:KLAC","t":"KLAC","n":"KLA","e":"KLA","s":"semi","p":145.61,"mc":190020000000,"r":58},{"id":"US:ADI","t":"ADI","n":"아날로그 디바이스","e":"Analog Devices","s":"semi","p":391.07,"mc":189490000000,"r":59},{"id":"US:QCOM","t":"QCOM","n":"퀄컴","e":"QUALCOMM","s":"semi","p":175.91,"mc":187840000000,"r":60},{"id":"US:VZ","t":"VZ","n":"버라이즌","e":"Verizon","s":"telecom","p":44.66,"mc":185550000000,"r":61},{"id":"US:PEP","t":"PEP","n":"펩시코","e":"PepsiCo","s":"staples","p":135.77,"mc":185010000000,"r":62},{"id":"US:APH","t":"APH","n":"암페놀","e":"Amphenol","s":"parts","p":74.09,"mc":182700000000,"r":63},{"id":"US:BLK","t":"BLK","n":"블랙록","e":"BlackRock","s":"fin","p":1118,"mc":181680000000,"r":64},{"id":"US:COP","t":"COP","n":"코노코필립스","e":"ConocoPhillips","s":"energy","p":150.8,"mc":181160000000,"r":65},{"id":"US:ABT","t":"ABT","n":"애보트","e":"Abbott Laboratories","s":"health","p":103.7,"mc":180620000000,"r":66},{"id":"US:SNDK","t":"SNDK","n":"샌디스크","e":"Sandisk","s":"semi","p":1238,"mc":178920000000,"r":67},{"id":"US:MCD","t":"MCD","n":"맥도날드","e":"McDonald's","s":"consumer","p":248.46,"mc":175820000000,"r":68},{"id":"US:DE","t":"DE","n":"디어앤드컴퍼니","e":"Deere & Company","s":"indust","p":646.15,"mc":174210000000,"r":69},{"id":"US:UNP","t":"UNP","n":"유니언 퍼시픽","e":"Union Pacific","s":"transport","p":292.87,"mc":173980000000,"r":70},{"id":"US:NEE","t":"NEE","n":"넥스트에라 에너지","e":"NextEra Energy","s":"util","p":82.1,"mc":172180000000,"r":71},{"id":"US:PFE","t":"PFE","n":"화이자","e":"Pfizer","s":"bio","p":30.03,"mc":171160000000,"r":72},{"id":"US:WELL","t":"WELL","n":"웰타워","e":"Welltower","s":"reit","p":237.32,"mc":171000000000,"r":73},{"id":"US:NOW","t":"NOW","n":"서비스나우","e":"ServiceNow","s":"software","p":158.96,"mc":164340000000,"r":74},{"id":"US:DHR","t":"DHR","n":"다나허","e":"Danaher","s":"health","p":230.5,"mc":162030000000,"r":75},{"id":"US:TJX","t":"TJX","n":"TJX","e":"TJX Companies","s":"retail","p":145.06,"mc":160240000000,"r":76},{"id":"US:ISRG","t":"ISRG","n":"인튜이티브 서지컬","e":"Intuitive Surgical","s":"health","p":452.29,"mc":159780000000,"r":77},{"id":"US:TMUS","t":"TMUS","n":"T-모바일 US","e":"T-Mobile US","s":"telecom","p":146.54,"mc":157180000000,"r":78},{"id":"US:SCHW","t":"SCHW","n":"찰스 슈왑","e":"Charles Schwab","s":"fin","p":90.58,"mc":156640000000,"r":79},{"id":"US:SCCO","t":"SCCO","n":"서던 코퍼","e":"Southern Copper","s":"material","p":185.01,"mc":156210000000,"r":80},{"id":"US:BA","t":"BA","n":"보잉","e":"Boeing","s":"defense","p":188.35,"mc":148750000000,"r":81},{"id":"US:BX","t":"BX","n":"블랙스톤","e":"Blackstone","s":"fin","p":117.97,"mc":141000000000,"r":82},{"id":"US:T","t":"T","n":"AT&T","e":"AT&T","s":"telecom","p":20.93,"mc":140990000000,"r":83},{"id":"US:LMT","t":"LMT","n":"록히드 마틴","e":"Lockheed Martin","s":"defense","p":604.18,"mc":139560000000,"r":84},{"id":"US:IBKR","t":"IBKR","n":"인터랙티브 브로커스","e":"Interactive Brokers","s":"fin","p":80.28,"mc":136780000000,"r":85},{"id":"US:UBER","t":"UBER","n":"우버","e":"Uber","s":"internet","p":66.7,"mc":136230000000,"r":86},{"id":"US:MPC","t":"MPC","n":"마라톤 페트롤리엄","e":"Marathon Petroleum","s":"energy","p":457.22,"mc":133470000000,"r":87},{"id":"US:SPGI","t":"SPGI","n":"S&P 글로벌","e":"S&P Global","s":"fin","p":450.31,"mc":132750000000,"r":88},{"id":"US:VRTX","t":"VRTX","n":"버텍스 파마슈티컬스","e":"Vertex Pharmaceuticals","s":"bio","p":523.93,"mc":132710000000,"r":89},{"id":"US:PGR","t":"PGR","n":"프로그레시브","e":"Progressive","s":"ins","p":228.07,"mc":132370000000,"r":90},{"id":"US:FTNT","t":"FTNT","n":"포티넷","e":"Fortinet","s":"software","p":179.99,"mc":132060000000,"r":91},{"id":"US:WDC","t":"WDC","n":"웨스턴 디지털","e":"Western Digital","s":"hw","p":343.67,"mc":128640000000,"r":92},{"id":"US:BMY","t":"BMY","n":"브리스톨 마이어스 스퀴브","e":"Bristol-Myers Squibb","s":"bio","p":61.48,"mc":125580000000,"r":93},{"id":"US:MO","t":"MO","n":"알트리아","e":"Altria Group","s":"staples","p":74.31,"mc":124070000000,"r":94},{"id":"US:COF","t":"COF","n":"캐피털 원","e":"Capital One","s":"fin","p":201.34,"mc":123520000000,"r":95},{"id":"US:PLD","t":"PLD","n":"프로로지스","e":"Prologis","s":"reit","p":126.45,"mc":122920000000,"r":96},{"id":"US:BKNG","t":"BKNG","n":"부킹 홀딩스","e":"Booking Holdings","s":"internet","p":155.83,"mc":120740000000,"r":97},{"id":"US:VLO","t":"VLO","n":"발레로 에너지","e":"Valero Energy","s":"energy","p":419.28,"mc":120720000000,"r":98},{"id":"US:ADP","t":"ADP","n":"ADP","e":"Automatic Data Processing","s":"itsvc","p":304.16,"mc":120520000000,"r":99},{"id":"US:CVS","t":"CVS","n":"CVS 헬스","e":"CVS Health","s":"health","p":93.47,"mc":119540000000,"r":100}]};
 'use strict';
@@ -480,11 +544,15 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 100 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.1.0';
+const VERSION = '1.2.0';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
 const LIVE_POLL_MS = 60000;
+/* 계정 서버 (MAGI와 같은 Supabase 프로젝트). 공개용 키이며, 데이터는 표의 행 수준 보안(RLS) 정책이 지킨다. */
+const SB_URL = 'https://ictjkqbbcaigdvlysdaw.supabase.co';
+const SB_KEY = 'sb_publishable_C7jZEKJn_nF2Y3Ngq5f80Q_RA5Wrfux';
+const GUEST_KEY = 'seed10k.guest';
 
 const META = {
   baseDate: '2026-10-23',      // 기준가: 2026-10-23(금) 종가
@@ -623,13 +691,20 @@ function newGame(mode){
   return {...base, day:0, date:META.baseDate, fx:META.fx0, fxH:[META.fx0], px, regime:{KR:1, US:1},
           nw:[META.seed], idx:{KR:[1000], US:[1000]}, dates:[META.baseDate], rng:(Math.random() * 2**31) | 0};
 }
-function save(){ try { localStorage.setItem(SAVE_KEYS[S.mode], JSON.stringify(S)); } catch(e){ /* 저장 공간 부족 시 무시 */ } }
-function load(mode){
-  const s = safeParse(localStorage.getItem(SAVE_KEYS[mode]));
+function accKey(mode){ return ACC.user ? `seed10k.u.${ACC.user.id}.${mode}` : SAVE_KEYS[mode]; }
+function validSave(s, mode){
   if (mode === 'sim' && s && s.v === 1 && s.px && STOCKS.every(x => s.px[x.id])){ s.mode = 'sim'; return s; }
   if (mode === 'live' && s && s.v === 1 && s.mode === 'live' && s.nwD) return s;
-  return newGame(mode);
+  return null;
 }
+function hasProgress(s){ return s && (s.trades.length > 0 || (s.mode === 'sim' && s.day > 0) || s.loans.credit.bal > 0 || s.loans.margin.bal > 0); }
+function save(){
+  if (!S) return;
+  S.savedAt = Date.now();
+  try { localStorage.setItem(accKey(S.mode), JSON.stringify(S)); } catch(e){ /* 저장 공간 부족 시 무시 */ }
+  if (ACC.user) scheduleCloud();
+}
+function load(mode){ return validSave(safeParse(localStorage.getItem(accKey(mode))), mode) || newGame(mode); }
 function saveSet(){ try { localStorage.setItem(SET_KEY, JSON.stringify(SET)); } catch(e){} }
 
 /* ───────── 시세 공급 (모드별) ───────── */
@@ -1438,6 +1513,7 @@ function renderAssets(){
         ${holdRows || '<p class="empty">아직 보유한 종목이 없습니다. 시장 탭에서 종목을 눌러 매수해 보세요.</p>'}
       </section>
       <div class="stack">
+        <section class="card" id="rankCard">${rankCardHTML()}</section>
         <section class="card"><div class="card-h"><h2>지수와 비교</h2><small>10월 23일 종가 대비</small></div>
           <div class="bench">${benchRow('내 순자산', ret, 'var(--brass)')}${benchRow('한국 100', kRet, '#6E8BFF')}${benchRow('미국 100', uRet, '#8A93A6')}</div>
         </section>
@@ -1525,6 +1601,7 @@ function renderInfo(){
   <div class="loans-grid">
     <section class="card">
       <div class="card-h"><h2>설정</h2></div>
+      ${accountRowsHTML()}
       <div class="set-row"><div class="l">게임 모드<small>지금은 ${live ? '실제 시세' : '시뮬레이션'} 모드입니다. 모드마다 기록이 따로 저장됩니다.</small></div>
         <div class="seg"><button data-setmode="live" aria-pressed="${live}">실제 시세</button><button data-setmode="sim" aria-pressed="${!live}">시뮬레이션</button></div></div>
       <div class="set-row"><div class="l">상승·하락 색<small>한국식은 상승 빨강, 미국식은 상승 초록</small></div>
@@ -1753,6 +1830,7 @@ function go(tab){
 }
 function renderTab(){
   ({home:renderHome, market:renderMarket, assets:renderAssets, loans:renderLoans, info:renderInfo})[UI.tab]();
+  if (UI.tab === 'assets') refreshRanks(false);
 }
 function commit(){
   save(); renderHeader(); renderTab();
@@ -1768,11 +1846,12 @@ function resetGame(){
   if (isLive()) liveTick();
   toast('새 게임을 시작했습니다. 시드 $10,000');
 }
-function setMode(mode){
+async function setMode(mode){
   stopAuto();
   if (S) save();
   SET.mode = mode; saveSet();
-  S = load(mode);
+  S = ACC.user ? await loadAccountMode(mode) : load(mode);
+  save();
   if (UI.sheet) closeSheet();
   $$('.view').forEach(v => { delete v.dataset.built; });
   if (mode === 'live') startLivePolling(); else stopLivePolling();
@@ -1788,6 +1867,247 @@ function applyTheme(){
   $('meta[name=theme-color]').setAttribute('content', mode === 'dark' ? '#0C1320' : '#ECEEF2');
 }
 mq.addEventListener ? mq.addEventListener('change', applyTheme) : mq.addListener(applyTheme);
+
+
+/* ───────── 계정 (Supabase) ───────── */
+const ACC = {sb:null, user:null, nick:'', ready:false, err:null, loadedFor:undefined, cloudT:null, rankT:null,
+             lastSync:null, syncErrAt:0, ranks:{}, ranksAt:{}, myRank:{}, gateMode:'login', busy:false};
+function isGuestSession(){ try { return sessionStorage.getItem(GUEST_KEY) === '1'; } catch(e){ return false; } }
+function setGuestSession(v){ try { v ? sessionStorage.setItem(GUEST_KEY, '1') : sessionStorage.removeItem(GUEST_KEY); } catch(e){} }
+
+function initAccount(){
+  if (!window.supabase || !window.supabase.createClient){
+    ACC.err = '로그인 서버에 연결하지 못했습니다. 인터넷 연결을 확인하거나 로그인 없이 하세요.';
+    ACC.ready = true; afterAuthResolved(); return;
+  }
+  try { ACC.sb = window.supabase.createClient(SB_URL, SB_KEY); }
+  catch(e){ ACC.err = '로그인 서버 설정이 올바르지 않습니다.'; ACC.ready = true; afterAuthResolved(); return; }
+  ACC.sb.auth.onAuthStateChange((_ev, session) => { handleSession(session); });
+  ACC.sb.auth.getSession().then(({data}) => handleSession(data && data.session)).catch(() => { ACC.ready = true; afterAuthResolved(); });
+}
+async function handleSession(session){
+  const u = session ? session.user : null, newId = u ? u.id : null;
+  ACC.ready = true;
+  if (ACC.loadedFor === newId){ ACC.user = u; if (u) ACC.nick = (u.user_metadata && u.user_metadata.nickname) || ACC.nick; return; }
+  // 계정이 바뀌었다 (로그인, 로그아웃, 다른 탭에서 계정 전환)
+  clearTimeout(ACC.cloudT); clearTimeout(ACC.rankT);
+  ACC.loadedFor = newId;
+  ACC.user = u;
+  ACC.nick = u && u.user_metadata && u.user_metadata.nickname || '';
+  ACC.ranks = {}; ACC.ranksAt = {}; ACC.myRank = {};
+  stopAuto();
+  if (UI.sheet) closeSheet();
+  if (u){
+    setGuestSession(false);
+    renderGate();   // 로그인됐으니 로그인 화면부터 닫는다 (기록 옮기기 질문이 가려지지 않게)
+    if (SET.mode){ S = await loadAccountMode(SET.mode); save(); }
+    else S = newGame('sim');
+  } else {
+    S = load(SET.mode === 'live' ? 'live' : 'sim');
+  }
+  $$('.view').forEach(v => { delete v.dataset.built; });
+  if (S.mode === 'live') startLivePolling(); else stopLivePolling();
+  go(UI.tab); renderHeader();
+  afterAuthResolved();
+}
+function afterAuthResolved(){
+  renderGate();
+  if (!ACC.user && !isGuestSession()) return;          // 로그인 화면을 보여준다
+  if (!SET.mode) showModePicker(true);
+}
+async function loadAccountMode(mode){
+  const local = validSave(safeParse(localStorage.getItem(accKey(mode))), mode);
+  let cloud = null, cloudOk = true;
+  try {
+    const {data, error} = await ACC.sb.from('seed10k_saves').select('data').eq('user_id', ACC.user.id).eq('mode', mode).maybeSingle();
+    if (error) throw error;
+    cloud = data ? validSave(data.data, mode) : null;
+  } catch(e){
+    cloudOk = false;
+    toast('서버에서 기록을 불러오지 못해 이 기기에 있던 기록으로 시작합니다', true);
+  }
+  let pick = (cloud && local) ? ((cloud.savedAt || 0) >= (local.savedAt || 0) ? cloud : local) : (cloud || local);
+  if (!pick && cloudOk){
+    const guest = validSave(safeParse(localStorage.getItem(SAVE_KEYS[mode])), mode);
+    if (hasProgress(guest) && await askImport(mode)){
+      pick = guest;
+      try { localStorage.removeItem(SAVE_KEYS[mode]); } catch(e){}
+    }
+  }
+  return pick || newGame(mode);
+}
+function askImport(mode){
+  return new Promise(res => {
+    const close = showModal(`<h2>로그인 전 기록을 옮길까요?</h2><p>이 기기에 로그인 없이 하던 ${mode === 'live' ? '실제 시세' : '시뮬레이션'} 모드 기록이 있습니다. 이 계정으로 옮기면 다른 기기에서도 이어서 할 수 있습니다. 옮기지 않으면 이 계정은 시드 $10,000부터 시작합니다.</p><div class="acts"><button class="btn" id="impNo">새로 시작</button><button class="btn solid" id="impYes">기록 옮기기</button></div>`, null, true);
+    $('#impYes').onclick = () => { close(); res(true); };
+    $('#impNo').onclick = () => { close(); res(false); };
+  });
+}
+function scheduleCloud(){
+  clearTimeout(ACC.cloudT);
+  ACC.cloudT = setTimeout(pushCloud, 4000);
+  clearTimeout(ACC.rankT);
+  ACC.rankT = setTimeout(pushRank, 15000);
+}
+function flushCloud(){ if (ACC.user){ clearTimeout(ACC.cloudT); pushCloud(); pushRank(); } }
+async function pushCloud(){
+  if (!ACC.user || !ACC.sb || !S) return;
+  const uid = ACC.user.id, snap = S;
+  try {
+    const {error} = await ACC.sb.from('seed10k_saves').upsert({user_id:uid, mode:snap.mode, data:snap, updated_at:new Date().toISOString()});
+    if (error) throw error;
+    ACC.lastSync = new Date();
+  } catch(e){
+    if (Date.now() - ACC.syncErrAt > 60000){ ACC.syncErrAt = Date.now(); toast('서버에 저장하지 못했습니다. 이 기기에는 저장돼 있습니다', true); }
+  }
+}
+function rankDays(){ return isLive() ? Math.max(0, Math.floor((Date.now() - (S.started || Date.now())) / 864e5)) : S.day; }
+async function pushRank(){
+  if (!ACC.user || !ACC.sb || !S || !ACC.nick) return;
+  const N = netWorth();
+  const ret = clamp(Math.round((N - META.seed) / META.seed * 10000) / 100, -100, 100000);
+  try {
+    const {error} = await ACC.sb.from('seed10k_ranks').upsert({user_id:ACC.user.id, mode:S.mode, nickname:ACC.nick,
+      net_worth:Math.round(N * 100) / 100, return_pct:ret, days:rankDays(), updated_at:new Date().toISOString()});
+    if (error) throw error;
+  } catch(e){ /* 랭킹 저장 실패는 조용히 넘긴다 */ }
+}
+async function refreshRanks(force){
+  const mode = UI.rankMode || S.mode;
+  if (!ACC.sb){ renderRankCard(); return; }
+  if (!force && ACC.ranksAt[mode] && Date.now() - ACC.ranksAt[mode] < 30000){ renderRankCard(); return; }
+  ACC.ranksAt[mode] = Date.now();
+  renderRankCard();
+  try {
+    if (ACC.user && ACC.nick && mode === S.mode) await pushRank();
+    const {data, error} = await ACC.sb.from('seed10k_ranks').select('user_id,nickname,return_pct,net_worth,days').eq('mode', mode).order('return_pct', {ascending:false}).limit(20);
+    if (error) throw error;
+    ACC.ranks[mode] = data || [];
+    ACC.myRank[mode] = null;
+    if (ACC.user){
+      const mine = (data || []).findIndex(r => r.user_id === ACC.user.id);
+      if (mine >= 0) ACC.myRank[mode] = mine + 1;
+      else {
+        const {data:me} = await ACC.sb.from('seed10k_ranks').select('return_pct').eq('mode', mode).eq('user_id', ACC.user.id).maybeSingle();
+        if (me){
+          const {count} = await ACC.sb.from('seed10k_ranks').select('user_id', {count:'exact', head:true}).eq('mode', mode).gt('return_pct', me.return_pct);
+          ACC.myRank[mode] = (count || 0) + 1;
+        }
+      }
+    }
+    ACC.rankErr = null;
+  } catch(e){ ACC.rankErr = '랭킹을 불러오지 못했습니다. 잠시 뒤 다시 열어보세요.'; }
+  renderRankCard();
+}
+function rankCardHTML(){
+  const mode = UI.rankMode || S.mode;
+  const rows = ACC.ranks[mode];
+  const head = `<div class="card-h"><h2>랭킹</h2><div class="seg seg-s"><button data-rankmode="live" aria-pressed="${mode === 'live'}">실제 시세</button><button data-rankmode="sim" aria-pressed="${mode === 'sim'}">시뮬레이션</button></div></div>`;
+  let body;
+  if (!ACC.sb) body = `<p class="empty">로그인 서버에 연결되지 않아 랭킹을 볼 수 없습니다.</p>`;
+  else if (ACC.rankErr) body = `<p class="empty">${esc(ACC.rankErr)}</p>`;
+  else if (!rows) body = `<p class="empty">랭킹을 불러오는 중입니다.</p>`;
+  else if (!rows.length) body = `<p class="empty">아직 랭킹에 오른 사람이 없습니다. 로그인하고 닉네임을 정하면 첫 번째로 오릅니다.</p>`;
+  else body = `<ol class="ranks">${rows.map((r, i) => {
+      const me = ACC.user && r.user_id === ACC.user.id;
+      return `<li class="${me ? 'me' : ''}"><span class="rn num">${i + 1}</span><span class="rk-n">${esc(r.nickname)}${me ? ' <small>나</small>' : ''}<span class="rk-d">${r.days}${mode === 'live' ? '일째' : '거래일째'}, 순자산 ${fmtUSD(+r.net_worth, 0)}</span></span><b class="num ${cls(+r.return_pct)}">${fmtPct(+r.return_pct / 100)}</b></li>`;
+    }).join('')}</ol>`;
+  let foot = '';
+  if (!ACC.user) foot = `<div class="rank-foot"><span>로그인하면 랭킹에 참여할 수 있습니다.</span><button class="btn" id="btnLoginOpen">로그인</button></div>`;
+  else if (!ACC.nick) foot = `<div class="rank-foot"><label class="amt"><input id="rankNickIn" maxlength="12" placeholder="닉네임 (2~12자)" aria-label="닉네임"></label><button class="btn solid" id="btnRankNick">랭킹 참여</button></div>`;
+  else if (ACC.myRank[mode]) foot = `<div class="rank-foot"><span>내 순위 <b>${ACC.myRank[mode]}위</b> (${esc(ACC.nick)})</span></div>`;
+  else if (mode !== S.mode) foot = `<div class="rank-foot"><span>이 모드는 아직 플레이 기록이 올라가지 않았습니다.</span></div>`;
+  return head + body + foot + `<p class="muted" style="margin:8px 0 0">수익률은 시드 $10,000 대비입니다. 게임 계산이 브라우저에서 이뤄져 조작을 완전히 막을 수는 없으니 재미로 봐주세요.</p>`;
+}
+function renderRankCard(){ const c = $('#rankCard'); if (c) c.innerHTML = rankCardHTML(); }
+async function saveNickname(v){
+  v = String(v || '').trim();
+  if (v.length < 2 || v.length > 12) return toast('닉네임은 2~12자로 정하세요', true);
+  if (!ACC.user) return;
+  try {
+    const {error} = await ACC.sb.auth.updateUser({data:{nickname:v}});
+    if (error) throw error;
+    ACC.nick = v;
+    toast('닉네임을 저장했습니다');
+    await pushRank();
+    refreshRanks(true);
+    renderTab();
+  } catch(e){ toast('닉네임을 저장하지 못했습니다', true); }
+}
+async function signOut(){
+  if (!ACC.sb) return;
+  save();
+  clearTimeout(ACC.cloudT);
+  await pushCloud();
+  await pushRank();
+  setGuestSession(false);
+  await ACC.sb.auth.signOut();
+  toast('로그아웃했습니다');
+}
+function accountRowsHTML(){
+  if (ACC.user){
+    return `<div class="set-row"><div class="l">계정<small>${esc(ACC.user.email || '')}${ACC.lastSync ? `, 서버 저장 ${kstTime(ACC.lastSync)}` : ''}</small></div><button class="btn" id="btnLogout">로그아웃</button></div>
+      <div class="set-row"><div class="l">랭킹 닉네임<small>랭킹에는 이메일이 아니라 닉네임만 보입니다</small></div>
+        <div class="act" style="flex:0 1 260px"><label class="amt"><input id="nickIn" maxlength="12" value="${esc(ACC.nick)}" placeholder="2~12자" aria-label="닉네임"></label><button class="btn" id="btnNick">저장</button></div></div>`;
+  }
+  return `<div class="set-row"><div class="l">계정<small>로그인하면 기기 사이에 기록이 동기화되고 랭킹에 참여할 수 있습니다</small></div><button class="btn solid" id="btnLoginOpen">로그인</button></div>`;
+}
+
+/* 로그인 화면 */
+function openGate(){ setGuestSession(false); ACC.gateMode = 'login'; renderGate(true); }
+function renderGate(forceOpen){
+  const gate = $('#gate');
+  const show = forceOpen || (!ACC.user && (!ACC.ready || !isGuestSession()));
+  gate.hidden = !show;
+  document.documentElement.classList.toggle('gated', show);
+  if (!show) return;
+  const signup = ACC.gateMode === 'signup';
+  $('#gateTitle').textContent = !ACC.ready ? '계정 확인 중' : signup ? '회원가입' : '로그인';
+  $('#gateForm').hidden = !ACC.ready || !ACC.sb;
+  $('#gPw2').hidden = !signup; $('#gNick').hidden = !signup;
+  $('#gPw').setAttribute('autocomplete', signup ? 'new-password' : 'current-password');
+  $('#gSubmit').textContent = signup ? '회원가입' : '로그인';
+  $('#gSwitchText').textContent = signup ? '이미 계정이 있나요?' : '계정이 없나요?';
+  $('#gSwitch').textContent = signup ? '로그인' : '회원가입';
+  if (ACC.err) gateMsg(ACC.err, true);
+}
+function gateMsg(t, bad){ const m = $('#gMsg'); m.textContent = t || ''; m.classList.toggle('bad', !!bad); }
+async function gateSubmit(){
+  if (!ACC.sb || ACC.busy) return;
+  const email = $('#gEmail').value.trim(), pw = $('#gPw').value;
+  if (!email || pw.length < 6) return gateMsg('이메일과 6자 이상 비밀번호를 입력하세요.', true);
+  const signup = ACC.gateMode === 'signup';
+  if (signup){
+    if (pw !== $('#gPw2').value) return gateMsg('비밀번호가 서로 다릅니다.', true);
+    const nick = $('#gNick').value.trim();
+    if (nick && (nick.length < 2 || nick.length > 12)) return gateMsg('닉네임은 2~12자로 정하거나 비워 두세요.', true);
+  }
+  ACC.busy = true; $('#gSubmit').disabled = true;
+  try {
+    if (signup){
+      gateMsg('가입하는 중입니다.');
+      const nick = $('#gNick').value.trim();
+      const {data, error} = await ACC.sb.auth.signUp({email, password:pw, options:{emailRedirectTo:location.origin + location.pathname, data:nick ? {nickname:nick} : {}}});
+      if (error) return gateMsg('가입하지 못했습니다: ' + error.message, true);
+      if (!(data && data.session)){
+        ACC.gateMode = 'login'; renderGate(true);
+        return gateMsg('가입했습니다. 메일함의 확인 링크를 누른 뒤 여기서 로그인하세요.');
+      }
+    } else {
+      gateMsg('로그인하는 중입니다.');
+      const {error} = await ACC.sb.auth.signInWithPassword({email, password:pw});
+      if (error) return gateMsg('로그인하지 못했습니다: ' + (error.message === 'Invalid login credentials' ? '이메일이나 비밀번호가 맞지 않습니다.' : error.message), true);
+    }
+    gateMsg(''); $('#gPw').value = ''; $('#gPw2').value = '';
+  } finally { ACC.busy = false; $('#gSubmit').disabled = false; }
+}
+$('#gSubmit').addEventListener('click', gateSubmit);
+['#gEmail', '#gPw', '#gPw2', '#gNick'].forEach(sel => $(sel).addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); gateSubmit(); } }));
+$('#gSwitch').addEventListener('click', () => { ACC.gateMode = ACC.gateMode === 'signup' ? 'login' : 'signup'; gateMsg(''); renderGate(true); });
+$('#gGuest').addEventListener('click', () => {
+  setGuestSession(true); renderGate();
+  if (!SET.mode) showModePicker(true);
+});
 
 /* ───────── 이벤트 ───────── */
 document.addEventListener('click', e => {
@@ -1823,6 +2143,11 @@ document.addEventListener('click', e => {
   if (t.dataset.conv){ SET.conv = t.dataset.conv; saveSet(); applyTheme(); renderTab(); return; }
   if (t.dataset.theme){ SET.theme = t.dataset.theme; saveSet(); applyTheme(); renderTab(); return; }
   if (t.dataset.speed !== undefined){ SET.speed = +t.dataset.speed; saveSet(); if (UI.auto) startAuto(); renderTab(); return; }
+  if (t.dataset.rankmode){ UI.rankMode = t.dataset.rankmode; refreshRanks(true); return; }
+  if (t.id === 'btnLoginOpen'){ openGate(); return; }
+  if (t.id === 'btnLogout'){ signOut(); return; }
+  if (t.id === 'btnNick'){ saveNickname($('#nickIn').value); return; }
+  if (t.id === 'btnRankNick'){ saveNickname($('#rankNickIn').value); return; }
   if (t.id === 'btnRefresh' || t.id === 'btnRefresh2'){ loadLive(false).then(() => { if (LIVE.ok) toast('시세를 새로 받았습니다'); }); return; }
   if (t.id === 'btnReset'){ confirmBox('새 게임을 시작할까요?', `${isLive() ? '실제 시세' : '시뮬레이션'} 모드의 거래, 대출, 기록이 모두 지워지고 시드 $10,000로 다시 시작합니다. 다른 모드의 기록은 그대로입니다.`, '새 게임 시작', resetGame); return; }
 });
@@ -1835,10 +2160,10 @@ document.addEventListener('keydown', e => {
     if (!md.hidden){ if (!md.dataset.locked){ const c = $('#modal [data-close]'); c && c.click(); } }
     else if (UI.sheet) closeSheet();
   }
-  if (e.key === 'n' && !isLive() && !e.target.closest('input') && !UI.sheet && $('#modal').hidden && !S.over) step();
+  if (e.key === 'n' && !isLive() && !e.target.closest('input') && !UI.sheet && $('#modal').hidden && $('#gate').hidden && !S.over) step();
 });
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden) save();
+  if (document.hidden){ save(); flushCloud(); }
   else if (isLive()) loadLive(true);
 });
 /* 실제 시세 모드: 1분마다 헤더의 시장 상태와 경과 시간을 다시 그린다 */
@@ -1846,15 +2171,11 @@ setInterval(() => { if (isLive() && !document.hidden){ renderHeader(); if (UI.ta
 
 /* ───────── 시작 ───────── */
 applyTheme();
-if (SET.mode === 'live' || SET.mode === 'sim'){
-  S = load(SET.mode);
-  go('home'); renderHeader();
-  if (SET.mode === 'live') startLivePolling();
-} else {
-  S = load('sim');
-  go('home'); renderHeader();
-  showModePicker(true);
-}
+S = load(SET.mode === 'live' ? 'live' : 'sim');
+go('home'); renderHeader();
+if (S.mode === 'live') startLivePolling();
+renderGate();
+initAccount();
 
 </script>
 </body>
