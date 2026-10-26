@@ -1,4 +1,4 @@
-name: Supabase 설정 확인 (임시)
+name: 실시간 수집 확인 (임시)
 on:
   push:
     branches: [tmp-yahoo-test]
@@ -12,9 +12,19 @@ jobs:
           U: https://ictjkqbbcaigdvlysdaw.supabase.co
           K: sb_publishable_C7jZEKJn_nF2Y3Ngq5f80Q_RA5Wrfux
         run: |
-          r() { curl -s -m 30 -o /tmp/b -w "%{http_code} %{time_total}s" "$@" || true; }
-          c=$(r "$U/rest/v1/seed10k_quotes?select=id,m,p,updated_at&order=id" -H "apikey: $K")
-          m=$(python3 -c "import json,collections;d=json.load(open('/tmp/b'));print('행', len(d), dict(collections.Counter(x['m'] for x in d)), '값있음', sum(1 for x in d if x['p'] is not None), '_run', [x['updated_at'] for x in d if x['id']=='_run'])" 2>&1 | tail -1)
-          echo "::notice title=1 시세 표::$c, $m"
-          c=$(r "$U/rest/v1/seed10k_daily?select=id&limit=1" -H "apikey: $K"); echo "::notice title=2 일별 표::$c $(head -c 200 /tmp/b)"
-          c=$(r -X POST "$U/functions/v1/seed10k-quotes" -H "apikey: $K" -H "Content-Type: application/json" -d '{}'); echo "::notice title=3 함수 (예약 작업과 같은 방식)::$c $(head -c 300 /tmp/b)"
+          curl -s -m 30 "$U/rest/v1/seed10k_quotes?select=id,m,p,t,d,updated_at&order=id" -H "apikey: $K" -o /tmp/q
+          python3 - <<'PY'
+          import json, datetime as dt
+          d = json.load(open('/tmp/q'))
+          now = dt.datetime.now(dt.timezone.utc)
+          P = lambda s: dt.datetime.fromisoformat(s.replace('Z', '+00:00')) if s else None
+          sysr = {r['id']: r['updated_at'] for r in d if r['m'] == 'SYS'}
+          kr = [r for r in d if r['m'] == 'KR' and r['p'] is not None]
+          fx = [r for r in d if r['m'] == 'FX']
+          ages = sorted((now - P(r['updated_at'])).total_seconds() for r in kr if r['updated_at'])
+          s = next((r for r in kr if r['id'] == 'KR:005930'), None)
+          print(f"::notice title=시세 표::지금 {now:%H:%M:%S}Z, SYS {sysr}, KR 값 {len(kr)}/100, KR 갱신 나이(초) 최소 {ages[0] if ages else '-'} 최대 {ages[-1] if ages else '-'}, 삼성전자 {s and (s['p'], s['t'], s['d'])}, FX {fx and (fx[0]['p'], fx[0]['t'])}")
+          PY
+          curl -s -m 30 "$U/rest/v1/seed10k_daily?select=id,d,c&order=d.desc&limit=3" -H "apikey: $K" -o /tmp/d
+          curl -s -m 30 "$U/rest/v1/seed10k_daily?select=id" -H "apikey: $K" -H "Prefer: count=exact" -H "Range: 0-0" -D /tmp/h -o /dev/null
+          echo "::notice title=일별 표::$(grep -i content-range /tmp/h | tr -d '\r') $(head -c 200 /tmp/d)"
