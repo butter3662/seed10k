@@ -216,7 +216,9 @@ jobs:
         run: |
           mkdir -p _site/data
           cp index.html _site/
-          python fetch_prices.py --out _site/data/prices.json --prev prev.json || echo "시세 수집 실패 — 게임은 '시세 없음'으로 표시된다"
+          python fetch_prices.py --out _site/data/prices.json --prev prev.json > collect.log 2>&1 || echo "시세 수집 실패 — 게임은 '시세 없음'으로 표시된다" >> collect.log
+          cat collect.log
+          echo "::notice title=시세 수집 결과::$(tail -n 1 collect.log)"
 
       - uses: actions/upload-pages-artifact@v3
         with:
