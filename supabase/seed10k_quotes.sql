@@ -240,7 +240,7 @@ select cron.schedule(
   '* * * * *',
   $$ select net.http_post(
        url := 'https://ictjkqbbcaigdvlysdaw.supabase.co/functions/v1/seed10k-quotes',
-       headers := jsonb_build_object('Content-Type', 'application/json'),
+       headers := jsonb_build_object('Content-Type', 'application/json', 'apikey', 'sb_publishable_C7jZEKJn_nF2Y3Ngq5f80Q_RA5Wrfux'),
        body := '{}'::jsonb,
        timeout_milliseconds := 60000
      ) $$
