@@ -602,7 +602,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 100 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.5.1';
+const VERSION = '1.5.2';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -1458,8 +1458,37 @@ function showAlerts(list){
   const html = list.map(a => `<h2 style="${a.bad ? 'color:var(--danger)' : ''}">${esc(a.t)}</h2><p>${esc(a.b)}</p>`).join('');
   const over = list.some(a => a.over);
   showModal(html + `<div class="acts">${over ? '<button class="btn" data-close>닫기</button><button class="btn solid" id="mdReset">새 게임</button>' : '<button class="btn" data-close>확인</button><button class="btn solid" id="mdLoans" data-close>대출 화면 열기</button>'}</div>`);
-  const r = $('#mdReset'); if (r) r.onclick = () => { resetGame(); };
+  const r = $('#mdReset'); if (r) r.onclick = () => { confirmReset(); };
   const l = $('#mdLoans'); if (l) l.addEventListener('click', () => go('loans'));
+}
+/* 새 게임 확인: 로그인했으면 계정 비밀번호를 다시 입력해야 지운다. 손님은 확인 창만. */
+function confirmReset(){
+  const title = '새 게임을 시작할까요?';
+  const body = `${isLive() ? '실제 시세' : '시뮬레이션'} 모드의 거래, 대출, 기록이 모두 지워지고 시드 $10,000로 다시 시작합니다. 다른 모드의 기록은 그대로입니다.`;
+  if (!ACC.user || !ACC.sb || !ACC.user.email) return confirmBox(title, body, '새 게임 시작', resetGame);
+  const close = showModal(`<h2>${title}</h2><p>${body}</p>
+    <p class="muted" style="margin:10px 0 6px">확인을 위해 계정(${esc(ACC.user.email)}) 비밀번호를 입력하세요.</p>
+    <label class="amt"><input id="rsPw" type="password" autocomplete="current-password" placeholder="비밀번호" aria-label="계정 비밀번호"></label>
+    <div class="err" id="rsErr" role="status"></div>
+    <div class="acts"><button class="btn" data-close>취소</button><button class="btn solid" id="rsOk" style="background:var(--danger);border-color:var(--danger)">새 게임 시작</button></div>`);
+  const pw = $('#rsPw'), ok = $('#rsOk'), err = $('#rsErr');
+  setTimeout(() => pw && pw.focus(), 60);
+  const submit = async () => {
+    const v = pw.value;
+    if (!v){ err.textContent = '비밀번호를 입력하세요.'; pw.focus(); return; }
+    ok.disabled = true; err.textContent = '확인 중…';
+    try {
+      const {error} = await ACC.sb.auth.signInWithPassword({email:ACC.user.email, password:v});
+      if (error) throw error;
+    } catch(e){
+      ok.disabled = false;
+      err.textContent = /invalid/i.test((e && e.message) || '') ? '비밀번호가 맞지 않습니다.' : `확인하지 못했습니다 (${errText(e)}).`;
+      pw.select(); return;
+    }
+    close(); resetGame();
+  };
+  ok.onclick = submit;
+  pw.addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); submit(); } });
 }
 function confirmBox(title, body, okLabel, onOk){
   const close = showModal(`<h2>${esc(title)}</h2><p>${body}</p><div class="acts"><button class="btn" data-close>취소</button><button class="btn solid" id="mdOk">${esc(okLabel)}</button></div>`);
@@ -2766,7 +2795,7 @@ document.addEventListener('click', e => {
   if (t.id === 'btnNick'){ saveNickname($('#nickIn').value); return; }
   if (t.id === 'btnRankNick'){ saveNickname($('#rankNickIn').value); return; }
   if (t.id === 'btnRefresh' || t.id === 'btnRefresh2'){ loadLive(false).then(() => { if (LIVE.ok) toast('시세를 새로 받았습니다'); }); return; }
-  if (t.id === 'btnReset'){ confirmBox('새 게임을 시작할까요?', `${isLive() ? '실제 시세' : '시뮬레이션'} 모드의 거래, 대출, 기록이 모두 지워지고 시드 $10,000로 다시 시작합니다. 다른 모드의 기록은 그대로입니다.`, '새 게임 시작', resetGame); return; }
+  if (t.id === 'btnReset'){ confirmReset(); return; }
 });
 $('#btnNext').addEventListener('click', () => { if (S.over) return; step(); });
 $('#btnAuto').addEventListener('click', () => { if (UI.auto) stopAuto(); else if (!S.over) startAuto(); });
