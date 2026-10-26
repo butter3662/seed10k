@@ -8,6 +8,7 @@
 // - 미국: 뉴욕 시각 09:25~16:20(평일)에 받는다. 마감 뒤 몇 분은 마감가를 확정하려고 더 받는다.
 // - 환율(KRW=X): 두 시장 중 하나라도 받는 동안 함께 받는다.
 // - 아무나 이 주소를 불러도 40초 안에 다시 부르면 아무것도 하지 않는다(야후 요청 남용 방지).
+// - 장 시간과 관계없이 불릴 때마다 _beat 줄의 시각을 남긴다. 게임은 이 시각이 3분 안이면 '온라인'으로 표시한다.
 
 type Row = { id: string; ysym: string; m: string; updated_at?: string | null };
 type Quote = {
@@ -117,6 +118,12 @@ async function rest(path: string, init: RequestInit = {}) {
 
 export async function run(at = new Date()) {
   const started = Date.now();
+  // 살아 있다는 신호 (1분 예약 작업이 돌고 있는지 게임에서 확인하는 용도)
+  await rest("seed10k_quotes?on_conflict=id", {
+    method: "POST",
+    headers: restHeaders({ Prefer: "resolution=merge-duplicates,return=minimal" }),
+    body: JSON.stringify([{ id: "_beat", ysym: "-", m: "SYS", updated_at: new Date().toISOString() }]),
+  });
   const act = activeMarkets(at);
   if (!act.FX) return { skipped: "장 시간이 아님", act };
 

@@ -343,7 +343,13 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
 .mk[data-k=wait] i,.st-dot[data-k=wait]{background:var(--warn)}
 .mk[data-k=open]{border-color:color-mix(in srgb,var(--brass) 55%,var(--rule))}
 @keyframes pulse{50%{box-shadow:0 0 0 6px color-mix(in srgb,var(--brass) 0%,transparent)}}
-.upd{font-size:11.5px;color:var(--ink-3);font-weight:600}
+.upd{font-size:11.5px;color:var(--ink-3);font-weight:600;display:inline-flex;align-items:center;gap:7px;white-space:nowrap}
+/* 1분 실시간 수집 상태: 초록 온라인, 빨강 오프라인 */
+.rt{--rt:#E5484D;display:inline-flex;align-items:center;gap:4px}
+.rt[data-on="1"]{--rt:#1FA35A}
+.rt i{width:7px;height:7px;border-radius:50%;background:var(--rt);flex:none}
+.rt[data-on="1"] i{box-shadow:0 0 0 3px color-mix(in srgb,var(--rt) 25%,transparent);animation:pulse 2s ease-in-out infinite}
+.rt b{color:var(--rt);font-weight:750}
 .st-list{display:grid;gap:0;margin-bottom:10px}
 .st-row{display:grid;grid-template-columns:auto 1fr auto;grid-template-areas:"dot n l" ". h h";align-items:center;gap:2px 10px;padding:10px 0;border-top:1px solid var(--rule)}
 .st-row:first-child{border-top:0}
@@ -537,7 +543,7 @@ html[data-game=live] .c-news{order:3}
     <div class="session live" id="liveCtl" hidden>
       <div class="live-st">
         <div class="mks"><span class="mk" id="mkKR" data-k="closed"><i></i>한국 <b></b></span><span class="mk" id="mkUS" data-k="closed"><i></i>미국 <b></b></span></div>
-        <span class="upd" id="liveUpd"></span>
+        <span class="upd"><span class="rt" id="rtBadge" data-on="0" title="1분 실시간 시세 수집 상태"><i></i><b>오프라인</b></span><span id="liveUpd"></span></span>
       </div>
       <button class="icon-btn" id="btnRefresh" aria-label="시세 새로고침">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg>
@@ -596,7 +602,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 100 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.5.0';
+const VERSION = '1.5.1';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -1299,18 +1305,24 @@ function idxValue(m, i){
 /* ───────── 실시간 시세 표 (Supabase seed10k_quotes) ─────────
    Supabase 함수가 장중 1분마다 야후에서 받아 저장한 최신가를 읽어, GitHub 시세 파일 위에 덧입힌다.
    표가 없거나 읽지 못하면 시세 파일만 쓴다. */
-const QT = {rows:null, daily:[], at:null, err:null};
+const QT = {rows:null, daily:[], at:null, err:null, beat:0};
+const RT_FRESH_MS = 3 * 60e3;   // 함수의 살아 있다는 신호가 이 시간 안이면 온라인
+/* 1분 실시간 수집이 돌고 있는가: 함수가 남긴 _beat 시각이 3분 안이고, 표를 정상으로 읽었을 때 */
+function rtOnline(){ return !QT.err && QT.beat > 0 && Date.now() - QT.beat < RT_FRESH_MS; }
 async function loadQuotes(){
   if (!ACC.sb) return false;
   try {
     // 시세 파일의 마지막 거래일 뒤로 쌓인 일별 마지막 가격 (GitHub 수집이 멈춘 날 채우기)
     const since = [LIVE.dates.KR, LIVE.dates.US, LIVE.fx.d].map(a => last(a || [])).filter(Boolean).sort()[0];
     const [q, dl] = await Promise.all([
-      ACC.sb.from('seed10k_quotes').select('id,m,p,t,d,updated_at').neq('m', 'SYS'),
-      since ? ACC.sb.from('seed10k_daily').select('id,d,c').gt('d', since).order('d', {ascending:true}).limit(5000) : Promise.resolve({data:[], error:null})
+      ACC.sb.from('seed10k_quotes').select('id,m,p,t,d,updated_at'),
+      // 일별 표 읽기가 실패해도 최신가는 쓰도록, 실패를 여기서 삼킨다
+      (since ? Promise.resolve(ACC.sb.from('seed10k_daily').select('id,d,c').gt('d', since).order('d', {ascending:true}).limit(5000)) : Promise.resolve({data:[], error:null})).catch(e => ({data:[], error:e}))
     ]);
     if (q.error) throw q.error;
     QT.rows = q.data || []; QT.daily = (!dl.error && dl.data) || []; QT.at = new Date(); QT.err = null;
+    // 살아 있다는 신호: _beat(장 시간과 무관하게 매분), 예전 함수라 _beat가 없으면 수집 기록 _run
+    QT.beat = Math.max(0, ...QT.rows.filter(r => (r.id === '_beat' || r.id === '_run') && r.updated_at).map(r => Date.parse(r.updated_at) || 0));
     return true;
   } catch(e){ QT.err = errText(e); return false; }
 }
@@ -1529,6 +1541,10 @@ function renderHeader(){
       el.dataset.k = st.k;
       el.querySelector('b').textContent = st.label;
     }
+    const on = rtOnline(), rb = $('#rtBadge');
+    rb.dataset.on = on ? '1' : '0';
+    rb.querySelector('b').textContent = on ? '온라인' : '오프라인';
+    rb.title = on ? '1분 실시간 시세 수집이 돌고 있습니다' : '1분 실시간 시세 수집 신호가 없습니다. GitHub 시세만 씁니다';
     const ago = minsAgo(LIVE.updated);
     $('#liveUpd').textContent = LIVE.ok && LIVE.updated ? `시세 ${kstTime(LIVE.updated)} 기준${ago !== null ? `, ${ago < 1 ? '방금' : ago < 60 ? ago + '분 전' : Math.floor(ago/60) + '시간 전'}` : ''}` : (LIVE.loading ? '시세 받는 중' : '시세 없음');
   } else {
@@ -1631,7 +1647,7 @@ function liveStatusHTML(){
     msg = `<div class="alert bad">시세 파일(data/prices.json)을 받지 못했습니다${LIVE.err ? ` (${esc(LIVE.err)})` : ''}. GitHub 저장소에서 Actions가 켜져 있는지, Pages 배포 방식이 'GitHub Actions'인지 확인하세요. 그 전까지는 10월 23일 종가가 표시되고 거래는 막힙니다.</div>`;
   } else {
     const stale = ago !== null && ago > 45 && (mstate('KR').open || mstate('US').open);
-    msg = `<p class="prose" style="margin:0">마지막 수집 ${LIVE.updated ? `${fmtDate(zoneParts('Asia/Seoul', LIVE.updated).date, false)} ${kstTime(LIVE.updated)}` : '-'}${ago !== null ? ` (${ago < 1 ? '방금' : ago + '분 전'})` : ''}. ${QT.rows && QT.rows.some(r => r.p !== null) ? '장중에는 1분마다 받습니다. 한국 시세는 야후가 20분 늦게 줍니다.' : `${QT.err ? `실시간 시세 표를 읽지 못해(${esc(QT.err)})` : '실시간 시세 표에 아직 시세가 없어'} GitHub가 모은 시세만 쓰고 있습니다. 이 시세는 많이 늦을 수 있습니다.`}${LIVE.miss.size ? ` 시세를 받지 못한 종목 ${LIVE.miss.size}개는 거래할 수 없습니다: ${[...LIVE.miss].map(id => esc(BY_ID[id].n)).join(', ')}.` : ''}</p>`
+    msg = `<p class="prose" style="margin:0">마지막 수집 ${LIVE.updated ? `${fmtDate(zoneParts('Asia/Seoul', LIVE.updated).date, false)} ${kstTime(LIVE.updated)}` : '-'}${ago !== null ? ` (${ago < 1 ? '방금' : ago + '분 전'})` : ''}. ${rtOnline() ? `<b style="color:#1FA35A">● 온라인</b>: 1분 실시간 수집이 돌고 있습니다(마지막 신호 ${(Date.now() - QT.beat) < 6e4 ? '방금' : Math.floor((Date.now() - QT.beat) / 6e4) + '분 전'}). 장중에는 1분마다 받고, 한국 시세는 야후가 20분 늦게 줍니다.` : `<b style="color:#E5484D">● 오프라인</b>: ${QT.err ? `실시간 시세 표를 읽지 못했습니다(${esc(QT.err)}).` : QT.beat ? `1분 실시간 수집 신호가 ${Math.round((Date.now() - QT.beat) / 6e4)}분째 없습니다.` : '1분 실시간 수집 신호가 아직 없습니다.'} GitHub가 모은 시세만 쓰고 있어 많이 늦을 수 있습니다.`}${LIVE.miss.size ? ` 시세를 받지 못한 종목 ${LIVE.miss.size}개는 거래할 수 없습니다: ${[...LIVE.miss].map(id => esc(BY_ID[id].n)).join(', ')}.` : ''}</p>`
       + (stale ? `<div class="alert bad" style="margin-top:8px">장중인데 시세가 ${ago}분째 갱신되지 않았습니다. 지금 보이는 가격으로 체결됩니다.</div>` : '');
   }
   return `<div class="st-list">${rows}</div>${msg}<button class="btn" id="btnRefresh2" style="margin-top:10px">시세 새로고침</button>`;
