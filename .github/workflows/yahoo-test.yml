@@ -1,0 +1,14 @@
+name: 야후 시세 주소 시험 (임시)
+on:
+  push:
+    branches: [tmp-yahoo-test]
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - run: deno run -A supabase/functions/seed10k-quotes/yahoo_test.ts
