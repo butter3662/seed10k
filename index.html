@@ -581,7 +581,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 100 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.3.1';
+const VERSION = '1.3.2';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -744,10 +744,19 @@ function validSave(s, mode){
   return null;
 }
 function hasProgress(s){ return s && (s.trades.length > 0 || (s.mode === 'sim' && s.day > 0) || s.loans.credit.bal > 0 || s.loans.margin.bal > 0); }
-function save(){
-  if (!S) return;
-  S.savedAt = Date.now();
+/* 저장 규칙
+   - S._ph: 모드를 고르기 전에 화면을 채우려고 만든 임시 게임. 어디에도 저장하지 않는다.
+   - S.syncBase: 이 기록이 이어받은 서버 기록의 표지(무작위 문자열). 서버에 올릴 때마다 새 표지를 붙인다.
+   - S.dirty: 서버에 아직 올리지 않은 변경이 있는지. */
+function writeLocal(){
+  if (!S || S._ph) return;
   try { localStorage.setItem(accKey(S.mode), JSON.stringify(S)); } catch(e){ /* 저장 공간 부족 시 무시 */ }
+}
+function save(){
+  if (!S || S._ph) return;
+  S.savedAt = Date.now();
+  S.dirty = true; ACC.ver++;
+  writeLocal();
   if (ACC.user) scheduleCloud();
 }
 function load(mode){ return validSave(safeParse(localStorage.getItem(accKey(mode))), mode) || newGame(mode); }
@@ -2145,7 +2154,7 @@ function commit(){
 }
 function resetGame(){
   stopAuto();
-  S = newGame(S.mode); save();
+  const keepBase = S.syncBase; S = newGame(S.mode); if (keepBase !== undefined) S.syncBase = keepBase; save();
   $('#modal').hidden = true; $('#modal').classList.remove('on');
   if (UI.sheet) closeSheet(); else { $('#scrim').classList.remove('on'); $('#scrim').hidden = true; }
   $$('.view').forEach(v => { delete v.dataset.built; });
@@ -2155,10 +2164,10 @@ function resetGame(){
 }
 async function setMode(mode){
   stopAuto();
-  if (S) save();
+  if (S && !S._ph){ save(); if (ACC.user){ clearTimeout(ACC.cloudT); await pushCloud(); } }   // 떠나는 모드의 기록을 먼저 올린다
   SET.mode = mode; saveSet();
-  S = ACC.user ? await loadAccountMode(mode) : load(mode);
-  save();
+  if (ACC.user){ S = await loadAccountMode(mode); writeLocal(); if (S.dirty) scheduleCloud(); }
+  else { S = load(mode); save(); }
   if (UI.sheet) closeSheet();
   $$('.view').forEach(v => { delete v.dataset.built; });
   if (mode === 'live') startLivePolling(); else stopLivePolling();
@@ -2226,7 +2235,8 @@ function renderFX(){
 
 /* ───────── 계정 (Supabase) ───────── */
 const ACC = {sb:null, user:null, nick:'', ready:false, err:null, loadedFor:undefined, cloudT:null, rankT:null,
-             lastSync:null, syncErrAt:0, ranks:{}, ranksAt:{}, myRank:{}, gateMode:'login', busy:false};
+             lastSync:null, syncErrAt:0, ranks:{}, ranksAt:{}, myRank:{}, gateMode:'login', busy:false,
+             ver:0, pushing:false, pushAgain:false};
 function isGuestSession(){ try { return sessionStorage.getItem(GUEST_KEY) === '1'; } catch(e){ return false; } }
 function setGuestSession(v){ try { v ? sessionStorage.setItem(GUEST_KEY, '1') : sessionStorage.removeItem(GUEST_KEY); } catch(e){} }
 
@@ -2255,10 +2265,11 @@ async function handleSession(session){
   if (u){
     setGuestSession(false);
     renderGate();   // 로그인됐으니 로그인 화면부터 닫는다 (기록 옮기기 질문이 가려지지 않게)
-    if (SET.mode){ S = await loadAccountMode(SET.mode); save(); }
-    else S = newGame('sim');
+    if (SET.mode){ S = await loadAccountMode(SET.mode); writeLocal(); if (S.dirty) scheduleCloud(); }
+    else { S = newGame('sim'); S._ph = true; }
   } else {
     S = load(SET.mode === 'live' ? 'live' : 'sim');
+    if (!SET.mode) S._ph = true;
   }
   $$('.view').forEach(v => { delete v.dataset.built; });
   if (S.mode === 'live') startLivePolling(); else stopLivePolling();
@@ -2281,15 +2292,64 @@ async function loadAccountMode(mode){
     cloudOk = false;
     toast('서버에서 기록을 불러오지 못해 이 기기에 있던 기록으로 시작합니다', true);
   }
-  let pick = (cloud && local) ? ((cloud.savedAt || 0) >= (local.savedAt || 0) ? cloud : local) : (cloud || local);
+  let pick = cloudOk ? chooseSave(local, cloud) : local;
   if (!pick && cloudOk){
     const guest = validSave(safeParse(localStorage.getItem(SAVE_KEYS[mode])), mode);
     if (hasProgress(guest) && await askImport(mode)){
-      pick = guest;
+      pick = guest; pick.syncBase = null; pick.dirty = true;
       try { localStorage.removeItem(SAVE_KEYS[mode]); } catch(e){}
     }
   }
   return pick || newGame(mode);
+}
+/* 이 기기 기록(local)과 서버 기록(cloud) 중 이어서 할 것을 고른다.
+   - local이 서버 표지를 가진 새 형식이면: 서버에 올리지 못한 변경이 있고(dirty) 그 변경이 지금 서버 기록 위에서
+     이뤄졌을 때(표지가 같을 때)만 local, 그 밖에는 cloud. 다른 기기가 그 사이 올린 기록을 덮어쓰지 않기 위해서다.
+   - local이 표지 없는 예전 형식이면: 진행한 쪽(매매·대출·시뮬레이션 날짜가 있는 쪽)을 고르고, 둘 다 진행했거나
+     둘 다 아니면 나중에 저장된 쪽을 고른다. 예전 버전이 빈 기록으로 서버를 덮어쓴 경우를 되살리기 위해서다. */
+function chooseSave(local, cloud){
+  if (!local) return cloud;
+  if (!cloud) return local;
+  if (local.syncBase !== undefined){
+    return (local.dirty && (local.syncBase ?? null) === (cloud.syncBase ?? null)) ? local : cloud;
+  }
+  const lp = hasProgress(local), cp = hasProgress(cloud);
+  const useLocal = lp !== cp ? lp : (local.savedAt || 0) > (cloud.savedAt || 0);
+  if (!useLocal) return cloud;
+  local.syncBase = cloud.syncBase ?? null; local.dirty = true;   // 서버의 지금 기록을 이어받은 것으로 올린다
+  return local;
+}
+/* 서버 기록이 이 기기와 달라졌을 때(다른 기기에서 진행) 서버 기록으로 바꾼다. */
+async function adoptCloud(mode, msg){
+  if (!ACC.user || !ACC.sb || !S || S.mode !== mode) return;
+  const uid = ACC.user.id;
+  let cloud;
+  try {
+    const {data, error} = await ACC.sb.from('seed10k_saves').select('data').eq('user_id', uid).eq('mode', mode).maybeSingle();
+    if (error) throw error;
+    cloud = data ? validSave(data.data, mode) : null;
+  } catch(e){ return; }
+  if (!cloud || !ACC.user || ACC.user.id !== uid || S.mode !== mode) return;
+  // 예전 버전이 올린 빈 기록(표지 없음)이 이 기기의 진행한 기록을 덮으려 하면 이 기기 쪽을 지킨다
+  if (cloud.syncBase === undefined && hasProgress(S) && !hasProgress(cloud)){
+    S.syncBase = null; S.dirty = true; writeLocal(); scheduleCloud(); return;
+  }
+  stopAuto();
+  if (UI.sheet) closeSheet();
+  S = cloud; S.dirty = false; writeLocal();
+  $$('.view').forEach(v => { delete v.dataset.built; });
+  go(UI.tab); renderHeader();
+  if (msg) toast(msg);
+}
+/* 다른 기기가 서버 기록을 바꿨는지 표지만 받아서 확인한다 (기록 전체는 크므로). */
+async function checkRemote(){
+  if (!ACC.user || !ACC.sb || !S || S._ph || ACC.pushing) return;
+  const uid = ACC.user.id, mode = S.mode;
+  try {
+    const {data, error} = await ACC.sb.from('seed10k_saves').select('sb:data->>syncBase').eq('user_id', uid).eq('mode', mode).maybeSingle();
+    if (error || !data || ACC.pushing) return;
+    if ((data.sb ?? null) !== (S.syncBase ?? null)) await adoptCloud(mode, '다른 기기에서 진행한 기록을 불러왔습니다');
+  } catch(e){}
 }
 function askImport(mode){
   return new Promise(res => {
@@ -2305,20 +2365,44 @@ function scheduleCloud(){
   ACC.rankT = setTimeout(pushRank, 15000);
 }
 function flushCloud(){ if (ACC.user){ clearTimeout(ACC.cloudT); pushCloud(); pushRank(); } }
+/* 서버에 올린다. 서버 기록의 표지가 이 기록이 이어받은 표지와 같을 때만 바꾼다(조건부 갱신).
+   다르면 다른 기기가 그 사이 진행한 것이므로 덮어쓰지 않고 서버 기록으로 바꾼다. */
 async function pushCloud(){
-  if (!ACC.user || !ACC.sb || !S) return;
-  const uid = ACC.user.id, snap = S;
+  if (!ACC.user || !ACC.sb || !S || S._ph) return;
+  if (ACC.pushing){ ACC.pushAgain = true; return; }
+  ACC.pushing = true;
+  const uid = ACC.user.id, snap = S, mode = snap.mode, base = snap.syncBase ?? null, ver = ACC.ver;
+  const token = Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+  const data = JSON.parse(JSON.stringify(snap)); data.syncBase = token; data.dirty = false; delete data._ph;
+  const row = {data, updated_at:new Date().toISOString()};
+  let conflict = false;
   try {
-    const {error} = await ACC.sb.from('seed10k_saves').upsert({user_id:uid, mode:snap.mode, data:snap, updated_at:new Date().toISOString()});
+    let q = ACC.sb.from('seed10k_saves').update(row).eq('user_id', uid).eq('mode', mode);
+    q = base === null ? q.is('data->>syncBase', null) : q.eq('data->>syncBase', base);
+    const {data:upd, error} = await q.select('user_id');
     if (error) throw error;
-    ACC.lastSync = new Date();
+    let ok = !!(upd && upd.length);
+    if (!ok){
+      const ins = await ACC.sb.from('seed10k_saves').insert({user_id:uid, mode, ...row});
+      if (!ins.error) ok = true;
+      else if (ins.error.code === '23505') conflict = true;   // 서버에 다른 기기의 기록이 있다
+      else throw ins.error;
+    }
+    if (ok){
+      ACC.lastSync = new Date();
+      if (S === snap){ S.syncBase = token; if (ACC.ver === ver) S.dirty = false; writeLocal(); }
+    }
   } catch(e){
     if (Date.now() - ACC.syncErrAt > 60000){ ACC.syncErrAt = Date.now(); toast('서버에 저장하지 못했습니다. 이 기기에는 저장돼 있습니다', true); }
+  } finally {
+    ACC.pushing = false;
   }
+  if (conflict && S === snap && ACC.user && ACC.user.id === uid) await adoptCloud(mode, '다른 기기에서 진행한 기록이 있어 그 기록으로 바꿨습니다');
+  if (ACC.pushAgain){ ACC.pushAgain = false; scheduleCloud(); }
 }
 function rankDays(){ return isLive() ? Math.max(0, Math.floor((Date.now() - (S.started || Date.now())) / 864e5)) : S.day; }
 async function pushRank(){
-  if (!ACC.user || !ACC.sb || !S || !ACC.nick) return;
+  if (!ACC.user || !ACC.sb || !S || S._ph || !ACC.nick) return;
   const N = netWorth();
   const ret = clamp(Math.round((N - META.seed) / META.seed * 10000) / 100, -100, 100000);
   try {
@@ -2524,16 +2608,19 @@ document.addEventListener('keydown', e => {
 });
 document.addEventListener('visibilitychange', () => {
   if (document.hidden){ save(); flushCloud(); }
-  else if (isLive()) loadLive(true);
+  else { checkRemote(); if (isLive()) loadLive(true); }
 });
 /* 실제 시세 모드: 1분마다 헤더의 시장 상태와 경과 시간을 다시 그린다 */
 setInterval(() => { if (isLive() && !document.hidden){ renderHeader(); if (UI.tab === 'home') renderHome(); } }, 30000);
+/* 두 기기를 번갈아 쓸 때를 위해, 화면이 보이는 동안 1분마다 서버 기록이 바뀌었는지 확인한다 */
+setInterval(() => { if (!document.hidden) checkRemote(); }, 60000);
 
 let rzT = null;
 window.addEventListener('resize', () => { clearTimeout(rzT); rzT = setTimeout(() => { if (UI.sheet) renderChartBox(); }, 120); });
 /* ───────── 시작 ───────── */
 applyTheme();
 S = load(SET.mode === 'live' ? 'live' : 'sim');
+if (!SET.mode) S._ph = true;
 go('home'); renderHeader();
 if (S.mode === 'live') startLivePolling();
 renderGate();
