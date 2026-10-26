@@ -581,7 +581,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 100 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.3.2';
+const VERSION = '1.3.3';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -2365,6 +2365,15 @@ function scheduleCloud(){
   ACC.rankT = setTimeout(pushRank, 15000);
 }
 function flushCloud(){ if (ACC.user){ clearTimeout(ACC.cloudT); pushCloud(); pushRank(); } }
+/* 서버 오류를 사용자에게 보여줄 짧은 글로 (코드, HTTP 상태, 메시지) */
+function errText(e){
+  if (!e) return '알 수 없는 오류';
+  if (e.code === 'PGRST205' || e.code === '42P01' || /schema cache|does not exist/i.test(e.message || '')) return '서버에 저장용 표가 없음. Supabase에서 seed10k.sql 실행 필요';
+  if (e.code === '42501') return '서버 권한 규칙(RLS)이 저장을 막음. seed10k.sql 다시 실행 필요';
+  const parts = [e.code, e.status, e.message || e.error_description || (typeof e === 'string' ? e : '')].filter(x => x !== undefined && x !== null && x !== '');
+  return (parts.join(' ') || String(e)).slice(0, 160);
+}
+const isAuthErr = e => !!e && (e.code === 'PGRST301' || e.code === 'PGRST303' || e.status === 401 || /jwt/i.test(e.message || ''));
 /* 서버에 올린다. 서버 기록의 표지가 이 기록이 이어받은 표지와 같을 때만 바꾼다(조건부 갱신).
    다르면 다른 기기가 그 사이 진행한 것이므로 덮어쓰지 않고 서버 기록으로 바꾼다. */
 async function pushCloud(){
@@ -2376,24 +2385,36 @@ async function pushCloud(){
   const data = JSON.parse(JSON.stringify(snap)); data.syncBase = token; data.dirty = false; delete data._ph;
   const row = {data, updated_at:new Date().toISOString()};
   let conflict = false;
-  try {
+  const attempt = async () => {
     let q = ACC.sb.from('seed10k_saves').update(row).eq('user_id', uid).eq('mode', mode);
     q = base === null ? q.is('data->>syncBase', null) : q.eq('data->>syncBase', base);
     const {data:upd, error} = await q.select('user_id');
     if (error) throw error;
-    let ok = !!(upd && upd.length);
-    if (!ok){
-      const ins = await ACC.sb.from('seed10k_saves').insert({user_id:uid, mode, ...row});
-      if (!ins.error) ok = true;
-      else if (ins.error.code === '23505') conflict = true;   // 서버에 다른 기기의 기록이 있다
-      else throw ins.error;
+    if (upd && upd.length) return 'ok';
+    const ins = await ACC.sb.from('seed10k_saves').insert({user_id:uid, mode, ...row});
+    if (!ins.error) return 'ok';
+    if (ins.error.code === '23505') return 'conflict';   // 서버에 다른 기기의 기록이 있다
+    throw ins.error;
+  };
+  try {
+    let r;
+    try { r = await attempt(); }
+    catch(e){
+      // 로그인 토큰이 만료돼 거절됐으면 토큰을 새로 받아 한 번 더 시도한다
+      if (!isAuthErr(e)) throw e;
+      const {error:re} = await ACC.sb.auth.refreshSession();
+      if (re) throw e;
+      r = await attempt();
     }
-    if (ok){
-      ACC.lastSync = new Date();
+    if (r === 'conflict') conflict = true;
+    else {
+      ACC.lastSync = new Date(); ACC.syncErr = null;
       if (S === snap){ S.syncBase = token; if (ACC.ver === ver) S.dirty = false; writeLocal(); }
     }
   } catch(e){
-    if (Date.now() - ACC.syncErrAt > 60000){ ACC.syncErrAt = Date.now(); toast('서버에 저장하지 못했습니다. 이 기기에는 저장돼 있습니다', true); }
+    ACC.syncErr = {at:new Date(), text:errText(e)};
+    console.error('[seed10k] 서버 저장 실패', e);
+    if (Date.now() - ACC.syncErrAt > 60000){ ACC.syncErrAt = Date.now(); toast(`서버에 저장하지 못했습니다 (${ACC.syncErr.text}). 이 기기에는 저장돼 있습니다`, true); }
   } finally {
     ACC.pushing = false;
   }
@@ -2485,7 +2506,7 @@ async function signOut(){
 }
 function accountRowsHTML(){
   if (ACC.user){
-    return `<div class="set-row"><div class="l">계정<small>${esc(ACC.user.email || '')}${ACC.lastSync ? `, 서버 저장 ${kstTime(ACC.lastSync)}` : ''}</small></div><button class="btn" id="btnLogout">로그아웃</button></div>
+    return `<div class="set-row"><div class="l">계정<small>${esc(ACC.user.email || '')}${ACC.lastSync ? `, 서버 저장 ${kstTime(ACC.lastSync)}` : ''}</small>${ACC.syncErr ? `<small style="color:var(--down)">서버 저장 실패 ${kstTime(ACC.syncErr.at)}: ${esc(ACC.syncErr.text)}</small>` : ''}</div><button class="btn" id="btnLogout">로그아웃</button></div>
       <div class="set-row"><div class="l">랭킹 닉네임<small>랭킹에는 이메일이 아니라 닉네임만 보입니다</small></div>
         <div class="act" style="flex:0 1 260px"><label class="amt"><input id="nickIn" maxlength="12" value="${esc(ACC.nick)}" placeholder="2~12자" aria-label="닉네임"></label><button class="btn" id="btnNick">저장</button></div></div>`;
   }
