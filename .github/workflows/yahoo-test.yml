@@ -25,3 +25,4 @@ jobs:
             echo "::notice title=차트 $c::HTTP $code, $(python3 -c "import json; d=json.load(open('/tmp/c.json')); print('d1', len((d.get('d1') or {}).get('c', [])), '거래량', len((d.get('d1') or {}).get('v') or []), 'i5', len((d.get('i5') or {}).get('c', [])))" 2>&1)"
           done
           curl -s -m 30 "$B/index.html?t=$(date +%s)" | grep -o "const VERSION = '[0-9.]*'" | head -1 | sed 's/^/::notice title=배포 버전::/'
+# Tue Oct 27 16:30:54 KST 2026
