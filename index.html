@@ -198,6 +198,7 @@ html[data-mode=dark] .mono{background:hsl(var(--h) 32% 22%);color:hsl(var(--h) 7
 .sum-grid div{background:var(--surface);padding:12px 14px}
 .sum-grid dt{font-size:12px;color:var(--ink-2);font-weight:600}
 .sum-grid dd{margin:2px 0 0;font-family:var(--f-num);font-weight:700;font-size:18px;font-stretch:106%}
+.sum-grid small{display:block;margin-top:2px;font-size:11.5px}
 .bench{display:grid;gap:8px}
 .bench-r{display:grid;grid-template-columns:76px 1fr 64px;align-items:center;gap:10px;font-size:13px}
 .bench-r .bar{height:8px;border-radius:999px;background:var(--surface-2);position:relative;overflow:hidden}
@@ -537,7 +538,7 @@ html[data-game=live] .c-news{order:3}
   .tile{display:grid;grid-template-columns:1fr 120px;align-items:center;gap:0 12px}
   .tile > div{grid-column:1}
   .tile svg{grid-column:2;grid-row:1 / span 3;height:44px;margin:0}
-  .sum-grid{grid-template-columns:repeat(4,1fr)}
+  .sum-grid{grid-template-columns:repeat(3,1fr)}
   .assets-grid{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:12px;align-items:start}
   .loans-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-items:start}
   .loans-grid .wide{grid-column:1/-1}
@@ -645,7 +646,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 100 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.12.2';
+const VERSION = '1.12.3';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -2096,17 +2097,11 @@ function renderAssets(){
   <div class="stack">
     <dl class="sum-grid">
       <div><dt>순자산</dt><dd class="num">${fmtUSD(N)}</dd></div>
-      <div><dt>총수익률</dt><dd class="num ${cls(ret)}">${fmtPct(ret)}</dd></div>
+      <div><dt>수익률</dt><dd class="num ${cls(ret)}">${fmtPct(ret)}</dd></div>
+      <div><dt>손익</dt><dd class="num ${cls(N - META.seed - (S.pts || 0))}">${signUSD(N - META.seed - (S.pts || 0))}</dd><small class="muted">순자산 − 시드 − 포인트</small></div>
       <div><dt>주식 평가액</dt><dd class="num">${fmtUSD(V)}</dd></div>
-      <div><dt>평가손익</dt><dd class="num ${cls(unreal)}">${signUSD(unreal)}</dd></div>
-      <div><dt>달러 통장</dt><dd class="num">${fmtUSD(S.usd)}</dd></div>
-      <div><dt>원화 통장</dt><dd class="num">${fmtKRW(S.krw)}</dd></div>
-      <div><dt>대출 잔액</dt><dd class="num">${fmtUSD(D)}</dd></div>
-      <div><dt>실현손익</dt><dd class="num ${cls(S.realized)}">${signUSD(S.realized)}</dd></div>
-      ${(S.pts || 0) > 0 ? `<div><dt>받은 포인트</dt><dd class="num">${fmtUSD(S.pts)}</dd></div>` : ''}
-      ${(S.divUSD || 0) > 0 ? `<div><dt>받은 배당금 (세후)</dt><dd class="num up">${fmtUSD(S.divUSD)}</dd></div>` : ''}
-      <div><dt>낸 이자</dt><dd class="num">${fmtUSD(S.interestPaid)}</dd></div>
-      <div><dt>낸 수수료 (환전 포함)</dt><dd class="num">${fmtUSD(S.feesPaid)}</dd></div>
+      <div><dt>현금</dt><dd class="num">${fmtUSD(S.usd + S.krw / FX())}</dd><small class="muted">${fmtUSD(S.usd)} + ${fmtKRW(S.krw)}</small></div>
+      <div><dt>포인트</dt><dd class="num">${fmtUSD(S.pts || 0)}</dd><small class="muted">미니게임으로 받은 합계</small></div>
     </dl>
     <div class="assets-grid">
       <section class="card"><div class="card-h"><h2>보유 종목</h2><small>${ids.length}개</small></div>
