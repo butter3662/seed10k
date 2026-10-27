@@ -216,6 +216,11 @@ html[data-mode=dark] .mono{background:hsl(var(--h) 32% 22%);color:hsl(var(--h) 7
 .grade{display:grid;grid-template-columns:auto 1fr;gap:16px;align-items:center}
 .grade-n{font-family:var(--f-num);font-weight:800;font-stretch:120%;font-size:54px;line-height:.9;color:var(--brass)}
 .grade-n small{font-size:15px;font-weight:700;color:var(--ink-3);font-stretch:100%}
+.loan-est{margin-top:10px;font-size:13px}
+.loan-est .est{display:grid;gap:6px;margin:0;padding:10px 12px;background:var(--surface-2);border-radius:10px}
+.loan-est .est div{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.loan-est .est dt{color:var(--ink-3)}
+.loan-est .est dd{margin:0;text-align:right}
 .ladder{display:grid;grid-template-columns:repeat(10,1fr);gap:3px;margin:8px 0 6px}
 .ladder i{height:8px;border-radius:2px;background:var(--surface-2);border:1px solid var(--rule)}
 .ladder i.on{background:var(--brass);border-color:var(--brass)}
@@ -640,7 +645,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 100 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.12.0';
+const VERSION = '1.12.1';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -1342,6 +1347,33 @@ function step(){
   commit();
   if (alerts.length){ stopAuto(); showAlerts(alerts); }
   else if (UI.tab !== 'home'){ const d = N - prevNW; if (Math.abs(d) >= .01) toastQuiet(`${fmtDate(S.date, false)} 정산 ${signUSD(d)}`); }
+}
+
+/* 빌리기 전 예상: 수수료 3%를 더한 빚에 지금 금리로 날마다 복리 이자가 붙는다고 보고 계산한다
+   신용대출: 만기까지(이미 대출이 있으면 그 만기까지 남은 기간), 주식담보대출: 만기가 없어 하루와 30일 기준 */
+function loanEstHTML(kind, A){
+  const live = isLive(), YD = live ? 365 : 252, U = termUnit(), L = limits();
+  const r = rates()[kind] / 100, grow = n => Math.pow(1 + r / YD, n);
+  if (!(A > 0)) return `<span class="muted">금액을 넣으면 ${kind === 'credit' ? '만기에 갚을 금액' : '이자'}을 미리 계산해 보여 줍니다.</span>`;
+  const over = A > L[kind] + 1e-6 ? `<div class="alert bad" style="margin:6px 0 0">한도를 넘습니다. 지금 빌릴 수 있는 금액은 ${fmtUSD(L[kind])}입니다.</div>` : '';
+  const fee = A * META.loanFee, B0 = A + fee;
+  if (kind === 'credit'){
+    const C = S.loans.credit, has = C.bal > 0 && C.due !== null;
+    const n = has ? Math.max(0, live ? daysBetween(kstDate(), C.due) : C.due - S.day) : META.creditTerm;
+    const dueTxt = live ? fmtDate(has ? C.due : addDays(kstDate(), META.creditTerm), false) : `${n}거래일 뒤`;
+    const end = B0 * grow(n), all = (C.bal + B0) * grow(n);
+    return `<dl class="est">
+      <div><dt>빌린 직후 빚</dt><dd class="num">${fmtUSD(B0)} <small class="muted">(수수료 ${fmtUSD(fee)})</small></dd></div>
+      <div><dt>만기(${dueTxt})까지 이자</dt><dd class="num">약 ${fmtUSD(end - B0)} <small class="muted">(${n}${U}, 연 ${(r * 100).toFixed(2)}% 복리)</small></dd></div>
+      <div><dt>만기에 갚을 금액</dt><dd class="num"><b>약 ${fmtUSD(end)}</b>${has ? ` <small class="muted">(기존 대출과 합쳐 약 ${fmtUSD(all)})</small>` : ''}</dd></div>
+      <div><dt>총비용</dt><dd class="num down">약 ${fmtUSD(end - A)} <small class="muted">(빌린 돈의 ${((end / A - 1) * 100).toFixed(2)}%)</small></dd></div>
+    </dl><p class="muted" style="margin:4px 0 0">신용등급이 바뀌면 금리도 바뀌어 실제 금액은 달라질 수 있습니다.</p>${over}`;
+  }
+  return `<dl class="est">
+      <div><dt>빌린 직후 빚</dt><dd class="num">${fmtUSD(B0)} <small class="muted">(수수료 ${fmtUSD(fee)})</small></dd></div>
+      <div><dt>하루 이자</dt><dd class="num">약 ${fmtUSD(B0 * r / YD)} <small class="muted">(연 ${(r * 100).toFixed(2)}%)</small></dd></div>
+      <div><dt>30${U} 쓰면 이자</dt><dd class="num">약 ${fmtUSD(B0 * (grow(30) - 1))} <small class="muted">(복리, 만기 없음)</small></dd></div>
+    </dl>${over}`;
 }
 
 /* ───────── 공통: 이자·만기·담보 ───────── */
@@ -2140,10 +2172,10 @@ function renderLoans(){
     </section>
     ${card('credit', '신용대출', `순자산과 신용등급으로 한도가 정해지는 대출입니다. 만기 ${META.creditTerm}${U}. 빌릴 때 금액의 3%가 수수료로 빚에 더해지고, 이자는 ${live ? '날마다' : '거래일마다'} 빚에 더해집니다(복리).`, R.credit,
       [['대출 잔액', fmtUSD(C.bal)], ['더 빌릴 수 있는 금액', fmtUSD(L.credit)], ['남은 기간', C.bal > 0 && C.due !== null ? (C.overdue > 0 ? `연체 ${C.overdue}${U}` : `${Math.max(0, remain)}${U}`) : '없음']],
-      `<div class="act">${amtBox('credit')}<button class="btn brass" data-borrow="credit">빌리기</button><button class="btn" data-repay="credit" ${C.bal > 0 ? '' : 'disabled'}>갚기</button><button class="btn" data-repayall="credit" ${C.bal > 0 ? '' : 'disabled'}>전액 상환</button></div>`, cWarn)}
+      `<div class="act">${amtBox('credit')}<button class="btn brass" data-borrow="credit">빌리기</button><button class="btn" data-repay="credit" ${C.bal > 0 ? '' : 'disabled'}>갚기</button><button class="btn" data-repayall="credit" ${C.bal > 0 ? '' : 'disabled'}>전액 상환</button></div><div class="loan-est" id="est-credit">${loanEstHTML('credit', 0)}</div>`, cWarn)}
     ${card('margin', '주식담보대출', `보유 주식 평가액의 ${META.ltv*100}%까지 빌립니다. 빌릴 때 3% 수수료가 빚에 더해집니다. 담보유지비율이 120% 아래로 떨어지면 자동 반대매매됩니다.`, R.margin,
       [['대출 잔액', fmtUSD(M.bal)], ['더 빌릴 수 있는 금액', fmtUSD(L.margin)], ['담보유지비율', M.bal > 0 ? (ratio*100).toFixed(0) + '%' : '해당 없음']],
-      `<div class="act">${amtBox('margin')}<button class="btn brass" data-borrow="margin" ${L.margin > 1 ? '' : 'disabled'}>빌리기</button><button class="btn" data-repay="margin" ${M.bal > 0 ? '' : 'disabled'}>갚기</button><button class="btn" data-repayall="margin" ${M.bal > 0 ? '' : 'disabled'}>전액 상환</button></div>`, mWarn)}
+      `<div class="act">${amtBox('margin')}<button class="btn brass" data-borrow="margin" ${L.margin > 1 ? '' : 'disabled'}>빌리기</button><button class="btn" data-repay="margin" ${M.bal > 0 ? '' : 'disabled'}>갚기</button><button class="btn" data-repayall="margin" ${M.bal > 0 ? '' : 'disabled'}>전액 상환</button></div><div class="loan-est" id="est-margin">${loanEstHTML('margin', 0)}</div>`, mWarn)}
     ${card('od', '마이너스통장', '달러 통장에 연결된 한도 대출입니다. 달러보다 큰 미국 주식 주문이나 환전을 하면 자동으로 빌려지고, 달러가 들어오면 먼저 갚습니다. 끌어 쓸 때마다 그 금액의 3%가 수수료로 빚에 더해집니다.', R.od,
       [['사용액', fmtUSD(O.bal)], ['한도', fmtUSD(L.odLimit)], ['더 쓸 수 있는 금액', fmtUSD(odAvail())]],
       `<div class="act">${amtBox('od')}<button class="btn" data-repay="od" ${O.bal > 0 ? '' : 'disabled'}>갚기</button><button class="btn" data-repayall="od" ${O.bal > 0 ? '' : 'disabled'}>전액 상환</button></div>`)}
@@ -3461,6 +3493,10 @@ setInterval(() => { if (isLive() && !document.hidden){ renderHeader(); if (UI.ta
 /* 두 기기를 번갈아 쓸 때를 위해, 화면이 보이는 동안 1분마다 서버 기록이 바뀌었는지 확인한다 */
 setInterval(() => { if (!document.hidden) checkRemote(); }, 60000);
 
+document.addEventListener('input', e => {
+  const m = e.target && e.target.id && e.target.id.match(/^amt-(credit|margin)$/);
+  if (m){ const box = $('#est-' + m[1]); if (box) box.innerHTML = loanEstHTML(m[1], parseFloat(e.target.value) || 0); }
+});
 let rzT = null;
 window.addEventListener('resize', () => { clearTimeout(rzT); rzT = setTimeout(() => { if (UI.sheet) renderChartBox(); }, 120); });
 /* ───────── 시작 ───────── */
