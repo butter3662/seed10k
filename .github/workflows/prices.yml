@@ -98,7 +98,7 @@ jobs:
               return [dates[k] for k in keep], {sid: [vals[k] for k in keep] for sid, vals in rows.items()}
 
 
-          def download(symbols, tries=3, vols=None, **kw):
+          def download(symbols, tries=3, vols=None, lows=None, highs=None, **kw):
               """여러 종목을 한 번에 받아 {야후심볼: 종가 Series} 로 돌려준다.
               vols에 dict를 넘기면 같은 요청의 거래량도 {야후심볼: 거래량 Series}로 채운다 (요청을 늘리지 않는다)."""
               out = {}
@@ -121,10 +121,11 @@ jobs:
                       col = col.dropna()
                       if len(col):
                           out[sym] = col
-                          if vols is not None:
+                          for dst, field in ((vols, "Volume"), (lows, "Low"), (highs, "High")):
+                              if dst is None:
+                                  continue
                               try:
-                                  v = df[sym]["Volume"] if isinstance(df.columns, pd.MultiIndex) else df["Volume"]
-                                  vols[sym] = v
+                                  dst[sym] = df[sym][field] if isinstance(df.columns, pd.MultiIndex) else df[field]
                               except KeyError:
                                   pass
                   pending = [s for s in pending if s not in out]
@@ -155,9 +156,16 @@ jobs:
               return out
 
 
-          def series_secs(m, s):
+          def series_secs(m, s, lo=None, hi=None):
               s = s[~s.index.duplicated(keep="last")]
-              return {"t": [int(pd.Timestamp(i).timestamp()) for i in s.index], "c": [rnd(m, v) for v in s.values]}
+              out = {"t": [int(pd.Timestamp(i).timestamp()) for i in s.index], "c": [rnd(m, v) for v in s.values]}
+              if lo is not None and hi is not None:
+                  # 봉의 저가·고가 (예약 주문 판정용). 값이 없으면 종가로 채운다
+                  l = lo[~lo.index.duplicated(keep="last")].reindex(s.index)
+                  h = hi[~hi.index.duplicated(keep="last")].reindex(s.index)
+                  out["l"] = [rnd(m, min(a, c) if a == a else c) for a, c in zip(l.values, s.values)]
+                  out["h"] = [rnd(m, max(b, c) if b == b else c) for b, c in zip(h.values, s.values)]
+              return out
 
 
           def build_market(m, series_by_id):
@@ -208,7 +216,8 @@ jobs:
               # ── 1) 게임용 일별 종가 (기준일부터) ──
               got = download(ysyms + [FX_SYMBOL], start=START, interval="1d")
               # 장중 5분 봉 (최근 5거래일). 차트에도 쓰고, Yahoo 일봉에 빠진 거래일을 채우는 데도 쓴다.
-              i5 = download(ysyms, period="5d", interval="5m")
+              i5l, i5h = {}, {}
+              i5 = download(ysyms, period="5d", interval="5m", lows=i5l, highs=i5h)
               result = {"v": 1, "updated": now.strftime("%Y-%m-%dT%H:%M:%SZ"), "start": START, "dates": {}, "s": {}, "miss": []}
               filled_days = {}
               for m in ("KR", "US"):
@@ -334,7 +343,7 @@ jobs:
                   y, m = v["y"], v["m"]
                   hs = hist["s"].get(sid, {}) if hist else {}
                   doc = {"v": 1, "t": result.get("updated"),
-                         "i5": series_secs(m, i5[y]) if y in i5 else None,
+                         "i5": series_secs(m, i5[y], i5l.get(y), i5h.get(y)) if y in i5 else None,
                          "h1": series_secs(m, h1[y]) if y in h1 else None,
                          "d1": hs.get("d1"), "wk": hs.get("wk"), "mo": hs.get("mo")}
                   (out / "c" / (sid.replace(":", "_") + ".json")).write_text(json.dumps(doc, separators=(",", ":")), encoding="utf-8")

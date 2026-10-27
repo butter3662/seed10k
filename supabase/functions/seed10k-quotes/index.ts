@@ -28,10 +28,12 @@ type Row = { id: string; ysym: string; m: string; updated_at?: string | null };
 type Quote = {
   id: string; ysym: string; m: string;
   p: number; t: string; d: string;
-  i: { t: number[]; c: number[] };
+  i: { t: number[]; c: number[]; l: number[]; h: number[] };
+  dl?: number; dh?: number;   // 그날 저가·고가
   updated_at: string;
 };
 
+let dailyLH = true;           // seed10k_daily에 l, h 열이 있는지 (없다는 오류를 한 번 보면 끈다)
 const MIN_GAP_MS = 40_000;   // 이 간격 안에 다시 불리면 건너뛴다
 const POOL = 16;             // 야후에 동시에 보내는 요청 수 (시장별 300종목을 1분 안에 넉넉히 받도록)
 const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36";
@@ -74,11 +76,17 @@ export async function fetchQuote(row: Row): Promise<Quote> {
       const rnd = (v: number) => (krw ? Math.round(v) : Math.round(v * 100) / 100);
       const tz = meta.exchangeTimezoneName || (krw ? "Asia/Seoul" : "America/New_York");
       const ts: number[] = res.timestamp || [];
-      const cl: (number | null)[] = res.indicators?.quote?.[0]?.close || [];
-      const it: number[] = [], ic: number[] = [];
+      const qt = res.indicators?.quote?.[0] || {};
+      const cl: (number | null)[] = qt.close || [], lo: (number | null)[] = qt.low || [], hi: (number | null)[] = qt.high || [];
+      const it: number[] = [], ic: number[] = [], il: number[] = [], ih: number[] = [];
+      const r2 = (v: number) => (row.m === "FX" ? Math.round(v * 100) / 100 : rnd(v));
       for (let k = 0; k < ts.length; k++) {
         const v = cl[k];
-        if (typeof v === "number" && isFinite(v)) { it.push(ts[k]); ic.push(row.m === "FX" ? Math.round(v * 100) / 100 : rnd(v)); }
+        if (typeof v === "number" && isFinite(v)) {
+          const l = typeof lo[k] === "number" && isFinite(lo[k] as number) ? Math.min(lo[k] as number, v) : v;
+          const h = typeof hi[k] === "number" && isFinite(hi[k] as number) ? Math.max(hi[k] as number, v) : v;
+          it.push(ts[k]); ic.push(r2(v)); il.push(r2(l)); ih.push(r2(h));
+        }
       }
       const sec = meta.regularMarketTime || (it.length ? it[it.length - 1] : Math.floor(Date.now() / 1000));
       return {
@@ -86,7 +94,8 @@ export async function fetchQuote(row: Row): Promise<Quote> {
         p: row.m === "FX" ? Math.round(meta.regularMarketPrice * 100) / 100 : rnd(meta.regularMarketPrice),
         t: new Date(sec * 1000).toISOString(),
         d: localDate(tz, sec),
-        i: { t: it, c: ic },
+        i: { t: it, c: ic, l: il, h: ih },
+        ...(il.length ? { dl: Math.min(...il), dh: Math.max(...ih) } : {}),
         updated_at: new Date().toISOString(),
       };
     } catch (e) { lastErr = String((e as Error).message || e); }
@@ -397,17 +406,27 @@ export async function run(at = new Date()) {
     await rest("seed10k_quotes?on_conflict=id", {
       method: "POST",
       headers: restHeaders({ Prefer: "resolution=merge-duplicates,return=minimal" }),
-      body: JSON.stringify(ok.slice(k, k + 100)),
+      body: JSON.stringify(ok.slice(k, k + 100).map(({ dl: _l, dh: _h, ...q }) => q)),
     });
   }
   // 거래일별 마지막 가격(장이 끝나면 그날 종가)도 남긴다. GitHub 수집이 며칠 멈춰도 일별 종가가 비지 않게.
-  const daily = ok.map((q) => ({ id: q.id, d: q.d, c: q.p }));
+  // 그날 저가·고가(l, h)도 남긴다 (예약 주문 판정용). 표에 l, h 열이 아직 없으면 종가만 남긴다
+  const daily = ok.map((q) => ({ id: q.id, d: q.d, c: q.p, ...(dailyLH && q.dl != null ? { l: q.dl, h: q.dh } : {}) }));
   for (let k = 0; k < daily.length; k += 200) {
-    await rest("seed10k_daily?on_conflict=id,d", {
+    const part = daily.slice(k, k + 200);
+    const send = (rows: unknown[]) => rest("seed10k_daily?on_conflict=id,d", {
       method: "POST",
       headers: restHeaders({ Prefer: "resolution=merge-duplicates,return=minimal" }),
-      body: JSON.stringify(daily.slice(k, k + 200)),
+      body: JSON.stringify(rows),
     });
+    const plain = () => part.map(({ l: _l, h: _h, ...r }) => r);
+    if (!dailyLH) { await send(plain()); continue; }
+    try { await send(part); }
+    catch (e) {
+      if (!/column|PGRST204|42703/i.test(String((e as Error).message || e))) throw e;
+      dailyLH = false;
+      await send(plain());
+    }
   }
   return { act, added: add.length, wanted: want.length, saved: ok.length, failed: failed.slice(0, 10), failedCount: failed.length, news, dart, divs, ms: Date.now() - started };
 }

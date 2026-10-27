@@ -664,7 +664,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.14.1';
+const VERSION = '1.14.2';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -1654,7 +1654,9 @@ async function loadQuotes(){
     const [q, dl] = await Promise.all([
       ACC.sb.from('seed10k_quotes').select('id,m,p,t,d,updated_at'),
       // 일별 표 읽기가 실패해도 최신가는 쓰도록, 실패를 여기서 삼킨다
-      (since ? Promise.resolve(ACC.sb.from('seed10k_daily').select('id,d,c').gt('d', since).order('d', {ascending:true}).limit(5000)) : Promise.resolve({data:[], error:null})).catch(e => ({data:[], error:e}))
+      (since ? Promise.resolve(ACC.sb.from('seed10k_daily').select(QT.lh === false ? 'id,d,c' : 'id,d,c,l,h').gt('d', since).order('d', {ascending:true}).limit(5000))
+        .then(r => (r.error && QT.lh !== false && /column|42703/i.test(r.error.message || '')) ? (QT.lh = false, ACC.sb.from('seed10k_daily').select('id,d,c').gt('d', since).order('d', {ascending:true}).limit(5000)) : r)
+        : Promise.resolve({data:[], error:null})).catch(e => ({data:[], error:e}))
     ]);
     if (q.error) throw q.error;
     QT.rows = q.data || []; QT.daily = (!dl.error && dl.data) || []; QT.at = new Date(); QT.err = null;

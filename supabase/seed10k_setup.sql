@@ -152,3 +152,7 @@ create table if not exists public.seed10k_divs (id text primary key, at timestam
 alter table public.seed10k_divs enable row level security;
 drop policy if exists "seed10k_divs_select_all" on public.seed10k_divs;
 create policy "seed10k_divs_select_all" on public.seed10k_divs for select using (true);
+
+-- 10) 일별 저가·고가 (예약 주문 판정용)
+alter table public.seed10k_daily add column if not exists l numeric;
+alter table public.seed10k_daily add column if not exists h numeric;
