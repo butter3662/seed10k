@@ -664,7 +664,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.14.0';
+const VERSION = '1.14.1';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -1180,6 +1180,8 @@ function placeOrder(id, side, kind, px, q){
   if (!(px > 0)) return toast('조건 가격을 입력하세요', true);
   if (q < 1) return toast('수량을 1주 이상 입력하세요', true);
   const o = {n:Date.now().toString(36) + Math.random().toString(36).slice(2, 6), id, side, kind:side === 'buy' ? 'le' : kind, px, q, at:Date.now(), st:'wait'};
+  // 이 시각보다 뒤의 시세만 판정한다. 실제 시각(at)을 쓰면 한국처럼 늦게 오는 시세는 주문 뒤 약 20분 동안 전부 무시된다
+  if (isLive()){ const ft = lastPriceTs(id); o.from = ft > 0 && ft <= o.at ? ft : o.at; }
   if (side === 'sell'){
     const held = S.pos[id] ? S.pos[id].q : 0;
     if (held < 1) return toast('보유하지 않은 종목은 예약 매도할 수 없습니다', true);
@@ -1231,16 +1233,18 @@ function pricePath(id, from, to){
   if (i5) for (let k = 0; k < i5.t.length; k++){
     const t = i5.t[k] * 1000;
     covered.add(zoneParts(tz, new Date(t)).date);
-    if (t > from && t <= to) pts.push({t, p:i5.c[k]});
+    if (t > from && t <= to) pts.push({t, p:i5.c[k], lo:Math.min(i5.l[k], i5.c[k]), hi:Math.max(i5.h[k], i5.c[k])});
   }
+  // 5분 봉이 없는 날은 그날 저가·고가(있으면)와 종가
   const ds = LIVE.dates[s.m] || [], cs = LIVE.s[id] || [];
+  const dlh = {}; for (const r of (QT.daily || [])) if (r.id === id && r.l != null && r.h != null) dlh[r.d] = r;
   for (let k = 0; k < ds.length; k++){
     if (covered.has(ds[k])) continue;
-    const t = zoneTs(tz, ds[k], SESS[s.m].c);
-    if (t > from && t <= to) pts.push({t, p:cs[k]});
+    const t = zoneTs(tz, ds[k], SESS[s.m].c), x = dlh[ds[k]], c = cs[k];
+    if (t > from && t <= to && c != null) pts.push({t, p:c, lo:x ? Math.min(+x.l, c) : c, hi:x ? Math.max(+x.h, c) : c});
   }
   const lt = LIVE.updated ? LIVE.updated.getTime() : 0;
-  if (lt > from && lt <= to) pts.push({t:lt, p:price(id)});
+  if (lt > from && lt <= to){ const p = price(id); pts.push({t:lt, p, lo:p, hi:p}); }
   return pts.sort((a, b) => a.t - b.t);
 }
 let ordersBusy = false;
@@ -1253,8 +1257,11 @@ async function processOrdersLive(){
     const nowMs = Date.now(), notes = [], hits = [];
     for (const o of wait){
       const end = Math.min(nowMs, o.exp || nowMs);
-      const hit = pricePath(o.id, o.at, end).find(pt => condMet(o, pt.p));
-      if (hit) hits.push({o, ...hit});
+      // 기준 시각: 주문 때 보이던 가격의 시각. 예전 주문은 시세 지연(한국 20분, 미국 2분)만큼 앞당긴다
+      const from = o.from || (o.at - (BY_ID[o.id].m === 'KR' ? 20 : 2) * 60e3);
+      const pt = pricePath(o.id, from, end).find(x => o.kind === 'le' ? x.lo <= o.px : x.hi >= o.px);
+      // 체결가: 조건 가격. 봉 전체가 조건 너머에 있으면(갭) 그 봉에서 가장 가까운 가격
+      if (pt) hits.push({o, t:pt.t, p:o.kind === 'le' ? Math.min(o.px, pt.hi) : Math.max(o.px, pt.lo)});
       else if (o.exp && nowMs > o.exp){
         o.st = 'expire'; o.endAt = o.exp;
         notes.push({t:`${orderKindLabel(o)} 기간 끝`, b:`${BY_ID[o.id].n} ${orderCondText(o)} 조건이 ${ORDER_DAYS}일 동안 오지 않아 주문이 취소됐습니다.`});
@@ -2605,10 +2612,19 @@ async function loadChart(id, force){
 function intradayOf(id){
   const c = CH[id]; if (!c) return null;
   const base = c.d && c.d.i5 && c.d.i5.t && c.d.i5.t.length ? c.d.i5 : null, q = c.qi;
-  if (!q) return base;
-  if (!base) return {t:q.t.slice(), c:q.c.slice()};
+  if (!q) return base ? {t:base.t, c:base.c, l:base.l || base.c, h:base.h || base.c} : null;
+  const ql = q.l && q.l.length === q.t.length ? q.l : q.c, qh = q.h && q.h.length === q.t.length ? q.h : q.c;
+  if (!base) return {t:q.t.slice(), c:q.c.slice(), l:ql.slice(), h:qh.slice()};
+  const bl = base.l && base.l.length === base.t.length ? base.l : base.c, bh = base.h && base.h.length === base.t.length ? base.h : base.c;
   const cut = q.t[0], k = base.t.findIndex(x => x >= cut), n = k < 0 ? base.t.length : k;
-  return {t:base.t.slice(0, n).concat(q.t), c:base.c.slice(0, n).concat(q.c)};
+  return {t:base.t.slice(0, n).concat(q.t), c:base.c.slice(0, n).concat(q.c), l:bl.slice(0, n).concat(ql), h:bh.slice(0, n).concat(qh)};
+}
+/* 이 종목에서 지금 화면에 보이는 가격의 시각(시세 자료의 시각). 한국 시세는 약 20분 늦으므로 실제 시각보다 이르다 */
+function lastPriceTs(id){
+  let t = 0;
+  const i5 = intradayOf(id); if (i5 && i5.t.length) t = Math.max(t, i5.t[i5.t.length - 1] * 1000);
+  const r = (QT.rows || []).find(x => x.id === id); if (r && r.t) t = Math.max(t, Date.parse(r.t) || 0);
+  return t;
 }
 const RANGES_LIVE = [['1D','1일'],['1W','1주'],['1M','1개월'],['3M','3개월'],['6M','6개월'],['YTD','YTD'],['1Y','1년'],['2Y','2년'],['5Y','5년'],['10Y','10년'],['ALL','전체']];
 const RANGES_SIM = [['1W','1주'],['1M','1개월'],['3M','3개월'],['6M','6개월'],['1Y','1년'],['ALL','전체']];
