@@ -10,8 +10,10 @@
 // - 아무나 이 주소를 불러도 40초 안에 다시 부르면 아무것도 하지 않는다(야후 요청 남용 방지).
 // - 장 시간과 관계없이 불릴 때마다 _beat 줄의 시각을 남긴다. 게임은 이 시각이 3분 안이면 '온라인'으로 표시한다.
 // - 뉴스: 장 시간과 관계없이 한 번에 7종목씩, 30분 넘게 묵은 종목부터 받아 public.seed10k_news에 저장한다
-//   (200종목이 약 30분에 한 바퀴). 한국어는 네이버 뉴스 검색 API(함수 비밀값 NAVER_CLIENT_ID,
+//   (200종목이 약 30분에 한 바퀴). 한국어는 NAVER API HUB 뉴스 검색(함수 비밀값 NAVER_CLIENT_ID,
 //   NAVER_CLIENT_SECRET가 있을 때만), 미국 종목은 Yahoo Finance 영어 뉴스도 함께 받는다.
+//   NAVER API HUB 뉴스 검색: GET https://naverapihub.apigw.ntruss.com/search/v1/news
+//   (헤더 X-NCP-APIGW-API-KEY-ID = Client ID, X-NCP-APIGW-API-KEY = Client Secret)
 
 import NAMES from "./names.ts";
 
@@ -109,13 +111,13 @@ const ENT: Record<string, string> = { "&quot;": '"', "&amp;": "&", "&lt;": "<", 
 const clean = (x: string) => String(x || "").replace(/<[^>]*>/g, "").replace(/&(quot|amp|lt|gt|#39|apos|nbsp);/g, (m) => ENT[m] || m).replace(/\s+/g, " ").trim();
 const host = (u: string) => { try { return new URL(u).hostname.replace(/^www\./, ""); } catch { return ""; } };
 
-/* 네이버 뉴스 검색 (한국어). 키가 없으면 null */
+/* NAVER API HUB 뉴스 검색 (한국어). 키가 없으면 null */
 export async function naverNews(name: string): Promise<News[] | null> {
   const id = Deno.env.get("NAVER_CLIENT_ID"), sec = Deno.env.get("NAVER_CLIENT_SECRET");
   if (!id || !sec) return null;
   const q = `${name} 주가`;
-  const r = await fetch(`https://openapi.naver.com/v1/search/news.json?query=${encodeURIComponent(q)}&display=${NEWS_N}&sort=date`,
-    { headers: { "X-Naver-Client-Id": id, "X-Naver-Client-Secret": sec } });
+  const r = await fetch(`https://naverapihub.apigw.ntruss.com/search/v1/news?query=${encodeURIComponent(q)}&display=${NEWS_N}&start=1&sort=date&format=json`,
+    { headers: { "X-NCP-APIGW-API-KEY-ID": id, "X-NCP-APIGW-API-KEY": sec } });
   if (!r.ok) throw new Error(`naver HTTP ${r.status}: ${(await r.text()).slice(0, 120)}`);
   const j = await r.json();
   return (j.items || []).slice(0, NEWS_N).map((x: Record<string, string>) => {
@@ -144,6 +146,11 @@ export async function yahooNews(sym: string): Promise<News[]> {
 export async function refreshNews() {
   const rows: { id: string; at: string | null }[] = await (await rest("seed10k_news?select=id,at", { headers: restHeaders() })).json();
   const at = new Map(rows.map((r) => [r.id, r.at ? Date.parse(r.at) : 0]));
+  // 네이버 키가 생겼으면, 키가 없어서 한국어 기사가 비어 있던(ko = null) 종목을 먼저 다시 받는다
+  if (Deno.env.get("NAVER_CLIENT_ID") && Deno.env.get("NAVER_CLIENT_SECRET")) {
+    const noKey: { id: string }[] = await (await rest("seed10k_news?select=id&items->>ko=is.null", { headers: restHeaders() })).json();
+    for (const r of noKey) at.set(r.id, 0);
+  }
   const now = Date.now();
   const ids = Object.keys(NAMES).filter((id) => now - (at.get(id) || 0) > NEWS_TTL_MS)
     .sort((a, b) => (at.get(a) || 0) - (at.get(b) || 0)).slice(0, NEWS_PER_RUN);
