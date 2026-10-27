@@ -1,12 +1,30 @@
-name: OpenDART 응답 형식 확인 (임시)
+name: 공시 상태 확인 (임시)
 on:
   push:
     branches: [tmp-yahoo-test]
 jobs:
-  test:
+  check:
     runs-on: ubuntu-24.04
     timeout-minutes: 3
     steps:
-      - run: |
-          code=$(curl -s -m 30 -o /tmp/d -w "%{http_code}" "https://opendart.fss.or.kr/api/list.json?crtfc_key=0000000000000000000000000000000000000000&bgn_de=20261027&end_de=20261027&page_no=1&page_count=100")
-          echo "::notice title=OpenDART (가짜 키)::HTTP $code $(head -c 300 /tmp/d)"
+      - name: 확인
+        env:
+          U: https://ictjkqbbcaigdvlysdaw.supabase.co
+          K: sb_publishable_C7jZEKJn_nF2Y3Ngq5f80Q_RA5Wrfux
+        run: |
+          c=$(curl -s -m 30 -o /tmp/n -w "%{http_code}" "$U/rest/v1/seed10k_dart?select=id,at,items&order=at.desc" -H "apikey: $K")
+          python3 - "$c" <<'PY'
+          import json, sys
+          code = sys.argv[1]
+          try: d = json.load(open('/tmp/n'))
+          except Exception: d = None
+          if not isinstance(d, list): print(f"::notice title=공시 표::HTTP {code} {str(d)[:300]}"); sys.exit()
+          st = [r for r in d if r['id'] == '_state']
+          kr = [r for r in d if r['id'].startswith('KR:')]
+          n = sum(len(r['items'] or []) for r in kr)
+          print(f"::notice title=공시 표::HTTP {code}, 종목 {len(kr)}개, 공시 {n}건, 상태 {st[0]['items'] if st else '없음'} ({st[0]['at'] if st else ''})")
+          for r in kr[:3]:
+              it = (r['items'] or [])[:2]
+              print(f"::notice title=예시 {r['id']}::" + " / ".join(f"{x.get('d')} {x.get('t')} ({x.get('f')}) {x.get('r')}" for x in it))
+          PY
+          curl -s -m 30 "$U/rest/v1/seed10k_quotes?select=id,updated_at&m=eq.SYS" -H "apikey: $K" -o /tmp/s; echo "::notice title=함수 신호::$(cat /tmp/s)"
