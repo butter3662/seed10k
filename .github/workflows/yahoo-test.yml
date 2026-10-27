@@ -1,23 +1,28 @@
-name: 함수 배포 확인 (임시)
+name: ETF·분할 확인 (임시)
 on:
   push:
     branches: [tmp-yahoo-test]
 jobs:
   check:
     runs-on: ubuntu-24.04
-    timeout-minutes: 6
+    timeout-minutes: 5
     steps:
       - run: |
-          U=https://ictjkqbbcaigdvlysdaw.supabase.co; K=sb_publishable_C7jZEKJn_nF2Y3Ngq5f80Q_RA5Wrfux
-          for i in 1 2 3 4 5 6; do
-            c=$(curl -s -m 120 -o /tmp/r -w "%{http_code}" -X POST "$U/functions/v1/seed10k-quotes" -H "apikey: $K" -H "Content-Type: application/json" -d '{}')
-            if ! grep -q '방금 실행됨' /tmp/r; then break; fi
-            sleep 15
+          for s in QQQ TQQQ SQQQ SPY 069500.KS 114800.KS NVDA AAPL; do
+            curl -s -m 30 -A "Mozilla/5.0" -o /tmp/d "https://query1.finance.yahoo.com/v8/finance/chart/$s?period1=1760918400&period2=1793232000&interval=1d&events=div%7Csplit"
+            python3 - "$s" <<'PY'
+          import json, sys, datetime
+          s = sys.argv[1]
+          try:
+              r = json.load(open('/tmp/d'))['chart']['result'][0]
+              m = r['meta']; ts = r['timestamp']; c = r['indicators']['quote'][0]['close']
+              tz = m.get('exchangeTimezoneName'); off = m.get('gmtoffset', 0)
+              d = {datetime.datetime.utcfromtimestamp(t + off).strftime('%Y-%m-%d'): v for t, v in zip(ts, c)}
+              ev = r.get('events') or {}
+              sp = sorted(ev.get('splits', {}).values(), key=lambda x: x['date'])
+              spt = [(datetime.datetime.utcfromtimestamp(x['date'] + off).strftime('%Y-%m-%d'), x.get('numerator'), x.get('denominator'), x.get('splitRatio')) for x in sp]
+              print(f"::notice title={s}::이름 {m.get('longName') or m.get('shortName')}, 10/23 종가 {d.get('2026-10-23')}, 10/27 {d.get('2026-10-27')}, 분할 {spt}, 배당 {len(ev.get('dividends', {}))}건")
+          except Exception as e:
+              print(f"::notice title={s}::실패 {e} {open('/tmp/d').read()[:200]}")
+          PY
           done
-          echo "::notice title=함수 응답 HTTP $c::$(python3 -c "import json; d=json.load(open('/tmp/r')); print(json.dumps({k:d.get(k) for k in ('skipped','added','act','divs','error')}, ensure_ascii=False))")"
-          curl -s "$U/rest/v1/seed10k_quotes?select=id,m,ysym&m=in.(KR,US)" -H "apikey: $K" -o /tmp/q.json
-          echo "::notice title=시세 표::$(python3 -c "import json; q=json.load(open('/tmp/q.json')); print(len(q), '종목, 한국', sum(1 for r in q if r['m']=='KR'), '미국', sum(1 for r in q if r['m']=='US'), '예:', [r for r in q if r['id'] in ('KR:036930','US:VG','KR:0158S0')])")"
-          c2=$(curl -s -o /tmp/d.json -w "%{http_code}" "$U/rest/v1/seed10k_daily?select=id,d,c,l,h&order=d.desc&limit=3" -H "apikey: $K")
-          echo "::notice title=일별 표 l,h 칸::HTTP $c2 $(head -c 300 /tmp/d.json)"
-          c3=$(curl -s -o /tmp/v.json -w "%{http_code}" "$U/rest/v1/seed10k_divs?select=id&limit=1000" -H "apikey: $K")
-          echo "::notice title=배당 표::HTTP $c3 $(python3 -c "import json; print(len(json.load(open('/tmp/v.json'))), '종목')")"
