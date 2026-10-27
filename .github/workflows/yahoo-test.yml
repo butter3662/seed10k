@@ -1,4 +1,4 @@
-name: 한국 시세 표 상태 확인 (임시)
+name: 한국 장 마감 봉 확인 (임시)
 on:
   push:
     branches: [tmp-yahoo-test]
@@ -9,20 +9,21 @@ jobs:
     steps:
       - run: |
           U=https://ictjkqbbcaigdvlysdaw.supabase.co; K=sb_publishable_C7jZEKJn_nF2Y3Ngq5f80Q_RA5Wrfux
-          curl -s "$U/rest/v1/seed10k_quotes?select=id,p,t,updated_at,i&m=in.(KR,US)" -H "apikey: $K" -o /tmp/q.json
-          curl -s -I "$U/rest/v1/seed10k_quotes?select=id" -H "apikey: $K" -H "Prefer: count=exact" | grep -i content-range
+          curl -s "$U/rest/v1/seed10k_quotes?select=id,p,t,i&id=in.(KR:005930,KR:000660,KR:036930)" -H "apikey: $K" -o /tmp/q.json
+          for s in 005930.KS 036930.KQ; do
+            curl -s -A "Mozilla/5.0" "https://query1.finance.yahoo.com/v8/finance/chart/$s?range=1d&interval=5m" -o /tmp/y5_$s.json
+            curl -s -A "Mozilla/5.0" "https://query1.finance.yahoo.com/v8/finance/chart/$s?range=1d&interval=1m" -o /tmp/y1_$s.json
+          done
+          curl -s "https://butter3662.github.io/seed10k/data/c/KR_005930.json" -o /tmp/c.json
           python3 - <<'PY'
-          import json, datetime, collections
-          kst = lambda s: (datetime.datetime.utcfromtimestamp(s) + datetime.timedelta(hours=9)).strftime('%m-%d %H:%M')
-          iso = lambda s: kst(datetime.datetime.fromisoformat(s.replace('Z','+00:00')).timestamp()) if s else '-'
-          rows = json.load(open('/tmp/q.json'))
-          g = collections.defaultdict(list)
-          for r in rows:
-              t = (r.get('i') or {}).get('t') or []
-              g[(r['id'][:2], kst(t[-1]) if t else '-', iso(r.get('t')), iso(r.get('updated_at')))].append(r['id'][3:])
-          print(f"::notice title=행 수::{len(rows)}")
-          for k, v in sorted(g.items(), key=lambda x: (x[0][0], -len(x[1]))):
-              s = ','.join(v)
-              for j in range(0, len(s), 3000):
-                  print(f"::notice title={k[0]} 마지막봉 {k[1]} / 최신가시각 {k[2]} / 갱신 {k[3]}x ({len(v)}개)::{s[j:j+3000]}")
+          import json, datetime, glob
+          kst = lambda s: (datetime.datetime.utcfromtimestamp(s) + datetime.timedelta(hours=9)).strftime('%H:%M')
+          for r in json.load(open('/tmp/q.json')):
+              t = r['i']['t']; c = r['i']['c']
+              print(f"::notice title=저장 {r['id']}::봉 {len(t)}개, 마지막 10개 {[(kst(a), b) for a, b in zip(t[-10:], c[-10:])]}, 최신가 {r['p']} ({r['t']})")
+          for f in sorted(glob.glob('/tmp/y*_*.json')):
+              y = json.load(open(f))['chart']['result'][0]; t = y['timestamp']; q = y['indicators']['quote'][0]; m = y['meta']
+              print(f"::notice title=야후 {f[5:]}::봉 {len(t)}개, 마지막 10개 {[(kst(a), b, v) for a, b, v in zip(t[-10:], q['close'][-10:], q['volume'][-10:])]}, rmp {m.get('regularMarketPrice')} {kst(m.get('regularMarketTime'))}")
+          c = json.load(open('/tmp/c.json')); i5 = c.get('i5') or {}
+          if i5.get('t'): print(f"::notice title=파일 i5 005930::마지막 10개 {[(kst(a), b) for a, b in zip(i5['t'][-10:], i5['c'][-10:])]}")
           PY
