@@ -2,6 +2,8 @@ name: 종목 후보 수집 (임시)
 on:
   push:
     branches: [tmp-yahoo-test]
+permissions:
+  contents: write
 jobs:
   build:
     runs-on: ubuntu-24.04
@@ -13,5 +15,7 @@ jobs:
       - run: pip install -q finance-datareader yfinance pandas lxml
       - run: python .github/scripts/universe.py
       - run: python .github/scripts/yinfo.py
-      - uses: actions/upload-artifact@v4
-        with: { name: universe, path: "*.json" }
+      - run: |
+          mkdir -p tmpdata && mv universe.json yinfo.json tmpdata/
+          git config user.name "github-actions" && git config user.email "actions@users.noreply.github.com"
+          git add tmpdata && git commit -qm "임시: 수집 결과" && git push -q origin HEAD:tmp-yahoo-test
