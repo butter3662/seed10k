@@ -52,7 +52,7 @@ jobs:
 
           만드는 파일
             data/prices.json      2026-10-23부터의 일별 종가 + 장중 최신가, 원/달러 환율 (게임 전체가 1분마다 읽는다)
-            data/c/<종목>.json     종목 상세 차트용: 5분 봉(5거래일), 1시간 봉(1개월), 일봉(2년), 주봉(10년), 월봉(전체)
+            data/c/<종목>.json     종목 상세 차트용: 5분 봉(5거래일), 1시간 봉(1개월), 일봉(2년, 거래량 포함), 주봉(10년), 월봉(전체)
             data/hist.json        일·주·월봉 묶음. 하루 한 번만 새로 받고, 나머지 실행에서는 직전 배포본을 재사용한다.
 
           날짜는 1970-01-01부터의 일수(정수), 장중 시각은 유닉스 초(정수)로 저장해 파일 크기를 줄인다.
@@ -98,8 +98,9 @@ jobs:
               return [dates[k] for k in keep], {sid: [vals[k] for k in keep] for sid, vals in rows.items()}
 
 
-          def download(symbols, tries=3, **kw):
-              """여러 종목을 한 번에 받아 {야후심볼: 종가 Series} 로 돌려준다."""
+          def download(symbols, tries=3, vols=None, **kw):
+              """여러 종목을 한 번에 받아 {야후심볼: 종가 Series} 로 돌려준다.
+              vols에 dict를 넘기면 같은 요청의 거래량도 {야후심볼: 거래량 Series}로 채운다 (요청을 늘리지 않는다)."""
               out = {}
               pending = list(symbols)
               for attempt in range(tries):
@@ -120,6 +121,12 @@ jobs:
                       col = col.dropna()
                       if len(col):
                           out[sym] = col
+                          if vols is not None:
+                              try:
+                                  v = df[sym]["Volume"] if isinstance(df.columns, pd.MultiIndex) else df["Volume"]
+                                  vols[sym] = v
+                              except KeyError:
+                                  pass
                   pending = [s for s in pending if s not in out]
                   if pending:
                       time.sleep(3)
@@ -138,9 +145,14 @@ jobs:
               return round(float(v)) if m == "KR" else round(float(v), 2)
 
 
-          def series_days(m, s):
+          def series_days(m, s, vol=None):
               s = s[~s.index.duplicated(keep="last")]
-              return {"d": [day_num(i) for i in s.index], "c": [rnd(m, v) for v in s.values]}
+              out = {"d": [day_num(i) for i in s.index], "c": [rnd(m, v) for v in s.values]}
+              if vol is not None:
+                  # 종가와 같은 날짜에 맞춘 거래량(주). 값이 없는 날은 0
+                  v = vol[~vol.index.duplicated(keep="last")].reindex(s.index).fillna(0)
+                  out["v"] = [int(round(float(x))) for x in v.values]
+              return out
 
 
           def series_secs(m, s):
@@ -280,17 +292,20 @@ jobs:
               # ── 2) 장기 봉 (하루 한 번) ──
               today = now.strftime("%Y-%m-%d")
               sched = os.environ.get("GITHUB_EVENT_SCHEDULE", "")
-              need_hist = (not prev_hist) or prev_hist.get("asof") != today or sched.startswith("17 ")
+              # 일봉에 거래량(v)이 없는 예전 파일이면 오늘 이미 받았더라도 다시 받는다
+              no_vol = bool(prev_hist) and not any((x.get("d1") or {}).get("v") for x in prev_hist.get("s", {}).values())
+              need_hist = (not prev_hist) or prev_hist.get("asof") != today or sched.startswith("17 ") or no_vol
               hist = prev_hist if (prev_hist and not need_hist) else {"asof": today, "s": {}}
               if need_hist:
-                  d1 = download(ysyms, period="2y", interval="1d")
+                  d1v = {}
+                  d1 = download(ysyms, period="2y", interval="1d", vols=d1v)
                   wk = download(ysyms, period="10y", interval="1wk")
                   mo = download(ysyms, period="max", interval="1mo")
                   for sid, v in SYMBOLS.items():
                       y, m = v["y"], v["m"]
                       old = (prev_hist or {}).get("s", {}).get(sid, {})
                       hist["s"][sid] = {
-                          "d1": series_days(m, d1[y]) if y in d1 else old.get("d1"),
+                          "d1": series_days(m, d1[y], d1v.get(y)) if y in d1 else old.get("d1"),
                           "wk": series_days(m, wk[y]) if y in wk else old.get("wk"),
                           "mo": series_days(m, mo[y]) if y in mo else old.get("mo"),
                       }
