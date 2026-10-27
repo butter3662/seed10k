@@ -664,7 +664,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.15.0';
+const VERSION = '1.15.1';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -2046,7 +2046,7 @@ function renderHome(){
   const started = live || S.day > 0;
   $('#hGrade').textContent = `신용 ${g()}등급`;
   { const c = gradeColor(S.grade), el = $('#hGrade'); el.style.color = c; el.style.borderColor = c; }
-  $('#hSub').innerHTML = `<span class="ret ${cls(ret)}">${fmtPct(ret)}</span><span>${(S.pts || 0) > 0 ? `포인트 <b>${fmtUSD(S.pts, 0)}</b> 빼고 계산` : `시드 <b>${fmtUSD(META.seed, 0)}</b> 대비`}</span><span>${live ? '어제보다' : '오늘'} <b>${signUSD(started ? dToday : 0)}</b></span>`;
+  $('#hSub').innerHTML = `<span class="ret ${cls(ret)}">${fmtPct(ret)}</span>${(S.pts || 0) > 0 ? '' : `<span>시드 <b>${fmtUSD(META.seed, 0)}</b> 대비</span>`}<span>${live ? '어제보다' : '오늘'} <b>${signUSD(started ? dToday : 0)}</b></span>`;
   const kr = holdingsUSD('KR'), us = holdingsUSD('US'), cu = S.usd, ck = S.krw / FX();
   const tot = kr + us + cu + ck || 1;
   // 막대 길이는 모두 달러로 환산해 비교하고, 금액 글씨는 설정(한국 자산 표시)에 따라 원화 자산을 원래 원화로 쓴다
@@ -2646,7 +2646,8 @@ function mgShow(){
     <div class="mg-chart">${mgSVG(q, false)}</div>
     <p style="margin:8px 0 0">${mgAhead(q)}거래일 뒤 종가는 점 찍힌 마지막 날 종가보다…</p>
     <div class="acts"><button class="btn mg-up" data-mgans="up">오른다</button><button class="btn mg-dn" data-mgans="dn">내린다</button></div>
-    <div class="acts" style="margin-top:6px"><button class="btn" data-close>나중에 (기회는 이미 썼습니다)</button></div>`);
+    <div class="acts" style="margin-top:6px"><button class="btn" data-close>닫기</button></div>
+    <p class="muted" style="margin:8px 0 0;font-size:12px">닫았다가 다시 열면 같은 문제가 나옵니다.</p>`);
   $$('[data-mgans]').forEach(b => b.onclick = () => mgAnswer(b.dataset.mgans, close));
 }
 function mgAnswer(ans, close){
