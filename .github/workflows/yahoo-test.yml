@@ -1,28 +1,24 @@
-name: ETF·분할 확인 (임시)
+name: ETF 데이터 확인 (임시)
 on:
   push:
     branches: [tmp-yahoo-test]
 jobs:
   check:
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    timeout-minutes: 4
     steps:
       - run: |
-          for s in QQQ TQQQ SQQQ SPY 069500.KS 114800.KS NVDA AAPL; do
-            curl -s -m 30 -A "Mozilla/5.0" -o /tmp/d "https://query1.finance.yahoo.com/v8/finance/chart/$s?period1=1760918400&period2=1793232000&interval=1d&events=div%7Csplit"
-            python3 - "$s" <<'PY'
-          import json, sys, datetime
-          s = sys.argv[1]
-          try:
-              r = json.load(open('/tmp/d'))['chart']['result'][0]
-              m = r['meta']; ts = r['timestamp']; c = r['indicators']['quote'][0]['close']
-              tz = m.get('exchangeTimezoneName'); off = m.get('gmtoffset', 0)
-              d = {datetime.datetime.utcfromtimestamp(t + off).strftime('%Y-%m-%d'): v for t, v in zip(ts, c)}
-              ev = r.get('events') or {}
-              sp = sorted(ev.get('splits', {}).values(), key=lambda x: x['date'])
-              spt = [(datetime.datetime.utcfromtimestamp(x['date'] + off).strftime('%Y-%m-%d'), x.get('numerator'), x.get('denominator'), x.get('splitRatio')) for x in sp]
-              print(f"::notice title={s}::이름 {m.get('longName') or m.get('shortName')}, 10/23 종가 {d.get('2026-10-23')}, 10/27 {d.get('2026-10-27')}, 분할 {spt}, 배당 {len(ev.get('dividends', {}))}건")
-          except Exception as e:
-              print(f"::notice title={s}::실패 {e} {open('/tmp/d').read()[:200]}")
+          B=https://butter3662.github.io/seed10k
+          curl -s -m 60 "$B/data/prices.json?t=$(date +%s)" -o /tmp/p.json
+          python3 - <<'PY'
+          import json
+          p = json.load(open('/tmp/p.json')); s = p.get('s', {})
+          print(f"::notice title=prices.json::종목 {len(s)}, 빠진 종목 {p.get('miss')}")
+          for k in ['US:QQQ','US:TQQQ','US:SQQQ','US:SPY','KR:069500','KR:114800','US:VG']:
+              print(f"::notice title={k}::{(s.get(k) or [])[-3:]}")
           PY
+          for c in US_SQQQ KR_114800; do
+            curl -s -m 30 -o /tmp/c.json "$B/data/c/$c.json?t=$(date +%s)"
+            echo "::notice title=차트 $c::$(python3 -c "import json; d=json.load(open('/tmp/c.json')); print('d1', len((d.get('d1') or {}).get('c', [])), 'i5', len((d.get('i5') or {}).get('c', [])), 'i5 저가', bool((d.get('i5') or {}).get('l')))")"
           done
+          curl -s -m 30 "$B/index.html?t=$(date +%s)" | grep -o "const VERSION = '[0-9.]*'" | head -1 | sed 's/^/::notice title=배포 버전::/'
