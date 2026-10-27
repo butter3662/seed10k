@@ -616,7 +616,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 100 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.6.0';
+const VERSION = '1.6.1';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -2022,7 +2022,7 @@ async function loadNews(id){
   } catch(e){ NW[id] = {err:errText(e), at:Date.now()}; }
   renderNews(id);
 }
-function renderNews(id){ const el = $('#apNews'); if (el && UI.sheet === id) el.innerHTML = newsHTML(id); }
+function renderNews(id){ const el = $('#apNews'); if (el && UI.sheet === id){ const h = newsHTML(id); el.innerHTML = h; el.hidden = !h; } }
 const NEWS_SRC = {'hankyung.com':'한국경제','mk.co.kr':'매일경제','yna.co.kr':'연합뉴스','yonhapnewstv.co.kr':'연합뉴스TV','news1.kr':'뉴스1','newsis.com':'뉴시스',
   'edaily.co.kr':'이데일리','mt.co.kr':'머니투데이','news.mt.co.kr':'머니투데이','sedaily.com':'서울경제','fnnews.com':'파이낸셜뉴스','asiae.co.kr':'아시아경제',
   'chosun.com':'조선일보','biz.chosun.com':'조선비즈','joongang.co.kr':'중앙일보','donga.com':'동아일보','hani.co.kr':'한겨레','khan.co.kr':'경향신문',
@@ -2044,15 +2044,18 @@ function newsList(items){
     <span class="nw-b"><span class="nw-s">${esc(newsSource(x.s))}${x.at ? ` · ${newsAgo(x.at)}` : ''}</span><b class="nw-t">${esc(x.t)}</b></span>
     ${x.img && /^https:\/\//.test(x.img) ? `<img src="${esc(x.img)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : ''}</a></li>`).join('')}</ul>`;
 }
+/* 빈 문자열을 돌려주면 뉴스 칸을 숨긴다 (뉴스 표가 없을 때, 한국어 기사 출처가 없는 한국 종목) */
 function newsHTML(id){
   const s = BY_ID[id], n = NW[id];
   const head = `<div class="card-h"><h2>뉴스</h2><small>${n && n.row && n.row.at ? `${newsAgo(Date.parse(n.row.at) / 1000)} 모음` : '30분마다 모음'}</small></div>`;
   if (!n) return head + '<p class="empty">뉴스를 불러오는 중입니다.</p>';
-  if (n.err) return head + `<p class="empty">뉴스를 불러오지 못했습니다 (${esc(n.err)}).</p>`;
-  if (!n.row || !n.row.items) return head + '<p class="empty">이 종목 뉴스는 아직 모으기 전입니다. 30분 안에 채워집니다.</p>';
-  const it = n.row.items;
-  let html = head + (it.ko === null ? '<p class="empty">네이버 뉴스 키가 아직 설정되지 않아 한국어 기사가 없습니다.</p>' : newsList(it.ko));
-  if (s.m === 'US') html += `<h3 class="nw-h">영어 기사 · Yahoo Finance</h3>` + newsList(it.en);
+  if (n.err) return '';                                        // 뉴스 표가 없거나 읽지 못하면 칸을 숨긴다
+  if (!n.row || !n.row.items) return s.m === 'US' ? head + '<p class="empty">이 종목 뉴스는 아직 모으기 전입니다. 30분 안에 채워집니다.</p>' : '';
+  const it = n.row.items, hasKo = Array.isArray(it.ko);
+  let html = head;
+  if (hasKo) html += newsList(it.ko);
+  if (s.m === 'US') html += (hasKo ? `<h3 class="nw-h">영어 기사 · Yahoo Finance</h3>` : '<p class="muted nw-f" style="margin:0 0 2px">Yahoo Finance 영어 기사</p>') + newsList(it.en);
+  else if (!hasKo) return '';                                  // 한국 종목은 한국어 기사 출처가 없으면 숨긴다
   return html + '<p class="muted nw-f">제목을 누르면 원문 기사가 새 창으로 열립니다.</p>';
 }
 function closeSheet(){
@@ -2321,7 +2324,7 @@ function renderSheet(){
     ${s.note && !live ? `<p class="note">${esc(s.note)}</p>` : ''}
     ${P ? `<dl class="pos"><div><dt>보유 수량</dt><dd class="num">${P.q.toLocaleString()}주</dd></div><div><dt>평균 단가</dt><dd class="num">${fmtPx(s, P.avg)}</dd></div><div><dt>평가액</dt><dd class="num">${fmtPx(s, P.q * p)}${s.cur === 'KRW' ? ` <small class="muted">(${fmtUSD(val)})</small>` : ''}</dd></div><div><dt>평가손익</dt><dd class="num ${cls(plN)}">${s.cur === 'KRW' ? (plN > 0 ? '+' : '') + fmtKRW(plN) : signUSD(plN)} (${fmtPct(P.cost ? plN / P.cost : 0)})</dd></div></dl>` : ''}
     <div class="order" id="orderBox"></div>
-    ${live ? `<section class="nws" id="apNews">${newsHTML(id)}</section>` : ''}`;
+    ${live ? `<section class="nws" id="apNews" ${newsHTML(id) ? '' : 'hidden'}>${newsHTML(id)}</section>` : ''}`;
   renderOrder();
   renderChartBox();
   sh.scrollTop = scrollTop;
