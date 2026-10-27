@@ -1,30 +1,32 @@
-name: 실시간 수집 확인 (임시)
+name: 미국 시세 확인 (임시)
 on:
   push:
     branches: [tmp-yahoo-test]
 jobs:
   check:
     runs-on: ubuntu-24.04
-    timeout-minutes: 3
+    timeout-minutes: 4
     steps:
       - name: 확인
         env:
           U: https://ictjkqbbcaigdvlysdaw.supabase.co
           K: sb_publishable_C7jZEKJn_nF2Y3Ngq5f80Q_RA5Wrfux
+          S: https://butter3662.github.io/seed10k
         run: |
-          curl -s -m 30 "$U/rest/v1/seed10k_quotes?select=id,m,p,t,d,updated_at&order=id" -H "apikey: $K" -o /tmp/q
+          for k in 1 2; do
+            curl -s -m 30 "$S/data/prices.json?t=$(date +%s)" -o /tmp/p$k
+            curl -s -m 30 "$U/rest/v1/seed10k_quotes?select=id,m,p,t,d,updated_at&m=eq.US&order=id" -H "apikey: $K" -o /tmp/q$k
+            curl -s -m 30 "$U/rest/v1/seed10k_daily?select=id,d,c&id=like.US*" -H "apikey: $K" -o /tmp/d$k
+            [ $k = 1 ] && sleep 70
+          done
           python3 - <<'PY'
-          import json, datetime as dt
-          d = json.load(open('/tmp/q'))
-          now = dt.datetime.now(dt.timezone.utc)
-          P = lambda s: dt.datetime.fromisoformat(s.replace('Z', '+00:00')) if s else None
-          sysr = {r['id']: r['updated_at'] for r in d if r['m'] == 'SYS'}
-          kr = [r for r in d if r['m'] == 'KR' and r['p'] is not None]
-          fx = [r for r in d if r['m'] == 'FX']
-          ages = sorted((now - P(r['updated_at'])).total_seconds() for r in kr if r['updated_at'])
-          s = next((r for r in kr if r['id'] == 'KR:005930'), None)
-          print(f"::notice title=시세 표::지금 {now:%H:%M:%S}Z, SYS {sysr}, KR 값 {len(kr)}/100, KR 갱신 나이(초) 최소 {ages[0] if ages else '-'} 최대 {ages[-1] if ages else '-'}, 삼성전자 {s and (s['p'], s['t'], s['d'])}, FX {fx and (fx[0]['p'], fx[0]['t'])}")
+          import json
+          for k in (1, 2):
+              p = json.load(open(f'/tmp/p{k}')); q = json.load(open(f'/tmp/q{k}')); d = json.load(open(f'/tmp/d{k}'))
+              us = p['dates']['US']; s = p['s']
+              filled = [r for r in q if r['p'] is not None]
+              print(f"::notice title=조회 {k}::prices.json updated {p['updated']}, US 날짜 {us[-3:]}, AAPL {s['US:AAPL'][-3:]}, NVDA {s['US:NVDA'][-3:]}, TSLA {s['US:TSLA'][-3:]} | quotes US 값있음 {len(filled)}개 {[ (r['id'], r['p'], r['d']) for r in filled[:3]]} | daily US {len(d)}개 {d[:3]}")
+          a, b = json.load(open('/tmp/p1')), json.load(open('/tmp/p2'))
+          ch = [i for i in a['s'] if i.startswith('US:') and a['s'][i][-1] != b['s'].get(i, [None])[-1]]
+          print(f"::notice title=70초 사이 prices.json 미국 값 변화::{len(ch)}개 {ch[:5]}")
           PY
-          curl -s -m 30 "$U/rest/v1/seed10k_daily?select=id,d,c&order=d.desc&limit=3" -H "apikey: $K" -o /tmp/d
-          curl -s -m 30 "$U/rest/v1/seed10k_daily?select=id" -H "apikey: $K" -H "Prefer: count=exact" -H "Range: 0-0" -D /tmp/h -o /dev/null
-          echo "::notice title=일별 표::$(grep -i content-range /tmp/h | tr -d '\r') $(head -c 200 /tmp/d)"
