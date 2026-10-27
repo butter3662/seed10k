@@ -674,7 +674,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.4.1';
+const VERSION = '1.5.0';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -2794,7 +2794,28 @@ async function loadChart(id, force){
       const {data, error} = await ACC.sb.from('seed10k_quotes').select('i').eq('id', id).maybeSingle();
       if (!error && data && data.i && data.i.t && data.i.t.length) CH[id].qi = data.i;
     } catch(e){ /* 표가 없으면 시세 파일의 5분 봉만 쓴다 */ }
+    await loadNb(id);
   }
+}
+/* 5분 구간 종가 (서버가 7초 현재가로 남긴 _b5{시장}_{구간 시작} 줄): 야후 5분 봉이 아직 없는 최근 구간(한국 약 20분)을 잇는 데 쓴다.
+   한 줄에 시장 전 종목 가격이 고정 순서(ids)로 들어 있어, 이 종목 순번(k)의 값만 골라 받는다 */
+const NB = {KR:{idx:null}, US:{idx:null}};
+async function loadNb(id){
+  const s = BY_ID[id], c = CH[id]; if (!s || !c || !ACC.sb) return;
+  const nb = NB[s.m], lo = `_b5${s.m}_`, hi = `_b5${s.m}_9`;
+  try {
+    if (!nb.idx){
+      const {data} = await ACC.sb.from('seed10k_quotes').select('id,ids:i->b->ids').gt('id', lo).lt('id', hi).order('id', {ascending:false}).limit(1);
+      if (data && data[0] && Array.isArray(data[0].ids)) nb.idx = new Map(data[0].ids.map((x, i) => [x, i]));
+    }
+    const k = nb.idx ? nb.idx.get(id) : undefined;
+    if (k === undefined){ c.nb = null; return; }
+    const i5 = intradayOf(id), since = i5 && i5.t.length ? last(i5.t) : 0;
+    const {data, error} = await ACC.sb.from('seed10k_quotes').select(`id,n:i->b->ids->${k},t:i->b->t,v:i->b->p->${k}`).gt('id', lo + since).lt('id', hi).order('id', {ascending:true});
+    if (error || !data) return;
+    if (data.some(r => r.n && r.n !== id)){ nb.idx = null; c.nb = null; return; }   // 서버의 종목 순서가 바뀌었다: 다음에 다시 맞춘다
+    c.nb = data.filter(r => r.v !== null && r.v !== undefined).map(r => ({t:+r.t, c:+r.v}));
+  } catch(e){ /* 없으면 예전처럼 직선으로 잇는다 */ }
 }
 /* 5분 봉: 시세 파일(최근 5거래일)에 실시간 표의 오늘 봉을 이어 붙인다 */
 function intradayOf(id){
@@ -2851,6 +2872,12 @@ function getSeries(id, range){
   const i5 = intradayOf(id);
   if ((range === '1D' || range === '1W') && i5 && i5.t.length){
     const t = i5.t.map(x => x * 1000), c = i5.c.slice();
+    // 야후 5분 봉 뒤로, 끝난 5분 구간의 종가(네이버 현재가로 집계)를 점으로 잇는다. 장 마감 시각 이후 구간은 쓰지 않는다
+    const nbs = CH[id] && CH[id].nb, nowS = Date.now() / 1000;
+    if (nbs) for (const b of nbs){
+      const bd = zoneParts(SESS[s.m].tz, new Date(b.t * 1000)).date;
+      if (b.t * 1000 > last(t) && b.t + 300 <= nowS && b.t * 1000 < zoneTs(SESS[s.m].tz, bd, sessOf(s.m, bd).c)){ t.push(b.t * 1000); c.push(b.c); }
+    }
     // 마지막 시세가 마지막 5분 봉보다 늦으면(같은 거래일) 그 시각에 점을 하나 더 찍는다.
     // Yahoo는 한국 종목 5분 봉을 15:00 봉까지만 주고, 15:30 종가는 최신가(시각 15:30)로만 준다.
     const qr = (QT.rows || []).find(x => x.id === id), qt = qr && qr.t ? Date.parse(qr.t) : 0;

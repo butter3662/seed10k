@@ -12,6 +12,7 @@
 // [약 1분마다] 5분 봉과 나머지: 지금 장이 열려 있는 시장의 종목을 야후 파이낸스에서 받아 그날 5분 봉(i)을 저장한다.
 //   네이버 현재가가 최근 90초 안에 들어온 시장은 야후의 최신가로 덮지 않는다(야후 한국 시세는 20분 늦다).
 //   네이버가 멈추면 예전처럼 야후 최신가를 쓴다.
+//   또 5분 구간마다 그 구간의 마지막 현재가를 _b5{시장}_{구간 시작 유닉스 초} 줄에 남긴다(70분 지나면 지움).
 //
 // - 한국: 한국 시각 08:55~16:00(평일)에 받는다.
 // - 미국: 뉴욕 시각 09:25~16:20(평일)에 받는다. 마감 뒤 몇 분은 마감가를 확정하려고 더 받는다.
@@ -518,6 +519,19 @@ export async function fetchNaverLive(m: "KR" | "US", at: Date) {
     headers: restHeaders({ Prefer: "resolution=merge-duplicates,return=minimal" }),
     body: JSON.stringify([{ id: "_nv" + m, ysym: "-", m: "SYS", updated_at: now, d: null, i: null }, { id: "_snap" + m, ysym: "-", m: "SYS", updated_at: now, d: today, i: { x } }]),
   });
+  // 5분 구간 종가 줄: 지금 시각이 속한 5분 구간(시작 = 5분 단위로 내린 유닉스 초)마다 한 줄. 같은 구간 안에서는 7초마다 덮어써서,
+  // 구간이 끝나면 그 구간의 마지막 현재가(= 구간 종가)가 남는다. 게임은 야후 5분 봉이 아직 없는 최근 구간(한국은 약 20분)을 이 값으로 잇는다.
+  // ids는 이 시장 전 종목(이름표 순서, 고정), p는 같은 순서의 가격(이번에 못 받은 종목은 null)
+  if (rows.length) {
+    const nowSec = Math.floor(Date.now() / 1000), b0 = nowSec - (nowSec % 300);
+    const pOf = new Map(rows.map((r) => [r.id as string, r.p]));
+    const ids = [...byCode.values()].map((v) => v.id);
+    await rest("seed10k_quotes?on_conflict=id", {
+      method: "POST",
+      headers: restHeaders({ Prefer: "resolution=merge-duplicates,return=minimal" }),
+      body: JSON.stringify([{ id: `_b5${m}_${b0}`, ysym: "-", m: "SYS", updated_at: now, d: today, i: { b: { t: b0, at: nowSec, ids, p: ids.map((id) => pOf.get(id) ?? null) } } }]),
+    });
+  }
   return { got, saved: rows.length };
 }
 
@@ -608,6 +622,12 @@ export async function run(at = new Date(), background?: (p: Promise<unknown>) =>
 }
 
 async function runSlow(at: Date, act: { KR: boolean; US: boolean; FX: boolean }, started: number) {
+  // 70분 넘게 지난 5분 구간 종가 줄은 지운다
+  const old = new Date(Date.now() - 70 * 60_000).toISOString();
+  for (const m of ["KR", "US"]) {
+    try { await rest(`seed10k_quotes?id=gt._b5${m}_&id=lt._b5${m}_9&updated_at=lt.${old}`, { method: "DELETE", headers: restHeaders({ Prefer: "return=minimal" }) }); }
+    catch (e) { console.error("5분 구간 줄 지우기 실패", e); }
+  }
   const all: Row[] = await (await rest("seed10k_quotes?select=id,ysym,m,t,updated_at", { headers: restHeaders() })).json();
   // 게임 종목 이름표(names.ts)에 있는데 시세 표에 없는 종목은 여기서 등록한다 (종목을 늘릴 때 SQL을 따로 돌리지 않아도 되게)
   const have = new Set(all.map((r) => r.id));
