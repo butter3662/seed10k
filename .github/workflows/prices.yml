@@ -296,6 +296,22 @@ jobs:
               no_vol = bool(prev_hist) and not any((x.get("d1") or {}).get("v") for x in prev_hist.get("s", {}).values())
               need_hist = (not prev_hist) or prev_hist.get("asof") != today or sched.startswith("17 ") or no_vol
               hist = prev_hist if (prev_hist and not need_hist) else {"asof": today, "s": {}}
+              # 오늘 이미 받았더라도, 새로 추가된 종목(장기 봉이 없는 종목)은 그 종목만 바로 받는다
+              new_ids = [] if need_hist else [sid for sid in SYMBOLS if not (hist["s"].get(sid) or {}).get("d1")]
+              if new_ids:
+                  ys_new = [SYMBOLS[sid]["y"] for sid in new_ids]
+                  n1v = {}
+                  n1 = download(ys_new, period="2y", interval="1d", vols=n1v)
+                  nwk = download(ys_new, period="10y", interval="1wk")
+                  nmo = download(ys_new, period="max", interval="1mo")
+                  for sid in new_ids:
+                      y, m = SYMBOLS[sid]["y"], SYMBOLS[sid]["m"]
+                      hist["s"][sid] = {
+                          "d1": series_days(m, n1[y], n1v.get(y)) if y in n1 else None,
+                          "wk": series_days(m, nwk[y]) if y in nwk else None,
+                          "mo": series_days(m, nmo[y]) if y in nmo else None,
+                      }
+                  print(f"hist added for new symbols: {len(new_ids)} (d1 {len(n1)}, wk {len(nwk)}, mo {len(nmo)})")
               if need_hist:
                   d1v = {}
                   d1 = download(ysyms, period="2y", interval="1d", vols=d1v)
