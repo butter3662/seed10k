@@ -1,13 +1,21 @@
-name: 실시간 시세 출처 조사 (임시)
+name: 7초 일정 확인 (임시)
 on:
   push:
     branches: [tmp-yahoo-test]
-permissions:
-  contents: write
 jobs:
   check:
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
-      - run: python3 probe/probe2.py
+      - run: |
+          U=https://ictjkqbbcaigdvlysdaw.supabase.co; K=sb_publishable_C7jZEKJn_nF2Y3Ngq5f80Q_RA5Wrfux
+          S=""
+          for n in $(seq 1 12); do
+            v=$(curl -s "$U/rest/v1/seed10k_quotes?select=updated_at&id=eq._beat" -H "apikey: $K" | python3 -c "import json,sys; print(json.load(sys.stdin)[0]['updated_at'][11:19])")
+            S="$S $v"; sleep 3
+          done
+          echo "::notice title=_beat 시각 (3초 간격으로 12번 읽음)::$S"
+          M=$(curl -s "$U/rest/v1/seed10k_quotes?select=id,d,updated_at&id=in.(_closeKR,_run,_fast,_nvKR,_nvUS)" -H "apikey: $K")
+          echo "::notice title=표시 줄::$M"
+          R=$(curl -s -m 60 -X POST "$U/functions/v1/seed10k-quotes" -H "apikey: $K" -H "Content-Type: application/json" -d '{}' | head -c 600)
+          echo "::notice title=함수 응답::$R"
