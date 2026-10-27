@@ -1,15 +1,16 @@
-name: 네이버 실시간 시세 확인 (임시)
+name: 실시간 시세 출처 조사 (임시)
 on:
   push:
     branches: [tmp-yahoo-test]
+permissions:
+  contents: write
 jobs:
   check:
     runs-on: ubuntu-24.04
-    timeout-minutes: 4
+    timeout-minutes: 10
     steps:
+      - uses: actions/checkout@v4
+      - run: python3 probe/probe.py
       - run: |
-          A="Mozilla/5.0"
-          curl -s -A "$A" -w "\n%{http_code} %{size_download}B %{time_total}s\n" "https://polling.finance.naver.com/api/realtime/domestic/stock/005930,000660,036930,069500" -o /tmp/a.json > /tmp/a.meta
-          curl -s -A "$A" -w "\n%{http_code} %{size_download}B %{time_total}s\n" "https://polling.finance.naver.com/api/realtime?query=SERVICE_ITEM:005930,000660,036930" -o /tmp/b.json > /tmp/b.meta
-          echo "::notice title=A $(cat /tmp/a.meta | tr '\n' ' ')::$(head -c 1800 /tmp/a.json)"
-          echo "::notice title=B $(cat /tmp/b.meta | tr '\n' ' ')::$(iconv -f euc-kr -t utf-8 /tmp/b.json 2>/dev/null | head -c 1500 || head -c 1500 /tmp/b.json)"
+          git config user.name "github-actions"; git config user.email "github-actions@users.noreply.github.com"
+          git add probe/result.json && git commit -m "조사 결과" && git push origin HEAD:tmp-yahoo-test
