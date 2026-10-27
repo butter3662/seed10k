@@ -146,3 +146,9 @@ revoke all on function public.seed10k_http_get(text[]) from public, anon, authen
 revoke all on function public.seed10k_http_take(bigint[]) from public, anon, authenticated;
 grant execute on function public.seed10k_http_get(text[]) to service_role;
 grant execute on function public.seed10k_http_take(bigint[]) to service_role;
+
+-- 9) 배당 (누구나 읽고, 쓰기는 seed10k-quotes 함수만). items = [[배당락일 YYYY-MM-DD, 1주당 배당금(현지 통화)], ...] 최근 2년
+create table if not exists public.seed10k_divs (id text primary key, at timestamptz, items jsonb);
+alter table public.seed10k_divs enable row level security;
+drop policy if exists "seed10k_divs_select_all" on public.seed10k_divs;
+create policy "seed10k_divs_select_all" on public.seed10k_divs for select using (true);

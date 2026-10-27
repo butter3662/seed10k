@@ -19,6 +19,8 @@
 //   OpenDART 서버는 ECDHE가 없는 옛 TLS 암호(TLS_RSA_*, TLS_DHE_RSA_*)만 받아서 이 함수의 fetch(rustls)로는
 //   접속이 안 된다(HandshakeFailure). 그래서 데이터베이스의 pg_net(libcurl)으로 대신 요청한다:
 //   public.seed10k_http_get(urls) → 요청 번호들, public.seed10k_http_take(ids) → 끝난 응답(읽은 응답은 지운다).
+// - 배당: 장 시간과 관계없이 한 번에 10종목씩, 20시간 넘게 묵은 종목부터 Yahoo 차트 API(events=div)로 최근 2년 배당을 받아
+//   public.seed10k_divs에 [배당락일(거래소 현지 날짜), 1주당 배당금(현지 통화)] 목록으로 저장한다 (200종목이 약 20분에 한 바퀴).
 
 import NAMES from "./names.ts";
 
@@ -181,6 +183,63 @@ export async function refreshNews() {
   return { done: out.length, errs: errs.slice(0, 5) };
 }
 
+/* ───── 배당 (Yahoo 차트 API events=div) ───── */
+const DIV_EVERY_MS = 20 * 3600_000;   // 이보다 오래된 종목부터 다시 받는다
+const DIV_PER_RUN = 10;               // 한 번 불릴 때 받는 종목 수
+
+export async function fetchDivs(row: Row): Promise<[string, number][]> {
+  const path = `/v8/finance/chart/${encodeURIComponent(row.ysym)}?range=2y&interval=1d&events=div`;
+  let lastErr = "";
+  for (const h of ["query1.finance.yahoo.com", "query2.finance.yahoo.com"]) {
+    try {
+      const r = await fetch(`https://${h}${path}`, { headers: { "User-Agent": UA, "Accept": "application/json" } });
+      if (!r.ok) { lastErr = `HTTP ${r.status}`; await r.body?.cancel(); continue; }
+      const j = await r.json();
+      const res = j?.chart?.result?.[0];
+      if (!res?.meta) { lastErr = "no result"; continue; }
+      const tz = res.meta.exchangeTimezoneName || (row.m === "KR" ? "Asia/Seoul" : "America/New_York");
+      const dv: Record<string, { date: number; amount: number }> = res.events?.dividends || {};
+      const out = Object.values(dv)
+        .filter((x) => typeof x?.date === "number" && typeof x?.amount === "number" && x.amount > 0)
+        .map((x) => [localDate(tz, x.date), row.m === "KR" ? Math.round(x.amount * 100) / 100 : Math.round(x.amount * 1e6) / 1e6] as [string, number])
+        .sort((a, b) => (a[0] < b[0] ? -1 : 1));
+      return out;
+    } catch (e) { lastErr = String((e as Error).message || e); }
+  }
+  throw new Error(`${row.ysym}: ${lastErr}`);
+}
+
+export async function refreshDivs(all: Row[]) {
+  const syms = all.filter((r) => r.m === "KR" || r.m === "US");
+  const have: { id: string; at: string | null }[] = await (await rest("seed10k_divs?select=id,at", { headers: restHeaders() })).json();
+  const atOf = new Map(have.map((h) => [h.id, h.at ? Date.parse(h.at) : 0]));
+  const due = syms.filter((r) => Date.now() - (atOf.get(r.id) || 0) > DIV_EVERY_MS)
+    .sort((a, b) => (atOf.get(a.id) || 0) - (atOf.get(b.id) || 0)).slice(0, DIV_PER_RUN);
+  if (!due.length) return { done: 0 };
+  const ok: { id: string; at: string; items: [string, number][] }[] = [], errs: string[] = [], failIds: string[] = [];
+  for (const r of due) {
+    try { ok.push({ id: r.id, at: new Date().toISOString(), items: await fetchDivs(r) }); }
+    catch (e) { errs.push(String((e as Error).message || e).slice(0, 80)); failIds.push(r.id); }
+  }
+  if (failIds.length) {
+    // 실패한 종목은 기존 배당 목록은 두고 시각만 남겨, 1시간쯤 뒤에 다시 시도한다
+    const retryAt = new Date(Date.now() - DIV_EVERY_MS + 3600_000).toISOString();
+    await rest("seed10k_divs?on_conflict=id", {
+      method: "POST",
+      headers: restHeaders({ Prefer: "resolution=merge-duplicates,return=minimal" }),
+      body: JSON.stringify(failIds.map((id) => ({ id, at: retryAt }))),
+    });
+  }
+  if (ok.length) {
+    await rest("seed10k_divs?on_conflict=id", {
+      method: "POST",
+      headers: restHeaders({ Prefer: "resolution=merge-duplicates,return=minimal" }),
+      body: JSON.stringify(ok),
+    });
+  }
+  return { done: ok.length, errs };
+}
+
 /* ───── 공시 (OpenDART) ───── */
 type Filing = { r: string; t: string; f: string; d: string; rm?: string };
 const DART_EVERY_MS = 5 * 60_000;   // 공시를 다시 확인하는 간격
@@ -314,11 +373,12 @@ export async function run(at = new Date()) {
   });
 
   // 뉴스는 시세와 따로: 실패하거나 뉴스 표가 없어도 시세 수집은 계속한다
-  let news: unknown, dart: unknown;
+  let news: unknown, dart: unknown, divs: unknown;
   try { news = await refreshNews(); } catch (e) { news = { error: String((e as Error).message || e) }; }
   try { dart = await refreshDart(); } catch (e) { dart = { error: String((e as Error).message || e) }; }
+  try { divs = await refreshDivs(all); } catch (e) { divs = { error: String((e as Error).message || e) }; }
 
-  if (!act.FX) return { skipped: "장 시간이 아님", act, news, dart };
+  if (!act.FX) return { skipped: "장 시간이 아님", act, news, dart, divs };
 
   const want = all.filter((r) => (r.m === "KR" && act.KR) || (r.m === "US" && act.US) || (r.m === "FX" && act.FX));
   const { ok, failed } = await fetchAll(want);
@@ -338,7 +398,7 @@ export async function run(at = new Date()) {
       body: JSON.stringify(daily.slice(k, k + 200)),
     });
   }
-  return { act, wanted: want.length, saved: ok.length, failed: failed.slice(0, 10), failedCount: failed.length, news, dart, ms: Date.now() - started };
+  return { act, wanted: want.length, saved: ok.length, failed: failed.slice(0, 10), failedCount: failed.length, news, dart, divs, ms: Date.now() - started };
 }
 
 Deno.serve(async () => {
