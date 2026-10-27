@@ -631,7 +631,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 100 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.7.0';
+const VERSION = '1.7.1';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -2162,11 +2162,16 @@ async function loadNews(id){
   if (!ACC.sb){ NW[id] = {err:'로그인 서버에 연결되지 않았습니다', at:Date.now()}; renderNews(id); return; }
   const c = NW[id];
   if (c && !c.err && Date.now() - c.at < 5 * 60e3){ renderNews(id); return; }
-  try {
-    const {data, error} = await ACC.sb.from('seed10k_news').select('items,at').eq('id', id).maybeSingle();
-    if (error) throw error;
-    NW[id] = {row:data, at:Date.now()};
-  } catch(e){ NW[id] = {err:errText(e), at:Date.now()}; }
+  const kr = BY_ID[id].m === 'KR';
+  const safe = pr => Promise.resolve(pr).then(r => r, e => ({data:null, error:e}));
+  const [nr, dr] = await Promise.all([
+    safe(ACC.sb.from('seed10k_news').select('items,at').eq('id', id).maybeSingle()),
+    kr ? safe(ACC.sb.from('seed10k_dart').select('id,items').in('id', [id, '_state'])) : Promise.resolve({data:null, error:null})
+  ]);
+  const drows = (!dr.error && dr.data) || [];
+  const mine = drows.find(r => r.id === id);
+  NW[id] = {row:nr.error ? null : nr.data, err:nr.error ? errText(nr.error) : null, at:Date.now(),
+            dartOn:drows.some(r => r.id === '_state'), dart:(mine && Array.isArray(mine.items)) ? mine.items : []};
   renderNews(id);
 }
 function renderNews(id){ const el = $('#apNews'); if (el && UI.sheet === id){ const h = newsHTML(id); el.innerHTML = h; el.hidden = !h; } }
@@ -2192,18 +2197,31 @@ function newsList(items){
     ${x.img && /^https:\/\//.test(x.img) ? `<img src="${esc(x.img)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : ''}</a></li>`).join('')}</ul>`;
 }
 /* 빈 문자열을 돌려주면 뉴스 칸을 숨긴다 (뉴스 표가 없을 때, 한국어 기사 출처가 없는 한국 종목) */
+/* 공시 목록 (OpenDART). 누르면 DART 원문 */
+function dartList(items){
+  const ok = (items || []).filter(x => x && x.t && /^\d{14}$/.test(String(x.r || '')));
+  if (!ok.length) return '<p class="empty">최근 공시가 없습니다.</p>';
+  return `<ul class="nw-l">${ok.map(x => {
+    const d = String(x.d || ''), dd = d.length === 8 ? `${+d.slice(4, 6)}/${+d.slice(6, 8)}` : '';
+    return `<li><a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=${x.r}" target="_blank" rel="noopener noreferrer">
+      <span class="nw-b"><span class="nw-s">${esc(x.f || '')}${dd ? ` · ${dd}` : ''}</span><b class="nw-t">${esc(x.t)}</b></span></a></li>`;
+  }).join('')}</ul>`;
+}
+/* 빈 문자열을 돌려주면 뉴스 칸을 숨긴다 (보여 줄 출처가 하나도 없을 때) */
 function newsHTML(id){
   const s = BY_ID[id], n = NW[id];
-  const head = `<div class="card-h"><h2>뉴스</h2><small>${n && n.row && n.row.at ? `${newsAgo(Date.parse(n.row.at) / 1000)} 모음` : '30분마다 모음'}</small></div>`;
-  if (!n) return head + '<p class="empty">뉴스를 불러오는 중입니다.</p>';
-  if (n.err) return '';                                        // 뉴스 표가 없거나 읽지 못하면 칸을 숨긴다
-  if (!n.row || !n.row.items) return s.m === 'US' ? head + '<p class="empty">이 종목 뉴스는 아직 모으기 전입니다. 30분 안에 채워집니다.</p>' : '';
-  const it = n.row.items, hasKo = Array.isArray(it.ko);
-  let html = head;
-  if (hasKo) html += newsList(it.ko);
-  if (s.m === 'US') html += (hasKo ? `<h3 class="nw-h">영어 기사 · Yahoo Finance</h3>` : '<p class="muted nw-f" style="margin:0 0 2px">Yahoo Finance 영어 기사</p>') + newsList(it.en);
-  else if (!hasKo) return '';                                  // 한국 종목은 한국어 기사 출처가 없으면 숨긴다
-  return html + '<p class="muted nw-f">제목을 누르면 원문 기사가 새 창으로 열립니다.</p>';
+  if (!n) return `<div class="card-h"><h2>뉴스</h2></div><p class="empty">불러오는 중입니다.</p>`;
+  const it = !n.err && n.row && n.row.items, hasKo = !!(it && Array.isArray(it.ko));
+  let body = '';
+  if (s.m === 'US' && !n.err){
+    if (!it) body = '<p class="empty">이 종목 뉴스는 아직 모으기 전입니다. 30분 안에 채워집니다.</p>';
+    else body = (hasKo ? newsList(it.ko) + `<h3 class="nw-h">영어 기사 · Yahoo Finance</h3>` : '<p class="muted nw-f" style="margin:0 0 2px">Yahoo Finance 영어 기사</p>') + newsList(it.en);
+  } else if (s.m === 'KR' && hasKo) body = newsList(it.ko);
+  const dart = s.m === 'KR' && n.dartOn ? `${body ? '<h3 class="nw-h">공시 · 금융감독원 DART</h3>' : '<p class="muted nw-f" style="margin:0 0 2px">금융감독원 DART 공시</p>'}${dartList(n.dart)}` : '';
+  if (!body && !dart) return '';
+  const title = body && dart ? '뉴스·공시' : dart ? '공시' : '뉴스';
+  const when = n.row && n.row.at && body ? `${newsAgo(Date.parse(n.row.at) / 1000)} 모음` : dart ? '5분마다 확인' : '30분마다 모음';
+  return `<div class="card-h"><h2>${title}</h2><small>${when}</small></div>${body}${dart}<p class="muted nw-f">제목을 누르면 원문이 새 창으로 열립니다.</p>`;
 }
 function closeSheet(){
   const sh = $('#sheet'), sc = $('#scrim');

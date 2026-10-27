@@ -14,6 +14,8 @@
 //   NAVER_CLIENT_SECRET가 있을 때만), 미국 종목은 Yahoo Finance 영어 뉴스도 함께 받는다.
 //   NAVER API HUB 뉴스 검색: GET https://naverapihub.apigw.ntruss.com/search/v1/news
 //   (헤더 X-NCP-APIGW-API-KEY-ID = Client ID, X-NCP-APIGW-API-KEY = Client Secret)
+// - 공시: 함수 비밀값 DART_API_KEY가 있으면 5분마다 OpenDART 공시검색(시장 전체 최신순)을 받아,
+//   게임의 한국 100종목 공시만 종목별 최근 10건씩 public.seed10k_dart에 저장한다. 처음에는 최근 7일을 채운다.
 
 import NAMES from "./names.ts";
 
@@ -176,6 +178,66 @@ export async function refreshNews() {
   return { done: out.length, errs: errs.slice(0, 5) };
 }
 
+/* ───── 공시 (OpenDART) ───── */
+type Filing = { r: string; t: string; f: string; d: string; rm?: string };
+const DART_EVERY_MS = 5 * 60_000;   // 공시를 다시 확인하는 간격
+const DART_KEEP = 10;               // 종목별로 남기는 공시 수
+const ymd = (ms: number) => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(ms)).replaceAll("-", "");
+
+export async function refreshDart() {
+  const key = Deno.env.get("DART_API_KEY");
+  if (!key) return null;
+  const st: { items: { last?: string; at?: number } | null }[] = await (await rest("seed10k_dart?select=items&id=eq._state", { headers: restHeaders() })).json();
+  const state = (st[0] && st[0].items) || {};
+  if (state.at && Date.now() - state.at < DART_EVERY_MS) return { skipped: "5분 안에 확인함" };
+  const krIds = new Map(Object.entries(NAMES).filter(([, v]) => v.m === "KR").map(([id, v]) => [v.t, id]));
+  const first = !state.last;
+  const bgn = ymd(Date.now() - (first ? 7 : 3) * 864e5), end = ymd(Date.now());
+  const found = new Map<string, Filing[]>();
+  let newest = state.last || "", pages = 0, stop = false;
+  for (let p = 1; p <= (first ? 120 : 10) && !stop; p++) {
+    const url = `https://opendart.fss.or.kr/api/list.json?crtfc_key=${encodeURIComponent(key)}&bgn_de=${bgn}&end_de=${end}&sort=date&sort_mth=desc&page_no=${p}&page_count=100`;
+    const r = await fetch(url, { headers: { "Accept": "application/json" } });
+    if (!r.ok) throw new Error(`dart HTTP ${r.status}`);
+    const j = await r.json();
+    pages++;
+    if (j.status === "013") break;                       // 조회된 데이터가 없음
+    if (j.status !== "000") throw new Error(`dart ${j.status}: ${j.message}`);
+    for (const x of j.list || []) {
+      const rno = String(x.rcept_no || "");
+      if (!rno) continue;
+      if (state.last && rno <= state.last) { stop = true; break; }   // 지난번에 본 공시까지 왔다
+      if (rno > newest) newest = rno;
+      const id = krIds.get(String(x.stock_code || "").trim());
+      if (!id) continue;
+      const arr = found.get(id) || [];
+      arr.push({ r: rno, t: clean(String(x.report_nm || "")), f: clean(String(x.flr_nm || "")), d: String(x.rcept_dt || ""), ...(x.rm ? { rm: String(x.rm) } : {}) });
+      found.set(id, arr);
+    }
+    if (p >= Number(j.total_page || 1)) break;
+  }
+  const rows: { id: string; at: string; items: Filing[] }[] = [];
+  if (found.size) {
+    const ids = [...found.keys()];
+    const old: { id: string; items: Filing[] | null }[] = await (await rest(`seed10k_dart?select=id,items&id=in.(${ids.map((i) => `"${i}"`).join(",")})`, { headers: restHeaders() })).json();
+    const oldMap = new Map(old.map((o) => [o.id, o.items || []]));
+    for (const [id, arr] of found) {
+      const seen = new Set<string>(), merged: Filing[] = [];
+      for (const f of [...arr, ...(oldMap.get(id) || [])].sort((a, b) => (a.r < b.r ? 1 : -1))) {
+        if (seen.has(f.r)) continue; seen.add(f.r); merged.push(f);
+      }
+      rows.push({ id, at: new Date().toISOString(), items: merged.slice(0, DART_KEEP) });
+    }
+  }
+  rows.push({ id: "_state", at: new Date().toISOString(), items: { last: newest, at: Date.now() } as unknown as Filing[] });
+  await rest("seed10k_dart?on_conflict=id", {
+    method: "POST",
+    headers: restHeaders({ Prefer: "resolution=merge-duplicates,return=minimal" }),
+    body: JSON.stringify(rows),
+  });
+  return { pages, stocks: found.size, filings: [...found.values()].reduce((a, b) => a + b.length, 0) };
+}
+
 /* Supabase REST 호출 (비밀 키로 쓰기) */
 function secretKey(): string {
   try {
@@ -217,10 +279,11 @@ export async function run(at = new Date()) {
   });
 
   // 뉴스는 시세와 따로: 실패하거나 뉴스 표가 없어도 시세 수집은 계속한다
-  let news: unknown;
+  let news: unknown, dart: unknown;
   try { news = await refreshNews(); } catch (e) { news = { error: String((e as Error).message || e) }; }
+  try { dart = await refreshDart(); } catch (e) { dart = { error: String((e as Error).message || e) }; }
 
-  if (!act.FX) return { skipped: "장 시간이 아님", act, news };
+  if (!act.FX) return { skipped: "장 시간이 아님", act, news, dart };
 
   const want = all.filter((r) => (r.m === "KR" && act.KR) || (r.m === "US" && act.US) || (r.m === "FX" && act.FX));
   const { ok, failed } = await fetchAll(want);
@@ -240,7 +303,7 @@ export async function run(at = new Date()) {
       body: JSON.stringify(daily.slice(k, k + 200)),
     });
   }
-  return { act, wanted: want.length, saved: ok.length, failed: failed.slice(0, 10), failedCount: failed.length, news, ms: Date.now() - started };
+  return { act, wanted: want.length, saved: ok.length, failed: failed.slice(0, 10), failedCount: failed.length, news, dart, ms: Date.now() - started };
 }
 
 Deno.serve(async () => {
