@@ -1,4 +1,4 @@
-name: 600종목 데이터 확인 (임시)
+name: 한국 장 마감 봉 확인 (임시)
 on:
   push:
     branches: [tmp-yahoo-test]
@@ -8,21 +8,17 @@ jobs:
     timeout-minutes: 4
     steps:
       - run: |
-          B=https://butter3662.github.io/seed10k
-          curl -s -m 60 "$B/data/prices.json?t=$(date +%s)" -o /tmp/p.json
-          ls -la /tmp/p.json
+          U=https://ictjkqbbcaigdvlysdaw.supabase.co; K=sb_publishable_C7jZEKJn_nF2Y3Ngq5f80Q_RA5Wrfux
+          curl -s "$U/rest/v1/seed10k_quotes?select=id,p,t,i&id=in.(KR:005930,KR:000660)" -H "apikey: $K" -o /tmp/q.json
+          curl -s -A "Mozilla/5.0" "https://query1.finance.yahoo.com/v8/finance/chart/005930.KS?range=1d&interval=5m" -o /tmp/y.json
+          curl -s -A "Mozilla/5.0" "https://query1.finance.yahoo.com/v8/finance/chart/005930.KS?range=1d&interval=1m" -o /tmp/y1.json
           python3 - <<'PY'
-          import json
-          p = json.load(open('/tmp/p.json'))
-          s = p.get('s', {})
-          kr = [k for k in s if k.startswith('KR:')]; us = [k for k in s if k.startswith('US:')]
-          print(f"::notice title=prices.json::종목 {len(s)} (한국 {len(kr)}, 미국 {len(us)}), 빠진 종목 {p.get('miss')}, 크기 {len(open('/tmp/p.json').read())//1024}KB, 갱신 {p.get('updated')}")
-          for k in ['KR:036930', 'KR:0009K0', 'US:SYK', 'US:VG']:
-              print(f"::notice title={k}::{(s.get(k) or [])[-3:]}")
+          import json, datetime
+          kst = lambda s: (datetime.datetime.utcfromtimestamp(s) + datetime.timedelta(hours=9)).strftime('%H:%M')
+          for r in json.load(open('/tmp/q.json')):
+              t = r['i']['t']; c = r['i']['c']
+              print(f"::notice title=저장된 {r['id']}::봉 {len(t)}개, 첫 {kst(t[0])}, 마지막 5개 {[(kst(a), b) for a, b in zip(t[-5:], c[-5:])]}, 최신가 {r['p']} ({r['t']})")
+          for f, lab in (('/tmp/y.json', '5m'), ('/tmp/y1.json', '1m')):
+              y = json.load(open(f))['chart']['result'][0]; t = y['timestamp']; c = y['indicators']['quote'][0]['close']; m = y['meta']
+              print(f"::notice title=야후 {lab}::봉 {len(t)}개, 마지막 6개 {[(kst(a), b) for a, b in zip(t[-6:], c[-6:])]}, regularMarketPrice {m.get('regularMarketPrice')} 시각 {kst(m.get('regularMarketTime'))}, 거래시간 {m.get('currentTradingPeriod', {}).get('regular')}")
           PY
-          for c in KR_036930 US_SYK KR_0158S0; do
-            code=$(curl -s -m 30 -o /tmp/c.json -w "%{http_code}" "$B/data/c/$c.json?t=$(date +%s)")
-            echo "::notice title=차트 $c::HTTP $code, $(python3 -c "import json; d=json.load(open('/tmp/c.json')); print('d1', len((d.get('d1') or {}).get('c', [])), '거래량', len((d.get('d1') or {}).get('v') or []), 'i5', len((d.get('i5') or {}).get('c', [])))" 2>&1)"
-          done
-          curl -s -m 30 "$B/index.html?t=$(date +%s)" | grep -o "const VERSION = '[0-9.]*'" | head -1 | sed 's/^/::notice title=배포 버전::/'
-# Tue Oct 27 16:30:54 KST 2026
