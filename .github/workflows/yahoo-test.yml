@@ -1,4 +1,4 @@
-name: 뉴스 시험 (임시)
+name: 한 줄 불러오기 재확인 (임시)
 on:
   push:
     branches: [tmp-yahoo-test]
@@ -7,8 +7,12 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v7
       - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
-      - run: timeout 120 deno run -A supabase/functions/seed10k-quotes/news_test.ts
+      - run: |
+          mkdir l && cd l
+          printf 'import "https://raw.githubusercontent.com/butter3662/seed10k/main/supabase/functions/seed10k-quotes/index.ts";\n' > raw.ts
+          (deno run -A --reload raw.ts > log 2>&1 &) ; sleep 15
+          out=$(curl -s -m 10 -X POST localhost:8000 -d '{}' || true)
+          echo "::notice title=불러오기::응답 $(echo $out | head -c 200) / 받은 파일: $(grep -o 'https://[^ ]*' log | sed 's#.*/##' | tr '\n' ' ') / 오류: $(grep -i error log | head -2 | tr '\n' ' ')"
