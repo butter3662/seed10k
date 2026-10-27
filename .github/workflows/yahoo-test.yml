@@ -1,21 +1,20 @@
-name: 7초 일정 확인 (임시)
+name: 페이지 캐시 확인 (임시)
 on:
   push:
     branches: [tmp-yahoo-test]
 jobs:
   check:
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    timeout-minutes: 4
     steps:
       - run: |
-          U=https://ictjkqbbcaigdvlysdaw.supabase.co; K=sb_publishable_C7jZEKJn_nF2Y3Ngq5f80Q_RA5Wrfux
-          S=""
-          for n in $(seq 1 12); do
-            v=$(curl -s "$U/rest/v1/seed10k_quotes?select=updated_at&id=eq._beat" -H "apikey: $K" | python3 -c "import json,sys; print(json.load(sys.stdin)[0]['updated_at'][11:19])")
-            S="$S $v"; sleep 3
-          done
-          echo "::notice title=_beat 시각 (3초 간격으로 12번 읽음)::$S"
-          M=$(curl -s "$U/rest/v1/seed10k_quotes?select=id,d,updated_at&id=in.(_closeKR,_run,_fast,_nvKR,_nvUS)" -H "apikey: $K")
-          echo "::notice title=표시 줄::$M"
-          R=$(curl -s -m 60 -X POST "$U/functions/v1/seed10k-quotes" -H "apikey: $K" -H "Content-Type: application/json" -d '{}' | head -c 600)
-          echo "::notice title=함수 응답::$R"
+          U=https://butter3662.github.io/seed10k/data/prices.json
+          curl -s -D /tmp/h1 -o /tmp/b1 "$U"
+          E=$(grep -i '^etag' /tmp/h1 | cut -d' ' -f2- | tr -d '\r')
+          L=$(grep -i '^last-modified' /tmp/h1 | cut -d' ' -f2- | tr -d '\r')
+          C2=$(curl -s -o /dev/null -w "%{http_code} %{size_download}" -H "If-None-Match: $E" "$U")
+          C3=$(curl -s -o /dev/null -w "%{http_code} %{size_download}" -H "If-Modified-Since: $L" "$U")
+          echo "::notice title=첫 요청::$(head -1 /tmp/h1 | tr -d '\r') 크기 $(wc -c < /tmp/b1) etag $E / cache-control $(grep -i '^cache-control' /tmp/h1 | tr -d '\r') / age $(grep -i '^age' /tmp/h1 | tr -d '\r')"
+          echo "::notice title=조건부 요청::If-None-Match → $C2 , If-Modified-Since → $C3"
+          S=$(curl -s -o /dev/null -w "%{size_download}" "https://butter3662.github.io/seed10k/data/c/KR_005930.json")
+          echo "::notice title=종목 파일 크기::KR_005930 $S"
