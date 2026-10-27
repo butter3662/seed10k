@@ -1,4 +1,4 @@
-name: 네이버 분봉과 비교 (임시)
+name: 네이버 채우기 확인 (임시)
 on:
   push:
     branches: [tmp-yahoo-test]
@@ -8,18 +8,21 @@ jobs:
     timeout-minutes: 4
     steps:
       - run: |
-          curl -s -A "Mozilla/5.0" "https://fchart.stock.naver.com/sise.nhn?symbol=005930&timeframe=minute&count=420&requestType=0" -o /tmp/n1.xml
-          curl -s -A "Mozilla/5.0" "https://api.stock.naver.com/chart/domestic/item/005930/minute?startDateTime=202610270900&endDateTime=202610271540" -o /tmp/n2.json
-          curl -s -A "Mozilla/5.0" "https://query1.finance.yahoo.com/v8/finance/chart/005930.KS?range=1d&interval=1m" -o /tmp/y1.json
+          U=https://ictjkqbbcaigdvlysdaw.supabase.co; K=sb_publishable_C7jZEKJn_nF2Y3Ngq5f80Q_RA5Wrfux
+          curl -s "$U/rest/v1/seed10k_quotes?select=id,p,d,i&m=eq.KR" -H "apikey: $K" -o /tmp/q.json
+          curl -s "$U/rest/v1/seed10k_daily?select=id,c,l,h&d=eq.2026-10-27&id=in.(KR:005930,KR:000660)" -H "apikey: $K" -o /tmp/d.json
           python3 - <<'PY'
-          import re, json, datetime
-          x = open('/tmp/n1.xml', encoding='euc-kr', errors='replace').read()
-          d = re.findall(r'data="([^"]+)"', x)
-          print(f"::notice title=네이버 fchart {len(d)}개::처음 5 {d[:5]} / 마지막 25 {d[-25:]}")
-          s = open('/tmp/n2.json').read()
-          print(f"::notice title=네이버 api::{s[:300]} ... {s[-1500:]}")
-          y = json.load(open('/tmp/y1.json'))['chart']['result'][0]; t = y['timestamp']; q = y['indicators']['quote'][0]
+          import json, datetime, collections
           kst = lambda s: (datetime.datetime.utcfromtimestamp(s) + datetime.timedelta(hours=9)).strftime('%H:%M')
-          print(f"::notice title=야후 1분 처음 5::{[(kst(a), o, c, v) for a, o, c, v in zip(t[:5], q['open'][:5], q['close'][:5], q['volume'][:5])]} 거래시간 {y['meta'].get('currentTradingPeriod')}")
-          print(f"::notice title=야후 1분 14:20~::{[(kst(a), c, v) for a, c, v in zip(t, q['close'], q['volume']) if kst(a) >= '14:20']}")
+          rows = json.load(open('/tmp/q.json')); c = collections.Counter(); bad = []
+          for r in rows:
+              i = r['i'] or {}
+              k = 'nv' if i.get('nv') else (f"nf{i.get('nf')}" if i.get('nf') else '안 함')
+              c[k] += 1
+              if i.get('nf'): bad.append(r['id'])
+          print(f"::notice title=상태::{dict(c)} 실패 {bad[:20]}")
+          for r in rows:
+              if r['id'] in ('KR:005930', 'KR:000660', 'KR:036930'):
+                  i = r['i']; print(f"::notice title={r['id']}::{[(kst(a), b) for a, b in zip(i['t'][-8:], i['c'][-8:])]} 종가 {r['p']}")
+          print(f"::notice title=일봉::{open('/tmp/d.json').read()}")
           PY
