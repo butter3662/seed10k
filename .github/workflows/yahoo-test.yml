@@ -19,7 +19,7 @@ jobs:
           g = collections.defaultdict(list)
           for r in rows:
               t = (r.get('i') or {}).get('t') or []
-              g[(r['id'][:2], kst(t[-1]) if t else '-', iso(r.get('t')), iso(r.get('updated_at'))[:-1])].append(r['id'][3:])
+              g[(r['id'][:2], kst(t[-1]) if t else '-', iso(r.get('t')), iso(r.get('updated_at')))].append(r['id'][3:])
           print(f"::notice title=행 수::{len(rows)}")
           for k, v in sorted(g.items(), key=lambda x: (x[0][0], -len(x[1]))):
               s = ','.join(v)
