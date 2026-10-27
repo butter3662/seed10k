@@ -505,6 +505,8 @@ html[data-game=live] .c-news{order:3}
 .info-btn{border:1px solid var(--rule);background:var(--surface-2);color:var(--ink-2);border-radius:999px;padding:1px 9px;font-size:12px;font-weight:650;cursor:pointer;vertical-align:middle;line-height:1.6}
 .info-btn:hover{color:var(--ink)}
 .info-row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.loans-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:12px}
+.info-col{display:grid;gap:12px;align-content:start;min-width:0}
 .info-row h2{font-size:16px;font-weight:750;margin:0}
 .info-row small{display:block;margin-top:2px}
 .toasts{position:fixed;z-index:95;left:50%;transform:translateX(-50%);bottom:calc(var(--tabbar) + 14px + env(safe-area-inset-bottom));display:grid;gap:8px;width:min(420px,calc(100vw - 32px));pointer-events:none}
@@ -659,7 +661,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 100 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.13.0';
+const VERSION = '1.13.1';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -2331,9 +2333,11 @@ function renderInfo(){
       <div class="set-row"><div class="l">새 게임<small>이 모드의 기록을 지우고 시드 $10,000로 다시 시작합니다</small></div>
         <button class="btn" id="btnReset" style="color:var(--danger)">새 게임 시작</button></div>
     </section>
-    ${infoRow('rules', '게임 규칙', '거래 시간, 체결, 통장, 배당, 대출, 파산')}
-    ${infoRow('formulas', '계산식', '순자산, 수익률, 환전, 결제 금액, 지수' + (live ? '' : ', 가격 모델'))}
-    ${infoRow('data', '데이터 기준', '종목 목록과 시세를 어디서 가져오는지')}
+    <div class="info-col">
+      ${infoRow('rules', '게임 규칙', '거래 시간, 체결, 통장, 배당, 대출, 파산')}
+      ${infoRow('formulas', '계산식', '순자산, 수익률, 환전, 결제 금액, 지수' + (live ? '' : ', 가격 모델'))}
+      ${infoRow('data', '데이터 기준', '종목 목록과 시세를 어디서 가져오는지')}
+    </div>
 
   </div>
   <p class="ver">SEED 10K v${VERSION}</p>`;
