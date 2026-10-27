@@ -1,4 +1,4 @@
-name: 실제 사이트 7초 갱신 확인 (임시)
+name: 7초 수집 추적 (임시)
 on:
   push:
     branches: [tmp-yahoo-test]
@@ -7,11 +7,10 @@ permissions:
 jobs:
   check:
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 6
     steps:
       - uses: actions/checkout@v4
-      - run: pip install playwright==1.48.0 && python -m playwright install --with-deps chromium
-      - run: python probe/live.py || true
+      - run: python3 probe/trace.py || true
       - run: |
           git config user.name gha; git config user.email gha@users.noreply.github.com
-          git add probe/live.txt && git commit -m "확인 결과" && git push origin HEAD:tmp-yahoo-test
+          git add probe/trace.txt && git commit -m "추적 결과" && git push origin HEAD:tmp-yahoo-test
