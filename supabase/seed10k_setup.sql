@@ -89,3 +89,9 @@ select cron.schedule(
        timeout_milliseconds := 60000
      ) $$
 );
+
+-- 6) 종목 뉴스 (누구나 읽고, 쓰기는 seed10k-quotes 함수만)
+create table if not exists public.seed10k_news (id text primary key, at timestamptz, items jsonb);
+alter table public.seed10k_news enable row level security;
+drop policy if exists "seed10k_news_select_all" on public.seed10k_news;
+create policy "seed10k_news_select_all" on public.seed10k_news for select using (true);

@@ -313,6 +313,20 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
 .pos dt{color:var(--ink-3);font-size:12px} .pos dd{margin:0;font-weight:700}
 .order{border:1px solid var(--rule);border-radius:var(--r-md);padding:12px;display:grid;gap:10px}
 .order .seg{width:100%;grid-auto-columns:1fr}
+/* 종목 뉴스 */
+.nws{margin-top:16px}
+.nws .card-h{margin-bottom:4px}
+.nw-h{font-size:13px;font-weight:700;color:var(--ink-2);margin:14px 0 2px}
+.nw-l{list-style:none;margin:0;padding:0}
+.nw-l li{border-top:1px solid var(--rule)}
+.nw-l li:first-child{border-top:0}
+.nw-l a{display:flex;gap:12px;align-items:flex-start;padding:11px 0;color:inherit;text-decoration:none}
+.nw-b{display:grid;gap:4px;min-width:0;flex:1}
+.nw-s{font-size:12px;color:var(--ink-3);font-weight:600}
+.nw-t{font-size:14.5px;font-weight:650;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.nw-l a:hover .nw-t{text-decoration:underline}
+.nw-l img{width:56px;height:56px;border-radius:10px;object-fit:cover;flex:none;background:var(--surface-2)}
+.nw-f{font-size:12px;margin:8px 0 0}
 .order .seg button[data-side=buy][aria-pressed=true]{background:var(--up);color:#fff}
 .order .seg button[data-side=sell][aria-pressed=true]{background:var(--down);color:#fff}
 .qty{display:grid;grid-template-columns:44px 1fr 44px;gap:6px}
@@ -602,7 +616,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 100 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.5.3';
+const VERSION = '1.6.0';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -1992,7 +2006,54 @@ function openSheet(id){
   requestAnimationFrame(() => { sh.classList.add('on'); sc.classList.add('on'); renderChartBox(); });
   setTimeout(() => { const c = sh.querySelector('.close'); c && c.focus({preventScroll:true}); }, 50);
   // 종목을 열면 바로 최신 시세와 차트를 새로 받는다
-  if (isLive()){ UI.refreshing = true; Promise.all([loadLive(true), loadChart(id, true)]).finally(() => { UI.refreshing = false; if (UI.sheet === id) renderSheet(); }); }
+  if (isLive()){ UI.refreshing = true; Promise.all([loadLive(true), loadChart(id, true)]).finally(() => { UI.refreshing = false; if (UI.sheet === id) renderSheet(); }); loadNews(id); }
+}
+
+/* ───────── 종목 뉴스 (Supabase 함수가 30분마다 모아 둔 seed10k_news 표) ───────── */
+const NW = {};   // 종목별 {row, at, err}
+async function loadNews(id){
+  if (!ACC.sb){ NW[id] = {err:'로그인 서버에 연결되지 않았습니다', at:Date.now()}; renderNews(id); return; }
+  const c = NW[id];
+  if (c && !c.err && Date.now() - c.at < 5 * 60e3){ renderNews(id); return; }
+  try {
+    const {data, error} = await ACC.sb.from('seed10k_news').select('items,at').eq('id', id).maybeSingle();
+    if (error) throw error;
+    NW[id] = {row:data, at:Date.now()};
+  } catch(e){ NW[id] = {err:errText(e), at:Date.now()}; }
+  renderNews(id);
+}
+function renderNews(id){ const el = $('#apNews'); if (el && UI.sheet === id) el.innerHTML = newsHTML(id); }
+const NEWS_SRC = {'hankyung.com':'한국경제','mk.co.kr':'매일경제','yna.co.kr':'연합뉴스','yonhapnewstv.co.kr':'연합뉴스TV','news1.kr':'뉴스1','newsis.com':'뉴시스',
+  'edaily.co.kr':'이데일리','mt.co.kr':'머니투데이','news.mt.co.kr':'머니투데이','sedaily.com':'서울경제','fnnews.com':'파이낸셜뉴스','asiae.co.kr':'아시아경제',
+  'chosun.com':'조선일보','biz.chosun.com':'조선비즈','joongang.co.kr':'중앙일보','donga.com':'동아일보','hani.co.kr':'한겨레','khan.co.kr':'경향신문',
+  'etnews.com':'전자신문','zdnet.co.kr':'지디넷코리아','heraldcorp.com':'헤럴드경제','inews24.com':'아이뉴스24','ytn.co.kr':'YTN','news.kbs.co.kr':'KBS',
+  'news.sbs.co.kr':'SBS','imnews.imbc.com':'MBC','nocutnews.co.kr':'노컷뉴스','seoul.co.kr':'서울신문','dt.co.kr':'디지털타임스','bizwatch.co.kr':'비즈니스워치',
+  'thebell.co.kr':'더벨','ajunews.com':'아주경제','newspim.com':'뉴스핌','wowtv.co.kr':'한국경제TV','mbn.co.kr':'MBN','news.jtbc.co.kr':'JTBC',
+  'kmib.co.kr':'국민일보','segye.com':'세계일보','hankookilbo.com':'한국일보','ddaily.co.kr':'디지털데일리','bloter.net':'블로터','thelec.kr':'디일렉',
+  'businesspost.co.kr':'비즈니스포스트','g-enews.com':'글로벌이코노믹','ebn.co.kr':'EBN','sentv.co.kr':'서울경제TV','econovill.com':'이코노믹리뷰'};
+function newsSource(s){ if (!s) return ''; for (const k in NEWS_SRC) if (s === k || s.endsWith('.' + k)) return NEWS_SRC[k]; return s; }
+function newsAgo(sec){
+  if (!sec) return '';
+  const m = Math.floor((Date.now() - sec * 1000) / 6e4);
+  return m < 1 ? '방금' : m < 60 ? `${m}분 전` : m < 1440 ? `${Math.floor(m / 60)}시간 전` : `${Math.floor(m / 1440)}일 전`;
+}
+function newsList(items){
+  const ok = (items || []).filter(x => x && x.t && /^https?:\/\//.test(x.u || ''));
+  if (!ok.length) return '<p class="empty">최근 기사가 없습니다.</p>';
+  return `<ul class="nw-l">${ok.map(x => `<li><a href="${esc(x.u)}" target="_blank" rel="noopener noreferrer">
+    <span class="nw-b"><span class="nw-s">${esc(newsSource(x.s))}${x.at ? ` · ${newsAgo(x.at)}` : ''}</span><b class="nw-t">${esc(x.t)}</b></span>
+    ${x.img && /^https:\/\//.test(x.img) ? `<img src="${esc(x.img)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : ''}</a></li>`).join('')}</ul>`;
+}
+function newsHTML(id){
+  const s = BY_ID[id], n = NW[id];
+  const head = `<div class="card-h"><h2>뉴스</h2><small>${n && n.row && n.row.at ? `${newsAgo(Date.parse(n.row.at) / 1000)} 모음` : '30분마다 모음'}</small></div>`;
+  if (!n) return head + '<p class="empty">뉴스를 불러오는 중입니다.</p>';
+  if (n.err) return head + `<p class="empty">뉴스를 불러오지 못했습니다 (${esc(n.err)}).</p>`;
+  if (!n.row || !n.row.items) return head + '<p class="empty">이 종목 뉴스는 아직 모으기 전입니다. 30분 안에 채워집니다.</p>';
+  const it = n.row.items;
+  let html = head + (it.ko === null ? '<p class="empty">네이버 뉴스 키가 아직 설정되지 않아 한국어 기사가 없습니다.</p>' : newsList(it.ko));
+  if (s.m === 'US') html += `<h3 class="nw-h">영어 기사 · Yahoo Finance</h3>` + newsList(it.en);
+  return html + '<p class="muted nw-f">제목을 누르면 원문 기사가 새 창으로 열립니다.</p>';
 }
 function closeSheet(){
   const sh = $('#sheet'), sc = $('#scrim');
@@ -2259,7 +2320,8 @@ function renderSheet(){
     </dl>
     ${s.note && !live ? `<p class="note">${esc(s.note)}</p>` : ''}
     ${P ? `<dl class="pos"><div><dt>보유 수량</dt><dd class="num">${P.q.toLocaleString()}주</dd></div><div><dt>평균 단가</dt><dd class="num">${fmtPx(s, P.avg)}</dd></div><div><dt>평가액</dt><dd class="num">${fmtPx(s, P.q * p)}${s.cur === 'KRW' ? ` <small class="muted">(${fmtUSD(val)})</small>` : ''}</dd></div><div><dt>평가손익</dt><dd class="num ${cls(plN)}">${s.cur === 'KRW' ? (plN > 0 ? '+' : '') + fmtKRW(plN) : signUSD(plN)} (${fmtPct(P.cost ? plN / P.cost : 0)})</dd></div></dl>` : ''}
-    <div class="order" id="orderBox"></div>`;
+    <div class="order" id="orderBox"></div>
+    ${live ? `<section class="nws" id="apNews">${newsHTML(id)}</section>` : ''}`;
   renderOrder();
   renderChartBox();
   sh.scrollTop = scrollTop;
@@ -2541,10 +2603,9 @@ function askImport(mode){
 function scheduleCloud(){
   clearTimeout(ACC.cloudT);
   ACC.cloudT = setTimeout(pushCloud, 4000);
-  clearTimeout(ACC.rankT);
-  ACC.rankT = setTimeout(pushRank, 15000);
+  // 랭킹은 서버 저장(pushCloud)이 성공한 직후에 올린다 (기기 사이에서 다른 값이 덮어쓰지 않게)
 }
-function flushCloud(){ if (ACC.user){ clearTimeout(ACC.cloudT); pushCloud(); pushRank(); } }
+function flushCloud(){ if (ACC.user){ clearTimeout(ACC.cloudT); pushCloud(); } }
 /* 서버 오류를 사용자에게 보여줄 짧은 글로 (코드, HTTP 상태, 메시지) */
 function errText(e){
   if (!e) return '알 수 없는 오류';
@@ -2589,7 +2650,7 @@ async function pushCloud(){
     if (r === 'conflict') conflict = true;
     else {
       ACC.lastSync = new Date(); ACC.syncErr = null;
-      if (S === snap){ S.syncBase = token; if (ACC.ver === ver) S.dirty = false; writeLocal(); }
+      if (S === snap){ S.syncBase = token; if (ACC.ver === ver) S.dirty = false; writeLocal(); pushRank(); }
     }
   } catch(e){
     ACC.syncErr = {at:new Date(), text:errText(e)};
@@ -2603,10 +2664,16 @@ async function pushCloud(){
   if (ACC.pushAgain){ ACC.pushAgain = false; scheduleCloud(); }
 }
 function rankDays(){ return isLive() ? Math.max(0, Math.floor((Date.now() - (S.started || Date.now())) / 864e5)) : S.day; }
+/* 내 랭킹 값: 이 화면에서 지금 계산한 순자산과 수익률 */
+function myRankValues(){
+  const N = netWorth();
+  return {N, ret:clamp(Math.round((N - META.seed) / META.seed * 10000) / 100, -100, 100000)};
+}
 async function pushRank(){
   if (!ACC.user || !ACC.sb || !S || S._ph || !ACC.nick) return;
-  const N = netWorth();
-  const ret = clamp(Math.round((N - META.seed) / META.seed * 10000) / 100, -100, 100000);
+  if (isLive() && !LIVE.ok) return;                 // 시세를 받기 전 값으로 올리지 않는다
+  if (S.syncBase === undefined || S.syncBase === null) return;   // 서버 기록과 맞춰진 기록만 올린다
+  const {N, ret} = myRankValues();
   try {
     const {error} = await ACC.sb.from('seed10k_ranks').upsert({user_id:ACC.user.id, mode:S.mode, nickname:ACC.nick,
       net_worth:Math.round(N * 100) / 100, return_pct:ret, days:rankDays(), updated_at:new Date().toISOString()});
@@ -2620,7 +2687,6 @@ async function refreshRanks(force){
   ACC.ranksAt[mode] = Date.now();
   renderRankCard();
   try {
-    if (ACC.user && ACC.nick && mode === S.mode) await pushRank();
     const {data, error} = await ACC.sb.from('seed10k_ranks').select('user_id,nickname,return_pct,net_worth,days').eq('mode', mode).order('return_pct', {ascending:false}).limit(20);
     if (error) throw error;
     ACC.ranks[mode] = data || [];
@@ -2640,9 +2706,21 @@ async function refreshRanks(force){
   } catch(e){ ACC.rankErr = '랭킹을 불러오지 못했습니다. 잠시 뒤 다시 열어보세요.'; }
   renderRankCard();
 }
+/* 서버 랭킹에서 내 줄을 지금 화면의 값으로 바꾸고 수익률 순으로 다시 정렬한다 */
+function rankRowsLive(mode){
+  const rows = ACC.ranks[mode];
+  if (!rows || !ACC.user || mode !== S.mode || S._ph || (isLive() && !LIVE.ok)) return rows;
+  const i = rows.findIndex(r => r.user_id === ACC.user.id);
+  if (i < 0) return rows;
+  const {N, ret} = myRankValues();
+  const out = rows.slice(); out[i] = {...rows[i], net_worth:Math.round(N * 100) / 100, return_pct:ret, days:rankDays()};
+  out.sort((a, b) => +b.return_pct - +a.return_pct);
+  ACC.myRank[mode] = out.findIndex(r => r.user_id === ACC.user.id) + 1;
+  return out;
+}
 function rankCardHTML(){
   const mode = UI.rankMode || S.mode;
-  const rows = ACC.ranks[mode];
+  const rows = rankRowsLive(mode);
   const head = `<div class="card-h"><h2>랭킹</h2><div class="seg seg-s"><button data-rankmode="live" aria-pressed="${mode === 'live'}">실제 시세</button><button data-rankmode="sim" aria-pressed="${mode === 'sim'}">시뮬레이션</button></div></div>`;
   let body;
   if (!ACC.sb) body = `<p class="empty">로그인 서버에 연결되지 않아 랭킹을 볼 수 없습니다.</p>`;
