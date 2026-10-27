@@ -146,6 +146,3 @@ revoke all on function public.seed10k_http_get(text[]) from public, anon, authen
 revoke all on function public.seed10k_http_take(bigint[]) from public, anon, authenticated;
 grant execute on function public.seed10k_http_get(text[]) to service_role;
 grant execute on function public.seed10k_http_take(bigint[]) to service_role;
-
--- 9) 랭킹에 받은 미니게임 포인트 합계 (순자산에 포인트가 얼마나 들어 있는지 보여 주는 용도)
-alter table public.seed10k_ranks add column if not exists points numeric not null default 0;
