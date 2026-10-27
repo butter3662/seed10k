@@ -389,7 +389,7 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
 .mk b{font-weight:750;color:var(--ink)}
 .mk i,.st-dot{width:7px;height:7px;border-radius:50%;background:var(--ink-3);display:inline-block;flex:none}
 .mk[data-k=open] i,.st-dot[data-k=open]{background:var(--brass);box-shadow:0 0 0 3px color-mix(in srgb,var(--brass) 25%,transparent);animation:pulse 2s ease-in-out infinite}
-.mk[data-k=wait] i,.st-dot[data-k=wait]{background:var(--warn)}
+.mk[data-k=wait] i,.st-dot[data-k=wait],.mk[data-k=settle] i,.st-dot[data-k=settle]{background:var(--warn)}
 .mk[data-k=open]{border-color:color-mix(in srgb,var(--brass) 55%,var(--rule))}
 @keyframes pulse{50%{box-shadow:0 0 0 6px color-mix(in srgb,var(--brass) 0%,transparent)}}
 .upd{font-size:11.5px;color:var(--ink-3);font-weight:600;display:inline-flex;align-items:center;gap:7px;white-space:nowrap}
@@ -670,7 +670,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.1.1';
+const VERSION = '1.2.0';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -884,10 +884,21 @@ function mstate(m){
   const mins = p.h * 60 + p.mi, wk = p.wd !== 'Sat' && p.wd !== 'Sun';
   if (!wk) return {k:'closed', label:'주말 휴장', open:false};
   if (mins < z.o) return {k:'pre', label:'개장 전', open:false};
-  if (mins >= z.c) return {k:'closed', label:'장 마감', open:false};
+  if (mins >= z.c) return isLive() && !closeSettled(m, p.date, mins) ? {k:'settle', label:'마감 집계 중', open:false} : {k:'closed', label:'장 마감', open:false};
   if (!LIVE.ok) return {k:'wait', label:'시세 없음', open:false};
   if (last(LIVE.dates[m]) !== p.date) return {k:'wait', label: mins - z.o > 75 ? '휴장일 추정' : '시세 대기', open:false};
   return {k:'open', label:'장중', open:true};
+}
+/* 장이 끝난 뒤 그날 시세(차트)가 다 들어왔는가. 다 들어오기 전까지는 '마감 집계 중':
+   바로 주문은 막고, 장중에 걸어 둔 예약 주문은 늦게 들어온 장중 가격으로 체결될 수 있다.
+   - 한국: 시세 함수가 15:00~15:30 구간을 네이버 분봉으로 다 채운 뒤 남기는 _closeKR 표시(그날 날짜)가 오면. 안 와도 17:00에는 끝낸다.
+   - 미국: 시세 함수가 16:20(뉴욕)까지 받으므로 그때 끝낸다.
+   - 그날 시세가 없는 날(휴장일)은 바로 끝낸다. */
+const SETTLE = {KR:{mark:'_closeKR', max:17*60}, US:{mark:null, max:16*60+20}};
+function closeSettled(m, date, mins){
+  const c = SETTLE[m];
+  if (mins >= c.max || last(LIVE.dates[m] || []) !== date) return true;
+  return !!(c.mark && (QT.rows || []).some(r => r.id === c.mark && r.d === date));
 }
 /* 시간대 tz의 날짜 date(YYYY-MM-DD) 자정에서 mins분 지난 순간의 유닉스 밀리초 (서머타임 반영) */
 function zoneTs(tz, date, mins){
@@ -1234,7 +1245,7 @@ function fillOrder(o, p, at, notes){
   o.endAt = at;
   if (ok){
     o.st = 'done'; o.fp = p;
-    notes.push({t:`${orderKindLabel(o)} 체결`, b:`${s.n} ${(o.qDone || o.q).toLocaleString()}주가 ${fmtPx(s, p)}에 체결됐습니다. (조건 ${orderCondText(o)})`});
+    notes.push({t:`${orderKindLabel(o)} 체결`, b:`${s.n} ${(o.qDone || o.q).toLocaleString()}주가 ${fmtPx(s, p)}에 체결됐습니다${isLive() ? ` (${kstTime(new Date(at))} 시세)` : ''}. (조건 ${orderCondText(o)})`});
   } else {
     o.st = 'fail';
     notes.push({t:`${orderKindLabel(o)} 실패`, b:`${s.n}이(가) 조건(${orderCondText(o)})에 닿았지만 ${why} 체결하지 못했습니다.`, bad:true});
@@ -2384,7 +2395,7 @@ function renderInfo(){
       <ul>
         <li>시드머니는 달러 통장에 들어 있는 <b>$10,000</b>입니다.</li>
         ${live ? `
-        <li><b>실제 시세 모드</b>: 실제 주가를 따라갑니다. 장중에는 현재가를 약 7초마다 받습니다(네이버 증권 실시간 시세). 차트의 5분 봉은 Yahoo Finance 자료라 한국은 약 20분 늦게 그려지고, 장이 끝난 뒤 15:00~15:30 구간이 채워집니다.</li>
+        <li><b>실제 시세 모드</b>: 실제 주가를 따라갑니다. 장중에는 현재가를 약 7초마다 받습니다(네이버 증권 실시간 시세). 차트의 5분 봉은 Yahoo Finance 자료라 한국은 약 20분 늦게 그려지고, 장이 끝난 뒤 15:00~15:30 구간이 채워집니다. 장이 끝나고 그날 차트가 다 들어올 때까지(한국 보통 16:10 전후, 미국 뉴욕 16:20)는 '마감 집계 중'으로 표시됩니다. 이때 바로 주문은 할 수 없고, 장중에 걸어 둔 예약 주문만 늦게 들어온 장중 가격으로 체결될 수 있습니다. 체결 알림에는 그 가격의 시각이 함께 나옵니다.</li>
         <li>각 시장의 <b>정규장</b>에만 거래할 수 있습니다. 한국 ${sessInKST('KR')}, 미국 ${sessInKST('US')}(한국 시각, 서머타임 반영). 공휴일은 그날 시세가 들어오지 않는 것으로 판단합니다.</li>
         <li>체결가는 마지막으로 수집된 가격입니다. 화면의 시세 시각을 확인하세요.</li>
         <li><b>예약 주문</b>: 예약 매수는 가격이 정한 값 이하가 되면, 예약 매도는 정한 값이 걸 때의 현재가보다 높으면 그 값 이상으로 오를 때, 낮으면 그 값 이하로 내려갈 때 체결됩니다. 체결가는 조건에 처음 닿은 시세이고, 게임을 꺼 둔 동안 닿았어도 다시 열 때 그 시각의 시세로 체결됩니다. 돈과 보유 수량은 체결할 때 확인하며, 유효기간은 ${ORDER_DAYS}일입니다.</li>
@@ -3018,7 +3029,7 @@ function orderRowHTML(o, showName){
   const st = {wait:'대기', done:'체결', fail:'실패', cancel:'취소', expire:'기간 끝'}[o.st] || o.st;
   return `<div class="orow"><span class="otag ${o.side}">${orderKindLabel(o)}</span>
     <span class="ob">${showName ? `<button class="olink" data-open="${o.id}">${esc(s.n)}</button> ` : ''}${orderCondText(o)}, ${(o.qDone || o.q).toLocaleString()}주
-      <small>${o.st === 'wait' ? orderExpText(o) : `${st}${o.fp ? ` ${fmtPx(s, o.fp)}` : ''}${o.endAt ? `, ${fmtDate(isLive() ? zoneParts('Asia/Seoul', new Date(o.endAt)).date : S.date, false)}` : ''}`}</small></span>
+      <small>${o.st === 'wait' ? orderExpText(o) : `${st}${o.fp ? ` ${fmtPx(s, o.fp)}` : ''}${o.endAt ? `, ${fmtDate(isLive() ? zoneParts('Asia/Seoul', new Date(o.endAt)).date : S.date, false)}${isLive() ? ` ${kstTime(new Date(o.endAt))}` : ''}` : ''}`}</small></span>
     ${o.st === 'wait' ? `<button class="btn btn-s" data-ocancel="${o.n}">취소</button>` : `<span class="ost ${o.st}">${st}</span>`}</div>`;
 }
 function ordersListHTML(id){

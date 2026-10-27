@@ -34,6 +34,7 @@
 //   15:00~15:20 거래를 주지 않는다. 그래서 한국 장이 끝난 뒤(평일 16:01~24:00) 한 번에 60종목씩,
 //   네이버 증권 1분 봉(api.stock.naver.com/chart/domestic/item/{코드}/minute)으로 그날 15:00~15:30을 5분 봉으로 바꿔 넣는다.
 //   채운 종목은 i.nv = 1, 실패하면 i.nf에 실패 횟수를 남기고 3번 실패하면 더 시도하지 않는다.
+//   더 채울 종목이 없으면 _closeKR 줄(d = 그날)을 남긴다. 게임은 이 표시가 와야 한국 시장을 '장 마감'으로 바꾼다.
 
 import NAMES from "./names.ts";
 
@@ -401,7 +402,15 @@ export async function fillKrClose(at: Date) {
   const rows: { id: string; ysym: string; m: string; p: number; d: string; i: QI | null }[] = await (await rest(
     `seed10k_quotes?select=id,ysym,m,p,d,i&m=eq.KR&d=eq.${today}&i->>nv=is.null&or=(i->>nf.is.null,i->>nf.lt.${NV_TRIES})&order=id&limit=${NV_PER_RUN}`,
     { headers: restHeaders() })).json();
-  if (!rows.length) return { done: 0 };
+  if (!rows.length) {
+    // 그날 채울 종목이 더 없다: 게임이 '마감 집계 중'을 끝내도록 표시를 남긴다
+    await rest("seed10k_quotes?on_conflict=id", {
+      method: "POST",
+      headers: restHeaders({ Prefer: "resolution=merge-duplicates,return=minimal" }),
+      body: JSON.stringify([{ id: "_closeKR", ysym: "-", m: "SYS", d: today, updated_at: new Date().toISOString() }]),
+    });
+    return { done: 0, settled: today };
+  }
   const cut = kstSec(ymd + "150000");
   const out: { id: string; ysym: string; m: string; i: QI }[] = [], daily: { id: string; d: string; c: number; l?: number; h?: number }[] = [], errs: string[] = [];
   let next = 0;
