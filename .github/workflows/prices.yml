@@ -181,10 +181,48 @@ jobs:
 
               # ── 1) 게임용 일별 종가 (기준일부터) ──
               got = download(ysyms + [FX_SYMBOL], start=START, interval="1d")
+              # 장중 5분 봉 (최근 5거래일). 차트에도 쓰고, Yahoo 일봉에 빠진 거래일을 채우는 데도 쓴다.
+              i5 = download(ysyms, period="5d", interval="5m")
               result = {"v": 1, "updated": now.strftime("%Y-%m-%dT%H:%M:%SZ"), "start": START, "dates": {}, "s": {}, "miss": []}
+              filled_days = {}
               for m in ("KR", "US"):
-                  series = {sid: got[v["y"]] for sid, v in SYMBOLS.items() if v["m"] == m and v["y"] in got}
+                  series = {}
+                  for sid, v in SYMBOLS.items():
+                      if v["m"] != m or v["y"] not in got:
+                          continue
+                      d1 = got[v["y"]].copy()
+                      d1.index = [to_date(i) for i in d1.index]
+                      d1 = d1[~d1.index.duplicated(keep="last")]
+                      # Yahoo 일봉에 그날이 빠져 있으면 5분 봉의 그날 마지막 가격으로 채운다 (2026-10-27 미국 10/26 누락 사례)
+                      if v["y"] in i5:
+                          intra = i5[v["y"]]
+                          last_by_day = {}
+                          for i, val in intra.items():
+                              last_by_day[pd.Timestamp(i).strftime("%Y-%m-%d")] = float(val)
+                          add = {d: c for d, c in last_by_day.items() if d >= START and d not in d1.index}
+                          if add:
+                              filled_days[m] = filled_days.get(m, set()) | set(add)
+                              d1 = pd.concat([d1, pd.Series(add)]).sort_index()
+                      series[sid] = d1
                   dates, rows = build_market(m, series)
+                  # 직전 배포본에 있던 거래일이 이번 결과에서 빠지면 그 값을 그대로 살린다 (한 번 들어온 날짜는 사라지지 않게)
+                  if prev and prev.get("dates", {}).get(m):
+                      pdates = prev["dates"][m]
+                      lost = [d for d in pdates if d >= START and d not in dates]
+                      if lost:
+                          union = sorted(set(dates) | set(lost))
+                          for sid in list(rows.keys()):
+                              nmap = dict(zip(dates, rows[sid]))
+                              pmap = dict(zip(pdates, prev.get("s", {}).get(sid) or []))
+                              vals, lastv = [], None
+                              for d in union:
+                                  v_ = nmap.get(d) if d in nmap else pmap.get(d)
+                                  if v_ is not None:
+                                      lastv = v_
+                                  vals.append(lastv)
+                              rows[sid] = vals
+                          dates = union
+                          print(f"{m}: 직전 배포본에서 살린 거래일 {lost}")
                   missing = [sid for sid, v in SYMBOLS.items() if v["m"] == m and sid not in rows]
                   if prev and missing:
                       pdates = prev.get("dates", {}).get(m, [])
@@ -239,8 +277,7 @@ jobs:
                   print(f"hist refreshed: d1 {len(d1)}, wk {len(wk)}, mo {len(mo)}")
               (out / "hist.json").write_text(json.dumps(hist, separators=(",", ":")), encoding="utf-8")
 
-              # ── 3) 장중 봉 (매번) ──
-              i5 = download(ysyms, period="5d", interval="5m")
+              # ── 3) 장중 봉 (매번). 5분 봉은 위에서 받았다 ──
               h1 = download(ysyms, period="1mo", interval="60m")
               for sid, v in SYMBOLS.items():
                   y, m = v["y"], v["m"]
@@ -253,7 +290,8 @@ jobs:
 
               print(f"ok: {total}/{len(SYMBOLS)} symbols, KR {len(result['dates'].get('KR', []))} days, "
                     f"US {len(result['dates'].get('US', []))} days, intraday {len(i5)}/{len(ysyms)}, "
-                    f"hourly {len(h1)}/{len(ysyms)}, hist {'new' if need_hist else 'reused'}, missing: {result['miss']}")
+                    f"hourly {len(h1)}/{len(ysyms)}, hist {'new' if need_hist else 'reused'}, "
+                    f"5분봉으로 채운 날 {{{', '.join(f'{k}: {sorted(v)}' for k, v in filled_days.items())}}}, missing: {result['miss']}")
 
 
           if __name__ == "__main__":
