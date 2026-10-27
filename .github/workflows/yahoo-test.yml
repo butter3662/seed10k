@@ -1,24 +1,23 @@
-name: 한국 장 마감 봉 확인 (임시)
+name: 함수 배포 확인 (임시)
 on:
   push:
     branches: [tmp-yahoo-test]
 jobs:
   check:
     runs-on: ubuntu-24.04
-    timeout-minutes: 4
+    timeout-minutes: 6
     steps:
       - run: |
           U=https://ictjkqbbcaigdvlysdaw.supabase.co; K=sb_publishable_C7jZEKJn_nF2Y3Ngq5f80Q_RA5Wrfux
-          curl -s "$U/rest/v1/seed10k_quotes?select=id,p,t,i&id=in.(KR:005930,KR:000660)" -H "apikey: $K" -o /tmp/q.json
-          curl -s -A "Mozilla/5.0" "https://query1.finance.yahoo.com/v8/finance/chart/005930.KS?range=1d&interval=5m" -o /tmp/y.json
-          curl -s -A "Mozilla/5.0" "https://query1.finance.yahoo.com/v8/finance/chart/005930.KS?range=1d&interval=1m" -o /tmp/y1.json
-          python3 - <<'PY'
-          import json, datetime
-          kst = lambda s: (datetime.datetime.utcfromtimestamp(s) + datetime.timedelta(hours=9)).strftime('%H:%M')
-          for r in json.load(open('/tmp/q.json')):
-              t = r['i']['t']; c = r['i']['c']
-              print(f"::notice title=저장된 {r['id']}::봉 {len(t)}개, 첫 {kst(t[0])}, 마지막 5개 {[(kst(a), b) for a, b in zip(t[-5:], c[-5:])]}, 최신가 {r['p']} ({r['t']})")
-          for f, lab in (('/tmp/y.json', '5m'), ('/tmp/y1.json', '1m')):
-              y = json.load(open(f))['chart']['result'][0]; t = y['timestamp']; c = y['indicators']['quote'][0]['close']; m = y['meta']
-              print(f"::notice title=야후 {lab}::봉 {len(t)}개, 마지막 6개 {[(kst(a), b) for a, b in zip(t[-6:], c[-6:])]}, regularMarketPrice {m.get('regularMarketPrice')} 시각 {kst(m.get('regularMarketTime'))}, 거래시간 {m.get('currentTradingPeriod', {}).get('regular')}")
-          PY
+          for i in 1 2 3 4 5 6; do
+            c=$(curl -s -m 120 -o /tmp/r -w "%{http_code}" -X POST "$U/functions/v1/seed10k-quotes" -H "apikey: $K" -H "Content-Type: application/json" -d '{}')
+            if ! grep -q '방금 실행됨' /tmp/r; then break; fi
+            sleep 15
+          done
+          echo "::notice title=함수 응답 HTTP $c::$(python3 -c "import json; d=json.load(open('/tmp/r')); print(json.dumps({k:d.get(k) for k in ('skipped','added','act','divs','error')}, ensure_ascii=False))")"
+          curl -s "$U/rest/v1/seed10k_quotes?select=id,m,ysym&m=in.(KR,US)" -H "apikey: $K" -o /tmp/q.json
+          echo "::notice title=시세 표::$(python3 -c "import json; q=json.load(open('/tmp/q.json')); print(len(q), '종목, 한국', sum(1 for r in q if r['m']=='KR'), '미국', sum(1 for r in q if r['m']=='US'), '예:', [r for r in q if r['id'] in ('KR:036930','US:VG','KR:0158S0')])")"
+          c2=$(curl -s -o /tmp/d.json -w "%{http_code}" "$U/rest/v1/seed10k_daily?select=id,d,c,l,h&order=d.desc&limit=3" -H "apikey: $K")
+          echo "::notice title=일별 표 l,h 칸::HTTP $c2 $(head -c 300 /tmp/d.json)"
+          c3=$(curl -s -o /tmp/v.json -w "%{http_code}" "$U/rest/v1/seed10k_divs?select=id&limit=1000" -H "apikey: $K")
+          echo "::notice title=배당 표::HTTP $c3 $(python3 -c "import json; print(len(json.load(open('/tmp/v.json'))), '종목')")"
