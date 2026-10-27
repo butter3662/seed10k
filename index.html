@@ -670,12 +670,12 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.3.0';
+const VERSION = '1.4.0';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
 const LIVE_POLL_MS = 60000;
-const HOT_POLL_MS = 7000;    // 장중에 보유·예약·열린 종목의 현재가만 따로 읽는 간격 (서버가 7초마다 네이버에서 받는다)
+const HOT_POLL_MS = 7000;    // 장중에 예약·열린 종목의 현재가만 따로 읽는 간격 (서버가 7초마다 네이버에서 받는다)
 /* 계정 서버 (MAGI와 같은 Supabase 프로젝트). 공개용 키이며, 데이터는 표의 행 수준 보안(RLS) 정책이 지킨다. */
 const SB_URL = 'https://ictjkqbbcaigdvlysdaw.supabase.co';
 const SB_KEY = 'sb_publishable_C7jZEKJn_nF2Y3Ngq5f80Q_RA5Wrfux';
@@ -1748,12 +1748,13 @@ function idxValue(m, i){
 
 /* ───────── 실시간 시세 표 (Supabase seed10k_quotes) ─────────
    Supabase 함수가 장중 7초마다 네이버 증권에서 받은 현재가(5분 봉은 1분마다 Yahoo)를 읽어, GitHub 시세 파일 위에 덧입힌다.
-   전체는 1분마다, 보유·예약·열린 종목은 7초마다(pollHot) 읽는다.
+   전체는 1분마다(바뀐 줄 + 묶음 줄), 예약·열린 종목은 7초마다(pollHot) 읽는다.
    표가 없거나 읽지 못하면 시세 파일만 쓴다. */
 const QT = {rows:null, daily:[], at:null, err:null, beat:0, maxAt:0, fullAt:0, dailyAt:0, dailySince:null};
-const QT_FULL_MS = 10 * 60e3;   // 이 간격마다 시세 표 전체를 다시 읽는다 (그 사이에는 바뀐 줄만)
-const QT_OVERLAP_MS = 90e3;     // 바뀐 줄을 읽을 때 겹쳐 읽는 폭 (함수가 시각을 찍고 저장하기까지 걸리는 시간 여유)
-const QT_DAILY_MS = 5 * 60e3;   // 일별 표는 이 간격마다 읽는다
+const QT_FULL_MS = 10 * 60e3;        // 장 시간 근처에는 이 간격마다 시세 표 전체를 다시 읽는다 (그 사이에는 바뀐 줄만)
+const QT_FULL_IDLE_MS = 30 * 60e3;   // 두 시장 모두 닫혀 있으면 이 간격마다
+const QT_OVERLAP_MS = 90e3;          // 바뀐 줄을 읽을 때 겹쳐 읽는 폭 (함수가 시각을 찍고 저장하기까지 걸리는 시간 여유)
+const QT_DAILY_MS = 30 * 60e3;       // 일별 표(지난 거래일만)는 이 간격마다 읽는다
 const RT_FRESH_MS = 3 * 60e3;   // 함수의 살아 있다는 신호가 이 시간 안이면 온라인
 /* 실시간 수집이 돌고 있는가: 함수가 남긴 _beat 시각이 3분 안이고, 표를 정상으로 읽었을 때 */
 function rtOnline(){ return !QT.err && QT.beat > 0 && Date.now() - QT.beat < RT_FRESH_MS; }
@@ -1762,16 +1763,20 @@ async function loadQuotes(){
   try {
     // 시세 파일의 마지막 거래일 뒤로 쌓인 일별 마지막 가격 (GitHub 수집이 멈춘 날 채우기)
     const since = [LIVE.dates.KR, LIVE.dates.US, LIVE.fx.d].map(a => last(a || [])).filter(Boolean).sort()[0];
-    // 전송량을 줄이려고, 10분마다 한 번만 전체를 읽고 그 사이에는 updated_at이 바뀐 줄만 읽는다
-    const full = !QT.rows || !QT.maxAt || Date.now() - QT.fullAt > QT_FULL_MS;
-    let qq = ACC.sb.from('seed10k_quotes').select('id,m,p,t,d,updated_at');
+    // 전송량을 줄이려고, 10분(장이 모두 닫혀 있으면 30분)마다 한 번만 전체를 읽고 그 사이에는 updated_at이 바뀐 줄만 읽는다.
+    // 장중 네이버 현재가는 줄마다의 updated_at을 바꾸지 않고, 시장별 묶음 줄(_snapKR, _snapUS)의 x에 모아 둔다
+    const busy = ['KR','US'].some(m => sessionNear(m) || mstate(m).k === 'settle');
+    const full = !QT.rows || !QT.maxAt || Date.now() - QT.fullAt > (busy ? QT_FULL_MS : QT_FULL_IDLE_MS);
+    let qq = ACC.sb.from('seed10k_quotes').select('id,m,p,t,d,updated_at,x:i->x');
     if (!full) qq = qq.gt('updated_at', new Date(QT.maxAt - QT_OVERLAP_MS).toISOString());
-    const wantDaily = since && (since !== QT.dailySince || Date.now() - QT.dailyAt > QT_DAILY_MS);
+    // 일별 표는 지난 거래일(한국 날짜로 오늘 전)만: 오늘 값은 시세 표에서 받는다
+    const today = kstDate();
+    const wantDaily = since && since < today && (since !== QT.dailySince || Date.now() - QT.dailyAt > QT_DAILY_MS);
     const [q, dl] = await Promise.all([
       qq,
       // 일별 표 읽기가 실패해도 최신가는 쓰도록, 실패를 여기서 삼킨다
-      (wantDaily ? Promise.resolve(ACC.sb.from('seed10k_daily').select(QT.lh === false ? 'id,d,c' : 'id,d,c,l,h').gt('d', since).order('d', {ascending:true}).limit(5000))
-        .then(r => (r.error && QT.lh !== false && /column|42703/i.test(r.error.message || '')) ? (QT.lh = false, ACC.sb.from('seed10k_daily').select('id,d,c').gt('d', since).order('d', {ascending:true}).limit(5000)) : r)
+      (wantDaily ? Promise.resolve(ACC.sb.from('seed10k_daily').select(QT.lh === false ? 'id,d,c' : 'id,d,c,l,h').gt('d', since).lt('d', today).order('d', {ascending:true}).limit(5000))
+        .then(r => (r.error && QT.lh !== false && /column|42703/i.test(r.error.message || '')) ? (QT.lh = false, ACC.sb.from('seed10k_daily').select('id,d,c').gt('d', since).lt('d', today).order('d', {ascending:true}).limit(5000)) : r)
         : Promise.resolve({data:null, error:null})).catch(e => ({data:null, error:e}))
     ]);
     if (q.error) throw q.error;
@@ -1782,6 +1787,8 @@ async function loadQuotes(){
       for (const r of got){ const i = at.get(r.id); if (i === undefined) QT.rows.push(r); else QT.rows[i] = r; }
     }
     for (const r of got){ const u = Date.parse(r.updated_at || '') || 0; if (u > QT.maxAt) QT.maxAt = u; }
+    // 묶음 줄의 현재가를 종목 줄에 덮는다 (7초 읽기 등으로 이미 더 새 체결 시각이 있으면 그대로 둔다)
+    for (const sn of QT.rows.filter(r => /^_snap/.test(r.id) && r.x && r.x.ids)) mergeSnap(sn);
     if (wantDaily && !dl.error && dl.data){ QT.daily = dl.data; QT.dailyAt = Date.now(); QT.dailySince = since; }
     else if (!since) QT.daily = [];
     QT.at = new Date(); QT.err = null;
@@ -1789,6 +1796,16 @@ async function loadQuotes(){
     QT.beat = Math.max(0, ...QT.rows.filter(r => (r.id === '_beat' || r.id === '_run') && r.updated_at).map(r => Date.parse(r.updated_at) || 0));
     return true;
   } catch(e){ QT.err = errText(e); return false; }
+}
+function mergeSnap(sn){
+  const x = sn.x, at = new Map(QT.rows.map((r, i) => [r.id, i]));
+  for (let k = 0; k < x.ids.length; k++){
+    const id = x.ids[k], tt = new Date((x.t0 + (x.dt[k] || 0)) * 1000).toISOString();
+    const i = at.get(id), o = i === undefined ? null : QT.rows[i];
+    if (o && (Date.parse(o.t || '') || 0) >= Date.parse(tt)) continue;
+    const r = {...(o || {id, m:id.slice(0, 2)}), p:x.p[k], t:tt, d:sn.d};
+    if (i === undefined) QT.rows.push(r); else QT.rows[i] = r;
+  }
 }
 /* 시장 m에 새 거래일 d를 붙인다 (값은 전날 값으로 채운 뒤 시세로 덮는다) */
 function addLiveDate(m, d){
@@ -1822,7 +1839,7 @@ function applyQuotes(){
   // 2) 최신가
   for (const r of QT.rows){
     if (r.p === null || r.p === undefined || !r.d) continue;
-    const p = +r.p, ut = Date.parse(r.updated_at || r.t) || 0;
+    const p = +r.p, ut = Math.max(Date.parse(r.updated_at || '') || 0, Date.parse(r.t || '') || 0);
     if (r.m === 'FX'){
       const fx = LIVE.fx, ld = last(fx.d);
       if (r.d === ld) fx.c[fx.c.length - 1] = p;
@@ -1875,8 +1892,8 @@ function startLivePolling(){
   livePoll = setInterval(() => { if (!document.hidden) loadLive(true); }, LIVE_POLL_MS);
 }
 function stopLivePolling(){ if (livePoll) clearInterval(livePoll); livePoll = null; }
-/* 7초마다: 지금 장이 열린 시장의 '내가 보는 종목'(보유, 대기 중인 예약 주문, 열어 둔 종목)만 최신가를 읽는다.
-   전체 목록은 1분마다 읽으므로, 여기서는 읽는 양을 줄이려고 필요한 종목만 고른다. */
+/* 7초마다: 지금 장이 열린 시장의 '대기 중인 예약 주문 종목'과 '열어 둔 종목'만 최신가를 읽는다.
+   보유 종목과 전체 목록은 1분마다 읽는다 (전송량을 줄이려고). */
 let hotBusy = false;
 function sessionNear(m){
   const p = zoneParts(SESS[m].tz), z = sessOf(m, p.date), mins = p.h * 60 + p.mi;
@@ -1884,7 +1901,7 @@ function sessionNear(m){
 }
 async function pollHot(){
   if (hotBusy || document.hidden || !isLive() || !ACC.sb || !LIVE.ok || LIVE.loading || !QT.rows || !S || S._ph) return;
-  const ids = new Set(Object.keys(S.pos || {}).filter(id => S.pos[id] && S.pos[id].q > 0));
+  const ids = new Set();
   for (const o of ordersOf()) ids.add(o.id);
   if (UI.sheet) ids.add(UI.sheet);
   const want = [...ids].filter(id => BY_ID[id] && sessionNear(BY_ID[id].m)).slice(0, 150);
@@ -2012,7 +2029,7 @@ function showModePicker(first){
     <div class="modes">
       <button class="mode-card" data-pick="live">
         <b>실제 시세</b>
-        <span>실제 주가를 따라갑니다. 각 시장의 정규장 시간에 사고팔 수 있고, 현재가는 장중 약 7초마다 갱신됩니다.</span>
+        <span>실제 주가를 따라갑니다. 각 시장의 정규장 시간에 사고팔 수 있고, 현재가는 장중 약 7초마다 수집되어, 열어 둔 종목과 예약 주문 종목은 7초마다, 나머지는 1분마다 화면에 반영됩니다.</span>
       </button>
       <button class="mode-card" data-pick="sim">
         <b>시뮬레이션</b>
@@ -2423,7 +2440,7 @@ function renderInfo(){
       <ul>
         <li>시드머니는 달러 통장에 들어 있는 <b>$10,000</b>입니다.</li>
         ${live ? `
-        <li><b>실제 시세 모드</b>: 실제 주가를 따라갑니다. 장중에는 현재가를 약 7초마다 받습니다(네이버 증권 실시간 시세). 차트의 5분 봉은 Yahoo Finance 자료라 한국은 약 20분 늦게 그려지고, 장이 끝난 뒤 15:00~15:30 구간이 채워집니다. 장이 끝나고 그날 차트가 다 들어올 때까지(한국 보통 16:10 전후, 미국 뉴욕 16:20)는 '마감 집계 중'으로 표시됩니다. 이때 바로 주문은 할 수 없고, 장중에 걸어 둔 예약 주문만 늦게 들어온 장중 가격으로 체결될 수 있습니다. 체결 알림에는 그 가격의 시각이 함께 나옵니다. 수능일(한국 10:00~16:30), 새해 첫 거래일(한국 10:00 개장), 미국 조기 폐장일(11/27, 12/24 뉴욕 13:00 마감)은 바뀐 장 시간을 따릅니다.</li>
+        <li><b>실제 시세 모드</b>: 실제 주가를 따라갑니다. 장중에는 현재가를 약 7초마다 받습니다(네이버 증권 실시간 시세). 화면에는 열어 둔 종목과 예약 주문 종목이 7초마다, 나머지(보유 종목, 순자산, 시장 목록)가 1분마다 반영됩니다. 차트의 5분 봉은 Yahoo Finance 자료라 한국은 약 20분 늦게 그려지고, 장이 끝난 뒤 15:00~15:30 구간이 채워집니다. 장이 끝나고 그날 차트가 다 들어올 때까지(한국 보통 16:10 전후, 미국 뉴욕 16:20)는 '마감 집계 중'으로 표시됩니다. 이때 바로 주문은 할 수 없고, 장중에 걸어 둔 예약 주문만 늦게 들어온 장중 가격으로 체결될 수 있습니다. 체결 알림에는 그 가격의 시각이 함께 나옵니다. 수능일(한국 10:00~16:30), 새해 첫 거래일(한국 10:00 개장), 미국 조기 폐장일(11/27, 12/24 뉴욕 13:00 마감)은 바뀐 장 시간을 따릅니다.</li>
         <li>각 시장의 <b>정규장</b>에만 거래할 수 있습니다. 한국 ${sessInKST('KR')}, 미국 ${sessInKST('US')}(한국 시각, 서머타임 반영). 공휴일은 그날 시세가 들어오지 않는 것으로 판단합니다.</li>
         <li>체결가는 마지막으로 수집된 가격입니다. 화면의 시세 시각을 확인하세요.</li>
         <li><b>예약 주문</b>: 예약 매수는 가격이 정한 값 이하가 되면, 예약 매도는 정한 값이 걸 때의 현재가보다 높으면 그 값 이상으로 오를 때, 낮으면 그 값 이하로 내려갈 때 체결됩니다. 체결가는 조건에 처음 닿은 시세이고, 게임을 꺼 둔 동안 닿았어도 다시 열 때 그 시각의 시세로 체결됩니다. 돈과 보유 수량은 체결할 때 확인하며, 유효기간은 ${ORDER_DAYS}일입니다.</li>

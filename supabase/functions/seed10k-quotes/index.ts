@@ -494,7 +494,8 @@ export async function fetchNaverLive(m: "KR" | "US", at: Date) {
       if (ts.slice(0, 10) !== today || hm < w.from || hm > w.to) continue;
       const p = nvNum(x.closePriceRaw, x.closePrice), sec = Date.parse(ts);
       if (!(p > 0) || !isFinite(sec)) continue;
-      rows.push({ id: hit.id, ysym: hit.y, m, p: rnd(p), t: new Date(sec).toISOString(), d: today, updated_at: now });
+      // updated_at은 바꾸지 않는다: 게임은 '바뀐 줄'을 updated_at으로 고르므로, 7초마다 바뀌는 현재가는 아래 묶음 줄(_snap)로 받는다
+      rows.push({ id: hit.id, ysym: hit.y, m, p: rnd(p), t: new Date(sec).toISOString(), d: today });
       const lo = nvNum(x.lowPriceRaw, x.lowPrice), hi = nvNum(x.highPriceRaw, x.highPrice);
       daily.push({ id: hit.id, d: today, c: rnd(p), ...(lo > 0 && hi > 0 ? { l: rnd(Math.min(lo, p)), h: rnd(Math.max(hi, p)) } : {}) });
     }
@@ -508,10 +509,13 @@ export async function fetchNaverLive(m: "KR" | "US", at: Date) {
     });
   }
   await saveDaily(daily);
+  // 묶음 줄: 이 시장의 현재가 전부를 한 줄에 (게임이 1분마다 300줄 대신 이 한 줄을 읽는다). 시각은 t0(유닉스 초) + 차이(dt)
+  const secs = rows.map((r) => Math.floor(Date.parse(r.t as string) / 1000)), t0 = secs.length ? Math.min(...secs) : 0;
+  const x = { ids: rows.map((r) => r.id), p: rows.map((r) => r.p), t0, dt: secs.map((v) => v - t0) };
   await rest("seed10k_quotes?on_conflict=id", {
     method: "POST",
     headers: restHeaders({ Prefer: "resolution=merge-duplicates,return=minimal" }),
-    body: JSON.stringify([{ id: "_nv" + m, ysym: "-", m: "SYS", updated_at: now }]),
+    body: JSON.stringify([{ id: "_nv" + m, ysym: "-", m: "SYS", updated_at: now, d: null, i: null }, { id: "_snap" + m, ysym: "-", m: "SYS", updated_at: now, d: today, i: { x } }]),
   });
   return { got, saved: rows.length };
 }
@@ -621,11 +625,13 @@ export async function run(at = new Date()) {
   // 네이버 현재가가 최근에 들어온 시장의 종목은 야후의 최신가(p, t, d)와 일별 가격을 쓰지 않고 5분 봉만 저장한다.
   // 단 그 종목의 저장된 체결 시각이 야후 시각보다 2분 넘게 오래됐으면(네이버가 그 종목만 안 주는 경우) 야후 값을 쓴다
   const nvFresh = (m: string) => Date.now() - (Date.parse(all.find((r) => r.id === "_nv" + m)?.updated_at || "") || 0) < NV_FRESH_MS;
-  const tOf = new Map(all.map((r) => [r.id, Date.parse(r.t || "") || 0]));
-  const byNaver = (q: Quote) => (q.m === "KR" || q.m === "US") && !!NAMES[q.id]?.v && nvFresh(q.m) && (tOf.get(q.id) || 0) >= Date.parse(q.t) - 120_000;
+  const tOf = new Map(all.map((r) => [r.id, Date.parse(r.t || "") || 0])), upOf = new Map(all.map((r) => [r.id, !!r.updated_at]));
+  // (한 번도 야후로 받은 적 없는 줄(updated_at 없음)은 야후 값으로 먼저 채운다)
+  const byNaver = (q: Quote) => (q.m === "KR" || q.m === "US") && !!NAMES[q.id]?.v && nvFresh(q.m) && !!upOf.get(q.id) && (tOf.get(q.id) || 0) >= Date.parse(q.t) - 120_000;
   // 한 번에 보내는 줄들은 열 구성이 같아야 하므로(PostgREST) 두 무리로 나눠 보낸다
   const strip = ({ dl: _l, dh: _h, ...q }: Quote) => q;
-  for (const group of [ok.filter((q) => !byNaver(q)).map(strip), ok.filter(byNaver).map((q) => (({ p: _p, t: _t, d: _d, ...r }) => r)(strip(q)))]) {
+  // 네이버 줄은 updated_at도 빼서, 5분 봉만 바뀐 줄이 게임의 '바뀐 줄 읽기'에 매분 끼지 않게 한다
+  for (const group of [ok.filter((q) => !byNaver(q)).map(strip), ok.filter(byNaver).map((q) => (({ p: _p, t: _t, d: _d, updated_at: _u, ...r }) => r)(strip(q)))]) {
     for (let k = 0; k < group.length; k += 100) {
       await rest("seed10k_quotes?on_conflict=id", {
         method: "POST",
