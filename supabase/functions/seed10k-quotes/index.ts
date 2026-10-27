@@ -103,7 +103,8 @@ export async function fetchAll(rows: Row[]) {
 
 /* ───── 뉴스 ───── */
 type News = { t: string; u: string; s: string; at: number; d?: string; img?: string };
-const NEWS_PER_RUN = 7;            // 한 번 불릴 때 뉴스를 새로 받는 종목 수
+const NEWS_PER_RUN = 7;            // 한 번 불릴 때 뉴스를 새로 받는 종목 수 (네이버 키가 있을 때, 200종목이 약 30분에 한 바퀴)
+const NEWS_PER_RUN_US = 10;        // 네이버 키가 없으면 미국 종목만, 이만큼씩 (100종목이 약 10분에 한 바퀴)
 const NEWS_TTL_MS = 30 * 60_000;   // 이보다 오래된 종목부터 다시 받는다
 const NEWS_N = 5;                  // 종목당 기사 수
 
@@ -146,14 +147,16 @@ export async function yahooNews(sym: string): Promise<News[]> {
 export async function refreshNews() {
   const rows: { id: string; at: string | null }[] = await (await rest("seed10k_news?select=id,at", { headers: restHeaders() })).json();
   const at = new Map(rows.map((r) => [r.id, r.at ? Date.parse(r.at) : 0]));
+  const hasNaver = !!(Deno.env.get("NAVER_CLIENT_ID") && Deno.env.get("NAVER_CLIENT_SECRET"));
   // 네이버 키가 생겼으면, 키가 없어서 한국어 기사가 비어 있던(ko = null) 종목을 먼저 다시 받는다
-  if (Deno.env.get("NAVER_CLIENT_ID") && Deno.env.get("NAVER_CLIENT_SECRET")) {
+  if (hasNaver) {
     const noKey: { id: string }[] = await (await rest("seed10k_news?select=id&items->>ko=is.null", { headers: restHeaders() })).json();
     for (const r of noKey) at.set(r.id, 0);
   }
   const now = Date.now();
-  const ids = Object.keys(NAMES).filter((id) => now - (at.get(id) || 0) > NEWS_TTL_MS)
-    .sort((a, b) => (at.get(a) || 0) - (at.get(b) || 0)).slice(0, NEWS_PER_RUN);
+  // 네이버 키가 없으면 한국 종목은 받을 기사가 없으므로 미국 종목(Yahoo 영어 기사)만 돈다
+  const ids = Object.keys(NAMES).filter((id) => (hasNaver || NAMES[id].m === "US") && now - (at.get(id) || 0) > NEWS_TTL_MS)
+    .sort((a, b) => (at.get(a) || 0) - (at.get(b) || 0)).slice(0, hasNaver ? NEWS_PER_RUN : NEWS_PER_RUN_US);
   const out = [], errs: string[] = [];
   for (const id of ids) {
     const meta = NAMES[id];
