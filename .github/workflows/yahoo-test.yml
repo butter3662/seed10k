@@ -1,33 +1,19 @@
-name: 공시 단계 응답 확인 (임시)
+name: OpenDART TLS 조사 (임시)
 on:
   push:
     branches: [tmp-yahoo-test]
 jobs:
   check:
     runs-on: ubuntu-24.04
-    timeout-minutes: 6
+    timeout-minutes: 8
     steps:
-      - name: 함수 호출
-        env:
-          U: https://ictjkqbbcaigdvlysdaw.supabase.co
-          K: sb_publishable_C7jZEKJn_nF2Y3Ngq5f80Q_RA5Wrfux
+      - name: 조사
         run: |
-          for i in 1 2 3 4 5 6; do
-            c=$(curl -s -m 90 -o /tmp/r -w "%{http_code}" -X POST "$U/functions/v1/seed10k-quotes" -H "apikey: $K" -H "Content-Type: application/json" -d '{}')
-            if ! grep -q '방금 실행됨' /tmp/r; then break; fi
-            sleep 15
-          done
-          python3 - "$c" <<'PY'
-          import json, re, sys
-          raw = open('/tmp/r', encoding='utf-8').read()
-          raw = re.sub(r'crtfc_key=[^&"\s)]*', 'crtfc_key=***', raw)
-          try:
-              d = json.loads(raw)
-              out = {k: d.get(k) for k in ('skipped', 'dart', 'error') if k in d}
-              out['news'] = (d.get('news') or {}) if not isinstance(d.get('news'), dict) else {k: v for k, v in d['news'].items() if k != 'ids'}
-          except Exception:
-              out = raw[:400]
-          print(f"::notice title=함수 응답 HTTP {sys.argv[1]}::{json.dumps(out, ensure_ascii=False)[:900]}")
-          PY
-          sleep 3
-          curl -s -m 30 "$U/rest/v1/seed10k_dart?select=id,at&order=at.desc&limit=5" -H "apikey: $K" -o /tmp/s; echo "::notice title=공시 표::$(head -c 600 /tmp/s)"
+          sudo apt-get install -y -qq nmap >/dev/null 2>&1 || true
+          nmap --script ssl-enum-ciphers -p 443 opendart.fss.or.kr > /tmp/n 2>&1
+          echo "::notice title=암호 목록::$(grep -E 'TLSv|TLS_|compressors|least strength' /tmp/n | tr -s ' ' | tr '\n' ' ' | head -c 1500)"
+          c=$(curl -s -m 20 -o /tmp/h -w "%{http_code} %{redirect_url}" "http://opendart.fss.or.kr/api/list.json?crtfc_key=0000000000000000000000000000000000000000&page_count=1")
+          echo "::notice title=http 접속::$c $(head -c 200 /tmp/h)"
+          curl -fsSL https://deno.land/install.sh | sh -s -- -y >/dev/null 2>&1
+          echo 'try { const r = await fetch("https://opendart.fss.or.kr/api/list.json?crtfc_key=0&page_count=1"); console.log("ok", r.status, (await r.text()).slice(0,120)); } catch (e) { console.log("err", String(e).replace(/crtfc_key=[^&]*/,"***").slice(0,300)); }' > /tmp/t.ts
+          echo "::notice title=Deno $(~/.deno/bin/deno --version | head -1)::$(~/.deno/bin/deno run -A /tmp/t.ts 2>&1 | tr '\n' ' ')"
