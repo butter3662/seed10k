@@ -670,11 +670,12 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.0.1';
+const VERSION = '1.1.0';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
 const LIVE_POLL_MS = 60000;
+const HOT_POLL_MS = 7000;    // 장중에 보유·예약·열린 종목의 현재가만 따로 읽는 간격 (서버가 7초마다 네이버에서 받는다)
 /* 계정 서버 (MAGI와 같은 Supabase 프로젝트). 공개용 키이며, 데이터는 표의 행 수준 보안(RLS) 정책이 지킨다. */
 const SB_URL = 'https://ictjkqbbcaigdvlysdaw.supabase.co';
 const SB_KEY = 'sb_publishable_C7jZEKJn_nF2Y3Ngq5f80Q_RA5Wrfux';
@@ -907,7 +908,7 @@ function canTrade(s, side){
   if (st.open) return {ok:true};
   const hours = `정규장(한국 시각 ${sessInKST(s.m)})`;
   const why = st.k === 'wait'
-    ? (st.label === '시세 없음' ? '시세 파일을 아직 받지 못했습니다.' : `${SESS[s.m].ko} 시장의 오늘 시세가 아직 들어오지 않았습니다. 장이 열리고 첫 시세가 들어오면(미국은 1~2분 뒤, 한국은 Yahoo 지연 때문에 약 20분 뒤) 거래할 수 있습니다. 휴장일이면 오늘은 거래할 수 없습니다.`)
+    ? (st.label === '시세 없음' ? '시세 파일을 아직 받지 못했습니다.' : `${SESS[s.m].ko} 시장의 오늘 시세가 아직 들어오지 않았습니다. 장이 열리고 첫 체결 시세가 들어오면(보통 1분 안) 거래할 수 있습니다. 휴장일이면 오늘은 거래할 수 없습니다.`)
     : `${SESS[s.m].ko} 시장은 지금 ${st.label} 상태입니다. ${hours}에 거래할 수 있습니다. 장이 닫혀 있을 때는 예약 주문을 걸어 둘 수 있습니다.`;
   return {ok:false, why};
 }
@@ -1268,7 +1269,7 @@ async function processOrdersLive(){
     const nowMs = Date.now(), notes = [], hits = [];
     for (const o of wait){
       const end = Math.min(nowMs, o.exp || nowMs);
-      // 기준 시각: 주문 때 보이던 가격의 시각. 예전 주문은 시세 지연(한국 20분, 미국 2분)만큼 앞당긴다
+      // 기준 시각: 주문 때 보이던 가격의 시각. 기준 시각이 없는 옛 주문은 그때의 시세 지연(한국 20분, 미국 2분)만큼 앞당긴다
       const from = o.from || (o.at - (BY_ID[o.id].m === 'KR' ? 20 : 2) * 60e3);
       const pt = pricePath(o.id, from, end).find(x => o.kind === 'le' ? x.lo <= o.px : x.hi >= o.px);
       // 체결가: 조건 가격. 봉 전체가 조건 너머에 있으면(갭) 그 봉에서 가장 가까운 가격
@@ -1724,11 +1725,12 @@ function idxValue(m, i){
 }
 
 /* ───────── 실시간 시세 표 (Supabase seed10k_quotes) ─────────
-   Supabase 함수가 장중 1분마다 Yahoo에서 받아 저장한 최신가를 읽어, GitHub 시세 파일 위에 덧입힌다.
+   Supabase 함수가 장중 7초마다 네이버 증권에서 받은 현재가(5분 봉은 1분마다 Yahoo)를 읽어, GitHub 시세 파일 위에 덧입힌다.
+   전체는 1분마다, 보유·예약·열린 종목은 7초마다(pollHot) 읽는다.
    표가 없거나 읽지 못하면 시세 파일만 쓴다. */
 const QT = {rows:null, daily:[], at:null, err:null, beat:0};
 const RT_FRESH_MS = 3 * 60e3;   // 함수의 살아 있다는 신호가 이 시간 안이면 온라인
-/* 1분 실시간 수집이 돌고 있는가: 함수가 남긴 _beat 시각이 3분 안이고, 표를 정상으로 읽었을 때 */
+/* 실시간 수집이 돌고 있는가: 함수가 남긴 _beat 시각이 3분 안이고, 표를 정상으로 읽었을 때 */
 function rtOnline(){ return !QT.err && QT.beat > 0 && Date.now() - QT.beat < RT_FRESH_MS; }
 async function loadQuotes(){
   if (!ACC.sb) return false;
@@ -1834,6 +1836,40 @@ function startLivePolling(){
   livePoll = setInterval(() => { if (!document.hidden) loadLive(true); }, LIVE_POLL_MS);
 }
 function stopLivePolling(){ if (livePoll) clearInterval(livePoll); livePoll = null; }
+/* 7초마다: 지금 장이 열린 시장의 '내가 보는 종목'(보유, 대기 중인 예약 주문, 열어 둔 종목)만 최신가를 읽는다.
+   전체 목록은 1분마다 읽으므로, 여기서는 읽는 양을 줄이려고 필요한 종목만 고른다. */
+let hotBusy = false;
+function sessionNear(m){
+  const z = SESS[m], p = zoneParts(z.tz), mins = p.h * 60 + p.mi;
+  return p.wd !== 'Sat' && p.wd !== 'Sun' && mins >= z.o - 5 && mins <= z.c + 10;
+}
+async function pollHot(){
+  if (hotBusy || document.hidden || !isLive() || !ACC.sb || !LIVE.ok || LIVE.loading || !QT.rows || !S || S._ph) return;
+  const ids = new Set(Object.keys(S.pos || {}).filter(id => S.pos[id] && S.pos[id].q > 0));
+  for (const o of ordersOf()) ids.add(o.id);
+  if (UI.sheet) ids.add(UI.sheet);
+  const want = [...ids].filter(id => BY_ID[id] && sessionNear(BY_ID[id].m)).slice(0, 150);
+  if (!want.length) return;
+  hotBusy = true;
+  try {
+    const {data, error} = await ACC.sb.from('seed10k_quotes').select('id,m,p,t,d,updated_at').in('id', want);
+    if (error || !data || LIVE.loading) return;
+    const at = new Map(QT.rows.map((r, i) => [r.id, i]));
+    let changed = false;
+    for (const r of data){
+      const i = at.get(r.id);
+      if (i === undefined){ QT.rows.push(r); changed = true; continue; }
+      const o = QT.rows[i];
+      if (o.p !== r.p || o.t !== r.t || o.d !== r.d){ QT.rows[i] = r; changed = true; }
+    }
+    if (!changed) return;
+    applyQuotes();
+    liveTick();
+    processOrdersLive();
+  } catch(e){ /* 다음 1분 읽기에서 다시 맞춘다 */ }
+  finally { hotBusy = false; }
+}
+setInterval(pollHot, HOT_POLL_MS);
 
 /* ───────── 자동 진행 (시뮬레이션) ───────── */
 const SPEEDS = [{ms:2200, l:'1×'}, {ms:1100, l:'2×'}, {ms:450, l:'4×'}];
@@ -1935,7 +1971,7 @@ function showModePicker(first){
     <div class="modes">
       <button class="mode-card" data-pick="live">
         <b>실제 시세</b>
-        <span>실제 주가를 따라갑니다. 각 시장의 정규장 시간에 사고팔 수 있고, 시세는 미국 약 1~2분, 한국 약 20분 늦게 반영됩니다.</span>
+        <span>실제 주가를 따라갑니다. 각 시장의 정규장 시간에 사고팔 수 있고, 현재가는 장중 약 7초마다 갱신됩니다.</span>
       </button>
       <button class="mode-card" data-pick="sim">
         <b>시뮬레이션</b>
@@ -2007,7 +2043,7 @@ function renderHeader(){
     const on = rtOnline(), rb = $('#rtBadge');
     rb.dataset.on = on ? '1' : '0';
     rb.querySelector('b').textContent = on ? '온라인' : '오프라인';
-    rb.title = on ? '1분 실시간 시세 수집이 돌고 있습니다' : '1분 실시간 시세 수집 신호가 없습니다. GitHub 시세만 씁니다';
+    rb.title = on ? '실시간 시세 수집이 돌고 있습니다' : '실시간 시세 수집 신호가 없습니다. GitHub 시세만 씁니다';
     const ago = minsAgo(LIVE.updated);
     $('#liveUpd').textContent = LIVE.ok && LIVE.updated ? `시세 ${kstTime(LIVE.updated)} 기준${ago !== null ? `, ${ago < 1 ? '방금' : ago < 60 ? ago + '분 전' : Math.floor(ago/60) + '시간 전'}` : ''}` : (LIVE.loading ? '시세 받는 중' : '시세 없음');
   } else {
@@ -2092,7 +2128,7 @@ function renderHome(){
 
   if (live){
     $('#newsH').textContent = '시세 상태';
-    $('#newsS').textContent = 'Yahoo Finance, 미국 1~2분·한국 약 20분 지연';
+    $('#newsS').textContent = '현재가 네이버 증권 · 차트 Yahoo Finance';
     $('#newsBody').innerHTML = liveStatusHTML();
   } else {
     $('#newsH').textContent = '모의 뉴스';
@@ -2117,7 +2153,7 @@ function liveStatusHTML(){
     msg = `<div class="alert bad">시세 파일(data/prices.json)을 받지 못했습니다${LIVE.err ? ` (${esc(LIVE.err)})` : ''}. GitHub 저장소에서 Actions가 켜져 있는지, Pages 배포 방식이 'GitHub Actions'인지 확인하세요. 그 전까지는 10월 23일 종가가 표시되고 거래는 막힙니다.</div>`;
   } else {
     const stale = ago !== null && ago > 45 && (mstate('KR').open || mstate('US').open);
-    msg = `<p class="prose" style="margin:0">마지막 수집 ${LIVE.updated ? `${fmtDate(zoneParts('Asia/Seoul', LIVE.updated).date, false)} ${kstTime(LIVE.updated)}` : '-'}${ago !== null ? ` (${ago < 1 ? '방금' : ago + '분 전'})` : ''}.<br>${rtOnline() ? `<b style="color:#1FA35A">● 온라인</b>: 1분 실시간 수집이 돌고 있습니다(마지막 신호 ${(Date.now() - QT.beat) < 6e4 ? '방금' : Math.floor((Date.now() - QT.beat) / 6e4) + '분 전'}).<br>장중에는 1분마다 받고, 한국 시세는 Yahoo가 20분 늦게 줍니다.` : `<b style="color:#E5484D">● 오프라인</b>: ${QT.err ? `실시간 시세 표를 읽지 못했습니다(${esc(QT.err)}).` : QT.beat ? `1분 실시간 수집 신호가 ${Math.round((Date.now() - QT.beat) / 6e4)}분째 없습니다.` : '1분 실시간 수집 신호가 아직 없습니다.'}<br>GitHub가 모은 시세만 쓰고 있어 많이 늦을 수 있습니다.`}${LIVE.miss.size ? `<br>시세를 받지 못한 종목 ${LIVE.miss.size}개는 거래할 수 없습니다: ${[...LIVE.miss].map(id => esc(BY_ID[id].n)).join(', ')}.` : ''}</p>`
+    msg = `<p class="prose" style="margin:0">마지막 수집 ${LIVE.updated ? `${fmtDate(zoneParts('Asia/Seoul', LIVE.updated).date, false)} ${kstTime(LIVE.updated)}` : '-'}${ago !== null ? ` (${ago < 1 ? '방금' : ago + '분 전'})` : ''}.<br>${rtOnline() ? `<b style="color:#1FA35A">● 온라인</b>: 실시간 수집이 돌고 있습니다(마지막 신호 ${(Date.now() - QT.beat) < 6e4 ? '방금' : Math.floor((Date.now() - QT.beat) / 6e4) + '분 전'}).<br>장중에는 현재가를 약 7초마다(네이버 증권), 차트의 5분 봉을 1분마다(Yahoo Finance) 받습니다. 한국 5분 봉은 약 20분 늦게 그려집니다.` : `<b style="color:#E5484D">● 오프라인</b>: ${QT.err ? `실시간 시세 표를 읽지 못했습니다(${esc(QT.err)}).` : QT.beat ? `실시간 수집 신호가 ${Math.round((Date.now() - QT.beat) / 6e4)}분째 없습니다.` : '실시간 수집 신호가 아직 없습니다.'}<br>GitHub가 모은 시세만 쓰고 있어 많이 늦을 수 있습니다.`}${LIVE.miss.size ? `<br>시세를 받지 못한 종목 ${LIVE.miss.size}개는 거래할 수 없습니다: ${[...LIVE.miss].map(id => esc(BY_ID[id].n)).join(', ')}.` : ''}</p>`
       + (stale ? `<div class="alert bad" style="margin-top:8px">장중인데 시세가 ${ago}분째 갱신되지 않았습니다. 지금 보이는 가격으로 체결됩니다.</div>` : '');
   }
   return `<div class="st-list">${rows}</div>${msg}<button class="btn" id="btnRefresh2" style="margin-top:10px">시세 새로고침</button>`;
@@ -2346,7 +2382,7 @@ function renderInfo(){
       <ul>
         <li>시드머니는 달러 통장에 들어 있는 <b>$10,000</b>입니다.</li>
         ${live ? `
-        <li><b>실제 시세 모드</b>: 실제 주가를 따라갑니다. 장중에는 1분마다 시세를 받습니다. 미국 시세는 약 1~2분, 한국 시세는 약 20분 늦습니다(Yahoo Finance가 한국 시세를 20분 늦게 제공).</li>
+        <li><b>실제 시세 모드</b>: 실제 주가를 따라갑니다. 장중에는 현재가를 약 7초마다 받습니다(네이버 증권 실시간 시세). 차트의 5분 봉은 Yahoo Finance 자료라 한국은 약 20분 늦게 그려지고, 장이 끝난 뒤 15:00~15:30 구간이 채워집니다.</li>
         <li>각 시장의 <b>정규장</b>에만 거래할 수 있습니다. 한국 ${sessInKST('KR')}, 미국 ${sessInKST('US')}(한국 시각, 서머타임 반영). 공휴일은 그날 시세가 들어오지 않는 것으로 판단합니다.</li>
         <li>체결가는 마지막으로 수집된 가격입니다. 화면의 시세 시각을 확인하세요.</li>
         <li><b>예약 주문</b>: 예약 매수는 가격이 정한 값 이하가 되면, 예약 매도는 정한 값이 걸 때의 현재가보다 높으면 그 값 이상으로 오를 때, 낮으면 그 값 이하로 내려갈 때 체결됩니다. 체결가는 조건에 처음 닿은 시세이고, 게임을 꺼 둔 동안 닿았어도 다시 열 때 그 시각의 시세로 체결됩니다. 돈과 보유 수량은 체결할 때 확인하며, 유효기간은 ${ORDER_DAYS}일입니다.</li>
@@ -2411,7 +2447,7 @@ function renderInfo(){
 `};
   INFO.data = {t:'데이터 기준', h:`<div class="prose">
       <p>종목 목록과 기준가는 <b>2026년 10월 23일(금) 종가</b>입니다. 한국 시간 10월 26일 오후 9시는 미국 동부 시간 오전 8시라 미국은 정규장 전이었고, 직전 종가가 10월 23일 종가입니다. 한국은 일괄로 확인할 수 있었던 데이터가 10월 23일 종가 기준이어서 두 시장을 같은 날로 맞췄습니다.</p>
-      ${live ? `<p><b>실제 시세</b>는 두 곳에서 읽습니다. 장중 최신가와 그날 5분 봉은 Supabase 함수가 1분마다 Yahoo Finance에서 받아 저장한 표에서, 지난 거래일 종가와 장기 차트는 GitHub Actions가 받아 사이트에 함께 배포한 data/prices.json과 data/c/에서 읽습니다. Yahoo 시세는 공식 거래소 시세가 아니고, 수집 도구(yfinance)도 공식 API가 아니어서 가끔 빠지거나 늦을 수 있습니다. 실제 시세 모드의 기준가는 Yahoo가 준 10월 23일 종가라서 아래 시뮬레이션용 기준가와 조금 다를 수 있습니다.</p>` : '<p>이후 시세는 모두 시뮬레이션입니다.</p>'}
+      ${live ? `<p><b>실제 시세</b>는 두 곳에서 읽습니다. 장중 현재가는 Supabase 함수가 약 7초마다 네이버 증권 실시간 시세에서, 그날 5분 봉은 1분마다 Yahoo Finance에서 받아 저장한 표에서, 지난 거래일 종가와 장기 차트는 GitHub Actions가 받아 사이트에 함께 배포한 data/prices.json과 data/c/에서 읽습니다. 네이버·Yahoo 시세는 공식 거래소 시세가 아니고, 둘 다 공개된 공식 API가 아니어서 가끔 빠지거나 늦을 수 있습니다. 실제 시세 모드의 기준가는 Yahoo가 준 10월 23일 종가라서 아래 시뮬레이션용 기준가와 조금 다를 수 있습니다.</p>` : '<p>이후 시세는 모두 시뮬레이션입니다.</p>'}
       <ul>
         <li><b>처음 100종목씩</b> (10월 26일 구성): 미국은 companiesmarketcap.com의 미국 기업 시가총액 순위 1~100위, 한국은 같은 사이트의 한국 기업 순위에서 중복 항목(SK이노베이션 우선주)을 빼고 101위(삼성카드)까지. 이 사이트는 한국 기업 178곳만 다뤄 일부 코스닥 대형주가 빠져 있었습니다.</li>
         <li><b>추가 200종목씩</b> (10월 27일 추가): 한국은 한국거래소 상장 목록(코스피·코스닥, 우선주와 스팩 제외)에서 상장주식수 × 10월 23일 종가로 계산한 시가총액 순위, 미국은 companiesmarketcap.com 미국 기업 순위의 시가총액을 10월 23일 종가로 환산한 순위로, 기존 100종목을 빼고 위에서부터 채웠습니다. 추가 종목의 기준가는 Yahoo Finance의 10월 23일 종가입니다. 워너브라더스 디스커버리는 Yahoo에 시세가 없어 뺐습니다.</li>
@@ -2706,7 +2742,7 @@ function intradayOf(id){
   const cut = q.t[0], k = base.t.findIndex(x => x >= cut), n = k < 0 ? base.t.length : k;
   return {t:base.t.slice(0, n).concat(q.t), c:base.c.slice(0, n).concat(q.c), l:bl.slice(0, n).concat(ql), h:bh.slice(0, n).concat(qh)};
 }
-/* 이 종목에서 지금 화면에 보이는 가격의 시각(시세 자료의 시각). 한국 시세는 약 20분 늦으므로 실제 시각보다 이르다 */
+/* 이 종목에서 지금 화면에 보이는 가격의 시각(시세 자료의 시각 = 마지막 체결 시각) */
 function lastPriceTs(id){
   let t = 0;
   const i5 = intradayOf(id); if (i5 && i5.t.length) t = Math.max(t, i5.t[i5.t.length - 1] * 1000);

@@ -76,12 +76,13 @@ alter table public.seed10k_daily enable row level security;
 drop policy if exists "seed10k_daily_select_all" on public.seed10k_daily;
 create policy "seed10k_daily_select_all" on public.seed10k_daily for select using (true);
 
--- 5) 1분마다 seed10k-quotes 함수 부르기
+-- 5) 7초마다 seed10k-quotes 함수 부르기 (현재가는 7초마다, 5분 봉·뉴스 등은 함수 안에서 약 1분마다)
+--    초 단위 일정('7 seconds')은 Postgres 15.1.1.61 이상에서 된다. 같은 이름으로 다시 부르면 기존 일정을 바꾼다.
 create extension if not exists pg_cron;
 create extension if not exists pg_net;
 select cron.schedule(
   'seed10k-quotes',
-  '* * * * *',
+  '7 seconds',
   $$ select net.http_post(
        url := 'https://ictjkqbbcaigdvlysdaw.supabase.co/functions/v1/seed10k-quotes',
        headers := jsonb_build_object('Content-Type', 'application/json', 'apikey', 'sb_publishable_C7jZEKJn_nF2Y3Ngq5f80Q_RA5Wrfux'),

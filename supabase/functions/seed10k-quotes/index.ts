@@ -1,13 +1,22 @@
 // SEED 10K 실시간 시세 수집 함수 (Supabase Edge Function)
 //
-// Supabase Cron이 1분마다 부른다. 지금 장이 열려 있는 시장의 종목만 야후 파이낸스에서 받아
-// public.seed10k_quotes 표(최신가, 그날 5분 봉)와 public.seed10k_daily 표(거래일별 마지막 가격)에 저장한다.
-// 게임은 이 표들을 1분마다 읽는다.
+// Supabase Cron이 7초마다 부른다. 하는 일은 두 갈래다.
 //
-// - 한국: 야후가 한국 시세를 20분 늦게 주므로, 한국 시각 08:55~16:00(평일)에 받는다.
+// [7초마다] 현재가: 네이버 증권 실시간 시세를 시장 전체 한 번에(150종목씩 묶어) 받아
+//   public.seed10k_quotes의 최신가(p, t, d)와 public.seed10k_daily(그날 마지막 가격, 저가, 고가)를 고친다.
+//   한국 api/realtime/domestic/stock/{코드,...}, 미국 api/realtime/worldstock/stock/{로이터 코드,...} (polling.finance.naver.com).
+//   응답의 pollingInterval이 두 시장 모두 7000(7초)이라 7초로 맞췄다. 지연 시간(delayTime)은 두 시장 모두 0으로 온다.
+//   마지막 체결 시각(localTradedAt)이 그 시장의 오늘 정규장 안인 값만 쓴다(한국 09:00~15:45, 미국 09:30~16:05).
+//   한국은 장이 끝난 뒤 시간외 단일가(16:00~18:00)가 현재가를 바꾸므로 이 구간을 버린다.
+//   4초 안에 다시 불리면 이 부분은 건너뛴다.
+// [약 1분마다] 5분 봉과 나머지: 지금 장이 열려 있는 시장의 종목을 야후 파이낸스에서 받아 그날 5분 봉(i)을 저장한다.
+//   네이버 현재가가 최근 90초 안에 들어온 시장은 야후의 최신가로 덮지 않는다(야후 한국 시세는 20분 늦다).
+//   네이버가 멈추면 예전처럼 야후 최신가를 쓴다.
+//
+// - 한국: 한국 시각 08:55~16:00(평일)에 받는다.
 // - 미국: 뉴욕 시각 09:25~16:20(평일)에 받는다. 마감 뒤 몇 분은 마감가를 확정하려고 더 받는다.
-// - 환율(KRW=X): 두 시장 중 하나라도 받는 동안 함께 받는다.
-// - 아무나 이 주소를 불러도 40초 안에 다시 부르면 아무것도 하지 않는다(야후 요청 남용 방지).
+// - 환율(KRW=X): 두 시장 중 하나라도 받는 동안 1분마다 야후에서 함께 받는다.
+// - 아무나 이 주소를 불러도 55초 안에 다시 부르면 1분 작업은 하지 않는다(야후 요청 남용 방지).
 // - 장 시간과 관계없이 불릴 때마다 _beat 줄의 시각을 남긴다. 게임은 이 시각이 3분 안이면 '온라인'으로 표시한다.
 // - 뉴스: 장 시간과 관계없이 한 번에 7종목씩, 30분 넘게 묵은 종목부터 받아 public.seed10k_news에 저장한다
 //   (200종목이 약 30분에 한 바퀴). 한국어는 NAVER API HUB 뉴스 검색(함수 비밀값 NAVER_CLIENT_ID,
@@ -29,6 +38,7 @@
 import NAMES from "./names.ts";
 
 type Row = { id: string; ysym: string; m: string; updated_at?: string | null };
+type DailyRow = { id: string; d: string; c: number; l?: number; h?: number };
 type Quote = {
   id: string; ysym: string; m: string;
   p: number; t: string; d: string;
@@ -38,7 +48,9 @@ type Quote = {
 };
 
 let dailyLH = true;           // seed10k_daily에 l, h 열이 있는지 (없다는 오류를 한 번 보면 끈다)
-const MIN_GAP_MS = 40_000;   // 이 간격 안에 다시 불리면 건너뛴다
+const MIN_GAP_MS = 55_000;   // 1분 작업: 이 간격 안에 다시 불리면 건너뛴다
+const FAST_GAP_MS = 4_000;   // 7초 작업: 이 간격 안에 다시 불리면 건너뛴다
+const NV_FRESH_MS = 90_000;  // 네이버 현재가가 이 시간 안에 들어왔으면 야후 최신가로 덮지 않는다
 const POOL = 16;             // 야후에 동시에 보내는 요청 수 (시장별 300종목을 1분 안에 넉넉히 받도록)
 const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36";
 
@@ -424,6 +436,77 @@ export async function fillKrClose(at: Date) {
   return { done: daily.length, failed: errs.length, errs: errs.slice(0, 5) };
 }
 
+/* 네이버 증권 실시간 현재가 (7초 작업) */
+const NV_CHUNK = 150;
+const NV_LIVE: Record<"KR" | "US", { tz: string; from: string; to: string; url: string }> = {
+  KR: { tz: "Asia/Seoul", from: "0900", to: "1545", url: "https://polling.finance.naver.com/api/realtime/domestic/stock/" },
+  US: { tz: "America/New_York", from: "0930", to: "1605", url: "https://polling.finance.naver.com/api/realtime/worldstock/stock/" },
+};
+type NvLive = { itemCode?: string; reutersCode?: string; closePrice?: string; closePriceRaw?: string; highPrice?: string; highPriceRaw?: string; lowPrice?: string; lowPriceRaw?: string; localTradedAt?: string };
+const nvNum = (raw?: string, txt?: string) => { const v = parseFloat(String(raw ?? txt ?? "").replace(/,/g, "")); return isFinite(v) ? v : NaN; };
+export async function fetchNaverLive(m: "KR" | "US", at: Date) {
+  const w = NV_LIVE[m], today = localDate(w.tz, Math.floor(at.getTime() / 1000));
+  const byCode = new Map(Object.entries(NAMES).filter(([, v]) => v.m === m && v.v).map(([id, v]) => [v.v as string, { id, y: v.y }]));
+  const codes = [...byCode.keys()], now = new Date().toISOString();
+  const rnd = (v: number) => (m === "KR" ? Math.round(v) : Math.round(v * 100) / 100);
+  const rows: Record<string, unknown>[] = [], daily: DailyRow[] = [];
+  let got = 0;
+  for (let k = 0; k < codes.length; k += NV_CHUNK) {
+    const r = await fetch(w.url + codes.slice(k, k + NV_CHUNK).map(encodeURIComponent).join(","), { headers: { "User-Agent": UA } });
+    if (!r.ok) { await r.body?.cancel(); throw new Error(`naver ${m} HTTP ${r.status}`); }
+    const j = await r.json();
+    for (const x of (j?.datas || []) as NvLive[]) {
+      const hit = byCode.get(String((m === "KR" ? x.itemCode : x.reutersCode) || "")); if (!hit) continue;
+      got++;
+      // localTradedAt은 그 시장 현지 시각("2026-10-27T15:30:01+09:00" 꼴): 오늘 정규장 안의 체결만 쓴다
+      const ts = String(x.localTradedAt || ""), hm = ts.slice(11, 13) + ts.slice(14, 16);
+      if (ts.slice(0, 10) !== today || hm < w.from || hm > w.to) continue;
+      const p = nvNum(x.closePriceRaw, x.closePrice), sec = Date.parse(ts);
+      if (!(p > 0) || !isFinite(sec)) continue;
+      rows.push({ id: hit.id, ysym: hit.y, m, p: rnd(p), t: new Date(sec).toISOString(), d: today, updated_at: now });
+      const lo = nvNum(x.lowPriceRaw, x.lowPrice), hi = nvNum(x.highPriceRaw, x.highPrice);
+      daily.push({ id: hit.id, d: today, c: rnd(p), ...(lo > 0 && hi > 0 ? { l: rnd(Math.min(lo, p)), h: rnd(Math.max(hi, p)) } : {}) });
+    }
+  }
+  if (!got) throw new Error(`naver ${m}: 받은 종목 없음`);
+  for (let k = 0; k < rows.length; k += 200) {
+    await rest("seed10k_quotes?on_conflict=id", {
+      method: "POST",
+      headers: restHeaders({ Prefer: "resolution=merge-duplicates,return=minimal" }),
+      body: JSON.stringify(rows.slice(k, k + 200)),
+    });
+  }
+  await saveDaily(daily);
+  await rest("seed10k_quotes?on_conflict=id", {
+    method: "POST",
+    headers: restHeaders({ Prefer: "resolution=merge-duplicates,return=minimal" }),
+    body: JSON.stringify([{ id: "_nv" + m, ysym: "-", m: "SYS", updated_at: now }]),
+  });
+  return { got, saved: rows.length };
+}
+
+/* 거래일별 마지막 가격(+ 저가, 고가)을 seed10k_daily에 남긴다. 표에 l, h 열이 없으면 종가만 남긴다 */
+async function saveDaily(all: DailyRow[]) {
+  // 저가·고가가 있는 줄과 없는 줄은 열 구성이 달라 따로 보낸다
+  for (const daily of [all.filter((r) => r.l != null && r.h != null), all.filter((r) => r.l == null || r.h == null).map(({ l: _l, h: _h, ...r }): DailyRow => r)])
+  for (let k = 0; k < daily.length; k += 200) {
+    const part = daily.slice(k, k + 200);
+    const send = (rows: unknown[]) => rest("seed10k_daily?on_conflict=id,d", {
+      method: "POST",
+      headers: restHeaders({ Prefer: "resolution=merge-duplicates,return=minimal" }),
+      body: JSON.stringify(rows),
+    });
+    const plain = () => part.map(({ l: _l, h: _h, ...r }) => r);
+    if (!dailyLH) { await send(plain()); continue; }
+    try { await send(part); }
+    catch (e) {
+      if (!/column|PGRST204|42703/i.test(String((e as Error).message || e))) throw e;
+      dailyLH = false;
+      await send(plain());
+    }
+  }
+}
+
 /* Supabase REST 호출 (비밀 키로 쓰기) */
 function secretKey(): string {
   try {
@@ -455,9 +538,24 @@ export async function run(at = new Date()) {
     body: JSON.stringify([{ id: "_beat", ysym: "-", m: "SYS", updated_at: new Date().toISOString() }]),
   });
   const act = activeMarkets(at);
+  const marks: Row[] = await (await rest("seed10k_quotes?select=id,ysym,m,updated_at&id=in.(_fast,_run)", { headers: restHeaders() })).json();
+  const markAt = (id: string) => Date.parse(marks.find((r) => r.id === id)?.updated_at || "") || 0;
+  // [7초 작업] 장이 열린 시장의 현재가를 네이버에서
+  const live: Record<string, unknown> = {};
+  if ((act.KR || act.US) && Date.now() - markAt("_fast") >= FAST_GAP_MS) {
+    await rest("seed10k_quotes?on_conflict=id", {
+      method: "POST",
+      headers: restHeaders({ Prefer: "resolution=merge-duplicates,return=minimal" }),
+      body: JSON.stringify([{ id: "_fast", ysym: "-", m: "SYS", updated_at: new Date().toISOString() }]),
+    });
+    for (const m of ["KR", "US"] as const) {
+      if (!act[m]) continue;
+      try { live[m] = await fetchNaverLive(m, at); } catch (e) { live[m] = { error: String((e as Error).message || e).slice(0, 200) }; }
+    }
+  }
+  // [1분 작업]
+  if (Date.now() - markAt("_run") < MIN_GAP_MS) return { skipped: "1분 작업은 방금 함", act, live };
   const all: Row[] = await (await rest("seed10k_quotes?select=id,ysym,m,updated_at", { headers: restHeaders() })).json();
-  const mark = all.find((r) => r.id === "_run");
-  if (mark?.updated_at && Date.now() - Date.parse(mark.updated_at) < MIN_GAP_MS) return { skipped: "방금 실행됨", act };
   // 게임 종목 이름표(names.ts)에 있는데 시세 표에 없는 종목은 여기서 등록한다 (종목을 늘릴 때 SQL을 따로 돌리지 않아도 되게)
   const have = new Set(all.map((r) => r.id));
   const add = Object.entries(NAMES).filter(([id, v]) => !have.has(id) && v.y).map(([id, v]) => ({ id, ysym: v.y, m: v.m }));
@@ -487,14 +585,21 @@ export async function run(at = new Date()) {
   // 장이 끝난 뒤 종목을 늘려도 그날 5분 봉과 종가가 바로 채워지게 한다.
   const fresh = (r: Row) => !r.updated_at && (r.m === "KR" || r.m === "US" || r.m === "FX") && !!r.ysym && r.ysym !== "-";
   const want = all.filter((r) => (r.m === "KR" && act.KR) || (r.m === "US" && act.US) || (r.m === "FX" && act.FX) || fresh(r));
-  if (!want.length) return { skipped: "장 시간이 아님", act, added: add.length, news, dart, divs, close };
+  if (!want.length) return { skipped: "장 시간이 아님", act, live, added: add.length, news, dart, divs, close };
   const { ok, failed } = await fetchAll(want);
-  for (let k = 0; k < ok.length; k += 100) {
-    await rest("seed10k_quotes?on_conflict=id", {
-      method: "POST",
-      headers: restHeaders({ Prefer: "resolution=merge-duplicates,return=minimal" }),
-      body: JSON.stringify(ok.slice(k, k + 100).map(({ dl: _l, dh: _h, ...q }) => q)),
-    });
+  // 네이버 현재가가 최근에 들어온 시장의 종목은 야후의 최신가(p, t, d)와 일별 가격을 쓰지 않고 5분 봉만 저장한다
+  const nvFresh = (m: string) => Date.now() - (Date.parse(all.find((r) => r.id === "_nv" + m)?.updated_at || "") || 0) < NV_FRESH_MS;
+  const byNaver = (q: Quote) => (q.m === "KR" || q.m === "US") && !!NAMES[q.id]?.v && nvFresh(q.m);
+  // 한 번에 보내는 줄들은 열 구성이 같아야 하므로(PostgREST) 두 무리로 나눠 보낸다
+  const strip = ({ dl: _l, dh: _h, ...q }: Quote) => q;
+  for (const group of [ok.filter((q) => !byNaver(q)).map(strip), ok.filter(byNaver).map((q) => (({ p: _p, t: _t, d: _d, ...r }) => r)(strip(q)))]) {
+    for (let k = 0; k < group.length; k += 100) {
+      await rest("seed10k_quotes?on_conflict=id", {
+        method: "POST",
+        headers: restHeaders({ Prefer: "resolution=merge-duplicates,return=minimal" }),
+        body: JSON.stringify(group.slice(k, k + 100)),
+      });
+    }
   }
   // 오늘 분할이 보이면 분할 기록 줄에 바로 더한다 (하루 한 번 수집을 기다리지 않게)
   if (todaySplits.length) {
@@ -511,24 +616,8 @@ export async function run(at = new Date()) {
   }
   // 거래일별 마지막 가격(장이 끝나면 그날 종가)도 남긴다. GitHub 수집이 며칠 멈춰도 일별 종가가 비지 않게.
   // 그날 저가·고가(l, h)도 남긴다 (예약 주문 판정용). 표에 l, h 열이 아직 없으면 종가만 남긴다
-  const daily = ok.map((q) => ({ id: q.id, d: q.d, c: q.p, ...(dailyLH && q.dl != null ? { l: q.dl, h: q.dh } : {}) }));
-  for (let k = 0; k < daily.length; k += 200) {
-    const part = daily.slice(k, k + 200);
-    const send = (rows: unknown[]) => rest("seed10k_daily?on_conflict=id,d", {
-      method: "POST",
-      headers: restHeaders({ Prefer: "resolution=merge-duplicates,return=minimal" }),
-      body: JSON.stringify(rows),
-    });
-    const plain = () => part.map(({ l: _l, h: _h, ...r }) => r);
-    if (!dailyLH) { await send(plain()); continue; }
-    try { await send(part); }
-    catch (e) {
-      if (!/column|PGRST204|42703/i.test(String((e as Error).message || e))) throw e;
-      dailyLH = false;
-      await send(plain());
-    }
-  }
-  return { act, added: add.length, wanted: want.length, saved: ok.length, failed: failed.slice(0, 10), failedCount: failed.length, news, dart, divs, close, ms: Date.now() - started };
+  await saveDaily(ok.filter((q) => !byNaver(q)).map((q) => ({ id: q.id, d: q.d, c: q.p, ...(q.dl != null ? { l: q.dl, h: q.dh } : {}) })));
+  return { act, live, added: add.length, wanted: want.length, saved: ok.length, failed: failed.slice(0, 10), failedCount: failed.length, news, dart, divs, close, ms: Date.now() - started };
 }
 
 Deno.serve(async () => {
