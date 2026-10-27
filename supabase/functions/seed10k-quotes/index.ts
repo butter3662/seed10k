@@ -6,7 +6,7 @@
 //   public.seed10k_quotes의 최신가(p, t, d)와 public.seed10k_daily(그날 마지막 가격, 저가, 고가)를 고친다.
 //   한국 api/realtime/domestic/stock/{코드,...}, 미국 api/realtime/worldstock/stock/{로이터 코드,...} (polling.finance.naver.com).
 //   응답의 pollingInterval이 두 시장 모두 7000(7초)이라 7초로 맞췄다. 지연 시간(delayTime)은 두 시장 모두 0으로 온다.
-//   마지막 체결 시각(localTradedAt)이 그 시장의 오늘 정규장 안인 값만 쓴다(한국 09:00~15:45, 미국 09:30~16:05).
+//   마지막 체결 시각(localTradedAt)이 그 시장의 오늘 정규장 안인 값만 쓴다(평소 한국 09:00~15:45, 미국 09:30~16:05, 특별한 날은 SPECIAL_SESS).
 //   한국은 장이 끝난 뒤 시간외 단일가(16:00~18:00)가 현재가를 바꾸므로 이 구간을 버린다.
 //   4초 안에 다시 불리면 이 부분은 건너뛴다.
 // [약 1분마다] 5분 봉과 나머지: 지금 장이 열려 있는 시장의 종목을 야후 파이낸스에서 받아 그날 5분 봉(i)을 저장한다.
@@ -31,8 +31,8 @@
 // - 배당: 장 시간과 관계없이 한 번에 10종목씩, 20시간 넘게 묵은 종목부터 Yahoo 차트 API(events=div)로 최근 2년 배당을 받아
 //   public.seed10k_divs에 [배당락일(거래소 현지 날짜), 1주당 배당금(현지 통화)] 목록으로 저장한다 (200종목이 약 20분에 한 바퀴).
 // - 한국 장 마감 구간: 야후는 한국 정규장을 09:00~15:00으로 잡아 15:00 봉 자리에 종가(거래량 0)를 넣고
-//   15:00~15:20 거래를 주지 않는다. 그래서 한국 장이 끝난 뒤(평일 16:01~24:00) 한 번에 60종목씩,
-//   네이버 증권 1분 봉(api.stock.naver.com/chart/domestic/item/{코드}/minute)으로 그날 15:00~15:30을 5분 봉으로 바꿔 넣는다.
+//   15:00~15:20 거래를 주지 않는다. 그래서 한국 장이 끝나고 30분 뒤부터(평소 16:01~24:00) 한 번에 60종목씩,
+//   네이버 증권 1분 봉(api.stock.naver.com/chart/domestic/item/{코드}/minute)으로 마감 전 90분(평소 14:00~15:30)을 5분 봉으로 바꿔 넣는다.
 //   채운 종목은 i.nv = 1, 실패하면 i.nf에 실패 횟수를 남기고 3번 실패하면 더 시도하지 않는다.
 //   더 채울 종목이 없으면 _closeKR 줄(d = 그날)을 남긴다. 게임은 이 표시가 와야 한국 시장을 '장 마감'으로 바꾼다.
 
@@ -63,11 +63,29 @@ export function zone(tz: string, at: Date) {
 }
 const weekday = (wd: string) => wd !== "Sat" && wd !== "Sun";
 
-/* 지금 받아야 할 시장 */
+/* 정규장 시간 (현지 자정부터 분). 평소와 다른 날은 SPECIAL_SESS에 적는다. 게임(app.js)의 SPECIAL_SESS와 같게 유지한다.
+   - 미국 2026-11-27, 2026-12-24: 13:00 조기 마감 (NYSE 공지)
+   - 한국 2026-11-19(수능): 10:00~16:30 (예년 수능일을 따름, 거래소 공지 전), 2027-01-04(새해 첫 거래일): 10:00 개장 (예년을 따름) */
+const SESS: Record<"KR" | "US", { tz: string; o: number; c: number }> = {
+  KR: { tz: "Asia/Seoul", o: 9 * 60, c: 15 * 60 + 30 },
+  US: { tz: "America/New_York", o: 9 * 60 + 30, c: 16 * 60 },
+};
+const SPECIAL_SESS: Record<"KR" | "US", Record<string, { o?: number; c?: number }>> = {
+  KR: { "2026-11-19": { o: 10 * 60, c: 16 * 60 + 30 }, "2027-01-04": { o: 10 * 60 } },
+  US: { "2026-11-27": { c: 13 * 60 }, "2026-12-24": { c: 13 * 60 } },
+};
+export function sessOf(m: "KR" | "US", at: Date) {
+  const tz = SESS[m].tz, date = localDate(tz, Math.floor(at.getTime() / 1000));
+  return { ...SESS[m], ...(SPECIAL_SESS[m][date] || {}), date };
+}
+const hhmm = (mins: number) => String(Math.floor(mins / 60)).padStart(2, "0") + String(mins % 60).padStart(2, "0");
+const KR_AFTER = 30, US_AFTER = 20;   // 마감 뒤 이만큼(분) 더 받는다 (늦게 오는 마감 시세)
+
+/* 지금 받아야 할 시장: 개장 5분 전부터 마감 뒤 KR_AFTER/US_AFTER분까지 (평일) */
 export function activeMarkets(at: Date) {
-  const kr = zone("Asia/Seoul", at), us = zone("America/New_York", at);
-  const KR = weekday(kr.wd) && kr.mins >= 8 * 60 + 55 && kr.mins <= 16 * 60;
-  const US = weekday(us.wd) && us.mins >= 9 * 60 + 25 && us.mins <= 16 * 60 + 20;
+  const kr = zone("Asia/Seoul", at), us = zone("America/New_York", at), ks = sessOf("KR", at), us2 = sessOf("US", at);
+  const KR = weekday(kr.wd) && kr.mins >= ks.o - 5 && kr.mins <= ks.c + KR_AFTER;
+  const US = weekday(us.wd) && us.mins >= us2.o - 5 && us.mins <= us2.c + US_AFTER;
   return { KR, US, FX: KR || US };
 }
 
@@ -375,8 +393,8 @@ const NV_PER_RUN = 60, NV_POOL = 8, NV_TRIES = 3;
 type NvBar = { localDateTime: string; currentPrice: number; highPrice?: number; lowPrice?: number };
 // "YYYYMMDDhhmmss"(한국 시각) → 유닉스 초
 const kstSec = (s: string) => Date.UTC(+s.slice(0, 4), +s.slice(4, 6) - 1, +s.slice(6, 8), +s.slice(8, 10) - 9, +s.slice(10, 12)) / 1000;
-export async function fetchNaverClose(code: string, ymd: string): Promise<{ t: number[]; c: number[]; l: number[]; h: number[] }> {
-  const u = `https://api.stock.naver.com/chart/domestic/item/${encodeURIComponent(code)}/minute?startDateTime=${ymd}1500&endDateTime=${ymd}1530`;
+export async function fetchNaverClose(code: string, ymd: string, from = "1500", to = "1530"): Promise<{ t: number[]; c: number[]; l: number[]; h: number[] }> {
+  const u = `https://api.stock.naver.com/chart/domestic/item/${encodeURIComponent(code)}/minute?startDateTime=${ymd}${from}&endDateTime=${ymd}${to}`;
   const r = await fetch(u, { headers: { "User-Agent": UA, "Accept": "application/json" } });
   if (!r.ok) { await r.body?.cancel(); throw new Error(`naver ${code} HTTP ${r.status}`); }
   const j = await r.json();
@@ -385,7 +403,7 @@ export async function fetchNaverClose(code: string, ymd: string): Promise<{ t: n
   const b = new Map<number, { c: number; l: number; h: number }>();
   for (const x of j as NvBar[]) {
     const s = String(x?.localDateTime || "");
-    if (s.slice(0, 8) !== ymd || s.slice(8, 12) < "1500" || s.slice(8, 12) > "1530") continue;
+    if (s.slice(0, 8) !== ymd || s.slice(8, 12) < from || s.slice(8, 12) > to) continue;
     const c = Number(x.currentPrice); if (!(c > 0)) continue;
     const lo = Number(x.lowPrice) > 0 ? Math.min(Number(x.lowPrice), c) : c, hi = Number(x.highPrice) > 0 ? Math.max(Number(x.highPrice), c) : c;
     const sec = kstSec(s), k = sec - (sec % 300), o = b.get(k);
@@ -397,7 +415,10 @@ export async function fetchNaverClose(code: string, ymd: string): Promise<{ t: n
 type QI = { t: number[]; c: number[]; l?: number[]; h?: number[]; nv?: number; nf?: number };
 export async function fillKrClose(at: Date) {
   const kr = zone("Asia/Seoul", at);
-  if (!weekday(kr.wd) || kr.mins <= 16 * 60) return { skipped: "한국 장 마감 뒤가 아님" };
+  const ks = sessOf("KR", at);
+  if (!weekday(kr.wd) || kr.mins <= ks.c + KR_AFTER) return { skipped: "한국 장 마감 뒤가 아님" };
+  // 마감 전 90분(평소 14:00~15:30)을 네이버 분봉으로 바꾼다. 야후가 장 시간을 다르게 잡는 날(수능일 등)에도 끝부분이 비지 않게 넉넉히 잡는다
+  const fFrom = hhmm(ks.c - 90), fTo = hhmm(ks.c);
   const today = localDate("Asia/Seoul", Math.floor(at.getTime() / 1000)), ymd = today.replaceAll("-", "");
   const rows: { id: string; ysym: string; m: string; p: number; d: string; i: QI | null }[] = await (await rest(
     `seed10k_quotes?select=id,ysym,m,p,d,i&m=eq.KR&d=eq.${today}&i->>nv=is.null&or=(i->>nf.is.null,i->>nf.lt.${NV_TRIES})&order=id&limit=${NV_PER_RUN}`,
@@ -411,7 +432,7 @@ export async function fillKrClose(at: Date) {
     });
     return { done: 0, settled: today };
   }
-  const cut = kstSec(ymd + "150000");
+  const cut = kstSec(ymd + fFrom + "00");
   const out: { id: string; ysym: string; m: string; i: QI }[] = [], daily: { id: string; d: string; c: number; l?: number; h?: number }[] = [], errs: string[] = [];
   let next = 0;
   async function worker() {
@@ -419,8 +440,8 @@ export async function fillKrClose(at: Date) {
       const r = rows[next++], q = r.i || { t: [], c: [] };
       const ql = q.l && q.l.length === q.t.length ? q.l : q.c, qh = q.h && q.h.length === q.t.length ? q.h : q.c;
       try {
-        const nv = await fetchNaverClose(r.id.slice(3), ymd);
-        if (!nv.t.length) throw new Error(`naver ${r.id}: 15:00~15:30 봉 없음`);
+        const nv = await fetchNaverClose(r.id.slice(3), ymd, fFrom, fTo);
+        if (!nv.t.length) throw new Error(`naver ${r.id}: ${fFrom}~${fTo} 봉 없음`);
         const k = q.t.findIndex((x) => x >= cut), n = k < 0 ? q.t.length : k;
         const i: QI = { t: q.t.slice(0, n).concat(nv.t), c: q.c.slice(0, n).concat(nv.c), l: ql.slice(0, n).concat(nv.l), h: qh.slice(0, n).concat(nv.h), nv: 1 };
         out.push({ id: r.id, ysym: r.ysym, m: r.m, i });
@@ -447,14 +468,15 @@ export async function fillKrClose(at: Date) {
 
 /* 네이버 증권 실시간 현재가 (7초 작업) */
 const NV_CHUNK = 150;
-const NV_LIVE: Record<"KR" | "US", { tz: string; from: string; to: string; url: string }> = {
-  KR: { tz: "Asia/Seoul", from: "0900", to: "1545", url: "https://polling.finance.naver.com/api/realtime/domestic/stock/" },
-  US: { tz: "America/New_York", from: "0930", to: "1605", url: "https://polling.finance.naver.com/api/realtime/worldstock/stock/" },
+// 체결 시각이 개장 ~ 마감 뒤 after분 안인 값만 쓴다 (평소 한국 09:00~15:45, 미국 09:30~16:05)
+const NV_LIVE: Record<"KR" | "US", { after: number; url: string }> = {
+  KR: { after: 15, url: "https://polling.finance.naver.com/api/realtime/domestic/stock/" },
+  US: { after: 5, url: "https://polling.finance.naver.com/api/realtime/worldstock/stock/" },
 };
 type NvLive = { itemCode?: string; reutersCode?: string; closePrice?: string; closePriceRaw?: string; highPrice?: string; highPriceRaw?: string; lowPrice?: string; lowPriceRaw?: string; localTradedAt?: string };
 const nvNum = (raw?: string, txt?: string) => { const v = parseFloat(String(raw ?? txt ?? "").replace(/,/g, "")); return isFinite(v) ? v : NaN; };
 export async function fetchNaverLive(m: "KR" | "US", at: Date) {
-  const w = NV_LIVE[m], today = localDate(w.tz, Math.floor(at.getTime() / 1000));
+  const ss = sessOf(m, at), today = ss.date, w = { url: NV_LIVE[m].url, from: hhmm(ss.o), to: hhmm(ss.c + NV_LIVE[m].after) };
   const byCode = new Map(Object.entries(NAMES).filter(([, v]) => v.m === m && v.v).map(([id, v]) => [v.v as string, { id, y: v.y }]));
   const codes = [...byCode.keys()], now = new Date().toISOString();
   const rnd = (v: number) => (m === "KR" ? Math.round(v) : Math.round(v * 100) / 100);

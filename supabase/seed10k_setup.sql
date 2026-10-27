@@ -157,3 +157,11 @@ create policy "seed10k_divs_select_all" on public.seed10k_divs for select using 
 -- 10) 일별 저가·고가 (예약 주문 판정용)
 alter table public.seed10k_daily add column if not exists l numeric;
 alter table public.seed10k_daily add column if not exists h numeric;
+
+-- 11) 예약 작업 실행 기록 정리: cron.job_run_details는 실행마다 한 줄씩 쌓이고 자동으로 지워지지 않는다(Supabase Cron 문서).
+--     7초 일정이면 하루 약 12,300줄이므로, 매일 03:00(UTC)에 하루 넘은 기록을 지운다.
+select cron.schedule(
+  'job-run-details-cleanup',
+  '0 3 * * *',
+  $$ delete from cron.job_run_details where end_time < now() - interval '1 day' $$
+);
