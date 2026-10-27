@@ -166,6 +166,10 @@ html[data-conv=us] .hero .ret.up{color:#5FE0AE} html[data-conv=us] .hero .ret.do
 .search{flex:1 1 220px;display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:0 12px;height:42px}
 .search svg{width:16px;height:16px;color:var(--ink-3);flex:none}
 .search input{border:0;outline:0;background:none;width:100%;height:100%;font-size:15px}
+.search input::-webkit-search-cancel-button{-webkit-appearance:none;display:none}
+.q-clear{flex:none;width:24px;height:24px;border:0;border-radius:50%;background:var(--surface-2);color:var(--ink-2);font-size:17px;line-height:1;cursor:pointer;display:grid;place-items:center;padding:0}
+.q-clear[hidden]{display:none}
+.q-clear:hover{color:var(--ink)}
 select.pick{height:42px;border-radius:12px;border:1px solid var(--rule);background:var(--surface);padding:0 32px 0 12px;font-weight:600;font-size:14px;appearance:none;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%238A93A6' stroke-width='1.8'/%3E%3C/svg%3E");
   background-repeat:no-repeat;background-position:right 12px center}
@@ -664,7 +668,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.15.1';
+const VERSION = '1.15.2';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -2124,7 +2128,7 @@ function renderMarket(){
     <div class="mkt-head">
       <div class="seg" role="group" aria-label="시장 선택"><button data-mkt="KR">한국 300</button><button data-mkt="US">미국 300</button></div>
       <div class="tools">
-        <label class="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><span class="sr">종목 검색</span><input id="q" type="search" placeholder="종목명, 티커, 종목코드" autocomplete="off"></label>
+        <label class="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><span class="sr">종목 검색</span><input id="q" type="search" placeholder="종목명, 티커, 종목코드" autocomplete="off"><button type="button" class="q-clear" id="qClear" aria-label="검색어 지우기" hidden>×</button></label>
         <select class="pick" id="sortSel" aria-label="정렬"><option value="cap">시가총액순</option><option value="up">상승률순</option><option value="down">하락률순</option><option value="base">기준가 대비</option><option value="own">보유 종목 먼저</option></select>
         <select class="pick" id="secSel" aria-label="업종"></select>
       </div>
@@ -2132,7 +2136,9 @@ function renderMarket(){
     <div class="list-head" aria-hidden="true"><span></span><span>종목</span><span>시가총액</span><span>기준가 대비</span><span>최근 30일</span><span>현재가</span></div>
     <div class="list" id="mktList"></div>
     <p class="muted" style="margin:10px 2px 0" id="mktFoot"></p>`;
-    $('#q').addEventListener('input', e => { UI.q = e.target.value.trim().toLowerCase(); renderMarketList(); });
+    $('#q').addEventListener('input', e => { UI.q = e.target.value.trim().toLowerCase(); $('#qClear').hidden = !e.target.value; renderMarketList(); });
+    // 검색어 한 번에 지우기 (label 안이라 기본 동작을 막아 입력칸에 다시 초점만 준다)
+    $('#qClear').addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); const q = $('#q'); q.value = ''; UI.q = ''; $('#qClear').hidden = true; renderMarketList(); q.focus(); });
     $('#sortSel').addEventListener('change', e => { UI.sort = e.target.value; renderMarketList(); });
     $('#secSel').addEventListener('change', e => { UI.sector = e.target.value; renderMarketList(); });
   }
