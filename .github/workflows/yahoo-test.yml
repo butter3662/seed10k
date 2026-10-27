@@ -1,4 +1,4 @@
-name: 한국 장 마감 봉 확인 (임시)
+name: 네이버 분봉과 비교 (임시)
 on:
   push:
     branches: [tmp-yahoo-test]
@@ -8,22 +8,18 @@ jobs:
     timeout-minutes: 4
     steps:
       - run: |
-          U=https://ictjkqbbcaigdvlysdaw.supabase.co; K=sb_publishable_C7jZEKJn_nF2Y3Ngq5f80Q_RA5Wrfux
-          curl -s "$U/rest/v1/seed10k_quotes?select=id,p,t,i&id=in.(KR:005930,KR:000660,KR:036930)" -H "apikey: $K" -o /tmp/q.json
-          for s in 005930.KS 036930.KQ; do
-            curl -s -A "Mozilla/5.0" "https://query1.finance.yahoo.com/v8/finance/chart/$s?range=1d&interval=5m" -o /tmp/y5_$s.json
-            curl -s -A "Mozilla/5.0" "https://query1.finance.yahoo.com/v8/finance/chart/$s?range=1d&interval=1m" -o /tmp/y1_$s.json
-          done
-          curl -s "https://butter3662.github.io/seed10k/data/c/KR_005930.json" -o /tmp/c.json
+          curl -s -A "Mozilla/5.0" "https://fchart.stock.naver.com/sise.nhn?symbol=005930&timeframe=minute&count=420&requestType=0" -o /tmp/n1.xml
+          curl -s -A "Mozilla/5.0" "https://api.stock.naver.com/chart/domestic/item/005930/minute?startDateTime=202610270900&endDateTime=202610271540" -o /tmp/n2.json
+          curl -s -A "Mozilla/5.0" "https://query1.finance.yahoo.com/v8/finance/chart/005930.KS?range=1d&interval=1m" -o /tmp/y1.json
           python3 - <<'PY'
-          import json, datetime, glob
+          import re, json, datetime
+          x = open('/tmp/n1.xml', encoding='euc-kr', errors='replace').read()
+          d = re.findall(r'data="([^"]+)"', x)
+          print(f"::notice title=네이버 fchart {len(d)}개::처음 5 {d[:5]} / 마지막 25 {d[-25:]}")
+          s = open('/tmp/n2.json').read()
+          print(f"::notice title=네이버 api::{s[:300]} ... {s[-1500:]}")
+          y = json.load(open('/tmp/y1.json'))['chart']['result'][0]; t = y['timestamp']; q = y['indicators']['quote'][0]
           kst = lambda s: (datetime.datetime.utcfromtimestamp(s) + datetime.timedelta(hours=9)).strftime('%H:%M')
-          for r in json.load(open('/tmp/q.json')):
-              t = r['i']['t']; c = r['i']['c']
-              print(f"::notice title=저장 {r['id']}::봉 {len(t)}개, 마지막 10개 {[(kst(a), b) for a, b in zip(t[-10:], c[-10:])]}, 최신가 {r['p']} ({r['t']})")
-          for f in sorted(glob.glob('/tmp/y*_*.json')):
-              y = json.load(open(f))['chart']['result'][0]; t = y['timestamp']; q = y['indicators']['quote'][0]; m = y['meta']
-              print(f"::notice title=야후 {f[5:]}::봉 {len(t)}개, 마지막 10개 {[(kst(a), b, v) for a, b, v in zip(t[-10:], q['close'][-10:], q['volume'][-10:])]}, rmp {m.get('regularMarketPrice')} {kst(m.get('regularMarketTime'))}")
-          c = json.load(open('/tmp/c.json')); i5 = c.get('i5') or {}
-          if i5.get('t'): print(f"::notice title=파일 i5 005930::마지막 10개 {[(kst(a), b) for a, b in zip(i5['t'][-10:], i5['c'][-10:])]}")
+          print(f"::notice title=야후 1분 처음 5::{[(kst(a), o, c, v) for a, o, c, v in zip(t[:5], q['open'][:5], q['close'][:5], q['volume'][:5])]} 거래시간 {y['meta'].get('currentTradingPeriod')}")
+          print(f"::notice title=야후 1분 14:20~::{[(kst(a), c, v) for a, c, v in zip(t, q['close'], q['volume']) if kst(a) >= '14:20']}")
           PY
