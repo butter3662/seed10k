@@ -640,7 +640,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 100 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.8.2';
+const VERSION = '1.8.3';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -759,7 +759,7 @@ function pick(a){ return a[Math.floor(rand() * a.length)]; }
 
 /* ───────── 상태 ───────── */
 let S = null;
-let SET = Object.assign({conv:'kr', theme:'auto', speed:1, mode:null}, safeParse(localStorage.getItem(SET_KEY)));
+let SET = Object.assign({conv:'kr', theme:'auto', speed:1, mode:null, krd:'krw'}, safeParse(localStorage.getItem(SET_KEY)));
 const UI = {tab:'home', mkt:'KR', sort:'cap', q:'', sector:'all', sheet:null, side:'buy', qty:1, range:60, auto:null};
 function safeParse(s){ try { return s ? JSON.parse(s) : null; } catch(e){ return null; } }
 const isLive = () => S && S.mode === 'live';
@@ -1791,9 +1791,12 @@ function renderHome(){
   $('#hSub').innerHTML = `<span class="ret ${cls(ret)}">${fmtPct(ret)}</span><span>${(S.pts || 0) > 0 ? `포인트 <b>${fmtUSD(S.pts, 0)}</b> 빼고 계산` : `시드 <b>${fmtUSD(META.seed, 0)}</b> 대비`}</span><span>${live ? '어제보다' : '오늘'} <b>${signUSD(started ? dToday : 0)}</b></span>`;
   const kr = holdingsUSD('KR'), us = holdingsUSD('US'), cu = S.usd, ck = S.krw / FX();
   const tot = kr + us + cu + ck || 1;
-  const seg = [{l:'한국 주식', v:kr, c:'#6E8BFF'}, {l:'미국 주식', v:us, c:'#E2B45E'}, {l:'달러', v:cu, c:'#B9C3D6'}, {l:'원화', v:ck, c:'#8FA0BF'}];
+  // 막대 길이는 모두 달러로 환산해 비교하고, 금액 글씨는 설정(한국 자산 표시)에 따라 원화 자산을 원래 원화로 쓴다
+  let krKRW = 0; for (const id in S.pos) if (BY_ID[id].cur === 'KRW') krKRW += S.pos[id].q * price(id);
+  const inKRW = SET.krd !== 'usd';
+  const seg = [{l:'한국 주식', v:kr, c:'#6E8BFF', t:inKRW ? fmtKRW(krKRW) : null}, {l:'미국 주식', v:us, c:'#E2B45E'}, {l:'달러', v:cu, c:'#B9C3D6'}, {l:'원화', v:ck, c:'#8FA0BF', t:inKRW ? fmtKRW(S.krw) : null}];
   $('#mixBar').innerHTML = seg.map(s => `<i style="width:${(s.v/tot*100).toFixed(2)}%;background:${s.c}"></i>`).join('');
-  $('#mixLeg').innerHTML = seg.map(s => `<span><i style="background:${s.c}"></i>${s.l} <b>${fmtUSD(s.v, 0)}</b></span>`).join('')
+  $('#mixLeg').innerHTML = seg.map(s => `<span><i style="background:${s.c}"></i>${s.l} <b>${s.t || fmtUSD(s.v, 0)}</b></span>`).join('')
     + (D > 0 ? `<span><i style="background:#FF8A96"></i>대출 <b>${MINUS}${fmtUSD(D, 0)}</b></span>` : '');
   $('#eqWrap').innerHTML = areaSVG(S.nw.slice(-120), {base:META.seed});
   const nd = nwDates();
@@ -2069,6 +2072,8 @@ function renderInfo(){
         <div class="seg"><button data-setmode="live" aria-pressed="${live}">실제 시세</button><button data-setmode="sim" aria-pressed="${!live}">시뮬레이션</button></div></div>
       <div class="set-row"><div class="l">상승·하락 색<small>한국식은 상승 빨강, 미국식은 상승 초록</small></div>
         <div class="seg"><button data-conv="kr" aria-pressed="${SET.conv === 'kr'}">한국식</button><button data-conv="us" aria-pressed="${SET.conv === 'us'}">미국식</button></div></div>
+      <div class="set-row"><div class="l">한국 자산 표시<small>홈 화면 자산 구성에서 한국 주식과 원화 통장 금액을 원화 그대로 쓸지, 달러로 환산할지 고릅니다</small></div>
+        <div class="seg"><button data-krd="krw" aria-pressed="${SET.krd !== 'usd'}">원화</button><button data-krd="usd" aria-pressed="${SET.krd === 'usd'}">달러 환산</button></div></div>
       <div class="set-row"><div class="l">화면 테마</div>
         <div class="seg"><button data-theme="auto" aria-pressed="${SET.theme === 'auto'}">자동</button><button data-theme="light" aria-pressed="${SET.theme === 'light'}">밝게</button><button data-theme="dark" aria-pressed="${SET.theme === 'dark'}">어둡게</button></div></div>
       ${live ? '' : `<div class="set-row"><div class="l">자동 진행 속도<small>헤더의 ▶▶ 버튼으로 켜고 끕니다</small></div>
@@ -3276,6 +3281,7 @@ document.addEventListener('click', e => {
   }
   if (t.dataset.setmode){ if (t.dataset.setmode !== S.mode){ setMode(t.dataset.setmode); toast(t.dataset.setmode === 'live' ? '실제 시세 모드로 바꿨습니다' : '시뮬레이션 모드로 바꿨습니다'); } return; }
   if (t.dataset.conv){ SET.conv = t.dataset.conv; saveSet(); applyTheme(); renderTab(); return; }
+  if (t.dataset.krd){ SET.krd = t.dataset.krd; saveSet(); renderTab(); return; }
   if (t.dataset.theme){ SET.theme = t.dataset.theme; saveSet(); applyTheme(); renderTab(); return; }
   if (t.dataset.speed !== undefined){ SET.speed = +t.dataset.speed; saveSet(); if (UI.auto) startAuto(); renderTab(); return; }
   if (t.dataset.rankmode){ UI.rankMode = t.dataset.rankmode; refreshRanks(true); return; }
