@@ -1,0 +1,16 @@
+예외: Traceback (most recent call last):
+  File "/home/runner/work/seed10k/seed10k/probe/live.py", line 32, in <module>
+    asyncio.run(main())
+  File "/usr/lib/python3.12/asyncio/runners.py", line 194, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 687, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/home/runner/work/seed10k/seed10k/probe/live.py", line 21, in main
+    out.append('버전 ' + str(await pg.evaluate("VERSION")) + ' 모드 ' + str(await pg.evaluate("S.mode")) + ' US상태 ' + str(await pg.evaluate("mstate('US').label")) + ' sessionNear ' + str(await pg.evaluate("sessionNear('US')")) + ' sb ' + str(await pg.evaluate("!!ACC.sb")) + ' LIVE.ok ' + str(await pg.evaluate("LIVE.ok")) + ' QT.rows ' + str(await pg.evaluate("QT.rows && QT.rows.length")))
+    ^^^
+UnboundLocalError: cannot access local variable 'out' where it is not associated with a value
