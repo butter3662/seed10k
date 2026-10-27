@@ -1,0 +1,37 @@
+버전 1.4.0 모드 live US상태 장중 sessionNear True sb True LIVE.ok True QT.rows 613
+7.8s 화면 $216.35 price 216 행 p 216.35 t 2026-10-27T14:22:37+00:00 hotBusy False sheet US:NVDA scrub None loading True
+11.3s 화면 $216.35 price 216.35 행 p 216.35 t 2026-10-27T14:22:37+00:00 hotBusy False sheet US:NVDA scrub None loading False
+14.8s 화면 $216.35 price 216.35 행 p 216.35 t 2026-10-27T14:22:37+00:00 hotBusy True sheet US:NVDA scrub None loading False
+18.3s 화면 $216.35 price 216.35 행 p 216.35 t 2026-10-27T14:22:37+00:00 hotBusy False sheet US:NVDA scrub None loading False
+21.8s 화면 $216.35 price 216.35 행 p 216.35 t 2026-10-27T14:22:37+00:00 hotBusy False sheet US:NVDA scrub None loading False
+25.3s 화면 $216.35 price 216.35 행 p 216.35 t 2026-10-27T14:22:37+00:00 hotBusy False sheet US:NVDA scrub None loading False
+28.8s 화면 $216.48 price 216.48 행 p 216.48 t 2026-10-27T14:23:17+00:00 hotBusy False sheet US:NVDA scrub None loading False
+32.3s 화면 $216.48 price 216.48 행 p 216.48 t 2026-10-27T14:23:17+00:00 hotBusy False sheet US:NVDA scrub None loading False
+35.8s 화면 $216.48 price 216.48 행 p 216.48 t 2026-10-27T14:23:17+00:00 hotBusy False sheet US:NVDA scrub None loading False
+39.4s 화면 $216.48 price 216.48 행 p 216.48 t 2026-10-27T14:23:17+00:00 hotBusy False sheet US:NVDA scrub None loading False
+42.9s 화면 $216.43 price 216.43 행 p 216.43 t 2026-10-27T14:23:27+00:00 hotBusy False sheet US:NVDA scrub None loading False
+46.4s 화면 $216.43 price 216.43 행 p 216.43 t 2026-10-27T14:23:27+00:00 hotBusy False sheet US:NVDA scrub None loading False
+49.9s 화면 $216.29 price 216.29 행 p 216.29 t 2026-10-27T14:23:34+00:00 hotBusy False sheet US:NVDA scrub None loading False
+53.4s 화면 $216.29 price 216.29 행 p 216.29 t 2026-10-27T14:23:34+00:00 hotBusy False sheet US:NVDA scrub None loading False
+56.9s 화면 $216.29 price 216.29 행 p 216.29 t 2026-10-27T14:23:34+00:00 hotBusy False sheet US:NVDA scrub None loading False
+60.4s 화면 $216.29 price 216.29 행 p 216.29 t 2026-10-27T14:23:34+00:00 hotBusy False sheet US:NVDA scrub None loading False
+63.9s 화면 $216.29 price 216.29 행 p 216.29 t 2026-10-27T14:23:34+00:00 hotBusy False sheet US:NVDA scrub None loading False
+67.4s 화면 $216.29 price 216.29 행 p 216.29 t 2026-10-27T14:23:34+00:00 hotBusy False sheet US:NVDA scrub None loading False
+70.9s 화면 $216.29 price 216.29 행 p 216.29 t 2026-10-27T14:23:34+00:00 hotBusy True sheet US:NVDA scrub None loading False
+74.4s 화면 $216.29 price 216.29 행 p 216.29 t 2026-10-27T14:23:34+00:00 hotBusy False sheet US:NVDA scrub None loading False
+요청들:
+[1.9, 200, "select=id%2Cm%2Cp%2Ct%2Cd%2Cupdated_at%2Cx%3Ai-%3Ex", "[{\"id\":\"KR:282330\",\"m\":\"KR\",\"p\":125200,\"t\":\"2026-10-27T06:30:27+00:00\",\"d\":\"2026-10-27\",\"updated_at\":\"2026-10-27T09:02:41.018+00:00\",\"x\":null}, \n {\"id\":\"KR:0001"]
+[7.8, 200, "select=i&id=eq.US%3ANVDA", "[{\"i\":{\"c\": [218.44, 218.15, 217.82, 216.32, 216.13, 216.16, 216.25, 215.88, 215.86, 216.05, 216.13, 216.31], \"h\": [218.47, 218.49, 218.42, 217.99, 216.64, 216."]
+[8.0, 200, "select=id%2Cm%2Cp%2Ct%2Cd%2Cupdated_at%2Cx%3Ai-%3Ex&updated_at=gt.2026-10-27T14%3A21%3A08.108Z", "[{\"id\":\"_fast\",\"m\":\"SYS\",\"p\":null,\"t\":null,\"d\":null,\"updated_at\":\"2026-10-27T14:22:37.804+00:00\",\"x\":null}, \n {\"id\":\"_run\",\"m\":\"SYS\",\"p\":null,\"t\":null,\"d\":null,"]
+[14.9, 200, "select=id%2Cm%2Cp%2Ct%2Cd%2Cupdated_at&id=in.%28US%3ANVDA%29", "[{\"id\":\"US:NVDA\",\"m\":\"US\",\"p\":216.35,\"t\":\"2026-10-27T14:22:37+00:00\",\"d\":\"2026-10-27\",\"updated_at\":\"2026-10-27T14:03:32.315+00:00\"}]"]
+[21.8, 200, "select=id%2Cm%2Cp%2Ct%2Cd%2Cupdated_at&id=in.%28US%3ANVDA%29", "[{\"id\":\"US:NVDA\",\"m\":\"US\",\"p\":216.35,\"t\":\"2026-10-27T14:22:37+00:00\",\"d\":\"2026-10-27\",\"updated_at\":\"2026-10-27T14:03:32.315+00:00\"}]"]
+[28.8, 200, "select=id%2Cm%2Cp%2Ct%2Cd%2Cupdated_at&id=in.%28US%3ANVDA%29", "[{\"id\":\"US:NVDA\",\"m\":\"US\",\"p\":216.48,\"t\":\"2026-10-27T14:23:17+00:00\",\"d\":\"2026-10-27\",\"updated_at\":\"2026-10-27T14:03:32.315+00:00\"}]"]
+[35.8, 200, "select=id%2Cm%2Cp%2Ct%2Cd%2Cupdated_at&id=in.%28US%3ANVDA%29", "[{\"id\":\"US:NVDA\",\"m\":\"US\",\"p\":216.48,\"t\":\"2026-10-27T14:23:17+00:00\",\"d\":\"2026-10-27\",\"updated_at\":\"2026-10-27T14:03:32.315+00:00\"}]"]
+[42.8, 200, "select=id%2Cm%2Cp%2Ct%2Cd%2Cupdated_at&id=in.%28US%3ANVDA%29", "[{\"id\":\"US:NVDA\",\"m\":\"US\",\"p\":216.43,\"t\":\"2026-10-27T14:23:27+00:00\",\"d\":\"2026-10-27\",\"updated_at\":\"2026-10-27T14:03:32.315+00:00\"}]"]
+[49.8, 200, "select=id%2Cm%2Cp%2Ct%2Cd%2Cupdated_at&id=in.%28US%3ANVDA%29", "[{\"id\":\"US:NVDA\",\"m\":\"US\",\"p\":216.29,\"t\":\"2026-10-27T14:23:34+00:00\",\"d\":\"2026-10-27\",\"updated_at\":\"2026-10-27T14:03:32.315+00:00\"}]"]
+[56.8, 200, "select=id%2Cm%2Cp%2Ct%2Cd%2Cupdated_at&id=in.%28US%3ANVDA%29", "[{\"id\":\"US:NVDA\",\"m\":\"US\",\"p\":216.29,\"t\":\"2026-10-27T14:23:34+00:00\",\"d\":\"2026-10-27\",\"updated_at\":\"2026-10-27T14:03:32.315+00:00\"}]"]
+[61.0, 200, "select=id%2Cm%2Cp%2Ct%2Cd%2Cupdated_at%2Cx%3Ai-%3Ex&updated_at=gt.2026-10-27T14%3A21%3A08.108Z", "[{\"id\":\"_fast\",\"m\":\"SYS\",\"p\":null,\"t\":null,\"d\":null,\"updated_at\":\"2026-10-27T14:23:34.097+00:00\",\"x\":null}, \n {\"id\":\"FX\",\"m\":\"FX\",\"p\":1327.18,\"t\":\"2026-10-27T14"]
+[63.9, 200, "select=id%2Cm%2Cp%2Ct%2Cd%2Cupdated_at&id=in.%28US%3ANVDA%29", "[{\"id\":\"US:NVDA\",\"m\":\"US\",\"p\":216.29,\"t\":\"2026-10-27T14:23:34+00:00\",\"d\":\"2026-10-27\",\"updated_at\":\"2026-10-27T14:03:32.315+00:00\"}]"]
+[70.9, 200, "select=id%2Cm%2Cp%2Ct%2Cd%2Cupdated_at&id=in.%28US%3ANVDA%29", "[{\"id\":\"US:NVDA\",\"m\":\"US\",\"p\":216.29,\"t\":\"2026-10-27T14:23:34+00:00\",\"d\":\"2026-10-27\",\"updated_at\":\"2026-10-27T14:03:32.315+00:00\"}]"]
+[77.9, 200, "select=id%2Cm%2Cp%2Ct%2Cd%2Cupdated_at&id=in.%28US%3ANVDA%29", "[{\"id\":\"US:NVDA\",\"m\":\"US\",\"p\":216.29,\"t\":\"2026-10-27T14:23:34+00:00\",\"d\":\"2026-10-27\",\"updated_at\":\"2026-10-27T14:03:32.315+00:00\"}]"]
+오류: []
