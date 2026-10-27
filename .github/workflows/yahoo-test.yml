@@ -1,14 +1,14 @@
-name: 배포본 확인 (임시)
+name: 뉴스 시험 (임시)
 on:
   push:
     branches: [tmp-yahoo-test]
 jobs:
-  check:
+  test:
     runs-on: ubuntu-24.04
-    timeout-minutes: 3
+    timeout-minutes: 5
     steps:
-      - run: |
-          curl -s -m 30 "https://butter3662.github.io/seed10k/data/prices.json?t=$(date +%s)" -o /tmp/p
-          python3 -c "
-          import json; d=json.load(open('/tmp/p')); s=d['s']
-          print('::notice title=배포본::updated', d['updated'], 'US', d['dates']['US'], 'KR', d['dates']['KR'], 'AAPL', s['US:AAPL'], 'NVDA', s['US:NVDA'], 'TSLA', s['US:TSLA'], '삼성', s['KR:005930'])"
+      - uses: actions/checkout@v7
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - run: timeout 120 deno run -A supabase/functions/seed10k-quotes/news_test.ts

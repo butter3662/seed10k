@@ -1,12 +1,19 @@
 // SEED 10K 실시간 시세 수집 함수 (Supabase Edge Function)
 //
 // Supabase Cron이 1분마다 부른다. 지금 장이 열려 있는 시장의 종목만 야후 파이낸스에서 받아
-// public.seed10k_quotes 표에 저장한다. 게임은 이 표를 1분마다 읽는다.
+// public.seed10k_quotes 표(최신가, 그날 5분 봉)와 public.seed10k_daily 표(거래일별 마지막 가격)에 저장한다.
+// 게임은 이 표들을 1분마다 읽는다.
 //
 // - 한국: 야후가 한국 시세를 20분 늦게 주므로, 한국 시각 08:55~16:00(평일)에 받는다.
 // - 미국: 뉴욕 시각 09:25~16:20(평일)에 받는다. 마감 뒤 몇 분은 마감가를 확정하려고 더 받는다.
 // - 환율(KRW=X): 두 시장 중 하나라도 받는 동안 함께 받는다.
 // - 아무나 이 주소를 불러도 40초 안에 다시 부르면 아무것도 하지 않는다(야후 요청 남용 방지).
+// - 장 시간과 관계없이 불릴 때마다 _beat 줄의 시각을 남긴다. 게임은 이 시각이 3분 안이면 '온라인'으로 표시한다.
+// - 뉴스: 장 시간과 관계없이 한 번에 7종목씩, 30분 넘게 묵은 종목부터 받아 public.seed10k_news에 저장한다
+//   (200종목이 약 30분에 한 바퀴). 한국어는 네이버 뉴스 검색 API(함수 비밀값 NAVER_CLIENT_ID,
+//   NAVER_CLIENT_SECRET가 있을 때만), 미국 종목은 Yahoo Finance 영어 뉴스도 함께 받는다.
+
+import NAMES from "./names.ts";
 
 type Row = { id: string; ysym: string; m: string; updated_at?: string | null };
 type Quote = {
@@ -92,6 +99,70 @@ export async function fetchAll(rows: Row[]) {
   return { ok, failed };
 }
 
+/* ───── 뉴스 ───── */
+type News = { t: string; u: string; s: string; at: number; d?: string; img?: string };
+const NEWS_PER_RUN = 7;            // 한 번 불릴 때 뉴스를 새로 받는 종목 수
+const NEWS_TTL_MS = 30 * 60_000;   // 이보다 오래된 종목부터 다시 받는다
+const NEWS_N = 5;                  // 종목당 기사 수
+
+const ENT: Record<string, string> = { "&quot;": '"', "&amp;": "&", "&lt;": "<", "&gt;": ">", "&#39;": "'", "&apos;": "'", "&nbsp;": " " };
+const clean = (x: string) => String(x || "").replace(/<[^>]*>/g, "").replace(/&(quot|amp|lt|gt|#39|apos|nbsp);/g, (m) => ENT[m] || m).replace(/\s+/g, " ").trim();
+const host = (u: string) => { try { return new URL(u).hostname.replace(/^www\./, ""); } catch { return ""; } };
+
+/* 네이버 뉴스 검색 (한국어). 키가 없으면 null */
+export async function naverNews(name: string): Promise<News[] | null> {
+  const id = Deno.env.get("NAVER_CLIENT_ID"), sec = Deno.env.get("NAVER_CLIENT_SECRET");
+  if (!id || !sec) return null;
+  const q = `${name} 주가`;
+  const r = await fetch(`https://openapi.naver.com/v1/search/news.json?query=${encodeURIComponent(q)}&display=${NEWS_N}&sort=date`,
+    { headers: { "X-Naver-Client-Id": id, "X-Naver-Client-Secret": sec } });
+  if (!r.ok) throw new Error(`naver HTTP ${r.status}: ${(await r.text()).slice(0, 120)}`);
+  const j = await r.json();
+  return (j.items || []).slice(0, NEWS_N).map((x: Record<string, string>) => {
+    const u = x.originallink || x.link;
+    return { t: clean(x.title), d: clean(x.description).slice(0, 140), u, s: host(u), at: Math.floor(Date.parse(x.pubDate) / 1000) || 0 };
+  });
+}
+
+/* Yahoo Finance 검색의 뉴스 (영어, 미국 종목) */
+export async function yahooNews(sym: string): Promise<News[]> {
+  const r = await fetch(`https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(sym)}&quotesCount=0&newsCount=${NEWS_N}&enableFuzzyQuery=false`,
+    { headers: { "User-Agent": UA, "Accept": "application/json" } });
+  if (!r.ok) throw new Error(`yahoo news HTTP ${r.status}`);
+  const j = await r.json();
+  return (j.news || []).slice(0, NEWS_N).map((n: Record<string, unknown>) => {
+    const res = ((n.thumbnail as { resolutions?: { url: string; width: number }[] } | undefined)?.resolutions || []).slice().sort((a, b) => a.width - b.width);
+    const img = (res.find((x) => x.width >= 120) || res[res.length - 1])?.url;
+    return { t: clean(String(n.title || "")), u: String(n.link || ""), s: String(n.publisher || ""), at: Number(n.providerPublishTime) || 0, ...(img ? { img } : {}) };
+  });
+}
+
+/* 묵은 종목부터 NEWS_PER_RUN개의 뉴스를 받아 저장한다 */
+export async function refreshNews() {
+  const rows: { id: string; at: string | null }[] = await (await rest("seed10k_news?select=id,at", { headers: restHeaders() })).json();
+  const at = new Map(rows.map((r) => [r.id, r.at ? Date.parse(r.at) : 0]));
+  const now = Date.now();
+  const ids = Object.keys(NAMES).filter((id) => now - (at.get(id) || 0) > NEWS_TTL_MS)
+    .sort((a, b) => (at.get(a) || 0) - (at.get(b) || 0)).slice(0, NEWS_PER_RUN);
+  const out = [], errs: string[] = [];
+  for (const id of ids) {
+    const meta = NAMES[id];
+    const [ko, en] = await Promise.all([
+      naverNews(meta.n).catch((e) => { errs.push(`${id} 네이버: ${(e as Error).message}`); return [] as News[]; }),
+      meta.m === "US" ? yahooNews(meta.t).catch((e) => { errs.push(`${id} Yahoo: ${(e as Error).message}`); return [] as News[]; }) : Promise.resolve([] as News[]),
+    ]);
+    out.push({ id, at: new Date().toISOString(), items: { ko, en } });
+  }
+  if (out.length) {
+    await rest("seed10k_news?on_conflict=id", {
+      method: "POST",
+      headers: restHeaders({ Prefer: "resolution=merge-duplicates,return=minimal" }),
+      body: JSON.stringify(out),
+    });
+  }
+  return { done: out.length, errs: errs.slice(0, 5) };
+}
+
 /* Supabase REST 호출 (비밀 키로 쓰기) */
 function secretKey(): string {
   try {
@@ -116,9 +187,13 @@ async function rest(path: string, init: RequestInit = {}) {
 
 export async function run(at = new Date()) {
   const started = Date.now();
+  // 살아 있다는 신호 (1분 예약 작업이 돌고 있는지 게임에서 확인하는 용도)
+  await rest("seed10k_quotes?on_conflict=id", {
+    method: "POST",
+    headers: restHeaders({ Prefer: "resolution=merge-duplicates,return=minimal" }),
+    body: JSON.stringify([{ id: "_beat", ysym: "-", m: "SYS", updated_at: new Date().toISOString() }]),
+  });
   const act = activeMarkets(at);
-  if (!act.FX) return { skipped: "장 시간이 아님", act };
-
   const all: Row[] = await (await rest("seed10k_quotes?select=id,ysym,m,updated_at", { headers: restHeaders() })).json();
   const mark = all.find((r) => r.id === "_run");
   if (mark?.updated_at && Date.now() - Date.parse(mark.updated_at) < MIN_GAP_MS) return { skipped: "방금 실행됨", act };
@@ -127,6 +202,12 @@ export async function run(at = new Date()) {
     headers: restHeaders({ Prefer: "resolution=merge-duplicates,return=minimal" }),
     body: JSON.stringify([{ id: "_run", ysym: "-", m: "SYS", updated_at: new Date().toISOString() }]),
   });
+
+  // 뉴스는 시세와 따로: 실패하거나 뉴스 표가 없어도 시세 수집은 계속한다
+  let news: unknown;
+  try { news = await refreshNews(); } catch (e) { news = { error: String((e as Error).message || e) }; }
+
+  if (!act.FX) return { skipped: "장 시간이 아님", act, news };
 
   const want = all.filter((r) => (r.m === "KR" && act.KR) || (r.m === "US" && act.US) || (r.m === "FX" && act.FX));
   const { ok, failed } = await fetchAll(want);
@@ -137,7 +218,16 @@ export async function run(at = new Date()) {
       body: JSON.stringify(ok.slice(k, k + 100)),
     });
   }
-  return { act, wanted: want.length, saved: ok.length, failed: failed.slice(0, 10), failedCount: failed.length, ms: Date.now() - started };
+  // 거래일별 마지막 가격(장이 끝나면 그날 종가)도 남긴다. GitHub 수집이 며칠 멈춰도 일별 종가가 비지 않게.
+  const daily = ok.map((q) => ({ id: q.id, d: q.d, c: q.p }));
+  for (let k = 0; k < daily.length; k += 200) {
+    await rest("seed10k_daily?on_conflict=id,d", {
+      method: "POST",
+      headers: restHeaders({ Prefer: "resolution=merge-duplicates,return=minimal" }),
+      body: JSON.stringify(daily.slice(k, k + 200)),
+    });
+  }
+  return { act, wanted: want.length, saved: ok.length, failed: failed.slice(0, 10), failedCount: failed.length, news, ms: Date.now() - started };
 }
 
 Deno.serve(async () => {
