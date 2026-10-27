@@ -453,6 +453,13 @@ html.gated body{overflow:hidden}
 #fxBox .alert{margin-top:6px}
 .fxneed span{color:var(--warn)}
 .c-wallet{order:2}
+.c-mg{order:2}
+.mg-desc{margin:0 0 10px;color:var(--ink-2);font-size:13.5px;line-height:1.55}
+.mg-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.mg-chart{margin:4px 0 0;border:1px solid var(--rule);border-radius:12px;padding:8px 6px 4px;background:var(--surface)}
+.mg-chart svg{display:block;overflow:visible}
+.modal .acts .mg-up,.modal .acts .mg-dn{flex:1;font-weight:750;color:#fff;border:0}
+.mg-up{background:var(--up)} .mg-dn{background:var(--down)}
 html[data-game=live] .c-news{order:3}
 /* ───────── 상세 차트 ───────── */
 .ap-head{margin:14px 0 2px}
@@ -631,7 +638,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 100 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.7.1';
+const VERSION = '1.8.0';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -764,22 +771,25 @@ const LIVE = {ok:false, loading:false, err:null, updated:null, fetchedAt:null, d
 
 function newGame(mode){
   const base = {
-    v:1, mode, usd:META.seed, krw:0, pos:{}, realized:0, interestPaid:0, feesPaid:0, fxFees:0, fxLog:[], orders:[],
+    v:1, mode, usd:META.seed, krw:0, pos:{}, realized:0, interestPaid:0, feesPaid:0, fxFees:0, fxLog:[], orders:[], pts:0, twr:{f:1, b:META.seed}, mg:null,
     loans:{ credit:{bal:0, due:null, overdue:0, clean:true}, margin:{bal:0}, od:{bal:0} },
     grade:4, base:META.baseRate0, trades:[], news:[], warnedDay:-1, over:false, peak:META.seed, started:Date.now()
   };
   if (mode === 'live'){
     const t = kstDate();
-    return {...base, nw:[META.seed], nwD:[t], lastAcc:t, accDays:0, pend:{credit:false, margin:false}, warnedDate:null, liqDate:{}};
+    return {...base, nw:[META.seed], nwP:[0], nwD:[t], lastAcc:t, accDays:0, pend:{credit:false, margin:false}, warnedDate:null, liqDate:{}};
   }
   const px = {};
   STOCKS.forEach(s => { px[s.id] = [s.p]; });
   return {...base, day:0, date:META.baseDate, fx:META.fx0, fxH:[META.fx0], px, regime:{KR:1, US:1},
-          nw:[META.seed], idx:{KR:[1000], US:[1000]}, dates:[META.baseDate], rng:(Math.random() * 2**31) | 0};
+          nw:[META.seed], nwP:[0], idx:{KR:[1000], US:[1000]}, dates:[META.baseDate], rng:(Math.random() * 2**31) | 0};
 }
 function accKey(mode){ return ACC.user ? `seed10k.u.${ACC.user.id}.${mode}` : SAVE_KEYS[mode]; }
 function migrate(s){
   if (s && !Array.isArray(s.orders)) s.orders = [];
+  if (s && typeof s.pts !== 'number') s.pts = 0;
+  if (s && !(s.twr && isFinite(s.twr.f) && isFinite(s.twr.b))) s.twr = {f:1, b:META.seed};   // 포인트가 없던 기록: 수익률 = N/시드 − 1과 같다
+  if (s && Array.isArray(s.nw) && !(Array.isArray(s.nwP) && s.nwP.length === s.nw.length)) s.nwP = s.nw.map(() => 0);
   if (s && s.cash !== undefined && s.usd === undefined){
     s.usd = s.cash; s.krw = 0; delete s.cash;
     const fx = s.fx || META.fx0;
@@ -794,7 +804,7 @@ function validSave(s, mode){
   if (mode === 'live' && s && s.v === 1 && s.mode === 'live' && s.nwD) return s;
   return null;
 }
-function hasProgress(s){ return s && (s.trades.length > 0 || (s.mode === 'sim' && s.day > 0) || s.loans.credit.bal > 0 || s.loans.margin.bal > 0); }
+function hasProgress(s){ return s && (s.trades.length > 0 || (s.pts || 0) > 0 || (s.mode === 'sim' && s.day > 0) || s.loans.credit.bal > 0 || s.loans.margin.bal > 0); }
 /* 저장 규칙
    - S._ph: 모드를 고르기 전에 화면을 채우려고 만든 임시 게임. 어디에도 저장하지 않는다.
    - S.syncBase: 이 기록이 이어받은 서버 기록의 표지(무작위 문자열). 서버에 올릴 때마다 새 표지를 붙인다.
@@ -1307,7 +1317,7 @@ function step(){
   for (const n of todays){ S.news.unshift({d:S.day, dt:S.date, ...n}); }
   if (S.news.length > 120) S.news.length = 120;
   const N = netWorth();
-  S.nw.push(N); if (S.nw.length > 520) S.nw.splice(1, S.nw.length - 520);
+  S.nw.push(N); S.nwP.push(S.pts || 0); if (S.nw.length > 520){ S.nw.splice(1, S.nw.length - 520); S.nwP.splice(1, S.nwP.length - 520); }
   S.peak = Math.max(S.peak, N);
   for (const c of ['KR','US']){
     let a = 0, b = 0;
@@ -1552,8 +1562,8 @@ function liveTick(){
     marginCheck(alerts);
   }
   const N = netWorth();
-  if (last(S.nwD) === today) S.nw[S.nw.length - 1] = N;
-  else { S.nw.push(N); S.nwD.push(today); if (S.nw.length > 800){ S.nw.splice(1, S.nw.length - 800); S.nwD.splice(1, S.nwD.length - 800); } }
+  if (last(S.nwD) === today){ S.nw[S.nw.length - 1] = N; S.nwP[S.nwP.length - 1] = S.pts || 0; }
+  else { S.nw.push(N); S.nwP.push(S.pts || 0); S.nwD.push(today); if (S.nw.length > 800){ S.nw.splice(1, S.nw.length - 800); S.nwP.splice(1, S.nwP.length - 800); S.nwD.splice(1, S.nwD.length - 800); } }
   S.peak = Math.max(S.peak, N);
   bankruptCheck(alerts);
   commit();
@@ -1759,6 +1769,7 @@ function renderHome(){
           <div class="equity-cap"><span id="eqL"></span><span id="eqR"></span></div>
         </article>
         <section class="card c-wallet" id="walletCard"></section>
+        <section class="card c-mg" id="mgCard"></section>
         <section class="card c-news"><div class="card-h"><h2 id="newsH"></h2><small id="newsS"></small></div><div id="newsBody"></div></section>
       </div>
       <div class="col-b">
@@ -1770,11 +1781,12 @@ function renderHome(){
   const live = isLive();
   const N = netWorth(), D = debt();
   setOdometer($('#odo'), N);
-  const ret = (N - META.seed) / META.seed;
-  const dToday = S.nw.length > 1 ? N - S.nw[S.nw.length-2] : N - META.seed;
+  const ret = twrRet(N);
+  // 어제(전 거래일) 기록 이후 받은 포인트는 번 돈이 아니므로 뺀다
+  const dToday = S.nw.length > 1 ? (N - (S.pts || 0)) - (S.nw[S.nw.length-2] - (S.nwP[S.nwP.length-2] || 0)) : N - META.seed - (S.pts || 0);
   const started = live || S.day > 0;
   $('#hGrade').textContent = `신용 ${g()}등급`;
-  $('#hSub').innerHTML = `<span class="ret ${cls(ret)}">${fmtPct(ret)}</span><span>시드 <b>${fmtUSD(META.seed, 0)}</b> 대비</span><span>${live ? '어제보다' : '오늘'} <b>${signUSD(started ? dToday : 0)}</b></span>`;
+  $('#hSub').innerHTML = `<span class="ret ${cls(ret)}">${fmtPct(ret)}</span><span>${(S.pts || 0) > 0 ? `포인트 <b>${fmtUSD(S.pts, 0)}</b> 빼고 계산` : `시드 <b>${fmtUSD(META.seed, 0)}</b> 대비`}</span><span>${live ? '어제보다' : '오늘'} <b>${signUSD(started ? dToday : 0)}</b></span>`;
   const kr = holdingsUSD('KR'), us = holdingsUSD('US'), cu = S.usd, ck = S.krw / FX();
   const tot = kr + us + cu + ck || 1;
   const seg = [{l:'한국 주식', v:kr, c:'#6E8BFF'}, {l:'미국 주식', v:us, c:'#E2B45E'}, {l:'달러', v:cu, c:'#B9C3D6'}, {l:'원화', v:ck, c:'#8FA0BF'}];
@@ -1788,6 +1800,7 @@ function renderHome(){
                                : (S.day ? `최고 ${fmtUSD(S.peak, 0)}` : '다음 거래일을 눌러 시장을 열어보세요');
 
   $('#walletCard').innerHTML = walletHTML();
+  $('#mgCard').innerHTML = mgCardHTML();
   const tiles = [{l:'한국 100 지수', a:idxHist('KR')}, {l:'미국 100 지수', a:idxHist('US')}, {l:'원/달러 환율', a:fxHist(), fx:true}];
   $('#pulse').innerHTML = tiles.map(t => {
     const a = t.a, cur = last(a), prev = a.length > 1 ? a[a.length-2] : a[0];
@@ -1913,7 +1926,7 @@ function renderAssets(){
   const N = netWorth(), V = holdingsUSD(), D = debt();
   let cost = 0; for (const id in S.pos) cost += toUSD(BY_ID[id], S.pos[id].cost);
   const unreal = V - cost;
-  const ret = (N - META.seed) / META.seed;
+  const ret = twrRet(N);
   const kRet = last(idxHist('KR'))/1000 - 1, uRet = last(idxHist('US'))/1000 - 1;
   const maxAbs = Math.max(.05, Math.abs(ret), Math.abs(kRet), Math.abs(uRet));
   const benchRow = (l, r, c) => {
@@ -1946,6 +1959,7 @@ function renderAssets(){
       <div><dt>원화 통장</dt><dd class="num">${fmtKRW(S.krw)}</dd></div>
       <div><dt>대출 잔액</dt><dd class="num">${fmtUSD(D)}</dd></div>
       <div><dt>실현손익</dt><dd class="num ${cls(S.realized)}">${signUSD(S.realized)}</dd></div>
+      ${(S.pts || 0) > 0 ? `<div><dt>받은 포인트</dt><dd class="num">${fmtUSD(S.pts)}</dd></div>` : ''}
       <div><dt>낸 이자</dt><dd class="num">${fmtUSD(S.interestPaid)}</dd></div>
       <div><dt>낸 수수료 (환전 포함)</dt><dd class="num">${fmtUSD(S.feesPaid)}</dd></div>
     </dl>
@@ -2078,6 +2092,7 @@ function renderInfo(){
         <li>환전할 때는 매매기준율에 수수료가 붙은 환율이 적용되고, 신용등급이 좋을수록 환전 우대율이 높습니다.</li>
         <li>대출 만기에 달러가 모자라면 원화 통장에서 자동으로 환전해 갚고, 반대매매로 판 한국 주식 대금도 자동으로 달러로 바꿔 대출을 갚습니다.</li>
         <li>순자산이 0 이하가 되면 파산하고 게임이 끝납니다.</li>
+        <li>홈 화면의 차트 맞히기: 이름을 가린 실제 종목의 지난 60거래일 차트를 보고 20거래일 뒤 오를지 내릴지 고릅니다. 하루 10문제, 맞히면 $10 포인트(하루 최대 $100)가 달러 통장에 들어옵니다. 시뮬레이션 모드에서는 게임 속 거래일마다 10문제입니다. 포인트는 투자에 쓸 수 있지만 수익률 계산에서는 빠집니다.</li>
         <li>진행 상황은 이 브라우저에 자동 저장됩니다. 다른 기기와는 공유되지 않습니다.</li>
       </ul>
     </section>
@@ -2085,8 +2100,9 @@ function renderInfo(){
       <div class="card-h"><h2>계산식</h2></div>
       <div class="fx-block">
         <div class="fx-item"><h4>순자산과 수익률</h4>
-          <div class="eq multi"><span class="p"><i>N</i> = <i>C</i><sub>$</sub> + <i>C</i><sub>₩</sub> ÷ <i>X</i> + <i>V</i> − (<i>L</i><sub>c</sub> + <i>L</i><sub>m</sub> + <i>L</i><sub>o</sub>),</span><span class="p">수익률 = (<i>N</i> − 10000) ÷ 10000 × 100 (%)</span></div>
-          <ul class="defs"><li><span class="sym">N</span><span>순자산(달러)</span></li><li><span class="sym">C<sub>$</sub></span><span>달러 통장 잔액(달러)</span></li><li><span class="sym">C<sub>₩</sub></span><span>원화 통장 잔액(원)</span></li><li><span class="sym">X</span><span>매매기준율(1달러당 원). 순자산을 셀 때는 수수료를 빼지 않습니다.</span></li><li><span class="sym">V</span><span>보유 주식 평가액의 합(달러)</span></li><li><span class="sym">L<sub>c</sub></span><span>신용대출 잔액</span></li><li><span class="sym">L<sub>m</sub></span><span>주식담보대출 잔액</span></li><li><span class="sym">L<sub>o</sub></span><span>마이너스통장 사용액</span></li></ul>
+          <div class="eq multi"><span class="p"><i>N</i> = <i>C</i><sub>$</sub> + <i>C</i><sub>₩</sub> ÷ <i>X</i> + <i>V</i> − (<i>L</i><sub>c</sub> + <i>L</i><sub>m</sub> + <i>L</i><sub>o</sub>),</span><span class="p">수익률 = (<i>F</i> × <i>N</i> ÷ <i>B</i> − 1) × 100 (%)</span></div>
+          <ul class="defs"><li><span class="sym">N</span><span>순자산(달러)</span></li><li><span class="sym">C<sub>$</sub></span><span>달러 통장 잔액(달러)</span></li><li><span class="sym">C<sub>₩</sub></span><span>원화 통장 잔액(원)</span></li><li><span class="sym">X</span><span>매매기준율(1달러당 원). 순자산을 셀 때는 수수료를 빼지 않습니다.</span></li><li><span class="sym">V</span><span>보유 주식 평가액의 합(달러)</span></li><li><span class="sym">L<sub>c</sub></span><span>신용대출 잔액</span></li><li><span class="sym">L<sub>m</sub></span><span>주식담보대출 잔액</span></li><li><span class="sym">L<sub>o</sub></span><span>마이너스통장 사용액</span></li><li><span class="sym">B</span><span>지금 기간이 시작할 때의 순자산. 처음에는 시드 10000, 미니게임 포인트를 받을 때마다 (받기 직전 순자산 + 포인트)로 바뀝니다.</span></li><li><span class="sym">F</span><span>지난 기간들의 (끝 순자산 ÷ 시작 순자산)을 모두 곱한 값. 처음에는 1입니다.</span></li></ul>
+          <p class="prose" style="margin:8px 0 0">포인트가 들어올 때마다 기간을 끊고 기간별 수익률을 곱해 잇는 시간가중수익률입니다. 포인트는 수익이 아니므로 빠지고, 같은 매매를 했다면 포인트를 언제 얼마나 받았든 수익률이 같습니다. 포인트를 한 번도 받지 않았다면 (<i>N</i> − 10000) ÷ 10000 × 100과 같습니다.</p>
         </div>
         <div class="fx-item"><h4>한국 주식 평가액(달러 환산)</h4>
           <div class="eq"><i>V</i><sub>i</sub> = <i>q</i><sub>i</sub> × <i>P</i><sub>i</sub> ÷ <i>X</i></div>
@@ -2228,6 +2244,132 @@ function closeSheet(){
   sh.classList.remove('on'); sc.classList.remove('on');
   UI.sheet = null;
   setTimeout(() => { if (!UI.sheet){ sh.hidden = true; if ($('#modal').hidden) sc.hidden = true; } }, 280);
+}
+
+/* ───────── 투자 수익률 (시간가중수익률) ─────────
+   포인트가 들어올 때마다 기간을 끊고, 기간별 수익률을 곱해 이어 붙인다.
+   S.twr.f: 지난 기간들의 (끝 순자산 ÷ 시작 순자산)을 곱한 값
+   S.twr.b: 지금 기간이 시작할 때의 순자산 (방금 들어온 포인트 포함)
+   수익률 = f × N ÷ b − 1. 포인트가 없으면 f = 1, b = 시드라서 N ÷ 시드 − 1과 같다. */
+function twrRet(N = netWorth()){
+  const t = S.twr || {f:1, b:META.seed};
+  return t.b > 0 ? t.f * N / t.b - 1 : -1;
+}
+/* 포인트 x달러를 달러 통장에 넣는다 (마이너스통장을 쓰고 있으면 먼저 갚는다) */
+function addPoints(x){
+  if (!(x > 0)) return;
+  const N = netWorth(), t = S.twr || (S.twr = {f:1, b:META.seed});
+  t.f = t.b > 0 ? t.f * Math.max(N, 0) / t.b : 0;   // 이번 기간을 닫는다
+  t.b = N + x;                                       // 포인트를 넣은 뒤 새 기간 시작
+  S.pts = Math.round(((S.pts || 0) + x) * 100) / 100;
+  receiveUSD(x);
+}
+
+/* ───────── 미니게임: 차트 맞히기 ─────────
+   이름을 가린 실제 종목의 과거 일봉 60거래일을 보여 주고, 마지막 날 종가와 20거래일 뒤 종가를 비교해
+   오를지 내릴지 맞히게 한다. 하루 10문제, 맞히면 $10 포인트 (하루 최대 $100).
+   하루: 실제 시세 모드는 한국 날짜, 시뮬레이션은 게임 속 하루. 문제를 띄우는 순간 1회를 쓴 것으로 센다. */
+const MG = {perDay:10, prize:10, cap:100, show:60, ahead:20, minMove:0.01};
+function mgKey(){ return isLive() ? kstDate() : 'd' + (S.day || 0); }
+function mgToday(){
+  if (!S.mg || S.mg.day !== mgKey()) S.mg = {day:mgKey(), n:0, won:0, cur:null};
+  return S.mg;
+}
+async function mgLoad(id){
+  const r = await fetch(`data/c/${id.replace(':', '_')}.json`, {cache:'no-cache'});
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  const doc = await r.json();
+  return doc && doc.d1 && Array.isArray(doc.d1.c) ? doc.d1 : null;
+}
+/* 새 문제: 종목과 구간을 무작위로 고른다. 오르내림이 1% 미만인 구간은 애매해서 뺀다 */
+async function mgPick(){
+  const need = MG.show + MG.ahead;
+  for (let tries = 0; tries < 8; tries++){
+    const s = STOCKS[Math.floor(Math.random() * STOCKS.length)];
+    let d1; try { d1 = await mgLoad(s.id); } catch(e){ continue; }
+    if (!d1 || d1.c.length < need + 5) continue;
+    for (let k = 0; k < 12; k++){
+      const i = Math.floor(Math.random() * (d1.c.length - need + 1));
+      const c = d1.c.slice(i, i + need), d = d1.d.slice(i, i + need);
+      if (c.some(v => !(v > 0))) continue;
+      const a = c[MG.show - 1], b = c[need - 1];
+      if (Math.abs(b / a - 1) < MG.minMove) continue;
+      return {id:s.id, c, d0:d[0], d1:d[MG.show - 1], d2:d[need - 1]};
+    }
+  }
+  return null;
+}
+function mgSVG(q, reveal){
+  const W = 600, H = 230, pl = 8, pr = 44, pt = 10, pb = 10;
+  const base = q.c[0], v = q.c.map(x => x / base * 100);
+  const shown = reveal ? v : v.slice(0, MG.show);
+  const lo = Math.min(...shown), hi = Math.max(...shown), span = (hi - lo) || 1;
+  const n = v.length;
+  const X = k => pl + (W - pl - pr) * k / (n - 1), Y = y => pt + (H - pt - pb) * (1 - (y - lo) / span);
+  const path = (a, b) => v.slice(a, b + 1).map((y, j) => `${j ? 'L' : 'M'}${X(a + j).toFixed(1)},${Y(y).toFixed(1)}`).join('');
+  const cut = MG.show - 1;
+  const up = v[n - 1] > v[cut];
+  const ticks = [lo, (lo + hi) / 2, hi].map(y => `<line class="ap-grid" x1="${pl}" x2="${W - pr}" y1="${Y(y).toFixed(1)}" y2="${Y(y).toFixed(1)}"/><text class="ap-yl" x="${W - pr + 6}" y="${(Y(y) + 4).toFixed(1)}">${y.toFixed(1)}</text>`).join('');
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="${reveal ? '정답이 공개된 차트' : '이름을 가린 차트'}">${ticks}
+    <line class="ap-ref" x1="${X(cut).toFixed(1)}" x2="${X(cut).toFixed(1)}" y1="${pt}" y2="${H - pb}"/>
+    <path d="${path(0, cut)}" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linejoin="round"/>
+    ${reveal ? `<path d="${path(cut, n - 1)}" fill="none" stroke="var(--${up ? 'up' : 'down'})" stroke-width="2.4" stroke-linejoin="round"/>` : `<rect x="${(X(cut) + 2).toFixed(1)}" y="${pt}" width="${(W - pr - X(cut) - 2).toFixed(1)}" height="${H - pt - pb}" fill="var(--surface-2)" rx="6"/><text class="ap-refl" x="${((X(cut) + W - pr) / 2).toFixed(1)}" y="${(H / 2).toFixed(1)}" text-anchor="middle">20거래일 뒤?</text>`}
+    <circle cx="${X(cut).toFixed(1)}" cy="${Y(v[cut]).toFixed(1)}" r="3.5" fill="var(--ink)"/></svg>`;
+}
+const mgDate = dn => { const t = new Date(dn * DAY); return `${t.getUTCFullYear()}.${t.getUTCMonth() + 1}.${t.getUTCDate()}`; };
+function mgCardHTML(){
+  const m = mgToday(), left = MG.perDay - m.n;
+  const label = S.over ? '파산해서 할 수 없습니다' : m.cur ? '풀던 문제 이어서' : left > 0 ? '문제 풀기' : '오늘은 끝 (내일 다시)';
+  return `<div class="card-h"><h2>차트 맞히기</h2><small>${isLive() ? '오늘' : '이번 거래일'} ${m.n}/${MG.perDay}문제 · ${fmtUSD(m.won, 0)}/${fmtUSD(MG.cap, 0)}</small></div>
+    <p class="mg-desc">이름을 가린 실제 종목의 지난 ${MG.show}거래일 차트를 보고, ${MG.ahead}거래일(약 한 달) 뒤 오를지 내릴지 맞혀 보세요. 맞히면 <b>${fmtUSD(MG.prize, 0)} 포인트</b>가 달러 통장에 들어옵니다.</p>
+    <div class="mg-foot"><span class="muted">받은 포인트 합계 <b class="num">${fmtUSD(S.pts || 0)}</b></span><button class="btn solid" id="mgGo" ${S.over || (!m.cur && left <= 0) ? 'disabled' : ''}>${label}</button></div>`;
+}
+let mgBusy = false;
+async function mgStart(){
+  if (mgBusy || S.over) return;
+  const m = mgToday();
+  if (!m.cur){
+    if (m.n >= MG.perDay) return toast('오늘 문제를 다 풀었습니다', true);
+    mgBusy = true;
+    const b = $('#mgGo'); if (b){ b.disabled = true; b.textContent = '문제를 고르는 중…'; }
+    let q = null;
+    try { q = await mgPick(); } finally { mgBusy = false; }
+    if (!q){ toast('차트를 불러오지 못했습니다. 인터넷 연결을 확인하고 다시 눌러 주세요', true); renderTab(); return; }
+    const m2 = mgToday();
+    if (m2.cur || m2.n >= MG.perDay){ renderTab(); return; }
+    m2.cur = q; m2.n++;
+    commit();
+  }
+  mgShow();
+}
+function mgShow(){
+  const m = mgToday(), q = m.cur; if (!q) return;
+  const close = showModal(`<h2>차트 맞히기 <small class="muted">${m.n}/${MG.perDay}</small></h2>
+    <p class="muted" style="margin:0 0 6px">어떤 종목인지는 고른 뒤에 공개됩니다. 세로축은 첫날 종가를 100으로 맞춘 값입니다.</p>
+    <div class="mg-chart">${mgSVG(q, false)}</div>
+    <p style="margin:8px 0 0">${MG.ahead}거래일 뒤 종가는 점 찍힌 마지막 날 종가보다…</p>
+    <div class="acts"><button class="btn mg-up" data-mgans="up">오른다</button><button class="btn mg-dn" data-mgans="dn">내린다</button></div>
+    <div class="acts" style="margin-top:6px"><button class="btn" data-close>나중에 (기회는 이미 썼습니다)</button></div>`);
+  $$('[data-mgans]').forEach(b => b.onclick = () => mgAnswer(b.dataset.mgans, close));
+}
+function mgAnswer(ans, close){
+  const m = mgToday(), q = m.cur; if (!q) return close();
+  const a = q.c[MG.show - 1], b = q.c[q.c.length - 1], up = b > a, ok = (ans === 'up') === up;
+  const prize = ok ? Math.max(0, Math.min(MG.prize, MG.cap - m.won)) : 0;
+  if (prize > 0){ addPoints(prize); m.won += prize; }
+  m.cur = null;
+  commit();
+  const s = BY_ID[q.id], chg = b / a - 1;
+  close();
+  setTimeout(() => {
+    const left = MG.perDay - m.n;
+    const c2 = showModal(`<h2 class="${ok ? 'up' : ''}">${ok ? `정답! +${fmtUSD(prize, 0)}` : '아쉽네요'}</h2>
+      <p style="margin:0 0 6px"><b>${esc(s ? s.n : q.id)}</b> <span class="muted">${s ? (s.m === 'KR' ? '한국' : '미국') : ''} · ${mgDate(q.d0)} ~ ${mgDate(q.d2)}</span></p>
+      <div class="mg-chart">${mgSVG(q, true)}</div>
+      <p style="margin:8px 0 0">${mgDate(q.d1)} 종가에서 ${MG.ahead}거래일 뒤 <b class="${cls(chg)}">${fmtPct(chg)}</b> ${up ? '올랐습니다' : '내렸습니다'}.${ok && prize === 0 ? ' 오늘 받을 수 있는 포인트를 다 받아서 이번에는 지급되지 않았습니다.' : ''}</p>
+      <div class="acts"><button class="btn" data-close>닫기</button>${left > 0 ? `<button class="btn solid" id="mgNext">다음 문제 (${left}번 남음)</button>` : ''}</div>`);
+    const nx = $('#mgNext'); if (nx) nx.onclick = () => { c2(); setTimeout(mgStart, 200); };
+  }, 200);
 }
 
 /* ───────── 상세 차트 (애플 주식 앱 방식) ───────── */
@@ -2899,7 +3041,7 @@ function rankDays(){ return isLive() ? Math.max(0, Math.floor((Date.now() - (S.s
 /* 내 랭킹 값: 이 화면에서 지금 계산한 순자산과 수익률 */
 function myRankValues(){
   const N = netWorth();
-  return {N, ret:clamp(Math.round((N - META.seed) / META.seed * 10000) / 100, -100, 100000)};
+  return {N, ret:clamp(Math.round(twrRet(N) * 10000) / 100, -100, 100000)};
 }
 async function pushRank(){
   if (!ACC.user || !ACC.sb || !S || S._ph || !ACC.nick) return;
@@ -2968,7 +3110,7 @@ function rankCardHTML(){
   else if (!ACC.nick) foot = `<div class="rank-foot"><label class="amt"><input id="rankNickIn" maxlength="12" placeholder="닉네임 (2~12자)" aria-label="닉네임"></label><button class="btn solid" id="btnRankNick">랭킹 참여</button></div>`;
   else if (ACC.myRank[mode]) foot = `<div class="rank-foot"><span>내 순위 <b>${ACC.myRank[mode]}위</b> (${esc(ACC.nick)})</span></div>`;
   else if (mode !== S.mode) foot = `<div class="rank-foot"><span>이 모드는 아직 플레이 기록이 올라가지 않았습니다.</span></div>`;
-  return head + body + foot + `<p class="muted" style="margin:8px 0 0">수익률은 시드 $10,000 대비입니다. 게임 계산이 브라우저에서 이뤄져 조작을 완전히 막을 수는 없으니 재미로 봐주세요.</p>`;
+  return head + body + foot + `<p class="muted" style="margin:8px 0 0">수익률은 미니게임 포인트를 뺀 투자 수익률(시간가중수익률)입니다. 게임 계산이 브라우저에서 이뤄져 조작을 완전히 막을 수는 없으니 재미로 봐주세요.</p>`;
 }
 function renderRankCard(){ const c = $('#rankCard'); if (c) c.innerHTML = rankCardHTML(); }
 async function saveNickname(v){
@@ -3066,6 +3208,7 @@ document.addEventListener('click', e => {
   if (!t) return;
   if (t.dataset.pick) return;
   if (t.id === 'btnFX'){ openFX(); return; }
+  if (t.id === 'mgGo'){ mgStart(); return; }
   if (t.dataset.fxdir){ UI.fxDir = t.dataset.fxdir; UI.fxAmt = ''; renderFX(); return; }
   if (t.dataset.fxq){ const have = UI.fxDir === 'u2k' ? S.usd : S.krw; UI.fxAmt = UI.fxDir === 'u2k' ? String(Math.floor(have * +t.dataset.fxq * 100) / 100) : String(Math.floor(have * +t.dataset.fxq)); renderFX(); return; }
   if (t.dataset.fxclose !== undefined){ UI.fxClose && UI.fxClose(); return; }
