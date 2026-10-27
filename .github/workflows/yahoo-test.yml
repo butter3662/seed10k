@@ -1,40 +1,27 @@
-name: 미국 장 점검 (임시)
+name: 묶음 줄 확인 (임시)
 on:
   push:
     branches: [tmp-yahoo-test]
 jobs:
   check:
     runs-on: ubuntu-24.04
-    timeout-minutes: 6
+    timeout-minutes: 4
     steps:
       - run: |
           U=https://ictjkqbbcaigdvlysdaw.supabase.co; K=sb_publishable_C7jZEKJn_nF2Y3Ngq5f80Q_RA5Wrfux
-          curl -s "$U/rest/v1/seed10k_quotes?select=id,p,t,d,updated_at,i&m=eq.US" -H "apikey: $K" -o /tmp/q1.json
-          sleep 15
-          curl -s "$U/rest/v1/seed10k_quotes?select=id,p,t,d,updated_at&m=eq.US" -H "apikey: $K" -o /tmp/q2.json
-          curl -s "$U/rest/v1/seed10k_quotes?select=id,d,updated_at,x:i->x&m=eq.SYS" -H "apikey: $K" -o /tmp/sys.json
-          D=$(TZ=America/New_York date +%F)
-          curl -s "$U/rest/v1/seed10k_daily?select=id,c,l,h&d=eq.$D&id=like.US*" -H "apikey: $K" -o /tmp/d.json
-          for n in $(seq 1 12); do
-            curl -s -m 100 -X POST "$U/functions/v1/seed10k-quotes" -H "apikey: $K" -H "Content-Type: application/json" -d '{}' -o /tmp/r.json || true
-            grep -q '"wanted"' /tmp/r.json && break
-            sleep 6
-          done
-          python3 - "$D" <<'PY'
-          import json, sys, datetime
-          D = sys.argv[1]
-          q1 = {r['id']: r for r in json.load(open('/tmp/q1.json'))}; q2 = {r['id']: r for r in json.load(open('/tmp/q2.json'))}
-          today = [r for r in q1.values() if r['d'] == D]
-          moved = [k for k in q1 if q1[k]['t'] != q2.get(k, {}).get('t')]
-          withLH = [r for r in today if r['i'] and r['i'].get('l') and len(r['i']['l']) == len(r['i']['t'])]
-          print(f"::notice title=미국 시세 ({D})::행 {len(q1)}, 오늘 시세 {len(today)}, 5분 봉 l/h 있음 {len(withLH)}, 15초 사이 체결 시각이 바뀐 종목 {len(moved)}")
-          for k in ('US:VG', 'US:SYK', 'US:NVDA', 'US:QQQ'):
-              r = q1.get(k) or {}; i = r.get('i') or {}
-              print(f"::notice title={k}::p {r.get('p')} t {r.get('t')} → {q2.get(k,{}).get('t')} d {r.get('d')} updated_at {r.get('updated_at')} 봉 {len(i.get('t') or [])} l {bool(i.get('l'))} h {bool(i.get('h'))}")
-          sysr = json.load(open('/tmp/sys.json'))
-          print("::notice title=표시 줄::" + json.dumps([{k: (v if k != 'x' else (len(v['ids']) if v else None)) for k, v in r.items()} for r in sysr], ensure_ascii=False)[:1500])
-          d = json.load(open('/tmp/d.json'))
-          print(f"::notice title=일별 표 오늘 미국::행 {len(d)}, l/h 채워짐 {sum(1 for r in d if r['l'] is not None and r['h'] is not None)}")
-          r = json.load(open('/tmp/r.json'))
-          print("::notice title=함수 응답::" + json.dumps({k: r.get(k) for k in ('act', 'live', 'wanted', 'saved', 'failedCount', 'failed', 'ms', 'skipped', 'error')}, ensure_ascii=False)[:1500])
+          curl -s "$U/rest/v1/seed10k_quotes?select=id,p,t,updated_at&id=in.(US:NVDA,US:AAPL)" -H "apikey: $K" -o /tmp/a1.json
+          curl -s "$U/rest/v1/seed10k_quotes?select=id,d,updated_at,x:i->x&id=in.(_snapUS,_snapKR,_fast,_run)" -H "apikey: $K" -o /tmp/s1.json
+          sleep 20
+          curl -s "$U/rest/v1/seed10k_quotes?select=id,p,t,updated_at&id=in.(US:NVDA,US:AAPL)" -H "apikey: $K" -o /tmp/a2.json
+          curl -s "$U/rest/v1/seed10k_quotes?select=id,d,updated_at,x:i->x&id=in.(_snapUS)" -H "apikey: $K" -o /tmp/s2.json
+          C=$(curl -s -o /dev/null -w "%{size_download}" "$U/rest/v1/seed10k_quotes?select=id,m,p,t,d,updated_at,x:i->x&updated_at=gt.$(date -u -d '-90 sec' +%Y-%m-%dT%H:%M:%SZ)" -H "apikey: $K" -H "Accept-Encoding: gzip")
+          N=$(curl -s "$U/rest/v1/seed10k_quotes?select=id&updated_at=gt.$(date -u -d '-90 sec' +%Y-%m-%dT%H:%M:%SZ)" -H "apikey: $K" | python3 -c "import json,sys; print(len(json.load(sys.stdin)))")
+          python3 - "$C" "$N" <<'PY'
+          import json, sys
+          a1, a2 = json.load(open('/tmp/a1.json')), json.load(open('/tmp/a2.json'))
+          s1, s2 = json.load(open('/tmp/s1.json')), json.load(open('/tmp/s2.json'))
+          print("::notice title=종목 줄 (20초 간격)::" + json.dumps([[r['id'], r['p'], r['t'], r['updated_at']] for r in a1 + a2]))
+          print("::notice title=표시 줄 1차::" + json.dumps([[r['id'], r['d'], r['updated_at'], (len(r['x']['ids']) if r.get('x') else None)] for r in s1]))
+          print("::notice title=묶음 2차::" + json.dumps([[r['id'], r['updated_at'], (len(r['x']['ids']) if r.get('x') else None)] for r in s2]))
+          print(f"::notice title=1분 읽기 응답::최근 90초 바뀐 줄 {sys.argv[2]}개, gzip {sys.argv[1]}B")
           PY
