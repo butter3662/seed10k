@@ -1,18 +1,26 @@
-name: 한 줄 불러오기 재확인 (임시)
+name: 뉴스 상태 확인 (임시)
 on:
   push:
     branches: [tmp-yahoo-test]
 jobs:
-  test:
+  check:
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    timeout-minutes: 3
     steps:
-      - uses: denoland/setup-deno@v2
-        with:
-          deno-version: v2.x
-      - run: |
-          mkdir l && cd l
-          printf 'import "https://raw.githubusercontent.com/butter3662/seed10k/main/supabase/functions/seed10k-quotes/index.ts";\n' > raw.ts
-          (deno run -A --reload raw.ts > log 2>&1 &) ; sleep 15
-          out=$(curl -s -m 10 -X POST localhost:8000 -d '{}' || true)
-          echo "::notice title=불러오기::응답 $(echo $out | head -c 200) / 받은 파일: $(grep -o 'https://[^ ]*' log | sed 's#.*/##' | tr '\n' ' ') / 오류: $(grep -i error log | head -2 | tr '\n' ' ')"
+      - name: 확인
+        env:
+          U: https://ictjkqbbcaigdvlysdaw.supabase.co
+          K: sb_publishable_C7jZEKJn_nF2Y3Ngq5f80Q_RA5Wrfux
+        run: |
+          c=$(curl -s -m 30 -o /tmp/n -w "%{http_code}" "$U/rest/v1/seed10k_news?select=id,at,items&order=at.desc" -H "apikey: $K")
+          python3 - "$c" <<'PY'
+          import json, sys
+          code = sys.argv[1]
+          try: d = json.load(open('/tmp/n'))
+          except Exception: d = None
+          if not isinstance(d, list): print(f"::notice title=뉴스 표::HTTP {code} {str(d)[:200]}"); sys.exit()
+          us = [r for r in d if r['id'].startswith('US:')]; kr = [r for r in d if r['id'].startswith('KR:')]
+          usn = [r for r in us if (r['items'] or {}).get('en')]
+          print(f"::notice title=뉴스 표::HTTP {code}, 전체 {len(d)}줄 (한국 {len(kr)}, 미국 {len(us)}, 미국 중 영어기사 있음 {len(usn)}), 최근 {[ (r['id'], r['at']) for r in d[:3]]}")
+          PY
+          curl -s -m 30 "$U/rest/v1/seed10k_quotes?select=id,updated_at&m=eq.SYS" -H "apikey: $K" -o /tmp/s; echo "::notice title=함수 신호::$(cat /tmp/s)"
