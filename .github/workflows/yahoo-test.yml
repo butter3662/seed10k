@@ -1,21 +1,27 @@
-name: 종목 후보 수집 (임시)
+name: 600종목 데이터 확인 (임시)
 on:
   push:
     branches: [tmp-yahoo-test]
-permissions:
-  contents: write
 jobs:
-  build:
+  check:
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 4
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-python@v6
-        with: { python-version: "3.12" }
-      - run: pip install -q finance-datareader yfinance pandas lxml
-      - run: python .github/scripts/universe.py
-      - run: python .github/scripts/yinfo.py
       - run: |
-          mkdir -p tmpdata && mv universe.json yinfo.json tmpdata/
-          git config user.name "github-actions" && git config user.email "actions@users.noreply.github.com"
-          git add tmpdata && git commit -qm "임시: 수집 결과" && git push -q origin HEAD:tmp-yahoo-test
+          B=https://butter3662.github.io/seed10k
+          curl -s -m 60 "$B/data/prices.json?t=$(date +%s)" -o /tmp/p.json
+          ls -la /tmp/p.json
+          python3 - <<'PY'
+          import json
+          p = json.load(open('/tmp/p.json'))
+          s = p.get('s', {})
+          kr = [k for k in s if k.startswith('KR:')]; us = [k for k in s if k.startswith('US:')]
+          print(f"::notice title=prices.json::종목 {len(s)} (한국 {len(kr)}, 미국 {len(us)}), 빠진 종목 {p.get('miss')}, 크기 {len(open('/tmp/p.json').read())//1024}KB, 갱신 {p.get('updated')}")
+          for k in ['KR:036930', 'KR:0009K0', 'US:SYK', 'US:VG']:
+              print(f"::notice title={k}::{(s.get(k) or [])[-3:]}")
+          PY
+          for c in KR_036930 US_SYK KR_0158S0; do
+            code=$(curl -s -m 30 -o /tmp/c.json -w "%{http_code}" "$B/data/c/$c.json?t=$(date +%s)")
+            echo "::notice title=차트 $c::HTTP $code, $(python3 -c "import json; d=json.load(open('/tmp/c.json')); print('d1', len((d.get('d1') or {}).get('c', [])), '거래량', len((d.get('d1') or {}).get('v') or []), 'i5', len((d.get('i5') or {}).get('c', [])))" 2>&1)"
+          done
+          curl -s -m 30 "$B/index.html?t=$(date +%s)" | grep -o "const VERSION = '[0-9.]*'" | head -1 | sed 's/^/::notice title=배포 버전::/'
