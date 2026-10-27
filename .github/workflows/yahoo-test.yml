@@ -1,25 +1,12 @@
-name: GDELT 한국어 기사 시험 (임시)
+name: OpenDART 응답 형식 확인 (임시)
 on:
   push:
     branches: [tmp-yahoo-test]
 jobs:
   test:
     runs-on: ubuntu-24.04
-    timeout-minutes: 6
+    timeout-minutes: 3
     steps:
       - run: |
-          for q in "삼성전자" "SK하이닉스" "현대차" "엔비디아" "셀트리온" "삼양식품"; do
-            enc=$(python3 -c "import urllib.parse,sys;print(urllib.parse.quote(sys.argv[1]+' sourcelang:korean'))" "$q")
-            code=$(curl -s -m 30 -o /tmp/g -w "%{http_code}" "https://api.gdeltproject.org/api/v2/doc/doc?query=${enc}&mode=artlist&format=json&maxrecords=5&sort=datedesc&timespan=3d")
-            python3 - "$q" "$code" <<'PY'
-          import json, sys
-          q, code = sys.argv[1], sys.argv[2]
-          raw = open('/tmp/g', encoding='utf-8', errors='replace').read()
-          try:
-              d = json.loads(raw); arts = d.get('articles', [])
-              print(f"::notice title=GDELT {q}::HTTP {code}, {len(arts)}건 " + " / ".join(f"{a.get('domain')} {a.get('seendate')} {a.get('title')[:40]}" for a in arts[:3]))
-          except Exception as e:
-              print(f"::notice title=GDELT {q}::HTTP {code}, JSON 아님: {raw[:150]!r}")
-          PY
-            sleep 6
-          done
+          code=$(curl -s -m 30 -o /tmp/d -w "%{http_code}" "https://opendart.fss.or.kr/api/list.json?crtfc_key=0000000000000000000000000000000000000000&bgn_de=20261027&end_de=20261027&page_no=1&page_count=100")
+          echo "::notice title=OpenDART (가짜 키)::HTTP $code $(head -c 300 /tmp/d)"
