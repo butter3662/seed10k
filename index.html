@@ -640,7 +640,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 100 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.9.0';
+const VERSION = '1.9.1';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -3063,9 +3063,12 @@ async function pushRank(){
   if (isLive() && !LIVE.ok) return;                 // 시세를 받기 전 값으로 올리지 않는다
   if (S.syncBase === undefined || S.syncBase === null) return;   // 서버 기록과 맞춰진 기록만 올린다
   const {N, ret} = myRankValues();
+  const row = {user_id:ACC.user.id, mode:S.mode, nickname:ACC.nick,
+    net_worth:Math.round(N * 100) / 100, return_pct:ret, days:rankDays(), updated_at:new Date().toISOString()};
   try {
-    const {error} = await ACC.sb.from('seed10k_ranks').upsert({user_id:ACC.user.id, mode:S.mode, nickname:ACC.nick,
-      net_worth:Math.round(N * 100) / 100, return_pct:ret, days:rankDays(), updated_at:new Date().toISOString()});
+    // points 열(받은 포인트 합계)이 아직 없는 서버면 그 칸만 빼고 다시 올린다
+    let {error} = await ACC.sb.from('seed10k_ranks').upsert(ACC.rankPts === false ? row : {...row, points:Math.round((S.pts || 0) * 100) / 100});
+    if (error && ACC.rankPts !== false && /points/i.test(error.message || '')){ ACC.rankPts = false; ({error} = await ACC.sb.from('seed10k_ranks').upsert(row)); }
     if (error) throw error;
   } catch(e){ /* 랭킹 저장 실패는 조용히 넘긴다 */ }
 }
@@ -3076,7 +3079,9 @@ async function refreshRanks(force){
   ACC.ranksAt[mode] = Date.now();
   renderRankCard();
   try {
-    const {data, error} = await ACC.sb.from('seed10k_ranks').select('user_id,nickname,return_pct,net_worth,days').eq('mode', mode).order('return_pct', {ascending:false}).limit(20);
+    const q = cols => ACC.sb.from('seed10k_ranks').select(cols).eq('mode', mode).order('return_pct', {ascending:false}).limit(20);
+    let {data, error} = await q('user_id,nickname,return_pct,net_worth,days' + (ACC.rankPts === false ? '' : ',points'));
+    if (error && ACC.rankPts !== false && /points/i.test(error.message || '')){ ACC.rankPts = false; ({data, error} = await q('user_id,nickname,return_pct,net_worth,days')); }
     if (error) throw error;
     ACC.ranks[mode] = data || [];
     ACC.myRank[mode] = null;
@@ -3102,7 +3107,7 @@ function rankRowsLive(mode){
   const i = rows.findIndex(r => r.user_id === ACC.user.id);
   if (i < 0) return rows;
   const {N, ret} = myRankValues();
-  const out = rows.slice(); out[i] = {...rows[i], net_worth:Math.round(N * 100) / 100, return_pct:ret, days:rankDays()};
+  const out = rows.slice(); out[i] = {...rows[i], net_worth:Math.round(N * 100) / 100, return_pct:ret, days:rankDays(), points:S.pts || 0};
   out.sort((a, b) => +b.return_pct - +a.return_pct);
   ACC.myRank[mode] = out.findIndex(r => r.user_id === ACC.user.id) + 1;
   return out;
@@ -3118,14 +3123,14 @@ function rankCardHTML(){
   else if (!rows.length) body = `<p class="empty">아직 랭킹에 오른 사람이 없습니다. 로그인하고 닉네임을 정하면 첫 번째로 오릅니다.</p>`;
   else body = `<ol class="ranks">${rows.map((r, i) => {
       const me = ACC.user && r.user_id === ACC.user.id;
-      return `<li class="${me ? 'me' : ''}"><span class="rn num">${i + 1}</span><span class="rk-n">${esc(r.nickname)}${me ? ' <small>나</small>' : ''}<span class="rk-d">${r.days}${mode === 'live' ? '일째' : '거래일째'}, 순자산 ${fmtUSD(+r.net_worth, 0)}</span></span><b class="num ${cls(+r.return_pct)}">${fmtPct(+r.return_pct / 100)}</b></li>`;
+      return `<li class="${me ? 'me' : ''}"><span class="rn num">${i + 1}</span><span class="rk-n">${esc(r.nickname)}${me ? ' <small>나</small>' : ''}<span class="rk-d">${r.days}${mode === 'live' ? '일째' : '거래일째'}, 순자산 ${fmtUSD(+r.net_worth, 0)}${+r.points > 0 ? ` (포인트 ${fmtUSD(+r.points, 0)} 포함)` : ''}</span></span><b class="num ${cls(+r.return_pct)}">${fmtPct(+r.return_pct / 100)}</b></li>`;
     }).join('')}</ol>`;
   let foot = '';
   if (!ACC.user) foot = `<div class="rank-foot"><span>로그인하면 랭킹에 참여할 수 있습니다.</span><button class="btn" id="btnLoginOpen">로그인</button></div>`;
   else if (!ACC.nick) foot = `<div class="rank-foot"><label class="amt"><input id="rankNickIn" maxlength="12" placeholder="닉네임 (2~12자)" aria-label="닉네임"></label><button class="btn solid" id="btnRankNick">랭킹 참여</button></div>`;
   else if (ACC.myRank[mode]) foot = `<div class="rank-foot"><span>내 순위 <b>${ACC.myRank[mode]}위</b> (${esc(ACC.nick)})</span></div>`;
   else if (mode !== S.mode) foot = `<div class="rank-foot"><span>이 모드는 아직 플레이 기록이 올라가지 않았습니다.</span></div>`;
-  return head + body + foot + `<p class="muted" style="margin:8px 0 0">수익률은 미니게임 포인트를 뺀 투자 수익률(시간가중수익률)입니다. 게임 계산이 브라우저에서 이뤄져 조작을 완전히 막을 수는 없으니 재미로 봐주세요.</p>`;
+  return head + body + foot + `<p class="muted" style="margin:8px 0 0">수익률은 미니게임 포인트를 뺀 투자 수익률(시간가중수익률)입니다. 그래서 순자산이 $10,000보다 많아도 포인트를 빼면 손해일 수 있습니다. 게임 계산이 브라우저에서 이뤄져 조작을 완전히 막을 수는 없으니 재미로 봐주세요.</p>`;
 }
 function renderRankCard(){ const c = $('#rankCard'); if (c) c.innerHTML = rankCardHTML(); }
 async function saveNickname(v){
