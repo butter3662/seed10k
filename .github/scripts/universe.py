@@ -5,7 +5,8 @@ out = {"kr": None, "us": None, "err": {}}
 try:
     import FinanceDataReader as fdr
     k = fdr.StockListing("KRX")
-    k = k[k["Market"].isin(["KOSPI", "KOSDAQ"])]
+    k = k[k["Market"].isin(["KOSPI", "KOSDAQ", "KOSDAQ GLOBAL"])]
+    k["Market"] = k["Market"].replace({"KOSDAQ GLOBAL": "KOSDAQ"})
     k = k[k["Code"].str.endswith("0")]                       # 우선주(끝자리 5, 7, 9, K 등) 제외
     k = k[~k["Name"].str.contains("스팩")]
     k = k.sort_values("Marcap", ascending=False).head(360)
