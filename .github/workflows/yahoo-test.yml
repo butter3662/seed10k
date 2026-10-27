@@ -1,4 +1,4 @@
-name: 페이지 캐시 확인 (임시)
+name: 응답 압축 확인 (임시)
 on:
   push:
     branches: [tmp-yahoo-test]
@@ -8,13 +8,12 @@ jobs:
     timeout-minutes: 4
     steps:
       - run: |
-          U=https://butter3662.github.io/seed10k/data/prices.json
-          curl -s -D /tmp/h1 -o /tmp/b1 "$U"
-          E=$(grep -i '^etag' /tmp/h1 | cut -d' ' -f2- | tr -d '\r')
-          L=$(grep -i '^last-modified' /tmp/h1 | cut -d' ' -f2- | tr -d '\r')
-          C2=$(curl -s -o /dev/null -w "%{http_code} %{size_download}" -H "If-None-Match: $E" "$U")
-          C3=$(curl -s -o /dev/null -w "%{http_code} %{size_download}" -H "If-Modified-Since: $L" "$U")
-          echo "::notice title=첫 요청::$(head -1 /tmp/h1 | tr -d '\r') 크기 $(wc -c < /tmp/b1) etag $E / cache-control $(grep -i '^cache-control' /tmp/h1 | tr -d '\r') / age $(grep -i '^age' /tmp/h1 | tr -d '\r')"
-          echo "::notice title=조건부 요청::If-None-Match → $C2 , If-Modified-Since → $C3"
-          S=$(curl -s -o /dev/null -w "%{size_download}" "https://butter3662.github.io/seed10k/data/c/KR_005930.json")
-          echo "::notice title=종목 파일 크기::KR_005930 $S"
+          U=https://ictjkqbbcaigdvlysdaw.supabase.co; K=sb_publishable_C7jZEKJn_nF2Y3Ngq5f80Q_RA5Wrfux
+          Q="$U/rest/v1/seed10k_quotes?select=id,m,p,t,d,updated_at"
+          A=$(curl -s -o /tmp/a -w "%{size_download}" "$Q" -H "apikey: $K")
+          B=$(curl -s -o /tmp/b -D /tmp/hb -w "%{size_download}" "$Q" -H "apikey: $K" -H "Accept-Encoding: gzip, br")
+          echo "::notice title=시세 표 전체::압축 요청 안 함 ${A}B / gzip·br 요청 ${B}B / 응답 헤더 $(grep -i 'content-encoding' /tmp/hb | tr -d '\r') / 줄 수 $(python3 -c "import json;print(len(json.load(open('/tmp/a'))))")"
+          Q2="$U/rest/v1/seed10k_daily?select=id,d,c,l,h&d=gt.2026-10-23"
+          C=$(curl -s -o /tmp/c -w "%{size_download}" "$Q2" -H "apikey: $K")
+          D=$(curl -s -o /dev/null -D /tmp/hd -w "%{size_download}" "$Q2" -H "apikey: $K" -H "Accept-Encoding: gzip")
+          echo "::notice title=일별 표::압축 안 함 ${C}B / gzip ${D}B $(grep -i 'content-encoding' /tmp/hd | tr -d '\r')"
