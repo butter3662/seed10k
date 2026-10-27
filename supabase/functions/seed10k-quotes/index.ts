@@ -21,6 +21,10 @@
 //   public.seed10k_http_get(urls) → 요청 번호들, public.seed10k_http_take(ids) → 끝난 응답(읽은 응답은 지운다).
 // - 배당: 장 시간과 관계없이 한 번에 10종목씩, 20시간 넘게 묵은 종목부터 Yahoo 차트 API(events=div)로 최근 2년 배당을 받아
 //   public.seed10k_divs에 [배당락일(거래소 현지 날짜), 1주당 배당금(현지 통화)] 목록으로 저장한다 (200종목이 약 20분에 한 바퀴).
+// - 한국 장 마감 구간: 야후는 한국 정규장을 09:00~15:00으로 잡아 15:00 봉 자리에 종가(거래량 0)를 넣고
+//   15:00~15:20 거래를 주지 않는다. 그래서 한국 장이 끝난 뒤(평일 16:01~24:00) 한 번에 60종목씩,
+//   네이버 증권 1분 봉(api.stock.naver.com/chart/domestic/item/{코드}/minute)으로 그날 15:00~15:30을 5분 봉으로 바꿔 넣는다.
+//   채운 종목은 i.nv = 1, 실패하면 i.nf에 실패 횟수를 남기고 3번 실패하면 더 시도하지 않는다.
 
 import NAMES from "./names.ts";
 
@@ -353,6 +357,73 @@ export async function refreshDart() {
   return { pages, stocks: found.size, filings: [...found.values()].reduce((a, b) => a + b.length, 0) };
 }
 
+/* 한국 장 마감 구간(15:00~15:30)을 네이버 1분 봉으로 채운다 */
+const NV_PER_RUN = 60, NV_POOL = 8, NV_TRIES = 3;
+type NvBar = { localDateTime: string; currentPrice: number; highPrice?: number; lowPrice?: number };
+// "YYYYMMDDhhmmss"(한국 시각) → 유닉스 초
+const kstSec = (s: string) => Date.UTC(+s.slice(0, 4), +s.slice(4, 6) - 1, +s.slice(6, 8), +s.slice(8, 10) - 9, +s.slice(10, 12)) / 1000;
+export async function fetchNaverClose(code: string, ymd: string): Promise<{ t: number[]; c: number[]; l: number[]; h: number[] }> {
+  const u = `https://api.stock.naver.com/chart/domestic/item/${encodeURIComponent(code)}/minute?startDateTime=${ymd}1500&endDateTime=${ymd}1530`;
+  const r = await fetch(u, { headers: { "User-Agent": UA, "Accept": "application/json" } });
+  if (!r.ok) { await r.body?.cancel(); throw new Error(`naver ${code} HTTP ${r.status}`); }
+  const j = await r.json();
+  if (!Array.isArray(j)) throw new Error(`naver ${code}: 형식이 다름`);
+  // 5분 봉으로 묶는다: 봉 시각 = 그 5분의 첫 분, 종가 = 마지막 분의 가격
+  const b = new Map<number, { c: number; l: number; h: number }>();
+  for (const x of j as NvBar[]) {
+    const s = String(x?.localDateTime || "");
+    if (s.slice(0, 8) !== ymd || s.slice(8, 12) < "1500" || s.slice(8, 12) > "1530") continue;
+    const c = Number(x.currentPrice); if (!(c > 0)) continue;
+    const lo = Number(x.lowPrice) > 0 ? Math.min(Number(x.lowPrice), c) : c, hi = Number(x.highPrice) > 0 ? Math.max(Number(x.highPrice), c) : c;
+    const sec = kstSec(s), k = sec - (sec % 300), o = b.get(k);
+    b.set(k, o ? { c, l: Math.min(o.l, lo), h: Math.max(o.h, hi) } : { c, l: lo, h: hi });   // 응답은 시간순
+  }
+  const ks = [...b.keys()].sort((a, z) => a - z);
+  return { t: ks, c: ks.map((k) => Math.round(b.get(k)!.c)), l: ks.map((k) => Math.round(b.get(k)!.l)), h: ks.map((k) => Math.round(b.get(k)!.h)) };
+}
+type QI = { t: number[]; c: number[]; l?: number[]; h?: number[]; nv?: number; nf?: number };
+export async function fillKrClose(at: Date) {
+  const kr = zone("Asia/Seoul", at);
+  if (!weekday(kr.wd) || kr.mins <= 16 * 60) return { skipped: "한국 장 마감 뒤가 아님" };
+  const today = localDate("Asia/Seoul", Math.floor(at.getTime() / 1000)), ymd = today.replaceAll("-", "");
+  const rows: { id: string; ysym: string; m: string; p: number; d: string; i: QI | null }[] = await (await rest(
+    `seed10k_quotes?select=id,ysym,m,p,d,i&m=eq.KR&d=eq.${today}&i->>nv=is.null&or=(i->>nf.is.null,i->>nf.lt.${NV_TRIES})&order=id&limit=${NV_PER_RUN}`,
+    { headers: restHeaders() })).json();
+  if (!rows.length) return { done: 0 };
+  const cut = kstSec(ymd + "150000");
+  const out: { id: string; ysym: string; m: string; i: QI }[] = [], daily: { id: string; d: string; c: number; l?: number; h?: number }[] = [], errs: string[] = [];
+  let next = 0;
+  async function worker() {
+    while (next < rows.length) {
+      const r = rows[next++], q = r.i || { t: [], c: [] };
+      const ql = q.l && q.l.length === q.t.length ? q.l : q.c, qh = q.h && q.h.length === q.t.length ? q.h : q.c;
+      try {
+        const nv = await fetchNaverClose(r.id.slice(3), ymd);
+        if (!nv.t.length) throw new Error(`naver ${r.id}: 15:00~15:30 봉 없음`);
+        const k = q.t.findIndex((x) => x >= cut), n = k < 0 ? q.t.length : k;
+        const i: QI = { t: q.t.slice(0, n).concat(nv.t), c: q.c.slice(0, n).concat(nv.c), l: ql.slice(0, n).concat(nv.l), h: qh.slice(0, n).concat(nv.h), nv: 1 };
+        out.push({ id: r.id, ysym: r.ysym, m: r.m, i });
+        daily.push({ id: r.id, d: r.d, c: r.p, l: Math.min(...i.l!), h: Math.max(...i.h!) });
+      } catch (e) {
+        errs.push(String((e as Error).message || e).slice(0, 80));
+        out.push({ id: r.id, ysym: r.ysym, m: r.m, i: { ...q, nf: (q.nf || 0) + 1 } });
+      }
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(NV_POOL, rows.length) }, worker));
+  await rest("seed10k_quotes?on_conflict=id", {
+    method: "POST",
+    headers: restHeaders({ Prefer: "resolution=merge-duplicates,return=minimal" }),
+    body: JSON.stringify(out),
+  });
+  if (daily.length) await rest("seed10k_daily?on_conflict=id,d", {
+    method: "POST",
+    headers: restHeaders({ Prefer: "resolution=merge-duplicates,return=minimal" }),
+    body: JSON.stringify(dailyLH ? daily : daily.map(({ l: _l, h: _h, ...x }) => x)),
+  });
+  return { done: daily.length, failed: errs.length, errs: errs.slice(0, 5) };
+}
+
 /* Supabase REST 호출 (비밀 키로 쓰기) */
 function secretKey(): string {
   try {
@@ -409,12 +480,14 @@ export async function run(at = new Date()) {
   try { news = await refreshNews(); } catch (e) { news = { error: String((e as Error).message || e) }; }
   try { dart = await refreshDart(); } catch (e) { dart = { error: String((e as Error).message || e) }; }
   try { divs = await refreshDivs(all); } catch (e) { divs = { error: String((e as Error).message || e) }; }
+  let close: unknown;
+  try { close = await fillKrClose(at); } catch (e) { close = { error: String((e as Error).message || e) }; }
 
   // 한 번도 시세를 받지 못한 종목(새로 등록된 종목)은 장 시간이 아니어도 한 번 받는다.
   // 장이 끝난 뒤 종목을 늘려도 그날 5분 봉과 종가가 바로 채워지게 한다.
   const fresh = (r: Row) => !r.updated_at && (r.m === "KR" || r.m === "US" || r.m === "FX") && !!r.ysym && r.ysym !== "-";
   const want = all.filter((r) => (r.m === "KR" && act.KR) || (r.m === "US" && act.US) || (r.m === "FX" && act.FX) || fresh(r));
-  if (!want.length) return { skipped: "장 시간이 아님", act, added: add.length, news, dart, divs };
+  if (!want.length) return { skipped: "장 시간이 아님", act, added: add.length, news, dart, divs, close };
   const { ok, failed } = await fetchAll(want);
   for (let k = 0; k < ok.length; k += 100) {
     await rest("seed10k_quotes?on_conflict=id", {
@@ -455,7 +528,7 @@ export async function run(at = new Date()) {
       await send(plain());
     }
   }
-  return { act, added: add.length, wanted: want.length, saved: ok.length, failed: failed.slice(0, 10), failedCount: failed.length, news, dart, divs, ms: Date.now() - started };
+  return { act, added: add.length, wanted: want.length, saved: ok.length, failed: failed.slice(0, 10), failedCount: failed.length, news, dart, divs, close, ms: Date.now() - started };
 }
 
 Deno.serve(async () => {
