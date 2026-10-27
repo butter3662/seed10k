@@ -17,6 +17,7 @@
 // - 미국: 뉴욕 시각 09:25~16:20(평일)에 받는다. 마감 뒤 몇 분은 마감가를 확정하려고 더 받는다.
 // - 환율(KRW=X): 두 시장 중 하나라도 받는 동안 1분마다 야후에서 함께 받는다.
 // - 아무나 이 주소를 불러도 55초 안에 다시 부르면 1분 작업은 하지 않는다(야후 요청 남용 방지).
+// - 1분 작업은 응답을 보낸 뒤 배경에서 이어서 한다(EdgeRuntime.waitUntil). 응답을 30~40초 붙잡으면 다음 7초 호출들이 밀렸다.
 // - 장 시간과 관계없이 불릴 때마다 _beat 줄의 시각을 남긴다. 게임은 이 시각이 3분 안이면 '온라인'으로 표시한다.
 // - 뉴스: 장 시간과 관계없이 한 번에 7종목씩, 30분 넘게 묵은 종목부터 받아 public.seed10k_news에 저장한다
 //   (200종목이 약 30분에 한 바퀴). 한국어는 NAVER API HUB 뉴스 검색(함수 비밀값 NAVER_CLIENT_ID,
@@ -564,7 +565,9 @@ async function rest(path: string, init: RequestInit = {}) {
   return r;
 }
 
-export async function run(at = new Date()) {
+// background가 있으면 1분 작업을 그 함수에 넘기고(Supabase의 EdgeRuntime.waitUntil) 바로 돌아온다.
+// 1분 작업(야후 300종목 등)은 30~40초 걸리는데, 응답을 그만큼 붙잡고 있으면 그동안 다음 7초 호출들이 밀려 현재가가 멈췄다.
+export async function run(at = new Date(), background?: (p: Promise<unknown>) => void) {
   const started = Date.now();
   // 살아 있다는 신호 (1분 예약 작업이 돌고 있는지 게임에서 확인하는 용도)
   await rest("seed10k_quotes?on_conflict=id", {
@@ -590,6 +593,21 @@ export async function run(at = new Date()) {
   }
   // [1분 작업]
   if (Date.now() - markAt("_run") < MIN_GAP_MS) return { skipped: "1분 작업은 방금 함", act, live };
+  // 먼저 _run을 남겨 다음 호출들이 1분 작업을 겹쳐 시작하지 않게 한다
+  await rest("seed10k_quotes?on_conflict=id", {
+    method: "POST",
+    headers: restHeaders({ Prefer: "resolution=merge-duplicates,return=minimal" }),
+    body: JSON.stringify([{ id: "_run", ysym: "-", m: "SYS", updated_at: new Date().toISOString() }]),
+  });
+  const slow = runSlow(at, act, started);
+  if (background) {
+    background(slow.catch((e) => console.error("1분 작업 실패", e)));
+    return { act, live, slow: "background" };
+  }
+  return { live, ...(await slow) };
+}
+
+async function runSlow(at: Date, act: { KR: boolean; US: boolean; FX: boolean }, started: number) {
   const all: Row[] = await (await rest("seed10k_quotes?select=id,ysym,m,t,updated_at", { headers: restHeaders() })).json();
   // 게임 종목 이름표(names.ts)에 있는데 시세 표에 없는 종목은 여기서 등록한다 (종목을 늘릴 때 SQL을 따로 돌리지 않아도 되게)
   const have = new Set(all.map((r) => r.id));
@@ -602,11 +620,6 @@ export async function run(at = new Date()) {
     });
     all.push(...add);
   }
-  await rest("seed10k_quotes?on_conflict=id", {
-    method: "POST",
-    headers: restHeaders({ Prefer: "resolution=merge-duplicates,return=minimal" }),
-    body: JSON.stringify([{ id: "_run", ysym: "-", m: "SYS", updated_at: new Date().toISOString() }]),
-  });
 
   // 뉴스는 시세와 따로: 실패하거나 뉴스 표가 없어도 시세 수집은 계속한다
   let news: unknown, dart: unknown, divs: unknown;
@@ -620,7 +633,7 @@ export async function run(at = new Date()) {
   // 장이 끝난 뒤 종목을 늘려도 그날 5분 봉과 종가가 바로 채워지게 한다.
   const fresh = (r: Row) => !r.updated_at && (r.m === "KR" || r.m === "US" || r.m === "FX") && !!r.ysym && r.ysym !== "-";
   const want = all.filter((r) => (r.m === "KR" && act.KR) || (r.m === "US" && act.US) || (r.m === "FX" && act.FX) || fresh(r));
-  if (!want.length) return { skipped: "장 시간이 아님", act, live, added: add.length, news, dart, divs, close };
+  if (!want.length) return { skipped: "장 시간이 아님", act, added: add.length, news, dart, divs, close };
   const { ok, failed } = await fetchAll(want);
   // 네이버 현재가가 최근에 들어온 시장의 종목은 야후의 최신가(p, t, d)와 일별 가격을 쓰지 않고 5분 봉만 저장한다.
   // 단 그 종목의 저장된 체결 시각이 야후 시각보다 2분 넘게 오래됐으면(네이버가 그 종목만 안 주는 경우) 야후 값을 쓴다
@@ -656,12 +669,16 @@ export async function run(at = new Date()) {
   // 거래일별 마지막 가격(장이 끝나면 그날 종가)도 남긴다. GitHub 수집이 며칠 멈춰도 일별 종가가 비지 않게.
   // 그날 저가·고가(l, h)도 남긴다 (예약 주문 판정용). 표에 l, h 열이 아직 없으면 종가만 남긴다
   await saveDaily(ok.filter((q) => !byNaver(q)).map((q) => ({ id: q.id, d: q.d, c: q.p, ...(q.dl != null ? { l: q.dl, h: q.dh } : {}) })));
-  return { act, live, added: add.length, wanted: want.length, saved: ok.length, failed: failed.slice(0, 10), failedCount: failed.length, news, dart, divs, close, ms: Date.now() - started };
+  return { act, added: add.length, wanted: want.length, saved: ok.length, failed: failed.slice(0, 10), failedCount: failed.length, news, dart, divs, close, ms: Date.now() - started };
 }
+
+type EdgeRT = { waitUntil(p: Promise<unknown>): void };
+const edgeRuntime = (globalThis as unknown as { EdgeRuntime?: EdgeRT }).EdgeRuntime;
 
 Deno.serve(async () => {
   try {
-    const out = await run();
+    // Supabase에서는 1분 작업을 응답 뒤에 이어서 돌린다 (EdgeRuntime.waitUntil). 그 밖의 환경에서는 끝까지 기다린다
+    const out = await run(new Date(), edgeRuntime ? (p) => edgeRuntime.waitUntil(p) : undefined);
     return new Response(JSON.stringify(out), { headers: { "Content-Type": "application/json" } });
   } catch (e) {
     console.error(e);
