@@ -664,7 +664,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.14.2';
+const VERSION = '1.14.3';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -2665,6 +2665,10 @@ function getSeries(id, range){
   const i5 = intradayOf(id);
   if ((range === '1D' || range === '1W') && i5 && i5.t.length){
     const t = i5.t.map(x => x * 1000), c = i5.c.slice();
+    // 마지막 시세가 마지막 5분 봉보다 늦으면(같은 거래일) 그 시각에 점을 하나 더 찍는다.
+    // Yahoo는 한국 종목 5분 봉을 15:00 봉까지만 주고, 15:30 종가는 최신가(시각 15:30)로만 준다.
+    const qr = (QT.rows || []).find(x => x.id === id), qt = qr && qr.t ? Date.parse(qr.t) : 0;
+    if (qr && qt > last(t) + 60e3 && qr.p > 0 && zoneParts(SESS[s.m].tz, new Date(qt)).date === zoneParts(SESS[s.m].tz, new Date(last(t))).date){ t.push(qt); c.push(+qr.p); }
     if (range === '1D'){
       const tz = SESS[s.m].tz, lastDate = zoneParts(tz, new Date(last(t))).date;
       let i = t.length - 1; while (i > 0 && zoneParts(tz, new Date(t[i - 1])).date === lastDate) i--;
