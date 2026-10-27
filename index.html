@@ -194,6 +194,8 @@ html[data-mode=dark] .mono{background:hsl(var(--h) 32% 22%);color:hsl(var(--h) 7
 
 /* ───────── assets ───────── */
 .assets-grid{display:grid;gap:12px}
+.as-a,.as-b{display:contents}
+.ao1{order:1}.ao2{order:2}.ao3{order:3}.ao4{order:4}.ao5{order:5}.ao6{order:6}.ao7{order:7}
 .sum-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:var(--r-md);overflow:hidden}
 .sum-grid div{background:var(--surface);padding:12px 14px}
 .sum-grid dt{font-size:12px;color:var(--ink-2);font-weight:600}
@@ -555,6 +557,7 @@ html[data-game=live] .c-news{order:3}
   .tile > div{grid-column:1}
   .tile svg{grid-column:2;grid-row:1 / span 3;height:44px;margin:0}
   .assets-grid{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:12px;align-items:start}
+  .as-a,.as-b{display:grid;gap:12px;min-width:0;align-content:start}
   .loans-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-items:start}
   .loans-grid .wide{grid-column:1/-1}
   .sheet{left:50%;right:auto;bottom:auto;top:50%;width:min(560px,calc(100vw - 40px));border-radius:24px;transform:translate(-50%,-46%);opacity:0;pointer-events:none;transition:transform .22s,opacity .22s;padding:12px 22px 22px}
@@ -661,7 +664,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 100 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.13.2';
+const VERSION = '1.13.3';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -2128,24 +2131,26 @@ function renderAssets(){
       <div class="s-pl"><dt>손익</dt><dd class="num ${cls(N - META.seed - (S.pts || 0))}">${signUSD(N - META.seed - (S.pts || 0))}</dd><small class="muted">순자산 − 시드 − 포인트</small></div>
     </dl>
     <div class="assets-grid">
-      <section class="card"><div class="card-h"><h2>보유 종목</h2><small>${ids.length}개</small></div>
+      <div class="as-a">
+      <section class="card ao1"><div class="card-h"><h2>보유 종목</h2><small>${ids.length}개</small></div>
         ${holdRows || '<p class="empty">아직 보유한 종목이 없습니다. 시장 탭에서 종목을 눌러 매수해 보세요.</p>'}
       </section>
-      <div class="stack">
-        <section class="card" id="rankCard">${rankCardHTML()}</section>
-        <section class="card"><div class="card-h"><h2>지수와 비교</h2><small>10월 23일 종가 대비</small></div>
-          <div class="bench">${benchRow('내 순자산', ret, 'var(--brass)')}${benchRow('한국 100', kRet, '#6E8BFF')}${benchRow('미국 100', uRet, '#8A93A6')}</div>
-        </section>
-        <section class="card"><div class="card-h"><h2>예약 주문</h2><small>대기 ${ordersOf().length}건</small></div>
-          ${(S.orders || []).length ? `<div class="olist">${(S.orders || []).slice(0, 20).map(o => orderRowHTML(o, true)).join('')}</div>` : '<p class="empty">걸어 둔 예약 주문이 없습니다. 종목을 열고 "예약 주문"을 고르면 걸 수 있습니다.</p>'}
-        </section>
-        <section class="card"><div class="card-h"><h2>거래 내역</h2><small>최근 60건</small></div>
+        <section class="card ao5"><div class="card-h"><h2>거래 내역</h2><small>최근 60건</small></div>
           ${tr ? `<div class="tbl-wrap"><table class="trades"><thead><tr><th>날짜</th><th>구분</th><th>종목</th><th class="r">결제 금액</th></tr></thead><tbody>${tr}</tbody></table></div>` : '<p class="empty">거래 내역이 없습니다.</p>'}
         </section>
-        ${(S.divLog || []).length ? `<section class="card"><div class="card-h"><h2>배당금 내역</h2><small>최근 30건, 세후 입금</small></div>
+        ${(S.divLog || []).length ? `<section class="card ao6"><div class="card-h"><h2>배당금 내역</h2><small>최근 30건, 세후 입금</small></div>
           <div class="tbl-wrap"><table class="trades"><thead><tr><th>배당락일</th><th>종목</th><th class="r">입금</th></tr></thead><tbody>${S.divLog.slice(0, 30).map(x => { const st = BY_ID[x.id]; return `<tr><td>${fmtDate(x.d, false)}</td><td>${esc(st ? st.n : x.id)}<br><span class="muted">${x.q.toLocaleString()}주 × ${fmtPx(st, x.ps)}, 세금 ${fmtPx(st, x.tax)}</span></td><td class="r num up">+${fmtPx(st, x.net)}</td></tr>`; }).join('')}</tbody></table></div></section>` : ''}
-        <section class="card"><div class="card-h"><h2>환전 내역</h2><small>최근 20건</small></div>
+        <section class="card ao7"><div class="card-h"><h2>환전 내역</h2><small>최근 20건</small></div>
           ${(S.fxLog || []).length ? `<div class="tbl-wrap"><table class="trades"><thead><tr><th>날짜</th><th>방향</th><th class="r">낸 금액</th><th class="r">받은 금액</th></tr></thead><tbody>${S.fxLog.slice(0, 20).map(x => `<tr><td>${fmtDate(x.dt, false)}</td><td>${x.dir === 'u2k' ? '달러 → 원화' : '원화 → 달러'}<br><span class="muted">1달러 = ${fmtFX(x.rate)}원</span></td><td class="r num">${x.dir === 'u2k' ? fmtUSD(x.from) : fmtKRW(x.from)}</td><td class="r num">${x.dir === 'u2k' ? fmtKRW(x.to) : fmtUSD(x.to)}</td></tr>`).join('')}</tbody></table></div>` : '<p class="empty">환전 내역이 없습니다.</p>'}
+        </section>
+      </div>
+      <div class="as-b">
+        <section class="card ao2" id="rankCard">${rankCardHTML()}</section>
+        <section class="card ao3"><div class="card-h"><h2>지수와 비교</h2><small>10월 23일 종가 대비</small></div>
+          <div class="bench">${benchRow('내 순자산', ret, 'var(--brass)')}${benchRow('한국 100', kRet, '#6E8BFF')}${benchRow('미국 100', uRet, '#8A93A6')}</div>
+        </section>
+        <section class="card ao4"><div class="card-h"><h2>예약 주문</h2><small>대기 ${ordersOf().length}건</small></div>
+          ${(S.orders || []).length ? `<div class="olist">${(S.orders || []).slice(0, 20).map(o => orderRowHTML(o, true)).join('')}</div>` : '<p class="empty">걸어 둔 예약 주문이 없습니다. 종목을 열고 "예약 주문"을 고르면 걸 수 있습니다.</p>'}
         </section>
       </div>
     </div>
