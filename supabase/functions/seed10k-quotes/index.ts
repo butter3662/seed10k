@@ -33,7 +33,7 @@ type Quote = {
 };
 
 const MIN_GAP_MS = 40_000;   // 이 간격 안에 다시 불리면 건너뛴다
-const POOL = 8;              // 야후에 동시에 보내는 요청 수
+const POOL = 16;             // 야후에 동시에 보내는 요청 수 (시장별 300종목을 1분 안에 넉넉히 받도록)
 const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36";
 
 /* 시간대 tz의 지금 요일·시·분 */
@@ -366,6 +366,17 @@ export async function run(at = new Date()) {
   const all: Row[] = await (await rest("seed10k_quotes?select=id,ysym,m,updated_at", { headers: restHeaders() })).json();
   const mark = all.find((r) => r.id === "_run");
   if (mark?.updated_at && Date.now() - Date.parse(mark.updated_at) < MIN_GAP_MS) return { skipped: "방금 실행됨", act };
+  // 게임 종목 이름표(names.ts)에 있는데 시세 표에 없는 종목은 여기서 등록한다 (종목을 늘릴 때 SQL을 따로 돌리지 않아도 되게)
+  const have = new Set(all.map((r) => r.id));
+  const add = Object.entries(NAMES).filter(([id, v]) => !have.has(id) && v.y).map(([id, v]) => ({ id, ysym: v.y, m: v.m }));
+  if (add.length) {
+    await rest("seed10k_quotes?on_conflict=id", {
+      method: "POST",
+      headers: restHeaders({ Prefer: "resolution=merge-duplicates,return=minimal" }),
+      body: JSON.stringify(add),
+    });
+    all.push(...add);
+  }
   await rest("seed10k_quotes?on_conflict=id", {
     method: "POST",
     headers: restHeaders({ Prefer: "resolution=merge-duplicates,return=minimal" }),
@@ -378,7 +389,7 @@ export async function run(at = new Date()) {
   try { dart = await refreshDart(); } catch (e) { dart = { error: String((e as Error).message || e) }; }
   try { divs = await refreshDivs(all); } catch (e) { divs = { error: String((e as Error).message || e) }; }
 
-  if (!act.FX) return { skipped: "장 시간이 아님", act, news, dart, divs };
+  if (!act.FX) return { skipped: "장 시간이 아님", act, added: add.length, news, dart, divs };
 
   const want = all.filter((r) => (r.m === "KR" && act.KR) || (r.m === "US" && act.US) || (r.m === "FX" && act.FX));
   const { ok, failed } = await fetchAll(want);
@@ -398,7 +409,7 @@ export async function run(at = new Date()) {
       body: JSON.stringify(daily.slice(k, k + 200)),
     });
   }
-  return { act, wanted: want.length, saved: ok.length, failed: failed.slice(0, 10), failedCount: failed.length, news, dart, divs, ms: Date.now() - started };
+  return { act, added: add.length, wanted: want.length, saved: ok.length, failed: failed.slice(0, 10), failedCount: failed.length, news, dart, divs, ms: Date.now() - started };
 }
 
 Deno.serve(async () => {
