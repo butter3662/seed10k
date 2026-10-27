@@ -1,31 +1,48 @@
-name: 배당 수집 확인 (임시)
+name: 확장 가능성 측정 (임시)
 on:
   push:
     branches: [tmp-yahoo-test]
 jobs:
   check:
     runs-on: ubuntu-24.04
-    timeout-minutes: 6
+    timeout-minutes: 8
     steps:
-      - name: 확인
+      - name: 함수 1회 실행 시간
         env:
           U: https://ictjkqbbcaigdvlysdaw.supabase.co
           K: sb_publishable_C7jZEKJn_nF2Y3Ngq5f80Q_RA5Wrfux
         run: |
           for i in 1 2 3 4 5 6; do
-            c=$(curl -s -m 90 -o /tmp/r -w "%{http_code}" -X POST "$U/functions/v1/seed10k-quotes" -H "apikey: $K" -H "Content-Type: application/json" -d '{}')
+            c=$(curl -s -m 120 -o /tmp/r -w "%{http_code} %{time_total}" -X POST "$U/functions/v1/seed10k-quotes" -H "apikey: $K" -H "Content-Type: application/json" -d '{}')
             if ! grep -q '방금 실행됨' /tmp/r; then break; fi
             sleep 15
           done
           python3 -c "
-          import json; d=json.load(open('/tmp/r')); print('::notice title=함수 응답 HTTP $c::' + json.dumps({k:d.get(k) for k in ('divs','dart','error','skipped')}, ensure_ascii=False)[:600])"
-          c2=$(curl -s -m 30 -o /tmp/n -w "%{http_code}" "$U/rest/v1/seed10k_divs?select=id,at,items" -H "apikey: $K")
-          python3 - "$c2" <<'PY'
+          import json; d=json.load(open('/tmp/r')); print('::notice title=함수 HTTP/총시간 $c::' + json.dumps({k:d.get(k) for k in ('act','wanted','saved','failedCount','ms','skipped')}, ensure_ascii=False))"
+      - name: 여러 종목 한 번에 (spark)
+        run: |
+          S="AAPL,MSFT,NVDA,GOOGL,AMZN,META,TSLA,AVGO,JPM,V,005930.KS,000660.KS,035420.KS,005380.KS,051910.KS,000270.KS,068270.KS,105560.KS,055550.KS,035720.KS"
+          for n in 10 20; do
+            syms=$(echo $S | cut -d, -f1-$n)
+            c=$(curl -s -m 30 -A "Mozilla/5.0" -o /tmp/s -w "%{http_code} %{time_total}" "https://query1.finance.yahoo.com/v8/finance/spark?symbols=$syms&range=1d&interval=5m")
+            python3 - "$c" "$n" <<'PY'
           import json, sys
-          try: d = json.load(open('/tmp/n'))
-          except Exception: d = None
-          if not isinstance(d, list): print(f"::notice title=배당 표::HTTP {sys.argv[1]} {str(d)[:300]}"); sys.exit()
-          withd = [r for r in d if r['items']]
-          print(f"::notice title=배당 표::HTTP {sys.argv[1]}, {len(d)}종목 저장, 배당 있는 종목 {len(withd)}, 빈 목록 {len([r for r in d if r['items'] == []])}, 실패(null) {len([r for r in d if r['items'] is None])}")
-          for r in withd[:4]: print(f"::notice title=예시 {r['id']}::{r['items'][-3:]}")
+          try:
+              d = json.load(open('/tmp/s'))
+              if isinstance(d, dict) and 'spark' in d: res = d['spark'].get('result') or []
+              else: res = [{'symbol': k, 'response': [v]} for k, v in d.items()] if isinstance(d, dict) else []
+              ok = [r['symbol'] for r in res if (r.get('response') or [{}])[0].get('meta', {}).get('regularMarketPrice') is not None]
+              ex = res[0]['response'][0]['meta'] if res else {}
+              print(f"::notice title=spark {sys.argv[2]}종목::HTTP {sys.argv[1]}초, 가격 있는 종목 {len(ok)}/{len(res)}, 예시 {ex.get('symbol')} {ex.get('regularMarketPrice')} 봉 {len((res[0]['response'][0].get('timestamp') or [])) if res else 0}")
+          except Exception as e:
+              print(f"::notice title=spark {sys.argv[2]}종목::HTTP {sys.argv[1]} 실패 {e} {open('/tmp/s').read()[:200]}")
           PY
+          done
+      - name: 개별 요청 연속 100번 (차단 여부)
+        run: |
+          ok=0; bad=0; start=$(date +%s)
+          for i in $(seq 1 100); do
+            c=$(curl -s -m 15 -A "Mozilla/5.0" -o /dev/null -w "%{http_code}" "https://query1.finance.yahoo.com/v8/finance/chart/AAPL?range=1d&interval=5m")
+            if [ "$c" = "200" ]; then ok=$((ok+1)); else bad=$((bad+1)); fi
+          done
+          echo "::notice title=개별 100회::성공 $ok, 실패 $bad, $(( $(date +%s) - start ))초"
