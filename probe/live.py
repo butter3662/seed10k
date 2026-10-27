@@ -27,5 +27,9 @@ async def main():
         out.append('요청들:'); out += [json.dumps(r, ensure_ascii=False) for r in reqs]
         out.append('오류: ' + json.dumps(errs[:20], ensure_ascii=False))
         await b.close()
-asyncio.run(main())
+import traceback
+try:
+    asyncio.run(main())
+except Exception:
+    out.append('예외: ' + traceback.format_exc()[-2500:])
 open('probe/live.txt', 'w').write('\n'.join(out))
