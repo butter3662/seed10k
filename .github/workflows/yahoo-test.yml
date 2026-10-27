@@ -1,24 +1,28 @@
-name: 함수 응답 확인 (임시)
+name: 네이버 채우기 확인 (임시)
 on:
   push:
     branches: [tmp-yahoo-test]
 jobs:
   check:
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    timeout-minutes: 4
     steps:
       - run: |
           U=https://ictjkqbbcaigdvlysdaw.supabase.co; K=sb_publishable_C7jZEKJn_nF2Y3Ngq5f80Q_RA5Wrfux
-          for n in 1 2 3 4 5 6; do
-            curl -s -m 100 -X POST "$U/functions/v1/seed10k-quotes" -H "apikey: $K" -H "Content-Type: application/json" -d '{}' -o /tmp/r.json -w "%{http_code}"
-            echo; head -c 300 /tmp/r.json; echo
-            if ! grep -q '방금 실행됨' /tmp/r.json; then break; fi
-            sleep 20
-          done
-          python3 -c "
-import json; s=open('/tmp/r.json').read()
-try:
-    j=json.loads(s); print('::notice title=close::'+json.dumps(j.get('close'), ensure_ascii=False)[:1500]); print('::notice title=전체::'+json.dumps({k:v for k,v in j.items() if k not in ('news','dart','divs','close')}, ensure_ascii=False)[:800])
-except Exception as e: print('::notice title=원문::'+s[:1500])
-          "
-          curl -s "https://raw.githubusercontent.com/butter3662/seed10k/main/supabase/functions/seed10k-quotes/index.ts" | grep -c fillKrClose | sed 's/^/::notice title=raw의 fillKrClose 수::/'
+          curl -s "$U/rest/v1/seed10k_quotes?select=id,p,d,i&m=eq.KR" -H "apikey: $K" -o /tmp/q.json
+          curl -s "$U/rest/v1/seed10k_daily?select=id,c,l,h&d=eq.2026-10-27&id=in.(KR:005930,KR:000660)" -H "apikey: $K" -o /tmp/d.json
+          python3 - <<'PY'
+          import json, datetime, collections
+          kst = lambda s: (datetime.datetime.utcfromtimestamp(s) + datetime.timedelta(hours=9)).strftime('%H:%M')
+          rows = json.load(open('/tmp/q.json')); c = collections.Counter(); bad = []
+          for r in rows:
+              i = r['i'] or {}
+              k = 'nv' if i.get('nv') else (f"nf{i.get('nf')}" if i.get('nf') else '안 함')
+              c[k] += 1
+              if i.get('nf'): bad.append(r['id'])
+          print(f"::notice title=상태::{dict(c)} 실패 {bad[:20]}")
+          for r in rows:
+              if r['id'] in ('KR:005930', 'KR:000660', 'KR:036930'):
+                  i = r['i']; print(f"::notice title={r['id']}::{[(kst(a), b) for a, b in zip(i['t'][-8:], i['c'][-8:])]} 종가 {r['p']}")
+          print(f"::notice title=일봉::{open('/tmp/d.json').read()}")
+          PY
