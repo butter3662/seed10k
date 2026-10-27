@@ -9,7 +9,7 @@ jobs:
     steps:
       - run: |
           U=https://ictjkqbbcaigdvlysdaw.supabase.co; K=sb_publishable_C7jZEKJn_nF2Y3Ngq5f80Q_RA5Wrfux
-          curl -s "$U/rest/v1/seed10k_quotes?select=id,p,t,updated_at,i&m=eq.KR" -H "apikey: $K" -o /tmp/q.json
+          curl -s "$U/rest/v1/seed10k_quotes?select=id,p,t,updated_at,i&m=in.(KR,US)" -H "apikey: $K" -o /tmp/q.json
           curl -s -I "$U/rest/v1/seed10k_quotes?select=id" -H "apikey: $K" -H "Prefer: count=exact" | grep -i content-range
           python3 - <<'PY'
           import json, datetime, collections
@@ -19,10 +19,10 @@ jobs:
           g = collections.defaultdict(list)
           for r in rows:
               t = (r.get('i') or {}).get('t') or []
-              g[(kst(t[-1]) if t else '-', iso(r.get('t')), iso(r.get('updated_at'))[:-1])].append(r['id'][3:])
-          print(f"::notice title=행 수::KR {len(rows)}")
-          for k, v in sorted(g.items(), key=lambda x: -len(x[1])):
+              g[(r['id'][:2], kst(t[-1]) if t else '-', iso(r.get('t')), iso(r.get('updated_at'))[:-1])].append(r['id'][3:])
+          print(f"::notice title=행 수::{len(rows)}")
+          for k, v in sorted(g.items(), key=lambda x: (x[0][0], -len(x[1]))):
               s = ','.join(v)
               for j in range(0, len(s), 3000):
-                  print(f"::notice title=마지막봉 {k[0]} / 최신가시각 {k[1]} / 갱신 {k[2]}x ({len(v)}개)::{s[j:j+3000]}")
+                  print(f"::notice title={k[0]} 마지막봉 {k[1]} / 최신가시각 {k[2]} / 갱신 {k[3]}x ({len(v)}개)::{s[j:j+3000]}")
           PY
