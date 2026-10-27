@@ -640,7 +640,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 100 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.8.3';
+const VERSION = '1.9.0';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -859,30 +859,16 @@ function zoneTs(tz, date, mins){
   }
   return t;
 }
-/* 미국 주식 마감가 매수: 정규장이 끝난 뒤(장 마감, 주말, 개장 전, 휴장일)에는 직전 거래일 마감가로 살 수 있다.
-   마감가는 장 마감 5분 뒤 이후에 수집된 시세가 있어야 확정된 것으로 본다. */
-const AH_SETTLE_MIN = 5;
-function usCloseInfo(){
-  const d = last(LIVE.dates.US || []);
-  if (!d) return null;
-  const closeAt = zoneTs(SESS.US.tz, d, SESS.US.c);
-  return {date:d, closeAt, final: !!LIVE.updated && LIVE.updated.getTime() >= closeAt + AH_SETTLE_MIN * 6e4};
-}
 function canTrade(s, side){
   if (S.over) return {ok:false, why:'파산해서 거래할 수 없습니다.'};
   if (!isLive()) return {ok:true};
   if (LIVE.miss.has(s.id)) return {ok:false, why:'이 종목은 실제 시세를 받지 못해 거래할 수 없습니다.'};
   const st = mstate(s.m);
   if (st.open) return {ok:true};
-  if (s.m === 'US' && side === 'buy' && (st.k === 'closed' || st.k === 'pre' || st.label === '휴장일 추정')){
-    const ci = usCloseInfo();
-    if (ci && ci.final) return {ok:true, ah:true, closeDate:ci.date};
-    return {ok:false, why:'미국 시장 마감가가 아직 수집되지 않았습니다. 장 마감 뒤 몇 분 안에 마감가가 들어오면 살 수 있습니다.'};
-  }
   const hours = `정규장(한국 시각 ${sessInKST(s.m)})`;
   const why = st.k === 'wait'
     ? (st.label === '시세 없음' ? '시세 파일을 아직 받지 못했습니다.' : `${SESS[s.m].ko} 시장의 오늘 시세가 아직 들어오지 않았습니다. 장이 열리고 첫 시세가 들어오면(미국은 1~2분 뒤, 한국은 Yahoo 지연 때문에 약 20분 뒤) 거래할 수 있습니다. 휴장일이면 오늘은 거래할 수 없습니다.`)
-    : `${SESS[s.m].ko} 시장은 지금 ${st.label} 상태입니다. ${hours}에 거래할 수 있습니다.${s.m === 'US' && side === 'sell' ? ' 매수는 장 마감 뒤에도 마감가로 할 수 있습니다.' : ''}`;
+    : `${SESS[s.m].ko} 시장은 지금 ${st.label} 상태입니다. ${hours}에 거래할 수 있습니다. 장이 닫혀 있을 때는 예약 주문을 걸어 둘 수 있습니다.`;
   return {ok:false, why};
 }
 const tradableMkt = m => !isLive() || mstate(m).open;
@@ -996,7 +982,6 @@ function doBuy(id, q, tag, autoFX, fill){
   else {
     const ct = canTrade(s, 'buy');
     if (!ct.ok) return toast(ct.why, true);
-    if (ct.ah && !tag) tag = '마감가';
   }
   q = Math.floor(q);
   if (q < 1) return toast('수량을 1주 이상 입력하세요', true);
@@ -1670,7 +1655,7 @@ function showModePicker(first){
     <div class="modes">
       <button class="mode-card" data-pick="live">
         <b>실제 시세</b>
-        <span>실제 주가를 따라갑니다. 각 시장의 정규장 시간에 사고팔 수 있고(미국 주식은 장 마감 뒤에도 마감가로 매수 가능), 시세는 미국 약 1~2분, 한국 약 20분 늦게 반영됩니다.</span>
+        <span>실제 주가를 따라갑니다. 각 시장의 정규장 시간에 사고팔 수 있고, 시세는 미국 약 1~2분, 한국 약 20분 늦게 반영됩니다.</span>
       </button>
       <button class="mode-card" data-pick="sim">
         <b>시뮬레이션</b>
@@ -1917,7 +1902,7 @@ function renderMarketList(){
   const fx = fmtFX(FX());
   if (live){
     const st = mstate(UI.mkt);
-    $('#mktFoot').textContent = `${SESS[UI.mkt].ko} 시장 ${st.label}. 정규장은 한국 시각 ${sessInKST(UI.mkt)}이고 그 시간에 거래할 수 있습니다${UI.mkt === 'US' ? '(장 마감 뒤에는 마감가로 매수만 가능)' : ''}. 등락률은 전 거래일 종가 대비입니다.` + (UI.mkt === 'KR' ? ` 원화 가격은 원/달러 ${fx}원으로 환전됩니다.` : '');
+    $('#mktFoot').textContent = `${SESS[UI.mkt].ko} 시장 ${st.label}. 정규장은 한국 시각 ${sessInKST(UI.mkt)}이고 그 시간에 거래할 수 있습니다. 등락률은 전 거래일 종가 대비입니다.` + (UI.mkt === 'KR' ? ` 원화 가격은 원/달러 ${fx}원으로 환전됩니다.` : '');
   } else {
     $('#mktFoot').textContent = UI.mkt === 'KR'
       ? `순위는 현재 시가총액 기준입니다. 원화 가격은 매수·매도 때 원/달러 ${fx}원으로 환전됩니다. 하루 가격제한폭 ±30%.`
@@ -2088,7 +2073,6 @@ function renderInfo(){
         ${live ? `
         <li><b>실제 시세 모드</b>: 실제 주가를 따라갑니다. 장중에는 1분마다 시세를 받습니다. 미국 시세는 약 1~2분, 한국 시세는 약 20분 늦습니다(Yahoo Finance가 한국 시세를 20분 늦게 제공).</li>
         <li>각 시장의 <b>정규장</b>에만 거래할 수 있습니다. 한국 ${sessInKST('KR')}, 미국 ${sessInKST('US')}(한국 시각, 서머타임 반영). 공휴일은 그날 시세가 들어오지 않는 것으로 판단합니다.</li>
-        <li><b>미국 주식 마감가 매수</b>: 미국 정규장이 끝난 뒤(장 마감 후, 주말, 개장 전, 휴장일)에는 직전 거래일 마감가로 바로 살 수 있습니다. 마감가는 장 마감 5분 뒤 이후에 수집된 시세로 확정하며, 그 전에는 기다려야 합니다. 매도는 정규장에만 할 수 있습니다.</li>
         <li>체결가는 마지막으로 수집된 가격입니다. 화면의 시세 시각을 확인하세요.</li>
         <li><b>예약 주문</b>: 예약 매수는 가격이 정한 값 이하가 되면, 예약 매도는 정한 값 이상(익절) 또는 이하(손절)가 되면 체결됩니다. 체결가는 조건에 처음 닿은 시세이고, 게임을 꺼 둔 동안 닿았어도 다시 열 때 그 시각의 시세로 체결됩니다. 돈과 보유 수량은 체결할 때 확인하며, 유효기간은 ${ORDER_DAYS}일입니다.</li>
         <li>대출 이자는 주말을 포함해 날마다 붙고, 신용대출 만기는 ${META.creditTerm}일입니다.</li>` : `
@@ -2757,10 +2741,9 @@ function renderOrder(){
   const r = fxRates();
   const goLabel = !ct.ok ? '지금은 거래할 수 없습니다'
     : side === 'sell' ? `${q ? q.toLocaleString() + '주 ' : ''}매도하기`
-    : needFX > 0 && !err ? `${fmtUSD(needUSD)} 환전하고 매수하기` : `${q ? q.toLocaleString() + '주 ' : ''}${ct.ah ? '마감가로 ' : ''}매수하기`;
+    : needFX > 0 && !err ? `${fmtUSD(needUSD)} 환전하고 매수하기` : `${q ? q.toLocaleString() + '주 ' : ''}매수하기`;
   box.innerHTML = `${otypeSegHTML()}
     ${!ct.ok ? `<div class="alert bad">${esc(ct.why)}</div>` : ''}
-    ${ct.ah ? `<div class="alert">미국 정규장이 끝났습니다. ${fmtDate(ct.closeDate, false)} 마감가 ${fmtPx(s, o.p)}로 바로 체결됩니다. 매도는 정규장에만 할 수 있습니다.</div>` : ''}
     <div class="seg" role="group" aria-label="주문 종류"><button data-side="buy" aria-pressed="${side === 'buy'}">매수</button><button data-side="sell" aria-pressed="${side === 'sell'}">매도</button></div>
     <div class="qty"><button data-qd="-1" aria-label="1주 줄이기">−</button><input id="qtyIn" type="number" inputmode="numeric" min="1" step="1" value="${q || ''}" aria-label="수량(주)"><button data-qd="1" aria-label="1주 늘리기">+</button></div>
     <div class="quick">${side === 'buy'
