@@ -24,7 +24,7 @@ async def main():
             v = await pg.evaluate("({p:price('US:NVDA'), txt:(document.querySelector('#sheet').innerText.match(/\\$[0-9,.]+/)||[''])[0], row:(QT.rows.find(r=>r.id==='US:NVDA')||{}), hot:hotBusy, sheet:UI.sheet, scrub:UI.scrub, loading:LIVE.loading})")
             out.append(f"{round(time.time()-T0,1)}s 화면 {v['txt']} price {v['p']} 행 p {v['row'].get('p')} t {v['row'].get('t')} hotBusy {v['hot']} sheet {v['sheet']} scrub {v['scrub']} loading {v['loading']}")
             await pg.wait_for_timeout(3500)
-        out.append('요청들:'); out += [json.dumps(r, ensure_ascii=False) for r in reqs]
+        out.append('요청들:'); out.extend(json.dumps(r, ensure_ascii=False) for r in reqs)
         out.append('오류: ' + json.dumps(errs[:20], ensure_ascii=False))
         await b.close()
 import traceback
