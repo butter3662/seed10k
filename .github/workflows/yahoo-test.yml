@@ -1,4 +1,4 @@
-name: 묶음 줄 확인 (임시)
+name: 실제 사이트 7초 갱신 확인 (임시)
 on:
   push:
     branches: [tmp-yahoo-test]
@@ -7,28 +7,11 @@ permissions:
 jobs:
   check:
     runs-on: ubuntu-24.04
-    timeout-minutes: 4
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+      - run: pip install playwright==1.48.0 && python -m playwright install --with-deps chromium
+      - run: python probe/live.py
       - run: |
-          U=https://ictjkqbbcaigdvlysdaw.supabase.co; K=sb_publishable_C7jZEKJn_nF2Y3Ngq5f80Q_RA5Wrfux
-          curl -s "$U/rest/v1/seed10k_quotes?select=id,p,t,updated_at&id=in.(US:NVDA,US:AAPL)" -H "apikey: $K" -o /tmp/a1.json
-          curl -s "$U/rest/v1/seed10k_quotes?select=id,d,updated_at,x:i->x&id=in.(_snapUS,_snapKR,_fast,_run)" -H "apikey: $K" -o /tmp/s1.json
-          sleep 20
-          curl -s "$U/rest/v1/seed10k_quotes?select=id,p,t,updated_at&id=in.(US:NVDA,US:AAPL)" -H "apikey: $K" -o /tmp/a2.json
-          curl -s "$U/rest/v1/seed10k_quotes?select=id,d,updated_at,x:i->x&id=in.(_snapUS)" -H "apikey: $K" -o /tmp/s2.json
-          C=$(curl -s -o /dev/null -w "%{size_download}" "$U/rest/v1/seed10k_quotes?select=id,m,p,t,d,updated_at,x:i->x&updated_at=gt.$(date -u -d '-90 sec' +%Y-%m-%dT%H:%M:%SZ)" -H "apikey: $K" -H "Accept-Encoding: gzip")
-          N=$(curl -s "$U/rest/v1/seed10k_quotes?select=id&updated_at=gt.$(date -u -d '-90 sec' +%Y-%m-%dT%H:%M:%SZ)" -H "apikey: $K" | python3 -c "import json,sys; print(len(json.load(sys.stdin)))")
-          python3 - "$C" "$N" <<'PY'
-          import json, sys
-          out = []
-          a1, a2 = json.load(open('/tmp/a1.json')), json.load(open('/tmp/a2.json'))
-          s1, s2 = json.load(open('/tmp/s1.json')), json.load(open('/tmp/s2.json'))
-          out.append("종목 줄 (20초 간격)::" + json.dumps([[r['id'], r['p'], r['t'], r['updated_at']] for r in a1 + a2]))
-          out.append("표시 줄 1차::" + json.dumps([[r['id'], r['d'], r['updated_at'], (len(r['x']['ids']) if r.get('x') else None)] for r in s1]))
-          out.append("묶음 2차::" + json.dumps([[r['id'], r['updated_at'], (len(r['x']['ids']) if r.get('x') else None)] for r in s2]))
-          out.append(f"1분 읽기 응답::최근 90초 바뀐 줄 {sys.argv[2]}개, gzip {sys.argv[1]}B")
-          open('probe/check.txt', 'w').write('\n'.join(out))
-          PY
           git config user.name gha; git config user.email gha@users.noreply.github.com
-          git add probe/check.txt && git commit -m "점검 결과" && git push origin HEAD:tmp-yahoo-test
+          git add probe/live.txt && git commit -m "확인 결과" && git push origin HEAD:tmp-yahoo-test
