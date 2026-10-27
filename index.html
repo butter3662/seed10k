@@ -670,7 +670,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.0.0';
+const VERSION = '1.0.1';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -2241,8 +2241,8 @@ function renderAssets(){
         </section>
         ${(S.divLog || []).length ? `<section class="card ao6"><div class="card-h"><h2>배당금 내역</h2><small>최근 30건, 세후 입금</small></div>
           <div class="tbl-wrap"><table class="trades"><thead><tr><th>배당락일</th><th>종목</th><th class="r">입금</th></tr></thead><tbody>${S.divLog.slice(0, 30).map(x => { const st = BY_ID[x.id]; return `<tr><td>${fmtDate(x.d, false)}</td><td>${esc(st ? st.n : x.id)}<br><span class="muted">${x.q.toLocaleString()}주 × ${fmtPx(st, x.ps)}, 세금 ${fmtPx(st, x.tax)}</span></td><td class="r num up">+${fmtPx(st, x.net)}</td></tr>`; }).join('')}</tbody></table></div></section>` : ''}
-        <section class="card ao7"><div class="card-h"><h2>환전 내역</h2><small>최근 20건</small></div>
-          ${(S.fxLog || []).length ? `<div class="tbl-wrap"><table class="trades"><thead><tr><th>날짜</th><th>방향</th><th class="r">낸 금액</th><th class="r">받은 금액</th></tr></thead><tbody>${S.fxLog.slice(0, 20).map(x => `<tr><td>${fmtDate(x.dt, false)}</td><td>${x.dir === 'u2k' ? '달러 → 원화' : '원화 → 달러'}<br><span class="muted">1달러 = ${fmtFX(x.rate)}원</span></td><td class="r num">${x.dir === 'u2k' ? fmtUSD(x.from) : fmtKRW(x.from)}</td><td class="r num">${x.dir === 'u2k' ? fmtKRW(x.to) : fmtUSD(x.to)}</td></tr>`).join('')}</tbody></table></div>` : '<p class="empty">환전 내역이 없습니다.</p>'}
+        <section class="card ao7"><div class="card-h"><h2>예약 주문</h2><small>대기 ${ordersOf().length}건</small></div>
+          ${(S.orders || []).length ? `<div class="olist">${(S.orders || []).slice(0, 20).map(o => orderRowHTML(o, true)).join('')}</div>` : '<p class="empty">걸어 둔 예약 주문이 없습니다. 종목을 열고 "예약 주문"을 고르면 걸 수 있습니다.</p>'}
         </section>
       </div>
       <div class="as-b">
@@ -2250,8 +2250,8 @@ function renderAssets(){
         <section class="card ao3"><div class="card-h"><h2>지수와 비교</h2><small>10월 23일 종가 대비</small></div>
           <div class="bench">${benchRow('내 순자산', ret, 'var(--brass)')}${benchRow('한국 300', kRet, '#6E8BFF')}${benchRow('미국 300', uRet, '#8A93A6')}</div>
         </section>
-        <section class="card ao4"><div class="card-h"><h2>예약 주문</h2><small>대기 ${ordersOf().length}건</small></div>
-          ${(S.orders || []).length ? `<div class="olist">${(S.orders || []).slice(0, 20).map(o => orderRowHTML(o, true)).join('')}</div>` : '<p class="empty">걸어 둔 예약 주문이 없습니다. 종목을 열고 "예약 주문"을 고르면 걸 수 있습니다.</p>'}
+        <section class="card ao4"><div class="card-h"><h2>환전 내역</h2><small>최근 20건</small></div>
+          ${(S.fxLog || []).length ? `<div class="tbl-wrap"><table class="trades"><thead><tr><th>날짜</th><th>방향</th><th class="r">낸 금액</th><th class="r">받은 금액</th></tr></thead><tbody>${S.fxLog.slice(0, 20).map(x => `<tr><td>${fmtDate(x.dt, false)}</td><td>${x.dir === 'u2k' ? '달러 → 원화' : '원화 → 달러'}<br><span class="muted">1달러 = ${fmtFX(x.rate)}원</span></td><td class="r num">${x.dir === 'u2k' ? fmtUSD(x.from) : fmtKRW(x.from)}</td><td class="r num">${x.dir === 'u2k' ? fmtKRW(x.to) : fmtUSD(x.to)}</td></tr>`).join('')}</tbody></table></div>` : '<p class="empty">환전 내역이 없습니다.</p>'}
         </section>
       </div>
     </div>
