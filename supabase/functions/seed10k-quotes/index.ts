@@ -126,11 +126,14 @@ export async function naverNews(name: string): Promise<News[] | null> {
 
 /* Yahoo Finance 검색의 뉴스 (영어, 미국 종목) */
 export async function yahooNews(sym: string): Promise<News[]> {
-  const r = await fetch(`https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(sym)}&quotesCount=0&newsCount=${NEWS_N}&enableFuzzyQuery=false`,
+  const r = await fetch(`https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(sym)}&quotesCount=0&newsCount=${NEWS_N * 4}&enableFuzzyQuery=false`,
     { headers: { "User-Agent": UA, "Accept": "application/json" } });
   if (!r.ok) throw new Error(`yahoo news HTTP ${r.status}`);
   const j = await r.json();
-  return (j.news || []).slice(0, NEWS_N).map((n: Record<string, unknown>) => {
+  // Yahoo 검색 뉴스에는 다른 종목 기사도 섞인다. 관련 종목(relatedTickers)에 이 종목이 있는 기사만 쓴다.
+  const want = new Set([sym, sym.replace("-", "."), sym.replace(".", "-")]);
+  const rel = (j.news || []).filter((n: Record<string, unknown>) => ((n.relatedTickers as string[] | undefined) || []).some((t) => want.has(t)));
+  return rel.slice(0, NEWS_N).map((n: Record<string, unknown>) => {
     const res = ((n.thumbnail as { resolutions?: { url: string; width: number }[] } | undefined)?.resolutions || []).slice().sort((a, b) => a.width - b.width);
     const img = (res.find((x) => x.width >= 120) || res[res.length - 1])?.url;
     return { t: clean(String(n.title || "")), u: String(n.link || ""), s: String(n.publisher || ""), at: Number(n.providerPublishTime) || 0, ...(img ? { img } : {}) };
