@@ -670,7 +670,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.1.0';
+const VERSION = '1.1.1';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -1182,6 +1182,7 @@ function orderKindLabel(o){ return o.side === 'buy' ? '예약 매수' : '예약 
 const sellKind = (px, cur) => px >= cur ? 'ge' : 'le';
 function orderCondText(o){ const s = BY_ID[o.id]; return `${fmtPx(s, o.px)} ${o.kind === 'le' ? '이하' : '이상'}`; }
 function orderExpText(o){ return o.exp ? `${fmtDate(zoneParts('Asia/Seoul', new Date(o.exp)).date, false)}까지` : `${Math.max(0, o.expD - S.day)}거래일 남음`; }
+const ORDER_LAG_MS = 60e3;   // 예약 주문 판정 시작: 주문 시각보다 최대 이만큼 앞선 시세까지 (화면 가격은 최대 1분 묵을 수 있다)
 function placeOrder(id, side, kind, px, q){
   const s = BY_ID[id];
   if (S.over) return toast('파산해서 주문할 수 없습니다', true);
@@ -1192,8 +1193,9 @@ function placeOrder(id, side, kind, px, q){
   if (!(px > 0)) return toast('조건 가격을 입력하세요', true);
   if (q < 1) return toast('수량을 1주 이상 입력하세요', true);
   const o = {n:Date.now().toString(36) + Math.random().toString(36).slice(2, 6), id, side, kind:side === 'buy' ? 'le' : kind, px, q, at:Date.now(), st:'wait'};
-  // 이 시각보다 뒤의 시세만 판정한다. 실제 시각(at)을 쓰면 한국처럼 늦게 오는 시세는 주문 뒤 약 20분 동안 전부 무시된다
-  if (isLive()){ const ft = lastPriceTs(id); o.from = ft > 0 && ft <= o.at ? ft : o.at; }
+  // 이 시각보다 뒤의 시세만 판정한다: 주문 때 보이던 가격의 시각. 단 주문 시각보다 1분(ORDER_LAG_MS) 넘게 앞설 수는 없다.
+  // (장이 끝난 뒤나 시세가 늦게 들어온 종목에 건 주문이, 주문 전에 있었던 가격으로 나중에 체결되지 않게)
+  if (isLive()){ const ft = lastPriceTs(id); o.from = Math.max(o.at - ORDER_LAG_MS, ft > 0 ? Math.min(ft, o.at) : 0); }
   if (side === 'sell'){
     const held = S.pos[id] ? S.pos[id].q : 0;
     if (held < 1) return toast('보유하지 않은 종목은 예약 매도할 수 없습니다', true);
@@ -1269,8 +1271,8 @@ async function processOrdersLive(){
     const nowMs = Date.now(), notes = [], hits = [];
     for (const o of wait){
       const end = Math.min(nowMs, o.exp || nowMs);
-      // 기준 시각: 주문 때 보이던 가격의 시각. 기준 시각이 없는 옛 주문은 그때의 시세 지연(한국 20분, 미국 2분)만큼 앞당긴다
-      const from = o.from || (o.at - (BY_ID[o.id].m === 'KR' ? 20 : 2) * 60e3);
+      // 기준 시각: 주문 때 보이던 가격의 시각. 이미 걸려 있던 주문도 주문 시각보다 1분 넘게 앞선 가격으로는 체결하지 않는다
+      const from = Math.max(o.from || 0, o.at - ORDER_LAG_MS);
       const pt = pricePath(o.id, from, end).find(x => o.kind === 'le' ? x.lo <= o.px : x.hi >= o.px);
       // 체결가: 조건 가격. 봉 전체가 조건 너머에 있으면(갭) 그 봉에서 가장 가까운 가격
       if (pt) hits.push({o, t:pt.t, p:o.kind === 'le' ? Math.min(o.px, pt.hi) : Math.max(o.px, pt.lo)});
