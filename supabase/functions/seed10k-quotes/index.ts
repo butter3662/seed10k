@@ -38,7 +38,7 @@
 
 import NAMES from "./names.ts";
 
-type Row = { id: string; ysym: string; m: string; updated_at?: string | null };
+type Row = { id: string; ysym: string; m: string; t?: string | null; updated_at?: string | null };
 type DailyRow = { id: string; d: string; c: number; l?: number; h?: number };
 type Quote = {
   id: string; ysym: string; m: string;
@@ -564,7 +564,7 @@ export async function run(at = new Date()) {
   }
   // [1분 작업]
   if (Date.now() - markAt("_run") < MIN_GAP_MS) return { skipped: "1분 작업은 방금 함", act, live };
-  const all: Row[] = await (await rest("seed10k_quotes?select=id,ysym,m,updated_at", { headers: restHeaders() })).json();
+  const all: Row[] = await (await rest("seed10k_quotes?select=id,ysym,m,t,updated_at", { headers: restHeaders() })).json();
   // 게임 종목 이름표(names.ts)에 있는데 시세 표에 없는 종목은 여기서 등록한다 (종목을 늘릴 때 SQL을 따로 돌리지 않아도 되게)
   const have = new Set(all.map((r) => r.id));
   const add = Object.entries(NAMES).filter(([id, v]) => !have.has(id) && v.y).map(([id, v]) => ({ id, ysym: v.y, m: v.m }));
@@ -596,9 +596,11 @@ export async function run(at = new Date()) {
   const want = all.filter((r) => (r.m === "KR" && act.KR) || (r.m === "US" && act.US) || (r.m === "FX" && act.FX) || fresh(r));
   if (!want.length) return { skipped: "장 시간이 아님", act, live, added: add.length, news, dart, divs, close };
   const { ok, failed } = await fetchAll(want);
-  // 네이버 현재가가 최근에 들어온 시장의 종목은 야후의 최신가(p, t, d)와 일별 가격을 쓰지 않고 5분 봉만 저장한다
+  // 네이버 현재가가 최근에 들어온 시장의 종목은 야후의 최신가(p, t, d)와 일별 가격을 쓰지 않고 5분 봉만 저장한다.
+  // 단 그 종목의 저장된 체결 시각이 야후 시각보다 2분 넘게 오래됐으면(네이버가 그 종목만 안 주는 경우) 야후 값을 쓴다
   const nvFresh = (m: string) => Date.now() - (Date.parse(all.find((r) => r.id === "_nv" + m)?.updated_at || "") || 0) < NV_FRESH_MS;
-  const byNaver = (q: Quote) => (q.m === "KR" || q.m === "US") && !!NAMES[q.id]?.v && nvFresh(q.m);
+  const tOf = new Map(all.map((r) => [r.id, Date.parse(r.t || "") || 0]));
+  const byNaver = (q: Quote) => (q.m === "KR" || q.m === "US") && !!NAMES[q.id]?.v && nvFresh(q.m) && (tOf.get(q.id) || 0) >= Date.parse(q.t) - 120_000;
   // 한 번에 보내는 줄들은 열 구성이 같아야 하므로(PostgREST) 두 무리로 나눠 보낸다
   const strip = ({ dl: _l, dh: _h, ...q }: Quote) => q;
   for (const group of [ok.filter((q) => !byNaver(q)).map(strip), ok.filter(byNaver).map((q) => (({ p: _p, t: _t, d: _d, ...r }) => r)(strip(q)))]) {

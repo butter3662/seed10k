@@ -670,7 +670,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.2.0';
+const VERSION = '1.2.1';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -1877,7 +1877,9 @@ async function pollHot(){
     }
     if (!changed) return;
     applyQuotes();
-    liveTick();
+    // 화면만 다시 그린다. 저장(서버 기록 올리기)과 이자·담보 확인은 1분 읽기(liveTick)에서 한다 (7초마다 서버에 기록을 올리지 않게)
+    renderHeader(); renderTab();
+    if (UI.sheet && (UI.scrub === null || UI.scrub === undefined)) renderSheet();
     processOrdersLive();
   } catch(e){ /* 다음 1분 읽기에서 다시 맞춘다 */ }
   finally { hotBusy = false; }
@@ -3162,6 +3164,10 @@ function go(tab){
   window.scrollTo(0, 0);
 }
 function renderTab(){
+  // 탭 안의 입력칸(대출 금액, 검색 등)에 입력하는 중이면 다시 그리지 않는다 (입력이 지워지지 않게). 다음 갱신 때 그린다
+  const a = document.activeElement;
+  const av = a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) ? a.closest('.view') : null;
+  if (av && av.id === 'v-' + UI.tab) return;
   ({home:renderHome, market:renderMarket, assets:renderAssets, loans:renderLoans, info:renderInfo})[UI.tab]();
   if (UI.tab === 'assets') refreshRanks(false);
 }
