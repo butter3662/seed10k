@@ -10,19 +10,15 @@ jobs:
       - run: |
           U=https://ictjkqbbcaigdvlysdaw.supabase.co; K=sb_publishable_C7jZEKJn_nF2Y3Ngq5f80Q_RA5Wrfux
           for n in 1 2 3 4 5 6; do
-            curl -s -m 100 -X POST "$U/functions/v1/seed10k-quotes" -H "apikey: $K" -H "Content-Type: application/json" -d '{}' -o /tmp/r.json -w "%{http_code}\n" || true
+            curl -s -m 100 -X POST "$U/functions/v1/seed10k-quotes" -H "apikey: $K" -H "Content-Type: application/json" -d '{}' -o /tmp/r.json -w "%{http_code}"
+            echo; head -c 300 /tmp/r.json; echo
             if ! grep -q '방금 실행됨' /tmp/r.json; then break; fi
             sleep 20
           done
-          N=$(curl -s "https://raw.githubusercontent.com/butter3662/seed10k/main/supabase/functions/seed10k-quotes/index.ts" | grep -c fillKrClose || true)
-          echo "::notice title=raw의 fillKrClose 수::$N"
-          python3 - <<'PY'
-          import json
-          s = open('/tmp/r.json').read()
-          try:
-              j = json.loads(s)
-              print('::notice title=close::' + json.dumps(j.get('close'), ensure_ascii=False)[:1500])
-              print('::notice title=전체::' + json.dumps({k: v for k, v in j.items() if k not in ('news', 'dart', 'divs', 'close')}, ensure_ascii=False)[:800])
-          except Exception:
-              print('::notice title=원문::' + s[:1500])
-          PY
+          python3 -c "
+import json; s=open('/tmp/r.json').read()
+try:
+    j=json.loads(s); print('::notice title=close::'+json.dumps(j.get('close'), ensure_ascii=False)[:1500]); print('::notice title=전체::'+json.dumps({k:v for k,v in j.items() if k not in ('news','dart','divs','close')}, ensure_ascii=False)[:800])
+except Exception as e: print('::notice title=원문::'+s[:1500])
+          "
+          curl -s "https://raw.githubusercontent.com/butter3662/seed10k/main/supabase/functions/seed10k-quotes/index.ts" | grep -c fillKrClose | sed 's/^/::notice title=raw의 fillKrClose 수::/'
