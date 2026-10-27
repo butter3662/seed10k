@@ -1,32 +1,28 @@
-name: 미국 시세 확인 (임시)
+name: yfinance 날짜 확인 (임시)
 on:
   push:
     branches: [tmp-yahoo-test]
 jobs:
   check:
     runs-on: ubuntu-24.04
-    timeout-minutes: 4
+    timeout-minutes: 6
     steps:
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - run: pip install --quiet yfinance pandas
       - name: 확인
-        env:
-          U: https://ictjkqbbcaigdvlysdaw.supabase.co
-          K: sb_publishable_C7jZEKJn_nF2Y3Ngq5f80Q_RA5Wrfux
-          S: https://butter3662.github.io/seed10k
         run: |
-          for k in 1 2; do
-            curl -s -m 30 "$S/data/prices.json?t=$(date +%s)" -o /tmp/p$k
-            curl -s -m 30 "$U/rest/v1/seed10k_quotes?select=id,m,p,t,d,updated_at&m=eq.US&order=id" -H "apikey: $K" -o /tmp/q$k
-            curl -s -m 30 "$U/rest/v1/seed10k_daily?select=id,d,c&id=like.US*" -H "apikey: $K" -o /tmp/d$k
-            [ $k = 1 ] && sleep 70
-          done
           python3 - <<'PY'
-          import json
-          for k in (1, 2):
-              p = json.load(open(f'/tmp/p{k}')); q = json.load(open(f'/tmp/q{k}')); d = json.load(open(f'/tmp/d{k}'))
-              us = p['dates']['US']; s = p['s']
-              filled = [r for r in q if r['p'] is not None]
-              print(f"::notice title=조회 {k}::prices.json updated {p['updated']}, US 날짜 {us[-3:]}, AAPL {s['US:AAPL'][-3:]}, NVDA {s['US:NVDA'][-3:]}, TSLA {s['US:TSLA'][-3:]} | quotes US 값있음 {len(filled)}개 {[ (r['id'], r['p'], r['d']) for r in filled[:3]]} | daily US {len(d)}개 {d[:3]}")
-          a, b = json.load(open('/tmp/p1')), json.load(open('/tmp/p2'))
-          ch = [i for i in a['s'] if i.startswith('US:') and a['s'][i][-1] != b['s'].get(i, [None])[-1]]
-          print(f"::notice title=70초 사이 prices.json 미국 값 변화::{len(ch)}개 {ch[:5]}")
+          import yfinance as yf, datetime as dt
+          now = dt.datetime.now(dt.timezone.utc)
+          for label, kw in [("start만", dict(start="2026-10-23")), ("start+end(+2일)", dict(start="2026-10-23", end=(now + dt.timedelta(days=2)).strftime("%Y-%m-%d"))), ("period 10d", dict(period="10d"))]:
+              df = yf.download(["AAPL", "NVDA", "005930.KS", "KRW=X"], group_by="ticker", auto_adjust=False, actions=False, progress=False, threads=True, interval="1d", **kw)
+              out = []
+              for s in ["AAPL", "NVDA", "005930.KS", "KRW=X"]:
+                  try:
+                      c = df[s]["Close"].dropna()
+                      out.append(f"{s}: {[ (i.strftime('%m-%d'), round(float(v),2)) for i, v in c.tail(3).items()]}")
+                  except Exception as e: out.append(f"{s}: ERR {e}")
+              print(f"::notice title={label} (yfinance {yf.__version__}, now {now:%m-%d %H:%M}Z)::" + " | ".join(out))
           PY
