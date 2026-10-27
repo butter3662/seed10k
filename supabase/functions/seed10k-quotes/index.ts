@@ -62,7 +62,7 @@ function localDate(tz: string, sec: number) {
 
 /* 야후 차트 API에서 최신가와 그날 5분 봉을 받는다 */
 export async function fetchQuote(row: Row): Promise<Quote> {
-  const path = `/v8/finance/chart/${encodeURIComponent(row.ysym)}?range=1d&interval=5m&includePrePost=false`;
+  const path = `/v8/finance/chart/${encodeURIComponent(row.ysym)}?range=1d&interval=5m&includePrePost=false&events=split`;
   let lastErr = "";
   for (const host of ["query1.finance.yahoo.com", "query2.finance.yahoo.com"]) {
     try {
@@ -89,6 +89,8 @@ export async function fetchQuote(row: Row): Promise<Quote> {
         }
       }
       const sec = meta.regularMarketTime || (it.length ? it[it.length - 1] : Math.floor(Date.now() / 1000));
+      const spl = Object.values(res.events?.splits || {}) as { date: number; numerator: number; denominator: number }[];
+      for (const x of spl) if (typeof x?.date === "number" && x.numerator > 0 && x.denominator > 0) todaySplits.push([row.id, [localDate(tz, x.date), x.numerator, x.denominator]]);
       return {
         id: row.id, ysym: row.ysym, m: row.m,
         p: row.m === "FX" ? Math.round(meta.regularMarketPrice * 100) / 100 : rnd(meta.regularMarketPrice),
@@ -103,6 +105,7 @@ export async function fetchQuote(row: Row): Promise<Quote> {
   throw new Error(`${row.ysym}: ${lastErr}`);
 }
 
+const todaySplits: [string, Split][] = [];   // 이번 실행의 1분 시세에서 본 분할
 /* 여러 종목을 POOL개씩 동시에 받는다 */
 export async function fetchAll(rows: Row[]) {
   const ok: Quote[] = [], failed: string[] = [];
@@ -196,8 +199,10 @@ export async function refreshNews() {
 const DIV_EVERY_MS = 20 * 3600_000;   // 이보다 오래된 종목부터 다시 받는다
 const DIV_PER_RUN = 10;               // 한 번 불릴 때 받는 종목 수
 
+type Split = [string, number, number];   // [분할일(거래소 날짜), 분자, 분모]
+const lastSplits = new Map<string, Split[]>();   // fetchDivs가 함께 받은 분할 기록
 export async function fetchDivs(row: Row): Promise<[string, number][]> {
-  const path = `/v8/finance/chart/${encodeURIComponent(row.ysym)}?range=2y&interval=1d&events=div`;
+  const path = `/v8/finance/chart/${encodeURIComponent(row.ysym)}?range=2y&interval=1d&events=div%7Csplit`;
   let lastErr = "";
   for (const h of ["query1.finance.yahoo.com", "query2.finance.yahoo.com"]) {
     try {
@@ -212,6 +217,11 @@ export async function fetchDivs(row: Row): Promise<[string, number][]> {
         .filter((x) => typeof x?.date === "number" && typeof x?.amount === "number" && x.amount > 0)
         .map((x) => [localDate(tz, x.date), row.m === "KR" ? Math.round(x.amount * 100) / 100 : Math.round(x.amount * 1e6) / 1e6] as [string, number])
         .sort((a, b) => (a[0] < b[0] ? -1 : 1));
+      const sp: Record<string, { date: number; numerator: number; denominator: number }> = res.events?.splits || {};
+      lastSplits.set(row.id, Object.values(sp)
+        .filter((x) => typeof x?.date === "number" && x.numerator > 0 && x.denominator > 0)
+        .map((x) => [localDate(tz, x.date), x.numerator, x.denominator] as Split)
+        .sort((a, b) => (a[0] < b[0] ? -1 : 1)));
       return out;
     } catch (e) { lastErr = String((e as Error).message || e); }
   }
@@ -221,7 +231,7 @@ export async function fetchDivs(row: Row): Promise<[string, number][]> {
 export async function refreshDivs(all: Row[]) {
   const syms = all.filter((r) => r.m === "KR" || r.m === "US");
   const have: { id: string; at: string | null }[] = await (await rest("seed10k_divs?select=id,at", { headers: restHeaders() })).json();
-  const atOf = new Map(have.map((h) => [h.id, h.at ? Date.parse(h.at) : 0]));
+  const atOf = new Map(have.filter((h) => !h.id.endsWith("#split")).map((h) => [h.id, h.at ? Date.parse(h.at) : 0]));
   const due = syms.filter((r) => Date.now() - (atOf.get(r.id) || 0) > DIV_EVERY_MS)
     .sort((a, b) => (atOf.get(a.id) || 0) - (atOf.get(b.id) || 0)).slice(0, DIV_PER_RUN);
   if (!due.length) return { done: 0 };
@@ -240,10 +250,12 @@ export async function refreshDivs(all: Row[]) {
     });
   }
   if (ok.length) {
+    // 분할 기록은 같은 표에 'id#split' 줄로 둔다 (표를 새로 만들지 않으려고)
+    const sp = ok.map((r) => ({ id: r.id + "#split", at: r.at, items: lastSplits.get(r.id) || [] }));
     await rest("seed10k_divs?on_conflict=id", {
       method: "POST",
       headers: restHeaders({ Prefer: "resolution=merge-duplicates,return=minimal" }),
-      body: JSON.stringify(ok),
+      body: JSON.stringify([...ok, ...sp]),
     });
   }
   return { done: ok.length, errs };
@@ -408,6 +420,19 @@ export async function run(at = new Date()) {
       headers: restHeaders({ Prefer: "resolution=merge-duplicates,return=minimal" }),
       body: JSON.stringify(ok.slice(k, k + 100).map(({ dl: _l, dh: _h, ...q }) => q)),
     });
+  }
+  // 오늘 분할이 보이면 분할 기록 줄에 바로 더한다 (하루 한 번 수집을 기다리지 않게)
+  if (todaySplits.length) {
+    const ids = [...new Set(todaySplits.map(([id]) => id))];
+    const cur: { id: string; items: Split[] | null }[] = await (await rest(`seed10k_divs?select=id,items&id=in.(${ids.map((i) => encodeURIComponent(`"${i}#split"`)).join(",")})`, { headers: restHeaders() })).json();
+    const curMap = new Map(cur.map((r) => [r.id.slice(0, -6), r.items || []]));
+    const rows = ids.map((id) => {
+      const items = [...(curMap.get(id) || [])];
+      for (const [i2, sp] of todaySplits) if (i2 === id && !items.some((x) => x[0] === sp[0])) items.push(sp);
+      return { id: id + "#split", at: new Date().toISOString(), items: items.sort((a, b) => (a[0] < b[0] ? -1 : 1)) };
+    });
+    await rest("seed10k_divs?on_conflict=id", { method: "POST", headers: restHeaders({ Prefer: "resolution=merge-duplicates,return=minimal" }), body: JSON.stringify(rows) });
+    todaySplits.length = 0;
   }
   // 거래일별 마지막 가격(장이 끝나면 그날 종가)도 남긴다. GitHub 수집이 며칠 멈춰도 일별 종가가 비지 않게.
   // 그날 저가·고가(l, h)도 남긴다 (예약 주문 판정용). 표에 l, h 열이 아직 없으면 종가만 남긴다
