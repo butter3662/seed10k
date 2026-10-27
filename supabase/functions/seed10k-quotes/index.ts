@@ -410,9 +410,11 @@ export async function run(at = new Date()) {
   try { dart = await refreshDart(); } catch (e) { dart = { error: String((e as Error).message || e) }; }
   try { divs = await refreshDivs(all); } catch (e) { divs = { error: String((e as Error).message || e) }; }
 
-  if (!act.FX) return { skipped: "장 시간이 아님", act, added: add.length, news, dart, divs };
-
-  const want = all.filter((r) => (r.m === "KR" && act.KR) || (r.m === "US" && act.US) || (r.m === "FX" && act.FX));
+  // 한 번도 시세를 받지 못한 종목(새로 등록된 종목)은 장 시간이 아니어도 한 번 받는다.
+  // 장이 끝난 뒤 종목을 늘려도 그날 5분 봉과 종가가 바로 채워지게 한다.
+  const fresh = (r: Row) => !r.updated_at && (r.m === "KR" || r.m === "US" || r.m === "FX") && !!r.ysym && r.ysym !== "-";
+  const want = all.filter((r) => (r.m === "KR" && act.KR) || (r.m === "US" && act.US) || (r.m === "FX" && act.FX) || fresh(r));
+  if (!want.length) return { skipped: "장 시간이 아님", act, added: add.length, news, dart, divs };
   const { ok, failed } = await fetchAll(want);
   for (let k = 0; k < ok.length; k += 100) {
     await rest("seed10k_quotes?on_conflict=id", {
