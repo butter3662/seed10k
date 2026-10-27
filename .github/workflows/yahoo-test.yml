@@ -1,16 +1,25 @@
-name: 거래량 확인 (임시)
+name: 배당 데이터 확인 (임시)
 on:
   push:
     branches: [tmp-yahoo-test]
 jobs:
   check:
     runs-on: ubuntu-24.04
-    timeout-minutes: 3
+    timeout-minutes: 4
     steps:
       - run: |
-          for s in KR_005930 US_AAPL; do
-            curl -s -m 30 "https://butter3662.github.io/seed10k/data/c/$s.json?t=$(date +%s)" -o /tmp/c.json
-            python3 -c "
-          import json; d=json.load(open('/tmp/c.json'))['d1']; v=d.get('v')
-          print('::notice title=$s::종가 %d개, 거래량 %s, 마지막 3일 %s' % (len(d['c']), (len(v) if v else '없음'), list(zip(d['c'][-3:], (v or [None]*3)[-3:]))))"
+          for s in 005930.KS 000660.KS 035420.KS 105560.KS AAPL MSFT KO NVDA; do
+            c=$(curl -s -m 30 -A "Mozilla/5.0" -o /tmp/d -w "%{http_code}" "https://query1.finance.yahoo.com/v8/finance/chart/$s?range=2y&interval=1d&events=div")
+            python3 - "$s" "$c" <<'PY'
+          import json, sys, datetime
+          s, code = sys.argv[1], sys.argv[2]
+          try:
+              r = json.load(open('/tmp/d'))['chart']['result'][0]
+              dv = (r.get('events') or {}).get('dividends') or {}
+              rows = sorted(dv.values(), key=lambda x: x['date'])
+              txt = ', '.join(f"{datetime.datetime.utcfromtimestamp(x['date']).strftime('%Y-%m-%d')} {x['amount']}" for x in rows[-5:])
+              print(f"::notice title={s}::HTTP {code}, 2년 배당 {len(rows)}건, 최근: {txt}, 통화 {r['meta'].get('currency')}")
+          except Exception as e:
+              print(f"::notice title={s}::HTTP {code} 실패 {e}")
+          PY
           done
