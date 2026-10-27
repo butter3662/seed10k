@@ -332,6 +332,8 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
 .order{border:1px solid var(--rule);border-radius:var(--r-md);padding:12px;display:grid;gap:10px}
 .order .seg{width:100%;grid-auto-columns:1fr}
 /* 예약 주문 */
+.rsv-warn{color:var(--warn);font-size:13px;font-weight:650;margin:2px 0 6px}
+.rsv-warn:empty{display:none}
 .rsv-d{margin:-2px 0 0;font-size:12.5px;line-height:1.5}
 .rsv-l{font-size:12.5px;font-weight:700;color:var(--ink-2);margin:2px 0 -4px}
 .olist{display:grid;gap:0;margin-top:4px}
@@ -668,7 +670,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.15.3';
+const VERSION = '1.0.0';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -1167,14 +1169,16 @@ const NEWS_T = {
 function fillT(t, o){ return t.replace('{n}', o.n || '').replace('{k}', o.k || ''); }
 
 /* ───────── 예약 주문 ─────────
-   예약 매수: 가격이 정한 값 이하가 되면 산다.  예약 매도: 익절(이상) 또는 손절(이하)이 되면 판다.
+   예약 매수: 가격이 정한 값 이하가 되면 산다.  예약 매도: 정한 값이 현재가보다 높으면 그 값 이상, 낮으면 그 값 이하가 되면 판다.
    체결가는 조건을 처음 만족한 시세(정한 값이 아님). 유효기간은 실제 시세 30일, 시뮬레이션 30거래일.
    실제 시세 모드는 주문한 뒤의 5분 봉·일별 종가·최신가를 차례로 보며 판정하므로, 꺼 둔 동안 닿았어도 다시 열 때 체결된다.
    돈과 보유 수량은 체결할 때 확인한다. 한국 주식은 원화가 모자라면 달러를 바꿔 채운다. */
 const ORDER_MAX = 30, ORDER_DAYS = 30;
 const condMet = (o, p) => o.kind === 'le' ? p <= o.px : p >= o.px;
 function ordersOf(id){ return (S.orders || []).filter(o => o.st === 'wait' && (!id || o.id === id)); }
-function orderKindLabel(o){ return o.side === 'buy' ? '예약 매수' : o.kind === 'ge' ? '익절 매도' : '손절 매도'; }
+function orderKindLabel(o){ return o.side === 'buy' ? '예약 매수' : '예약 매도'; }
+/* 예약 매도의 조건 방향: 조건 가격이 현재가 이상이면 그 값까지 오르면, 아래면 그 값까지 내려가면 판다 */
+const sellKind = (px, cur) => px >= cur ? 'ge' : 'le';
 function orderCondText(o){ const s = BY_ID[o.id]; return `${fmtPx(s, o.px)} ${o.kind === 'le' ? '이하' : '이상'}`; }
 function orderExpText(o){ return o.exp ? `${fmtDate(zoneParts('Asia/Seoul', new Date(o.exp)).date, false)}까지` : `${Math.max(0, o.expD - S.day)}거래일 남음`; }
 function placeOrder(id, side, kind, px, q){
@@ -2345,7 +2349,7 @@ function renderInfo(){
         <li><b>실제 시세 모드</b>: 실제 주가를 따라갑니다. 장중에는 1분마다 시세를 받습니다. 미국 시세는 약 1~2분, 한국 시세는 약 20분 늦습니다(Yahoo Finance가 한국 시세를 20분 늦게 제공).</li>
         <li>각 시장의 <b>정규장</b>에만 거래할 수 있습니다. 한국 ${sessInKST('KR')}, 미국 ${sessInKST('US')}(한국 시각, 서머타임 반영). 공휴일은 그날 시세가 들어오지 않는 것으로 판단합니다.</li>
         <li>체결가는 마지막으로 수집된 가격입니다. 화면의 시세 시각을 확인하세요.</li>
-        <li><b>예약 주문</b>: 예약 매수는 가격이 정한 값 이하가 되면, 예약 매도는 정한 값 이상(익절) 또는 이하(손절)가 되면 체결됩니다. 체결가는 조건에 처음 닿은 시세이고, 게임을 꺼 둔 동안 닿았어도 다시 열 때 그 시각의 시세로 체결됩니다. 돈과 보유 수량은 체결할 때 확인하며, 유효기간은 ${ORDER_DAYS}일입니다.</li>
+        <li><b>예약 주문</b>: 예약 매수는 가격이 정한 값 이하가 되면, 예약 매도는 정한 값이 걸 때의 현재가보다 높으면 그 값 이상으로 오를 때, 낮으면 그 값 이하로 내려갈 때 체결됩니다. 체결가는 조건에 처음 닿은 시세이고, 게임을 꺼 둔 동안 닿았어도 다시 열 때 그 시각의 시세로 체결됩니다. 돈과 보유 수량은 체결할 때 확인하며, 유효기간은 ${ORDER_DAYS}일입니다.</li>
         <li>대출 이자는 주말을 포함해 날마다 붙고, 신용대출 만기는 ${META.creditTerm}일입니다.</li>` : `
         <li><b>시뮬레이션 모드</b>: 다음 거래일을 누를 때마다 하루치 시세가 시뮬레이션됩니다. 주말은 건너뛰고, 공휴일은 따로 반영하지 않습니다.</li>
         <li>한국 주식은 하루 ±30% 가격제한폭과 호가 단위를 적용합니다.</li>`}
@@ -2623,8 +2627,7 @@ function mgCardHTML(){
     <li>문제를 띄우는 순간 1회를 쓴 것으로 셉니다. 창을 닫았다 열면 같은 문제가 다시 나옵니다.</li>
     <li>포인트는 투자에 쓸 수 있지만 수익률과 랭킹 순자산에서는 빠집니다.</li></ul></div>`};
   const label = S.over ? '파산해서 할 수 없습니다' : m.cur ? '풀던 문제 이어서' : left > 0 ? '문제 풀기' : '오늘은 끝 (내일 다시)';
-  return `<div class="card-h"><h2>차트 맞히기</h2><small>${isLive() ? '오늘' : '이번 거래일'} ${m.n}/${MG.perDay}문제 · ${fmtUSD(m.won, 0)}/${fmtUSD(MG.cap, 0)}</small></div>
-    <p class="mg-desc">가린 차트를 보고 ${MG.ahead}거래일 뒤를 맞히면 <b>${fmtUSD(MG.prize, 0)} 포인트</b>. ${infoBtn('mg', '규칙')}</p>
+  return `<div class="card-h"><h2>차트 맞히기 ${infoBtn('mg')}</h2><small>${isLive() ? '오늘' : '이번 거래일'} ${m.n}/${MG.perDay}문제 · ${fmtUSD(m.won, 0)}/${fmtUSD(MG.cap, 0)}</small></div>
     <div class="mg-foot"><span class="muted">받은 포인트 합계 <b class="num">${fmtUSD(S.pts || 0)}</b></span><button class="btn solid" id="mgGo" ${S.over || (!m.cur && left <= 0) ? 'disabled' : ''}>${label}</button></div>`;
 }
 let mgBusy = false;
@@ -2648,12 +2651,10 @@ async function mgStart(){
 function mgShow(){
   const m = mgToday(), q = m.cur; if (!q) return;
   const close = showModal(`<h2>차트 맞히기 <small class="muted">${m.n}/${MG.perDay}</small></h2>
-    <p class="muted" style="margin:0 0 6px">어떤 종목인지는 고른 뒤에 공개됩니다. 위는 종가(첫날을 100으로 맞춘 값), 아래는 거래량입니다.</p>
     <div class="mg-chart">${mgSVG(q, false)}</div>
     <p style="margin:8px 0 0">${mgAhead(q)}거래일 뒤 종가는 점 찍힌 마지막 날 종가보다…</p>
     <div class="acts"><button class="btn mg-up" data-mgans="up">오른다</button><button class="btn mg-dn" data-mgans="dn">내린다</button></div>
-    <div class="acts" style="margin-top:6px"><button class="btn" data-close>닫기</button></div>
-    <p class="muted" style="margin:8px 0 0;font-size:12px">닫았다가 다시 열면 같은 문제가 나옵니다.</p>`);
+    <div class="acts" style="margin-top:6px"><button class="btn" data-close>닫기</button></div>`);
   $$('[data-mgans]').forEach(b => b.onclick = () => mgAnswer(b.dataset.mgans, close));
 }
 function mgAnswer(ans, close){
@@ -3003,7 +3004,7 @@ function renderOrderResv(soft){
   if (!soft && typingOrder()) soft = true;
   const P = S.pos[id], side = UI.side, krw = s.cur === 'KRW', held = P ? P.q : 0;
   const cur = price(id);
-  const kind = side === 'buy' ? 'le' : (UI.rkind || 'ge');
+  const kind = side === 'buy' ? 'le' : sellKind(parseFloat(UI.rpx == null ? cur : UI.rpx) || 0, cur);
   const pxStr = UI.rpx == null ? String(cur) : UI.rpx;
   const px = parseFloat(pxStr) || 0;
   const q = Math.max(0, Math.floor(UI.qty) || 0);
@@ -3020,16 +3021,18 @@ function renderOrderResv(soft){
   else if (ordersOf().length >= ORDER_MAX) err = `예약 주문은 ${ORDER_MAX}개까지 걸 수 있습니다.`;
   const desc = side === 'buy' ? `가격이 ${fmtPx(s, px)} 이하로 내려오면 삽니다.`
     : kind === 'ge' ? `가격이 ${fmtPx(s, px)} 이상으로 오르면 팝니다.` : `가격이 ${fmtPx(s, px)} 이하로 내려가면 팝니다.`;
-  const label = side === 'buy' ? '예약 매수 걸기' : kind === 'ge' ? '익절 예약 걸기' : '손절 예약 걸기';
+  const label = side === 'buy' ? '예약 매수 걸기' : '예약 매도 걸기';
+  // 평균 매수가보다 낮게 파는 예약이면 경고만 한다 (막지는 않는다)
+  const lowWarn = side === 'sell' && P && px > 0 && px < P.avg ? `평균 매수가(${fmtPx(s, P.avg)})보다 가격이 낮습니다.` : '';
   const one = quote(id, 'buy', 1, px > 0 ? px : cur).total;
   const avail = krw ? S.krw + Math.max(0, S.usd + odAvail() - 0.02) * fxRates().sell : S.usd + odAvail();
   const maxB = one > 0 ? Math.max(0, Math.floor(avail / one + 1e-9)) : 0;
   const full = setOrderHTML(box, `${otypeSegHTML()}
     <div class="seg" role="group" aria-label="주문 종류"><button data-side="buy" aria-pressed="${side === 'buy'}">예약 매수</button><button data-side="sell" aria-pressed="${side === 'sell'}">예약 매도</button></div>
-    ${side === 'sell' ? `<div class="seg" role="group" aria-label="매도 조건"><button data-rkind="ge" aria-pressed="${kind === 'ge'}">익절 (이상)</button><button data-rkind="le" aria-pressed="${kind === 'le'}">손절 (이하)</button></div>` : ''}
     <div class="rsv-l">조건 가격</div>
     <label class="amt"><span>${krw ? '₩' : '$'}</span><input id="rpxIn" type="number" inputmode="decimal" min="0" step="${krw ? '1' : '0.01'}" value="${esc(pxStr)}" aria-label="조건 가격"></label>
     <p class="muted rsv-d" data-dyn="desc">현재가 ${fmtPx(s, cur)}. ${desc}</p>
+    <div class="rsv-warn" data-dyn="warn">${lowWarn}</div>
     <div class="qty"><button data-qd="-1" aria-label="1주 줄이기">−</button><input id="qtyIn" type="number" inputmode="numeric" min="1" step="1" value="${q || ''}" aria-label="수량(주)"><button data-qd="1" aria-label="1주 늘리기">+</button></div>
     <div class="quick" data-dyn="quick">${side === 'buy'
       ? `<button data-qn="${Math.max(maxB ? 1 : 0, Math.floor(maxB / 2))}">절반 ${Math.floor(maxB / 2).toLocaleString()}주</button><button data-qn="${maxB}">최대 ${maxB.toLocaleString()}주</button>`
@@ -3576,11 +3579,11 @@ document.addEventListener('click', e => {
   if (t.dataset.crange){ UI.crange = t.dataset.crange; UI.scrub = null; $$('[data-crange]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.crange === UI.crange))); renderChartBox(); return; }
   if (t.dataset.side){ UI.side = t.dataset.side; UI.qty = 1; UI.rpx = null; renderOrder(); return; }
   if (t.dataset.otype){ UI.otype = t.dataset.otype; UI.qty = 1; UI.rpx = null; renderOrder(); return; }
-  if (t.dataset.rkind){ UI.rkind = t.dataset.rkind; UI.rpx = ''; renderOrder(); return; }
   if (t.id === 'rsvBtn'){
     const id = UI.sheet, s = BY_ID[id];
-    const o = placeOrder(id, UI.side, UI.rkind || 'ge', parseFloat(UI.rpx === '' || UI.rpx == null ? price(id) : UI.rpx), UI.qty);
-    if (o){ toast(`${orderKindLabel(o)}을 걸었습니다: ${s.n} ${orderCondText(o)}, ${o.q.toLocaleString()}주`); UI.qty = 1; UI.rpx = null; commit(); }
+    const px = parseFloat(UI.rpx === '' || UI.rpx == null ? price(id) : UI.rpx);
+    const o = placeOrder(id, UI.side, sellKind(px, price(id)), px, UI.qty);
+    if (o){ toast(`${orderKindLabel(o)}를 걸었습니다: ${s.n} ${orderCondText(o)}, ${o.q.toLocaleString()}주`); UI.qty = 1; UI.rpx = null; commit(); }
     return;
   }
   if (t.dataset.ocancel){ if (cancelOrder(t.dataset.ocancel)){ toast('예약 주문을 취소했습니다'); commit(); } return; }
