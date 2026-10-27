@@ -101,3 +101,48 @@ create table if not exists public.seed10k_dart (id text primary key, at timestam
 alter table public.seed10k_dart enable row level security;
 drop policy if exists "seed10k_dart_select_all" on public.seed10k_dart;
 create policy "seed10k_dart_select_all" on public.seed10k_dart for select using (true);
+
+-- 8) OpenDART 요청 통로
+--    Supabase 함수(Deno)는 OpenDART의 옛 TLS 암호에 접속하지 못해서, 데이터베이스의 pg_net으로 대신 요청한다.
+--    seed10k-quotes 함수(비밀 키 = service_role)만 부를 수 있고, OpenDART 주소만 허용한다.
+create extension if not exists pg_net;
+
+create or replace function public.seed10k_http_get(urls text[])
+returns bigint[]
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  u text;
+  ids bigint[] := '{}';
+begin
+  if coalesce(array_length(urls, 1), 0) > 20 then
+    raise exception 'too many urls';
+  end if;
+  foreach u in array urls loop
+    if u not like 'https://opendart.fss.or.kr/api/%' then
+      raise exception 'url not allowed';
+    end if;
+    ids := ids || net.http_get(url := u, timeout_milliseconds := 20000);
+  end loop;
+  return ids;
+end
+$$;
+
+create or replace function public.seed10k_http_take(ids bigint[])
+returns table (id bigint, status_code integer, content text, error_msg text, timed_out boolean)
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select r.id, r.status_code, r.content, r.error_msg, r.timed_out
+  from net._http_response r
+  where r.id = any (ids);
+$$;
+
+revoke all on function public.seed10k_http_get(text[]) from public, anon, authenticated;
+revoke all on function public.seed10k_http_take(bigint[]) from public, anon, authenticated;
+grant execute on function public.seed10k_http_get(text[]) to service_role;
+grant execute on function public.seed10k_http_take(bigint[]) to service_role;

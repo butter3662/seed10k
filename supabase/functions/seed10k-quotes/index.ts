@@ -15,7 +15,10 @@
 //   NAVER API HUB 뉴스 검색: GET https://naverapihub.apigw.ntruss.com/search/v1/news
 //   (헤더 X-NCP-APIGW-API-KEY-ID = Client ID, X-NCP-APIGW-API-KEY = Client Secret)
 // - 공시: 함수 비밀값 DART_API_KEY가 있으면 5분마다 OpenDART 공시검색(시장 전체 최신순)을 받아,
-//   게임의 한국 100종목 공시만 종목별 최근 10건씩 public.seed10k_dart에 저장한다. 처음에는 최근 7일을 채운다.
+//   게임의 한국 100종목 공시만 종목별 최근 10건씩 public.seed10k_dart에 저장한다. 처음에는 최근 3일을 채운다.
+//   OpenDART 서버는 ECDHE가 없는 옛 TLS 암호(TLS_RSA_*, TLS_DHE_RSA_*)만 받아서 이 함수의 fetch(rustls)로는
+//   접속이 안 된다(HandshakeFailure). 그래서 데이터베이스의 pg_net(libcurl)으로 대신 요청한다:
+//   public.seed10k_http_get(urls) → 요청 번호들, public.seed10k_http_take(ids) → 끝난 응답(읽은 응답은 지운다).
 
 import NAMES from "./names.ts";
 
@@ -184,6 +187,29 @@ const DART_EVERY_MS = 5 * 60_000;   // 공시를 다시 확인하는 간격
 const DART_KEEP = 10;               // 종목별로 남기는 공시 수
 const ymd = (ms: number) => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(ms)).replaceAll("-", "");
 
+/* pg_net으로 GET 여러 개를 한꺼번에 보내고 JSON 응답을 받는다 (주소 순서대로). */
+async function dbGetJSON(urls: string[], waitMs = 30_000): Promise<unknown[]> {
+  const rpc = async (fn: string, body: unknown) =>
+    (await rest(`rpc/${fn}`, { method: "POST", headers: restHeaders({ "Content-Type": "application/json" }), body: JSON.stringify(body) })).json();
+  const ids: number[] = (await rpc("seed10k_http_get", { urls })).map(Number);
+  if (ids.length !== urls.length || ids.some((x) => !x)) throw new Error("pg_net 요청을 만들지 못함");
+  const got = new Map<number, { status_code: number | null; content: string | null; error_msg: string | null; timed_out: boolean | null }>();
+  const until = Date.now() + waitMs;
+  while (got.size < ids.length) {
+    if (Date.now() > until) throw new Error(`pg_net 응답 시간 초과 (${got.size}/${ids.length})`);
+    await new Promise((r) => setTimeout(r, 400));
+    const rows: { id: number; status_code: number | null; content: string | null; error_msg: string | null; timed_out: boolean | null }[] =
+      await rpc("seed10k_http_take", { ids: ids.filter((x) => !got.has(x)) });
+    for (const r of rows) got.set(Number(r.id), r);
+  }
+  return ids.map((id) => {
+    const r = got.get(id)!;
+    if (r.timed_out || r.error_msg) throw new Error(`pg_net 오류: ${r.timed_out ? "시간 초과" : r.error_msg}`);
+    if (r.status_code !== 200) throw new Error(`HTTP ${r.status_code}`);
+    return JSON.parse(r.content || "null");
+  });
+}
+
 export async function refreshDart() {
   const key = Deno.env.get("DART_API_KEY");
   if (!key) return null;
@@ -192,29 +218,38 @@ export async function refreshDart() {
   if (state.at && Date.now() - state.at < DART_EVERY_MS) return { skipped: "5분 안에 확인함" };
   const krIds = new Map(Object.entries(NAMES).filter(([, v]) => v.m === "KR").map(([id, v]) => [v.t, id]));
   const first = !state.last;
-  const bgn = ymd(Date.now() - (first ? 7 : 3) * 864e5), end = ymd(Date.now());
+  const bgn = ymd(Date.now() - (first ? 3 : 2) * 864e5), end = ymd(Date.now());
+  const pageUrl = (p: number) =>
+    `https://opendart.fss.or.kr/api/list.json?crtfc_key=${encodeURIComponent(key)}&bgn_de=${bgn}&end_de=${end}&sort=date&sort_mth=desc&page_no=${p}&page_count=100`;
   const found = new Map<string, Filing[]>();
-  let newest = state.last || "", pages = 0, stop = false;
-  for (let p = 1; p <= (first ? 120 : 10) && !stop; p++) {
-    const url = `https://opendart.fss.or.kr/api/list.json?crtfc_key=${encodeURIComponent(key)}&bgn_de=${bgn}&end_de=${end}&sort=date&sort_mth=desc&page_no=${p}&page_count=100`;
-    const r = await fetch(url, { headers: { "Accept": "application/json" } });
-    if (!r.ok) throw new Error(`dart HTTP ${r.status}`);
-    const j = await r.json();
-    pages++;
-    if (j.status === "013") break;                       // 조회된 데이터가 없음
-    if (j.status !== "000") throw new Error(`dart ${j.status}: ${j.message}`);
-    for (const x of j.list || []) {
-      const rno = String(x.rcept_no || "");
-      if (!rno) continue;
-      if (state.last && rno <= state.last) { stop = true; break; }   // 지난번에 본 공시까지 왔다
-      if (rno > newest) newest = rno;
-      const id = krIds.get(String(x.stock_code || "").trim());
-      if (!id) continue;
-      const arr = found.get(id) || [];
-      arr.push({ r: rno, t: clean(String(x.report_nm || "")), f: clean(String(x.flr_nm || "")), d: String(x.rcept_dt || ""), ...(x.rm ? { rm: String(x.rm) } : {}) });
-      found.set(id, arr);
+  let newest = state.last || "", pages = 0, stop = false, total = 1;
+  // 처음에는 쪽을 10개씩 한꺼번에, 그다음부터는 지난번에 본 공시가 나올 때까지 1쪽씩 받는다.
+  const maxPage = first ? 60 : 10, batch = first ? 10 : 1;
+  let next = 1;
+  while (!stop && next <= Math.min(maxPage, total)) {
+    const last = next === 1 ? 1 : Math.min(maxPage, total, next + batch - 1);   // 1쪽은 혼자 받아 전체 쪽수를 안다
+    const nums = Array.from({ length: last - next + 1 }, (_, k) => next + k);
+    next = last + 1;
+    const res = await dbGetJSON(nums.map(pageUrl));
+    for (const j0 of res) {
+      const j = j0 as { status?: string; message?: string; total_page?: number; list?: Record<string, unknown>[] };
+      pages++;
+      if (j.status === "013") { stop = true; break; }                  // 조회된 데이터가 없음
+      if (j.status !== "000") throw new Error(`dart ${j.status}: ${j.message}`);
+      total = Number(j.total_page || 1);
+      for (const x of j.list || []) {
+        const rno = String(x.rcept_no || "");
+        if (!rno) continue;
+        if (state.last && rno <= state.last) { stop = true; break; }   // 지난번에 본 공시까지 왔다
+        if (rno > newest) newest = rno;
+        const id = krIds.get(String(x.stock_code || "").trim());
+        if (!id) continue;
+        const arr = found.get(id) || [];
+        arr.push({ r: rno, t: clean(String(x.report_nm || "")), f: clean(String(x.flr_nm || "")), d: String(x.rcept_dt || ""), ...(x.rm ? { rm: String(x.rm) } : {}) });
+        found.set(id, arr);
+      }
+      if (stop) break;
     }
-    if (p >= Number(j.total_page || 1)) break;
   }
   const rows: { id: string; at: string; items: Filing[] }[] = [];
   if (found.size) {
