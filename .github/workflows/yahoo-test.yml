@@ -2,11 +2,14 @@ name: 묶음 줄 확인 (임시)
 on:
   push:
     branches: [tmp-yahoo-test]
+permissions:
+  contents: write
 jobs:
   check:
     runs-on: ubuntu-24.04
     timeout-minutes: 4
     steps:
+      - uses: actions/checkout@v4
       - run: |
           U=https://ictjkqbbcaigdvlysdaw.supabase.co; K=sb_publishable_C7jZEKJn_nF2Y3Ngq5f80Q_RA5Wrfux
           curl -s "$U/rest/v1/seed10k_quotes?select=id,p,t,updated_at&id=in.(US:NVDA,US:AAPL)" -H "apikey: $K" -o /tmp/a1.json
@@ -18,10 +21,14 @@ jobs:
           N=$(curl -s "$U/rest/v1/seed10k_quotes?select=id&updated_at=gt.$(date -u -d '-90 sec' +%Y-%m-%dT%H:%M:%SZ)" -H "apikey: $K" | python3 -c "import json,sys; print(len(json.load(sys.stdin)))")
           python3 - "$C" "$N" <<'PY'
           import json, sys
+          out = []
           a1, a2 = json.load(open('/tmp/a1.json')), json.load(open('/tmp/a2.json'))
           s1, s2 = json.load(open('/tmp/s1.json')), json.load(open('/tmp/s2.json'))
-          print("::notice title=종목 줄 (20초 간격)::" + json.dumps([[r['id'], r['p'], r['t'], r['updated_at']] for r in a1 + a2]))
-          print("::notice title=표시 줄 1차::" + json.dumps([[r['id'], r['d'], r['updated_at'], (len(r['x']['ids']) if r.get('x') else None)] for r in s1]))
-          print("::notice title=묶음 2차::" + json.dumps([[r['id'], r['updated_at'], (len(r['x']['ids']) if r.get('x') else None)] for r in s2]))
-          print(f"::notice title=1분 읽기 응답::최근 90초 바뀐 줄 {sys.argv[2]}개, gzip {sys.argv[1]}B")
+          out.append("종목 줄 (20초 간격)::" + json.dumps([[r['id'], r['p'], r['t'], r['updated_at']] for r in a1 + a2]))
+          out.append("표시 줄 1차::" + json.dumps([[r['id'], r['d'], r['updated_at'], (len(r['x']['ids']) if r.get('x') else None)] for r in s1]))
+          out.append("묶음 2차::" + json.dumps([[r['id'], r['updated_at'], (len(r['x']['ids']) if r.get('x') else None)] for r in s2]))
+          out.append(f"1분 읽기 응답::최근 90초 바뀐 줄 {sys.argv[2]}개, gzip {sys.argv[1]}B")
+          open('probe/check.txt', 'w').write('\n'.join(out))
           PY
+          git config user.name gha; git config user.email gha@users.noreply.github.com
+          git add probe/check.txt && git commit -m "점검 결과" && git push origin HEAD:tmp-yahoo-test
