@@ -82,6 +82,20 @@ jobs:
           for _s in _data["us"]:
               SYMBOLS[_s["id"]] = {"y": _s["t"], "m": "US"}
           EPOCH = dt.date(1970, 1, 1)
+          EXCH_TZ = {"KR": "Asia/Seoul", "US": "America/New_York"}
+
+
+          def is_weekday(d):
+              return dt.date.fromisoformat(d).weekday() < 5
+
+
+          def drop_weekends(dates, rows):
+              """토·일요일 날짜는 거래일이 아니므로 뺀다 (시간대 착오로 끼어든 날짜 정리)."""
+              keep = [k for k, d in enumerate(dates) if is_weekday(d)]
+              if len(keep) == len(dates):
+                  return dates, rows
+              print(f"주말 날짜 제거: {[d for d in dates if not is_weekday(d)]}")
+              return [dates[k] for k in keep], {sid: [vals[k] for k in keep] for sid, vals in rows.items()}
 
 
           def download(symbols, tries=3, **kw):
@@ -196,19 +210,25 @@ jobs:
                       # Yahoo 일봉에 그날이 빠져 있으면 5분 봉의 그날 마지막 가격으로 채운다 (2026-10-27 미국 10/26 누락 사례)
                       if v["y"] in i5:
                           intra = i5[v["y"]]
+                          # 여러 거래소 종목을 한꺼번에 받으면 yfinance가 시각을 한 시간대로 맞춘다.
+                          # 날짜는 반드시 그 종목 거래소의 현지 시각으로 따진다.
+                          idx = pd.DatetimeIndex(intra.index)
+                          idx = (idx.tz_convert(EXCH_TZ[m]) if idx.tz is not None else idx.tz_localize("UTC").tz_convert(EXCH_TZ[m]))
                           last_by_day = {}
-                          for i, val in intra.items():
-                              last_by_day[pd.Timestamp(i).strftime("%Y-%m-%d")] = float(val)
+                          for i, val in zip(idx, intra.values):
+                              if i.weekday() < 5:
+                                  last_by_day[i.strftime("%Y-%m-%d")] = float(val)
                           add = {d: c for d, c in last_by_day.items() if d >= START and d not in d1.index}
                           if add:
                               filled_days[m] = filled_days.get(m, set()) | set(add)
                               d1 = pd.concat([d1, pd.Series(add)]).sort_index()
                       series[sid] = d1
                   dates, rows = build_market(m, series)
+                  dates, rows = drop_weekends(dates, rows)
                   # 직전 배포본에 있던 거래일이 이번 결과에서 빠지면 그 값을 그대로 살린다 (한 번 들어온 날짜는 사라지지 않게)
                   if prev and prev.get("dates", {}).get(m):
                       pdates = prev["dates"][m]
-                      lost = [d for d in pdates if d >= START and d not in dates]
+                      lost = [d for d in pdates if d >= START and d not in dates and is_weekday(d)]
                       if lost:
                           union = sorted(set(dates) | set(lost))
                           for sid in list(rows.keys()):
