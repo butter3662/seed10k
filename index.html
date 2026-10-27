@@ -499,6 +499,14 @@ html[data-game=live] .c-news{order:3}
 .modal h2{margin:0 0 8px;font-size:19px;font-weight:800}
 .modal p{margin:0 0 10px;color:var(--ink-2);font-size:14px;line-height:1.6}
 .modal .acts{display:flex;gap:8px;justify-content:flex-end;margin-top:14px}
+.modal[data-kind=info]{width:min(640px,calc(100vw - 24px))}
+.info-body{max-height:min(68vh,640px);overflow:auto;-webkit-overflow-scrolling:touch;margin:4px -4px 0;padding:0 4px}
+.info-body .fx-block{grid-template-columns:minmax(0,1fr)}
+.info-btn{border:1px solid var(--rule);background:var(--surface-2);color:var(--ink-2);border-radius:999px;padding:1px 9px;font-size:12px;font-weight:650;cursor:pointer;vertical-align:middle;line-height:1.6}
+.info-btn:hover{color:var(--ink)}
+.info-row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.info-row h2{font-size:16px;font-weight:750;margin:0}
+.info-row small{display:block;margin-top:2px}
 .toasts{position:fixed;z-index:95;left:50%;transform:translateX(-50%);bottom:calc(var(--tabbar) + 14px + env(safe-area-inset-bottom));display:grid;gap:8px;width:min(420px,calc(100vw - 32px));pointer-events:none}
 .toast{background:var(--ink);color:var(--paper);border-radius:14px;padding:11px 14px;font-size:13.5px;font-weight:600;box-shadow:0 10px 30px -10px rgba(0,0,0,.4);animation:tin .22s ease}
 .toast.bad{background:var(--danger);color:#fff}
@@ -651,7 +659,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 100 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.12.4';
+const VERSION = '1.13.0';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -1759,13 +1767,22 @@ function toastQuiet(msg){
 }
 function showModal(html, onClose, locked){
   const md = $('#modal'), sc = $('#scrim');
-  md.innerHTML = html; md.hidden = false; sc.hidden = false;
+  md.innerHTML = html; md.hidden = false; sc.hidden = false; md.dataset.kind = '';
   md.dataset.locked = locked ? '1' : '';
   requestAnimationFrame(() => { md.classList.add('on'); sc.classList.add('on'); });
   const close = () => { md.classList.remove('on'); if (!UI.sheet) sc.classList.remove('on'); setTimeout(() => { md.hidden = true; if (!UI.sheet) sc.hidden = true; }, 180); onClose && onClose(); };
   md.querySelectorAll('[data-close]').forEach(b => b.onclick = close);
   const first = md.querySelector('button'); first && first.focus();
   return close;
+}
+/* 긴 설명은 화면에 다 펼치지 않고 버튼으로 팝업을 연다. 내용은 화면을 그릴 때 INFO[key]에 넣어 둔다 */
+const INFO = {};
+const infoBtn = (key, label) => `<button class="info-btn" data-info="${key}" aria-label="${esc(label || '자세히')}">${label ? esc(label) : 'ⓘ'}</button>`;
+const infoRow = (key, title, sub) => `<section class="card info-row"><div><h2>${title}</h2>${sub ? `<small class="muted">${sub}</small>` : ''}</div><button class="btn" data-info="${key}">보기</button></section>`;
+function openInfo(key){
+  const it = INFO[key]; if (!it) return;
+  showModal(`<h2>${it.t}</h2><div class="info-body">${it.h}</div><div class="acts"><button class="btn solid" data-close>닫기</button></div>`);
+  $('#modal').dataset.kind = 'info';
 }
 function showAlerts(list){
   const html = list.map(a => `<h2 style="${a.bad ? 'color:var(--danger)' : ''}">${esc(a.t)}</h2><p>${esc(a.b)}</p>`).join('');
@@ -2062,7 +2079,7 @@ function renderMarketList(){
   const fx = fmtFX(FX());
   if (live){
     const st = mstate(UI.mkt);
-    $('#mktFoot').textContent = `${SESS[UI.mkt].ko} 시장 ${st.label}. 정규장은 한국 시각 ${sessInKST(UI.mkt)}이고 그 시간에 거래할 수 있습니다. 등락률은 전 거래일 종가 대비입니다.` + (UI.mkt === 'KR' ? ` 원화 가격은 원/달러 ${fx}원으로 환전됩니다.` : '');
+    $('#mktFoot').textContent = `${SESS[UI.mkt].ko} 시장 ${st.label} · 정규장 ${sessInKST(UI.mkt)} · 등락률은 전 거래일 종가 대비`;
   } else {
     $('#mktFoot').textContent = UI.mkt === 'KR'
       ? `순위는 현재 시가총액 기준입니다. 원화 가격은 매수·매도 때 원/달러 ${fx}원으로 환전됩니다. 하루 가격제한폭 ±30%.`
@@ -2141,9 +2158,38 @@ function renderLoans(){
   const gr = g(), U = termUnit(), YD = yearDays();
   const ratio = marginRatio();
   const gaugePos = isFinite(ratio) ? clamp((ratio - 1) / 2, 0, 1) * 100 : 100;
-  const card = (key, title, desc, apr, kv, body, warn) => `
+  INFO.loanf = {t:'대출 계산식 <small class="muted">모든 금액은 달러 기준</small>', h:`
+      <div class="fx-block">
+        <div class="fx-item"><h4>빌릴 때 수수료</h4>
+          <div class="eq"><i>B</i> ← <i>B</i> + <i>A</i> × (1 + 0.03)</div>
+          <ul class="defs"><li><span class="sym">A</span><span>새로 빌린 금액(달러). 통장에는 <i>A</i>가 그대로 들어옵니다.</span></li><li><span class="sym">B</span><span>대출 잔액(갚아야 할 돈, 달러)</span></li></ul>
+          <p class="prose" style="margin:8px 0 0">신용대출, 주식담보대출, 마이너스통장 모두 빌릴 때마다 붙습니다. 한도는 수수료까지 더한 잔액이 상한을 넘지 않게 계산합니다. 수수료는 '낸 이자'에 포함됩니다.</p>
+        </div>
+        <div class="fx-item"><h4>하루 이자 (복리)</h4>
+          <div class="eq"><i>I</i> = <i>B</i> × <i>r</i> ÷ ${YD}</div>
+          <ul class="defs"><li><span class="sym">I</span><span>${live ? '하루(달력 기준)' : '한 거래일'}마다 붙는 이자(달러). 원금에 더해집니다.</span></li><li><span class="sym">B</span><span>정산 직전 대출 잔액(달러)</span></li><li><span class="sym">r</span><span>연이율을 소수로 쓴 값 (예: 연 6.20% → 0.062)</span></li><li><span class="sym">${YD}</span><span>${live ? '1년의 날 수. 실제 시세 모드는 주말도 이자가 붙습니다.' : '게임에서 1년으로 치는 거래일 수'}</span></li></ul>
+        </div>
+        <div class="fx-item"><h4>담보유지비율</h4>
+          <div class="eq"><i>R</i> = <i>V</i> ÷ <i>L</i><sub>m</sub> × 100 (%)</div>
+          <ul class="defs"><li><span class="sym">R</span><span>담보유지비율(%)</span></li><li><span class="sym">V</span><span>보유 주식 전체의 평가액(한국 주식은 현재 환율로 달러 환산)</span></li><li><span class="sym">L<sub>m</sub></span><span>주식담보대출 잔액</span></li></ul>
+          <p class="prose" style="margin:8px 0 0"><i>R</i>이 140% 미만이면 경고, 120% 미만이면 평가액이 큰 종목부터 현재가보다 2% 낮은 값에 팔아 <i>R</i>을 160%까지 되돌립니다.${live ? ' 실제 시세 모드에서는 장이 열린 시장의 종목만 팔 수 있어서, 둘 다 닫혀 있으면 다음 개장 때 실행됩니다.' : ''}</p>
+        </div>
+        <div class="fx-item"><h4>대출 금리</h4>
+          <div class="eq"><i>r</i> = <i>b</i> + <i>s</i> + <i>k</i>(<i>G</i> − 1)</div>
+          <ul class="defs"><li><span class="sym">b</span><span>게임 기준금리 (지금 ${S.base.toFixed(2)}%${live ? ', 고정' : ', 모의 뉴스로 0.25%p씩 변동'})</span></li><li><span class="sym">s</span><span>상품 가산금리: 신용대출 3.2%p, 주식담보대출 2.0%p, 마이너스통장 5.0%p</span></li><li><span class="sym">k</span><span>등급 가산폭: 신용대출 0.55%p, 주식담보대출 0.25%p, 마이너스통장 0.70%p</span></li><li><span class="sym">G</span><span>신용등급 (1~10). 연체 중인 신용대출에는 5%p가 더 붙습니다.</span></li></ul>
+        </div>
+      </div>
+`};
+  INFO.grade = {t:'신용등급', h:`<div class="prose"><p>1등급이 가장 좋습니다. 등급이 대출 금리와 한도, 환전 우대율을 정합니다.</p><ul>
+    <li>신용대출을 ${META.gradeHold}${U} 이상 쓰고 만기 전에 연체 없이 완납하면 0.5등급 오릅니다.</li>
+    <li>연체가 없으면 ${live ? '20일' : '20거래일'}마다 0.1등급 오릅니다.</li>
+    <li>신용대출이 연체되면 하루 0.4등급씩 내려가고, 반대매매가 생기면 더 내려갑니다.</li>
+    <li>게임 기준금리는 연 ${S.base.toFixed(2)}%입니다${live ? ' (실제 시세 모드에서는 고정)' : ''}.</li></ul></div>`};
+  const LOAN_SHORT = {credit:`만기 ${META.creditTerm}${U} · 수수료 3% · 일복리`, margin:`주식 평가액의 ${META.ltv*100}%까지 · 만기 없음 · 반대매매 위험`, od:'모자랄 때 자동으로 빌리고 자동으로 갚음'};
+  const card = (key, title, desc, apr, kv, body, warn) => { INFO['loan-' + key] = {t:title, h:`<p class="prose">${desc}</p>`}; return cardHTML(key, title, apr, kv, body, warn); };
+  const cardHTML = (key, title, apr, kv, body, warn) => `
     <section class="card loan" data-loan="${key}">
-      <div class="loan-top"><div><h3>${title}</h3><p>${desc}</p></div><div class="apr"><b class="num">${apr.toFixed(2)}%</b><span>연이율, 등급 따라 변동</span></div></div>
+      <div class="loan-top"><div><h3>${title} ${infoBtn('loan-' + key)}</h3><p>${LOAN_SHORT[key]}</p></div><div class="apr"><b class="num">${apr.toFixed(2)}%</b><span>연이율, 등급 따라 변동</span></div></div>
       ${warn || ''}
       <dl class="kv">${kv.map(([k, val]) => `<div><dt>${k}</dt><dd class="num">${val}</dd></div>`).join('')}</dl>
       ${body}
@@ -2166,7 +2212,7 @@ function renderLoans(){
         <div>
           <div style="font-weight:750">신용등급</div>
           <div class="ladder" aria-hidden="true">${Array.from({length:10}, (_, i) => `<i class="${10 - i >= gr ? 'on' : ''}"${10 - i >= gr ? ` style="background:${gradeColor(10 - i)};border-color:${gradeColor(10 - i)}"` : ''}></i>`).join('')}</div>
-          <div class="muted">1등급이 가장 좋습니다. 신용대출을 ${META.gradeHold}${U} 이상 쓰고 만기 전에 완납하면 오르고, 연체나 반대매매가 생기면 내려갑니다. 등급이 금리와 한도를 정합니다. 게임 기준금리는 연 ${S.base.toFixed(2)}%입니다${live ? ' (실제 시세 모드에서는 고정)' : ''}.</div>
+          <div class="muted">1등급이 가장 좋습니다. 등급이 금리와 한도를 정합니다. ${infoBtn('grade', '등급 규칙')}</div>
         </div>
       </div>
     </section>
@@ -2179,29 +2225,7 @@ function renderLoans(){
     ${card('od', '마이너스통장', '달러 통장에 연결된 한도 대출입니다. 달러보다 큰 미국 주식 주문이나 환전을 하면 자동으로 빌려지고, 달러가 들어오면 먼저 갚습니다. 끌어 쓸 때마다 그 금액의 3%가 수수료로 빚에 더해집니다.', R.od,
       [['사용액', fmtUSD(O.bal)], ['한도', fmtUSD(L.odLimit)], ['더 쓸 수 있는 금액', fmtUSD(odAvail())]],
       `<div class="act">${amtBox('od')}<button class="btn" data-repay="od" ${O.bal > 0 ? '' : 'disabled'}>갚기</button><button class="btn" data-repayall="od" ${O.bal > 0 ? '' : 'disabled'}>전액 상환</button></div>`)}
-    <section class="card wide">
-      <div class="card-h"><h2>대출 계산식</h2><small>모든 금액은 달러 기준</small></div>
-      <div class="fx-block">
-        <div class="fx-item"><h4>빌릴 때 수수료</h4>
-          <div class="eq"><i>B</i> ← <i>B</i> + <i>A</i> × (1 + 0.03)</div>
-          <ul class="defs"><li><span class="sym">A</span><span>새로 빌린 금액(달러). 통장에는 <i>A</i>가 그대로 들어옵니다.</span></li><li><span class="sym">B</span><span>대출 잔액(갚아야 할 돈, 달러)</span></li></ul>
-          <p class="prose" style="margin:8px 0 0">신용대출, 주식담보대출, 마이너스통장 모두 빌릴 때마다 붙습니다. 한도는 수수료까지 더한 잔액이 상한을 넘지 않게 계산합니다. 수수료는 '낸 이자'에 포함됩니다.</p>
-        </div>
-        <div class="fx-item"><h4>하루 이자 (복리)</h4>
-          <div class="eq"><i>I</i> = <i>B</i> × <i>r</i> ÷ ${YD}</div>
-          <ul class="defs"><li><span class="sym">I</span><span>${live ? '하루(달력 기준)' : '한 거래일'}마다 붙는 이자(달러). 원금에 더해집니다.</span></li><li><span class="sym">B</span><span>정산 직전 대출 잔액(달러)</span></li><li><span class="sym">r</span><span>연이율을 소수로 쓴 값 (예: 연 6.20% → 0.062)</span></li><li><span class="sym">${YD}</span><span>${live ? '1년의 날 수. 실제 시세 모드는 주말도 이자가 붙습니다.' : '게임에서 1년으로 치는 거래일 수'}</span></li></ul>
-        </div>
-        <div class="fx-item"><h4>담보유지비율</h4>
-          <div class="eq"><i>R</i> = <i>V</i> ÷ <i>L</i><sub>m</sub> × 100 (%)</div>
-          <ul class="defs"><li><span class="sym">R</span><span>담보유지비율(%)</span></li><li><span class="sym">V</span><span>보유 주식 전체의 평가액(한국 주식은 현재 환율로 달러 환산)</span></li><li><span class="sym">L<sub>m</sub></span><span>주식담보대출 잔액</span></li></ul>
-          <p class="prose" style="margin:8px 0 0"><i>R</i>이 140% 미만이면 경고, 120% 미만이면 평가액이 큰 종목부터 현재가보다 2% 낮은 값에 팔아 <i>R</i>을 160%까지 되돌립니다.${live ? ' 실제 시세 모드에서는 장이 열린 시장의 종목만 팔 수 있어서, 둘 다 닫혀 있으면 다음 개장 때 실행됩니다.' : ''}</p>
-        </div>
-        <div class="fx-item"><h4>대출 금리</h4>
-          <div class="eq"><i>r</i> = <i>b</i> + <i>s</i> + <i>k</i>(<i>G</i> − 1)</div>
-          <ul class="defs"><li><span class="sym">b</span><span>게임 기준금리 (지금 ${S.base.toFixed(2)}%${live ? ', 고정' : ', 모의 뉴스로 0.25%p씩 변동'})</span></li><li><span class="sym">s</span><span>상품 가산금리: 신용대출 3.2%p, 주식담보대출 2.0%p, 마이너스통장 5.0%p</span></li><li><span class="sym">k</span><span>등급 가산폭: 신용대출 0.55%p, 주식담보대출 0.25%p, 마이너스통장 0.70%p</span></li><li><span class="sym">G</span><span>신용등급 (1~10). 연체 중인 신용대출에는 5%p가 더 붙습니다.</span></li></ul>
-        </div>
-      </div>
-    </section>
+    ${infoRow('loanf', '대출 계산식', '수수료, 하루 이자(복리), 담보유지비율, 대출 금리, 한도')}
   </div>`;
 }
 
@@ -2210,26 +2234,7 @@ function renderInfo(){
   const v = $('#v-info');
   const live = isLive();
   const ests = STOCKS.filter(s => s.note);
-  v.innerHTML = `
-  <div class="loans-grid">
-    <section class="card">
-      <div class="card-h"><h2>설정</h2></div>
-      ${accountRowsHTML()}
-      <div class="set-row"><div class="l">게임 모드<small>지금은 ${live ? '실제 시세' : '시뮬레이션'} 모드입니다. 모드마다 기록이 따로 저장됩니다.</small></div>
-        <div class="seg"><button data-setmode="live" aria-pressed="${live}">실제 시세</button><button data-setmode="sim" aria-pressed="${!live}">시뮬레이션</button></div></div>
-      <div class="set-row"><div class="l">상승·하락 색<small>한국식은 상승 빨강, 미국식은 상승 초록</small></div>
-        <div class="seg"><button data-conv="kr" aria-pressed="${SET.conv === 'kr'}">한국식</button><button data-conv="us" aria-pressed="${SET.conv === 'us'}">미국식</button></div></div>
-      <div class="set-row"><div class="l">한국 자산 표시<small>홈 화면 자산 구성에서 한국 주식과 원화 통장 금액을 원화 그대로 쓸지, 달러로 환산할지 고릅니다</small></div>
-        <div class="seg"><button data-krd="krw" aria-pressed="${SET.krd !== 'usd'}">원화</button><button data-krd="usd" aria-pressed="${SET.krd === 'usd'}">달러 환산</button></div></div>
-      <div class="set-row"><div class="l">화면 테마</div>
-        <div class="seg"><button data-theme="auto" aria-pressed="${SET.theme === 'auto'}">자동</button><button data-theme="light" aria-pressed="${SET.theme === 'light'}">밝게</button><button data-theme="dark" aria-pressed="${SET.theme === 'dark'}">어둡게</button></div></div>
-      ${live ? '' : `<div class="set-row"><div class="l">자동 진행 속도<small>헤더의 ▶▶ 버튼으로 켜고 끕니다</small></div>
-        <div class="seg">${SPEEDS.map((s, i) => `<button data-speed="${i}" aria-pressed="${SET.speed === i}">${s.l}</button>`).join('')}</div></div>`}
-      <div class="set-row"><div class="l">새 게임<small>이 모드의 기록을 지우고 시드 $10,000로 다시 시작합니다</small></div>
-        <button class="btn" id="btnReset" style="color:var(--danger)">새 게임 시작</button></div>
-    </section>
-    <section class="card prose">
-      <div class="card-h"><h2>게임 규칙</h2></div>
+  INFO.rules = {t:'게임 규칙', h:`<div class="prose">
       <ul>
         <li>시드머니는 달러 통장에 들어 있는 <b>$10,000</b>입니다.</li>
         ${live ? `
@@ -2250,9 +2255,8 @@ function renderInfo(){
         <li>홈 화면의 차트 맞히기: 이름을 가린 실제 종목의 지난 60거래일 종가와 거래량을 보고 3거래일 뒤 종가가 오를지 내릴지 고릅니다. 하루 10문제, 맞히면 $10 포인트(하루 최대 $100)가 달러 통장에 들어옵니다. 시뮬레이션 모드에서는 게임 속 거래일마다 10문제입니다. 포인트는 투자에 쓸 수 있지만 수익률 계산에서는 빠집니다.</li>
         <li>진행 상황은 이 브라우저에 자동 저장됩니다. 다른 기기와는 공유되지 않습니다.</li>
       </ul>
-    </section>
-    <section class="card wide">
-      <div class="card-h"><h2>계산식</h2></div>
+</div>`};
+  INFO.formulas = {t:'계산식', h:`
       <div class="fx-block">
         <div class="fx-item"><h4>순자산과 수익률</h4>
           <div class="eq multi"><span class="p"><i>N</i> = <i>C</i><sub>$</sub> + <i>C</i><sub>₩</sub> ÷ <i>X</i> + <i>V</i> − (<i>L</i><sub>c</sub> + <i>L</i><sub>m</sub> + <i>L</i><sub>o</sub>),</span><span class="p">수익률 = (<i>F</i> × <i>N</i> ÷ <i>B</i> − 1) × 100 (%)</span></div>
@@ -2296,9 +2300,8 @@ function renderInfo(){
           <p class="prose" style="margin:8px 0 0">마지막 항은 변동성 때문에 기대 가격이 부풀려지지 않도록 빼는 보정값입니다. 업종별 <i>β</i>와 <i>σ</i>는 게임 밸런스용 설정값이며 실제 통계가 아닙니다.</p>
         </div>`}
       </div>
-    </section>
-    <section class="card wide prose">
-      <div class="card-h"><h2>데이터 기준</h2></div>
+`};
+  INFO.data = {t:'데이터 기준', h:`<div class="prose">
       <p>종목 목록과 기준가는 <b>2026년 10월 23일(금) 종가</b>입니다. 한국 시간 10월 26일 오후 9시는 미국 동부 시간 오전 8시라 미국은 정규장 전이었고, 직전 종가가 10월 23일 종가입니다. 한국은 일괄로 확인할 수 있었던 데이터가 10월 23일 종가 기준이어서 두 시장을 같은 날로 맞췄습니다.</p>
       ${live ? `<p><b>실제 시세</b>는 두 곳에서 읽습니다. 장중 최신가와 그날 5분 봉은 Supabase 함수가 1분마다 Yahoo Finance에서 받아 저장한 표에서, 지난 거래일 종가와 장기 차트는 GitHub Actions가 받아 사이트에 함께 배포한 data/prices.json과 data/c/에서 읽습니다. Yahoo 시세는 공식 거래소 시세가 아니고, 수집 도구(yfinance)도 공식 API가 아니어서 가끔 빠지거나 늦을 수 있습니다. 실제 시세 모드의 기준가는 Yahoo가 준 10월 23일 종가라서 아래 시뮬레이션용 기준가와 조금 다를 수 있습니다.</p>` : '<p>이후 시세는 모두 시뮬레이션입니다.</p>'}
       <ul>
@@ -2309,7 +2312,29 @@ function renderInfo(){
         <li><b>시뮬레이션 시작 환율</b>: 10월 26일 오후 3시 30분 원/달러 1,323.10원(전일 대비 1.5원 하락)에서 역산한 10월 23일 값 1,324.60원.</li>
       </ul>
       <p style="margin-top:6px">예외 종목: ${ests.map(s => `${esc(s.n)}${s.est ? '(추정)' : ''}`).join(', ')}</p>
+</div>`};
+  v.innerHTML = `
+  <div class="loans-grid">
+    <section class="card">
+      <div class="card-h"><h2>설정</h2></div>
+      ${accountRowsHTML()}
+      <div class="set-row"><div class="l">게임 모드<small>지금은 ${live ? '실제 시세' : '시뮬레이션'} 모드입니다. 모드마다 기록이 따로 저장됩니다.</small></div>
+        <div class="seg"><button data-setmode="live" aria-pressed="${live}">실제 시세</button><button data-setmode="sim" aria-pressed="${!live}">시뮬레이션</button></div></div>
+      <div class="set-row"><div class="l">상승·하락 색<small>한국식은 상승 빨강, 미국식은 상승 초록</small></div>
+        <div class="seg"><button data-conv="kr" aria-pressed="${SET.conv === 'kr'}">한국식</button><button data-conv="us" aria-pressed="${SET.conv === 'us'}">미국식</button></div></div>
+      <div class="set-row"><div class="l">한국 자산 표시<small>홈 화면 자산 구성에서 한국 주식과 원화 통장 금액을 원화 그대로 쓸지, 달러로 환산할지 고릅니다</small></div>
+        <div class="seg"><button data-krd="krw" aria-pressed="${SET.krd !== 'usd'}">원화</button><button data-krd="usd" aria-pressed="${SET.krd === 'usd'}">달러 환산</button></div></div>
+      <div class="set-row"><div class="l">화면 테마</div>
+        <div class="seg"><button data-theme="auto" aria-pressed="${SET.theme === 'auto'}">자동</button><button data-theme="light" aria-pressed="${SET.theme === 'light'}">밝게</button><button data-theme="dark" aria-pressed="${SET.theme === 'dark'}">어둡게</button></div></div>
+      ${live ? '' : `<div class="set-row"><div class="l">자동 진행 속도<small>헤더의 ▶▶ 버튼으로 켜고 끕니다</small></div>
+        <div class="seg">${SPEEDS.map((s, i) => `<button data-speed="${i}" aria-pressed="${SET.speed === i}">${s.l}</button>`).join('')}</div></div>`}
+      <div class="set-row"><div class="l">새 게임<small>이 모드의 기록을 지우고 시드 $10,000로 다시 시작합니다</small></div>
+        <button class="btn" id="btnReset" style="color:var(--danger)">새 게임 시작</button></div>
     </section>
+    ${infoRow('rules', '게임 규칙', '거래 시간, 체결, 통장, 배당, 대출, 파산')}
+    ${infoRow('formulas', '계산식', '순자산, 수익률, 환전, 결제 금액, 지수' + (live ? '' : ', 가격 모델'))}
+    ${infoRow('data', '데이터 기준', '종목 목록과 시세를 어디서 가져오는지')}
+
   </div>
   <p class="ver">SEED 10K v${VERSION}</p>`;
 }
@@ -2485,9 +2510,15 @@ function mgSVG(q, reveal){
 const mgDate = dn => { const t = new Date(dn * DAY); return `${t.getUTCFullYear()}.${t.getUTCMonth() + 1}.${t.getUTCDate()}`; };
 function mgCardHTML(){
   const m = mgToday(), left = MG.perDay - m.n;
+  INFO.mg = {t:'차트 맞히기', h:`<div class="prose"><ul>
+    <li>이름을 가린 실제 종목의 지난 ${MG.show}거래일 종가(첫날 = 100)와 거래량을 보여 줍니다.</li>
+    <li>점 찍힌 마지막 날 종가보다 ${MG.ahead}거래일 뒤 종가가 오를지 내릴지 고릅니다. 1% 미만으로 움직인 구간은 문제로 내지 않습니다.</li>
+    <li>${isLive() ? '하루' : '게임 속 거래일마다'} ${MG.perDay}문제, 맞히면 ${fmtUSD(MG.prize, 0)} 포인트(하루 최대 ${fmtUSD(MG.cap, 0)})가 달러 통장에 들어옵니다.</li>
+    <li>문제를 띄우는 순간 1회를 쓴 것으로 셉니다. 창을 닫았다 열면 같은 문제가 다시 나옵니다.</li>
+    <li>포인트는 투자에 쓸 수 있지만 수익률과 랭킹 순자산에서는 빠집니다.</li></ul></div>`};
   const label = S.over ? '파산해서 할 수 없습니다' : m.cur ? '풀던 문제 이어서' : left > 0 ? '문제 풀기' : '오늘은 끝 (내일 다시)';
   return `<div class="card-h"><h2>차트 맞히기</h2><small>${isLive() ? '오늘' : '이번 거래일'} ${m.n}/${MG.perDay}문제 · ${fmtUSD(m.won, 0)}/${fmtUSD(MG.cap, 0)}</small></div>
-    <p class="mg-desc">이름을 가린 실제 종목의 지난 ${MG.show}거래일 종가와 거래량을 보고, ${MG.ahead}거래일 뒤 종가가 오를지 내릴지 맞혀 보세요. 맞히면 <b>${fmtUSD(MG.prize, 0)} 포인트</b>가 달러 통장에 들어옵니다.</p>
+    <p class="mg-desc">가린 차트를 보고 ${MG.ahead}거래일 뒤를 맞히면 <b>${fmtUSD(MG.prize, 0)} 포인트</b>. ${infoBtn('mg', '규칙')}</p>
     <div class="mg-foot"><span class="muted">받은 포인트 합계 <b class="num">${fmtUSD(S.pts || 0)}</b></span><button class="btn solid" id="mgGo" ${S.over || (!m.cur && left <= 0) ? 'disabled' : ''}>${label}</button></div>`;
 }
 let mgBusy = false;
@@ -3309,7 +3340,8 @@ function rankCardHTML(){
   else if (!ACC.nick) foot = `<div class="rank-foot"><label class="amt"><input id="rankNickIn" maxlength="12" placeholder="닉네임 (2~12자)" aria-label="닉네임"></label><button class="btn solid" id="btnRankNick">랭킹 참여</button></div>`;
   else if (ACC.myRank[mode]) foot = `<div class="rank-foot"><span>내 순위 <b>${ACC.myRank[mode]}위</b> (${esc(ACC.nick)})</span></div>`;
   else if (mode !== S.mode) foot = `<div class="rank-foot"><span>이 모드는 아직 플레이 기록이 올라가지 않았습니다.</span></div>`;
-  return head + body + foot + `<p class="muted" style="margin:8px 0 0">순자산과 수익률 모두 미니게임 포인트를 뺀 값입니다. 수익률은 시간가중수익률입니다. 게임 계산이 브라우저에서 이뤄져 조작을 완전히 막을 수는 없으니 재미로 봐주세요.</p>`;
+  INFO.rank = {t:'랭킹 기준', h:`<p class="prose">순자산과 수익률 모두 미니게임 포인트를 뺀 값입니다. 수익률은 포인트가 들어올 때마다 기간을 끊어 계산하는 시간가중수익률이라, 같은 매매를 했다면 포인트를 언제 얼마나 받았든 같은 값이 나옵니다.</p><p class="prose">게임 계산이 브라우저에서 이뤄져 조작을 완전히 막을 수는 없으니 재미로 봐주세요.</p>`};
+  return head + body + foot + `<p class="muted" style="margin:8px 0 0">포인트를 뺀 투자 실력 기준입니다. ${infoBtn('rank', '랭킹 기준')}</p>`;
 }
 function renderRankCard(){ const c = $('#rankCard'); if (c) c.innerHTML = rankCardHTML(); }
 async function saveNickname(v){
@@ -3409,6 +3441,7 @@ document.addEventListener('click', e => {
   if (t.dataset.pick) return;
   if (t.id === 'btnFX'){ openFX(); return; }
   if (t.id === 'mgGo'){ mgStart(); return; }
+  if (t.dataset.info){ openInfo(t.dataset.info); return; }
   if (t.dataset.fxdir){ UI.fxDir = t.dataset.fxdir; UI.fxAmt = ''; renderFX(); return; }
   if (t.dataset.fxq){ const have = UI.fxDir === 'u2k' ? S.usd : S.krw; UI.fxAmt = UI.fxDir === 'u2k' ? String(Math.floor(have * +t.dataset.fxq * 100) / 100) : String(Math.floor(have * +t.dataset.fxq)); renderFX(); return; }
   if (t.dataset.fxclose !== undefined){ UI.fxClose && UI.fxClose(); return; }
