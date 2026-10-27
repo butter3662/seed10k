@@ -1,25 +1,31 @@
-name: 배당 데이터 확인 (임시)
+name: 배당 수집 확인 (임시)
 on:
   push:
     branches: [tmp-yahoo-test]
 jobs:
   check:
     runs-on: ubuntu-24.04
-    timeout-minutes: 4
+    timeout-minutes: 6
     steps:
-      - run: |
-          for s in 005930.KS 000660.KS 035420.KS 105560.KS AAPL MSFT KO NVDA; do
-            c=$(curl -s -m 30 -A "Mozilla/5.0" -o /tmp/d -w "%{http_code}" "https://query1.finance.yahoo.com/v8/finance/chart/$s?range=2y&interval=1d&events=div")
-            python3 - "$s" "$c" <<'PY'
-          import json, sys, datetime
-          s, code = sys.argv[1], sys.argv[2]
-          try:
-              r = json.load(open('/tmp/d'))['chart']['result'][0]
-              dv = (r.get('events') or {}).get('dividends') or {}
-              rows = sorted(dv.values(), key=lambda x: x['date'])
-              txt = ', '.join(f"{datetime.datetime.utcfromtimestamp(x['date']).strftime('%Y-%m-%d')} {x['amount']}" for x in rows[-5:])
-              print(f"::notice title={s}::HTTP {code}, 2년 배당 {len(rows)}건, 최근: {txt}, 통화 {r['meta'].get('currency')}")
-          except Exception as e:
-              print(f"::notice title={s}::HTTP {code} 실패 {e}")
-          PY
+      - name: 확인
+        env:
+          U: https://ictjkqbbcaigdvlysdaw.supabase.co
+          K: sb_publishable_C7jZEKJn_nF2Y3Ngq5f80Q_RA5Wrfux
+        run: |
+          for i in 1 2 3 4 5 6; do
+            c=$(curl -s -m 90 -o /tmp/r -w "%{http_code}" -X POST "$U/functions/v1/seed10k-quotes" -H "apikey: $K" -H "Content-Type: application/json" -d '{}')
+            if ! grep -q '방금 실행됨' /tmp/r; then break; fi
+            sleep 15
           done
+          python3 -c "
+          import json; d=json.load(open('/tmp/r')); print('::notice title=함수 응답 HTTP $c::' + json.dumps({k:d.get(k) for k in ('divs','dart','error','skipped')}, ensure_ascii=False)[:600])"
+          c2=$(curl -s -m 30 -o /tmp/n -w "%{http_code}" "$U/rest/v1/seed10k_divs?select=id,at,items" -H "apikey: $K")
+          python3 - "$c2" <<'PY'
+          import json, sys
+          try: d = json.load(open('/tmp/n'))
+          except Exception: d = None
+          if not isinstance(d, list): print(f"::notice title=배당 표::HTTP {sys.argv[1]} {str(d)[:300]}"); sys.exit()
+          withd = [r for r in d if r['items']]
+          print(f"::notice title=배당 표::HTTP {sys.argv[1]}, {len(d)}종목 저장, 배당 있는 종목 {len(withd)}, 빈 목록 {len([r for r in d if r['items'] == []])}, 실패(null) {len([r for r in d if r['items'] is None])}")
+          for r in withd[:4]: print(f"::notice title=예시 {r['id']}::{r['items'][-3:]}")
+          PY
