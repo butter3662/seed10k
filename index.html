@@ -661,7 +661,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 100 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.13.1';
+const VERSION = '1.13.2';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -2897,6 +2897,7 @@ function renderOrderResv(soft){
   else if (q < 1) err = '수량을 입력하세요.';
   else if (side === 'sell' && held < 1) err = '보유하지 않은 종목은 예약 매도할 수 없습니다.';
   else if (side === 'sell' && q > held) err = `보유 수량(${held}주)을 넘었습니다.`;
+  else if (UI.rpx == null) err = '조건 가격을 정하세요. 지금은 현재가로 채워 두었습니다.';   // 아직 손대지 않은 칸: 현재가라 당연히 조건에 맞으므로 그 오류는 띄우지 않는다
   else if (condMet({kind, px}, cur)) err = '지금 가격이 이미 조건에 맞습니다. 바로 주문을 이용하세요.';
   else if (ordersOf().length >= ORDER_MAX) err = `예약 주문은 ${ORDER_MAX}개까지 걸 수 있습니다.`;
   const desc = side === 'buy' ? `가격이 ${fmtPx(s, px)} 이하로 내려오면 삽니다.`
