@@ -1,4 +1,4 @@
-name: 공시 상태 확인 3 (임시)
+name: 거래량 확인 (임시)
 on:
   push:
     branches: [tmp-yahoo-test]
@@ -7,24 +7,10 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 3
     steps:
-      - name: 확인
-        env:
-          U: https://ictjkqbbcaigdvlysdaw.supabase.co
-          K: sb_publishable_C7jZEKJn_nF2Y3Ngq5f80Q_RA5Wrfux
-        run: |
-          c=$(curl -s -m 30 -o /tmp/n -w "%{http_code}" "$U/rest/v1/seed10k_dart?select=id,at,items&order=at.desc" -H "apikey: $K")
-          python3 - "$c" <<'PY'
-          import json, sys
-          code = sys.argv[1]
-          try: d = json.load(open('/tmp/n'))
-          except Exception: d = None
-          if not isinstance(d, list): print(f"::notice title=공시 표::HTTP {code} {str(d)[:300]}"); sys.exit()
-          st = [r for r in d if r['id'] == '_state']
-          kr = [r for r in d if r['id'].startswith('KR:')]
-          n = sum(len(r['items'] or []) for r in kr)
-          print(f"::notice title=공시 표::HTTP {code}, 종목 {len(kr)}개, 공시 {n}건, 상태 {st[0]['items'] if st else '없음'} ({st[0]['at'] if st else ''})")
-          for r in sorted(kr, key=lambda r: -len(r['items'] or []))[:3]:
-              it = (r['items'] or [])[:2]
-              print(f"::notice title=예시 {r['id']} ({len(r['items'] or [])}건)::" + " / ".join(f"{x.get('d')} {x.get('t')} ({x.get('f')}) {x.get('r')}" for x in it))
-          PY
-          curl -s -m 30 "$U/rest/v1/seed10k_quotes?select=id,updated_at&m=eq.SYS" -H "apikey: $K" -o /tmp/s; echo "::notice title=함수 신호::$(tr -d '\n' < /tmp/s)"
+      - run: |
+          for s in KR_005930 US_AAPL; do
+            curl -s -m 30 "https://butter3662.github.io/seed10k/data/c/$s.json?t=$(date +%s)" -o /tmp/c.json
+            python3 -c "
+          import json; d=json.load(open('/tmp/c.json'))['d1']; v=d.get('v')
+          print('::notice title=$s::종가 %d개, 거래량 %s, 마지막 3일 %s' % (len(d['c']), (len(v) if v else '없음'), list(zip(d['c'][-3:], (v or [None]*3)[-3:]))))"
+          done
