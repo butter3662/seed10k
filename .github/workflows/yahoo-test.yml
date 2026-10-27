@@ -1,4 +1,4 @@
-name: yfinance 날짜 확인 (임시)
+name: 한국 5분 봉 날짜 확인 (임시)
 on:
   push:
     branches: [tmp-yahoo-test]
@@ -14,15 +14,12 @@ jobs:
       - name: 확인
         run: |
           python3 - <<'PY'
-          import yfinance as yf, datetime as dt
-          now = dt.datetime.now(dt.timezone.utc)
-          for label, kw in [("start만", dict(start="2026-10-23")), ("start+end(+2일)", dict(start="2026-10-23", end=(now + dt.timedelta(days=2)).strftime("%Y-%m-%d"))), ("period 10d", dict(period="10d"))]:
-              df = yf.download(["AAPL", "NVDA", "005930.KS", "KRW=X"], group_by="ticker", auto_adjust=False, actions=False, progress=False, threads=True, interval="1d", **kw)
-              out = []
-              for s in ["AAPL", "NVDA", "005930.KS", "KRW=X"]:
-                  try:
-                      c = df[s]["Close"].dropna()
-                      out.append(f"{s}: {[ (i.strftime('%m-%d'), round(float(v),2)) for i, v in c.tail(3).items()]}")
-                  except Exception as e: out.append(f"{s}: ERR {e}")
-              print(f"::notice title={label} (yfinance {yf.__version__}, now {now:%m-%d %H:%M}Z)::" + " | ".join(out))
+          import yfinance as yf, pandas as pd, collections
+          df = yf.download(["005930.KS", "000660.KS", "196170.KQ", "AAPL"], group_by="ticker", auto_adjust=False, actions=False, progress=False, threads=True, period="5d", interval="5m")
+          for s in ["005930.KS", "000660.KS", "196170.KQ", "AAPL"]:
+              c = df[s]["Close"].dropna()
+              tz = str(c.index.tz)
+              days = collections.Counter(pd.Timestamp(i).strftime("%Y-%m-%d") for i in c.index)
+              first = {d: min(pd.Timestamp(i).strftime("%H:%M") for i in c.index if pd.Timestamp(i).strftime("%Y-%m-%d") == d) for d in days}
+              print(f"::notice title={s}::tz {tz}, 날짜별 봉 수 {dict(days)}, 첫 봉 시각 {first}")
           PY
