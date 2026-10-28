@@ -674,7 +674,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.5.0';
+const VERSION = '1.5.1';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -3127,6 +3127,35 @@ function setOrderHTML(box, html, soft){
   box.querySelectorAll('[data-dyn]').forEach(el => { const n = tmp.querySelector(`[data-dyn="${el.dataset.dyn}"]`); if (n) el.replaceWith(n); });
   return false;
 }
+/* 숫자 입력칸에 세 자리마다 쉼표: 보이는 값은 '1,415,000', 계산에 쓰는 값은 쉼표 없는 '1415000' */
+function groupNum(raw){
+  const [i, f] = String(raw ?? '').split('.');
+  const g = i.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  return f === undefined ? g : g + '.' + f;
+}
+/* 입력칸 el의 값을 정리해 쉼표를 넣고, 커서를 같은 숫자 뒤에 둔다. 쉼표 없는 값을 돌려준다.
+   dec: 소수점 허용(달러, 소수 둘째 자리까지) */
+function commaInput(el, dec, ev){
+  const v = el.value, pos = el.selectionStart ?? v.length;
+  const keep = ch => /[0-9]/.test(ch) || (dec && ch === '.');
+  let before = [...v.slice(0, pos)].filter(keep).length;   // 커서 앞에 있던 숫자(와 소수점) 개수
+  let raw = [...v].filter(keep).join('');
+  // 쉼표만 지워졌으면(지우기 키가 쉼표에 걸림) 그 옆 숫자를 대신 지운다
+  const prev = el.dataset.raw ?? null, it = ev && ev.inputType;
+  if (prev !== null && raw === prev && it === 'deleteContentBackward' && before > 0){ raw = raw.slice(0, before - 1) + raw.slice(before); before--; }
+  else if (prev !== null && raw === prev && it === 'deleteContentForward' && before < raw.length){ raw = raw.slice(0, before) + raw.slice(before + 1); }
+  if (dec){ const k = raw.indexOf('.'); if (k >= 0) raw = raw.slice(0, k + 1) + raw.slice(k + 1).replace(/\./g, '').slice(0, 2); }
+  raw = raw.replace(/^0+(?=\d)/, '');
+  const shown = groupNum(raw);
+  if (shown !== v){
+    el.value = shown;
+    let n = 0, c = 0;
+    while (c < shown.length && n < Math.min(before, raw.length)){ if (shown[c] !== ',') n++; c++; }
+    try { el.setSelectionRange(c, c); } catch(e){}
+  }
+  el.dataset.raw = raw;
+  return raw;
+}
 function renderOrderResv(soft){
   const id = UI.sheet, s = BY_ID[id], box = $('#orderBox'); if (!box) return;
   if (!soft && typingOrder()) soft = true;
@@ -3158,7 +3187,7 @@ function renderOrderResv(soft){
   const full = setOrderHTML(box, `${otypeSegHTML()}
     <div class="seg" role="group" aria-label="주문 종류"><button data-side="buy" aria-pressed="${side === 'buy'}">예약 매수</button><button data-side="sell" aria-pressed="${side === 'sell'}">예약 매도</button></div>
     <div class="rsv-l">조건 가격</div>
-    <label class="amt"><span>${krw ? '₩' : '$'}</span><input id="rpxIn" type="number" inputmode="decimal" min="0" step="${krw ? '1' : '0.01'}" value="${esc(pxStr)}" aria-label="조건 가격"></label>
+    <label class="amt"><span>${krw ? '₩' : '$'}</span><input id="rpxIn" type="text" inputmode="${krw ? 'numeric' : 'decimal'}" autocomplete="off" value="${esc(groupNum(pxStr))}" aria-label="조건 가격"></label>
     <p class="muted rsv-d" data-dyn="desc">현재가 ${fmtPx(s, cur)}. ${desc}</p>
     <div class="rsv-warn" data-dyn="warn">${lowWarn}</div>
     <div class="qty"><button data-qd="-1" aria-label="1주 줄이기">−</button><input id="qtyIn" type="number" inputmode="numeric" min="1" step="1" value="${q || ''}" aria-label="수량(주)"><button data-qd="1" aria-label="1주 늘리기">+</button></div>
@@ -3177,7 +3206,8 @@ function renderOrderResv(soft){
   const inp = $('#qtyIn');
   inp.addEventListener('input', () => { UI.qty = parseInt(inp.value, 10) || 0; renderOrderResv(true); });
   const pin = $('#rpxIn');
-  pin.addEventListener('input', () => { UI.rpx = pin.value; renderOrderResv(true); });
+  pin.dataset.raw = String(UI.rpx == null ? price(id) : UI.rpx);
+  pin.addEventListener('input', e => { UI.rpx = commaInput(pin, !krw, e); renderOrderResv(true); });
 }
 function renderOrder(soft){
   if (UI.otype === 'resv') return renderOrderResv(soft);
