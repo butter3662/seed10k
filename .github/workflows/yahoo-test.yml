@@ -1,4 +1,4 @@
-name: 한국 300종목 수집 점검 (임시)
+name: 아이콘 확인 (임시)
 on:
   push:
     branches: [tmp-yahoo-test]
@@ -7,10 +7,12 @@ permissions:
 jobs:
   check:
     runs-on: ubuntu-24.04
-    timeout-minutes: 6
+    timeout-minutes: 4
     steps:
       - uses: actions/checkout@v4
-      - run: python3 probe/kr300.py || true
       - run: |
+          B=https://butter3662.github.io/seed10k
+          { for f in icons/apple-touch-icon.png icons/icon-192.png; do echo "$f $(curl -s -o /dev/null -w '%{http_code} %{content_type} %{size_download}B' $B/$f)"; done
+            curl -s $B/ | grep -o '<link rel="apple-touch-icon"[^>]*>\|apple-mobile-web-app-title[^>]*>\|const VERSION = .[0-9.]*.' ; } > probe/icon.txt
           git config user.name gha; git config user.email gha@users.noreply.github.com
-          git add probe/kr300.txt && git commit -m "점검 결과" && git push origin HEAD:tmp-yahoo-test
+          git add probe/icon.txt && git commit -m "아이콘 결과" && git push origin HEAD:tmp-yahoo-test
