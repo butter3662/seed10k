@@ -1,0 +1,6 @@
+icons/apple-touch-icon.png 200 image/png 10996B
+icons/icon-192.png 200 image/png 12060B
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+apple-mobile-web-app-title" content="SEED 10K">
+const VERSION = '1.5.2'
+const VERSION = '(
