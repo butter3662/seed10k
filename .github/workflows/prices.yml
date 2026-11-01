@@ -1,6 +1,6 @@
 name: 시세 수집과 배포
 
-# 저장소에 필요한 파일은 index.html 과 이 파일 두 개뿐이다.
+# 저장소에 필요한 파일은 index.html, 이 파일, 아이콘 폴더(icons/)다.
 # Settings → Pages → Source 를 "GitHub Actions" 로 바꾼 뒤 Actions 탭에서 한 번 실행하면 된다.
 
 on:
@@ -362,6 +362,7 @@ jobs:
         run: |
           mkdir -p _site/data
           cp index.html _site/
+          cp -r icons _site/ 2>/dev/null || true   # 홈 화면 아이콘 (apple-touch-icon 등)
           python fetch_prices.py --out _site/data --prev prev > collect.log 2>&1 || echo "시세 수집 실패 — 게임은 '시세 없음'으로 표시된다" >> collect.log
           cat collect.log
           echo "::notice title=시세 수집 결과::$(tail -n 1 collect.log)"
