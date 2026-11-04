@@ -677,7 +677,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.5.2';
+const VERSION = '1.6.0';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -998,7 +998,7 @@ function addLoan(kind, amt){ const fee = amt * META.loanFee; S.loans[kind].bal +
 function receiveUSD(x){ if (S.loans.od.bal > 0){ const r = Math.min(x, S.loans.od.bal); S.loans.od.bal -= r; x -= r; } S.usd += x; }
 function exchange(dir, amt, silent){
   if (S.over) return toast('파산해서 환전할 수 없습니다', true);
-  amt = dir === 'u2k' ? Math.floor(amt * 100) / 100 : Math.floor(amt);
+  amt = dir === 'u2k' ? Math.floor(amt * 100 + 1e-6) / 100 : Math.floor(amt + 1e-9);   // 1.13 × 100 = 112.999… 같은 부동소수 오차로 1센트가 깎이지 않게
   if (!(amt > 0)) return toast('금액을 입력하세요', true);
   const q = exQuote(dir, amt);
   if (dir === 'u2k'){
@@ -3331,15 +3331,35 @@ function walletHTML(){
     <button class="btn solid wl-go" id="btnFX">환전하기</button>`;
 }
 function openFX(dir){
-  UI.fxDir = dir || UI.fxDir || 'u2k'; UI.fxAmt = '';
+  UI.fxDir = dir || UI.fxDir || 'u2k'; UI.fxAmt = ''; UI.fxBy = 'from';
   UI.fxClose = showModal(`<div id="fxBox"></div>`, () => { UI.fxClose = null; });
   renderFX();
   setTimeout(() => { const i = $('#fxIn'); i && i.focus(); }, 60);
 }
+/* 받을 금액 T를 정하면, 그만큼 받는 데 필요한 가장 작은 '낼 금액'
+   원화 → 달러: 받는 달러 = floor(A ÷ 달러 살 때 환율 × 100) ÷ 100 이 T 이상이 되는 가장 작은 원화 A(1원 단위)
+   달러 → 원화: 받는 원화 = floor(D × 달러 팔 때 환율) 이 T 이상이 되는 가장 작은 달러 D(0.01달러 단위) */
+function fxFromForTarget(dir, T){
+  if (!(T > 0)) return 0;
+  const r = fxRates();
+  if (dir === 'k2u'){
+    T = Math.round(T * 100) / 100;
+    let A = Math.max(1, Math.ceil(T * r.buy - 1e-7));
+    while (exQuote('k2u', A).to < T - 1e-9) A++;
+    return A;
+  }
+  T = Math.floor(T);
+  let D = Math.max(0.01, Math.ceil(T / r.sell * 100 - 1e-7) / 100);
+  while (exQuote('u2k', D).to < T) D = Math.round((D + 0.01) * 100) / 100;
+  return D;
+}
 function renderFX(){
   const box = $('#fxBox'); if (!box) return;
-  const dir = UI.fxDir, r = fxRates(), u2k = dir === 'u2k';
-  const amt = parseFloat(UI.fxAmt) || 0;
+  const dir = UI.fxDir, r = fxRates(), u2k = dir === 'u2k', byTo = UI.fxBy === 'to';
+  const typed = parseFloat(UI.fxAmt) || 0;
+  // 입력 기준: 바꿀(낼) 금액 또는 받을 금액. 받을 금액이면 필요한 낼 금액을 계산한다
+  const amt = byTo ? fxFromForTarget(dir, typed) : typed;
+  UI.fxFrom = amt;
   const q = amt > 0 ? exQuote(dir, amt) : null;
   const have = u2k ? S.usd : S.krw;
   let err = '';
@@ -3348,14 +3368,15 @@ function renderFX(){
   if (q && q.to <= 0) err = '금액이 너무 작습니다.';
   box.innerHTML = `<h2>환전</h2>
     <div class="seg fx-seg" role="group" aria-label="환전 방향"><button data-fxdir="u2k" aria-pressed="${u2k}">달러 → 원화</button><button data-fxdir="k2u" aria-pressed="${!u2k}">원화 → 달러</button></div>
-    <label class="amt fx-amt"><span>${u2k ? '$' : '₩'}</span><input id="fxIn" type="number" inputmode="decimal" min="0" step="${u2k ? '0.01' : '1'}" value="${esc(UI.fxAmt)}" placeholder="바꿀 금액" aria-label="바꿀 금액"></label>
-    <div class="quick"><button data-fxq=".25">25%</button><button data-fxq=".5">50%</button><button data-fxq="1">전액</button></div>
+    <div class="seg fx-seg" role="group" aria-label="입력 기준"><button data-fxby="from" aria-pressed="${!byTo}">${u2k ? '바꿀 달러' : '바꿀 원화'} 입력</button><button data-fxby="to" aria-pressed="${byTo}">${u2k ? '받을 원화' : '받을 달러'} 입력</button></div>
+    <label class="amt fx-amt"><span>${(u2k !== byTo) ? '$' : '₩'}</span><input id="fxIn" type="number" inputmode="decimal" min="0" step="${(u2k !== byTo) ? '0.01' : '1'}" value="${esc(UI.fxAmt)}" placeholder="${byTo ? '받을 금액' : '바꿀 금액'}" aria-label="${byTo ? '받을 금액' : '바꿀 금액'}"></label>
+    ${byTo ? '' : '<div class="quick"><button data-fxq=".25">25%</button><button data-fxq=".5">50%</button><button data-fxq="1">전액</button></div>'}
     <div class="bd">
       <div><span>보유 ${u2k ? '달러' : '원화'}</span><b class="num">${u2k ? fmtUSD(have) : fmtKRW(have)}</b></div>
       <div><span>매매기준율</span><b class="num">${fmtFX(r.base)}원</b></div>
       <div><span>수수료율 = 1% × (1 − 우대율 ${Math.round(fxPref() * 100)}%)</span><b class="num">${(r.f * 100).toFixed(2)}%</b></div>
       <div><span>적용 환율 (${u2k ? '달러 팔 때' : '달러 살 때'})</span><b class="num">${fmtFX(u2k ? r.sell : r.buy)}원</b></div>
-      ${q ? `<div><span>수수료</span><b class="num">${fmtUSD(q.feeUSD)} 상당</b></div><div class="tot"><span>받을 금액</span><b class="num">${u2k ? fmtKRW(q.to) : fmtUSD(q.to)}</b></div>` : ''}
+      ${q ? `<div><span>수수료</span><b class="num">${fmtUSD(q.feeUSD)} 상당</b></div>${byTo ? `<div class="tot"><span>내야 할 금액</span><b class="num">${u2k ? fmtUSD(amt) : fmtKRW(amt)}</b></div>` : ''}<div class="tot"><span>받을 금액</span><b class="num">${u2k ? fmtKRW(q.to) : fmtUSD(q.to)}</b></div>` : ''}
     </div>
     ${u2k && amt > S.usd && !err ? `<div class="alert">달러가 모자란 ${fmtUSD(amt - S.usd)}은 마이너스통장에서 빌립니다.</div>` : ''}
     ${!u2k && S.loans.od.bal > 0 ? `<div class="alert">받은 달러는 마이너스통장 사용액(${fmtUSD(S.loans.od.bal)})을 먼저 갚는 데 씁니다.</div>` : ''}
@@ -3734,9 +3755,10 @@ document.addEventListener('click', e => {
   if (t.id === 'mgGo'){ mgStart(); return; }
   if (t.dataset.info){ openInfo(t.dataset.info); return; }
   if (t.dataset.fxdir){ UI.fxDir = t.dataset.fxdir; UI.fxAmt = ''; renderFX(); return; }
-  if (t.dataset.fxq){ const have = UI.fxDir === 'u2k' ? S.usd : S.krw; UI.fxAmt = UI.fxDir === 'u2k' ? String(Math.floor(have * +t.dataset.fxq * 100) / 100) : String(Math.floor(have * +t.dataset.fxq)); renderFX(); return; }
+  if (t.dataset.fxby){ UI.fxBy = t.dataset.fxby; UI.fxAmt = ''; renderFX(); const i = $('#fxIn'); i && i.focus(); return; }
+  if (t.dataset.fxq){ UI.fxBy = 'from'; const have = UI.fxDir === 'u2k' ? S.usd : S.krw; UI.fxAmt = UI.fxDir === 'u2k' ? String(Math.floor(have * +t.dataset.fxq * 100) / 100) : String(Math.floor(have * +t.dataset.fxq)); renderFX(); return; }
   if (t.dataset.fxclose !== undefined){ UI.fxClose && UI.fxClose(); return; }
-  if (t.id === 'fxGo'){ const q = exchange(UI.fxDir, parseFloat(UI.fxAmt)); if (q){ UI.fxAmt = ''; UI.fxClose && UI.fxClose(); commit(); } return; }
+  if (t.id === 'fxGo'){ const q = exchange(UI.fxDir, UI.fxFrom); if (q){ UI.fxAmt = ''; UI.fxClose && UI.fxClose(); commit(); } return; }
   if (t.dataset.tab){ go(t.dataset.tab); return; }
   if (t.dataset.open){ openSheet(t.dataset.open); return; }
   if (t.dataset.mkt){ UI.mkt = t.dataset.mkt; renderMarket(); return; }
