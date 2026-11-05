@@ -677,7 +677,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.6.0';
+const VERSION = '1.6.1';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -1973,12 +1973,24 @@ function toastQuiet(msg){
   t.textContent = msg;
   clearTimeout(quietT); quietT = setTimeout(() => t.remove(), 1600);
 }
+/* iOS Safari: 키보드가 떠 있는 채로 입력칸이 화면에서 사라지면(창 닫기 등) 키보드가 내려간 뒤에도
+   화면 기준 위치를 못 되돌려, 아래 탭 바(position:fixed) 같은 고정 요소가 화면 중간에 멈춰 있는 일이 있다.
+   (1) 창을 닫기 전에 입력칸의 포커스를 먼저 풀고 (2) 키보드가 내려가면 스크롤을 1px 움직였다 되돌려 위치를 다시 계산하게 한다 */
+function blurField(){ const a = document.activeElement; if (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) a.blur(); }
+function refixViewport(){
+  requestAnimationFrame(() => { const x = window.scrollX, y = window.scrollY; window.scrollTo(x, y > 0 ? y - 1 : y + 1); window.scrollTo(x, y); });
+}
+document.addEventListener('focusout', e => { if (e.target && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) setTimeout(refixViewport, 150); });
+if (window.visualViewport){
+  let vvH = window.visualViewport.height;
+  window.visualViewport.addEventListener('resize', () => { const h = window.visualViewport.height; if (h > vvH + 80) setTimeout(refixViewport, 80); vvH = h; });
+}
 function showModal(html, onClose, locked){
   const md = $('#modal'), sc = $('#scrim');
   md.innerHTML = html; md.hidden = false; sc.hidden = false; md.dataset.kind = '';
   md.dataset.locked = locked ? '1' : '';
   requestAnimationFrame(() => { md.classList.add('on'); sc.classList.add('on'); });
-  const close = () => { md.classList.remove('on'); if (!UI.sheet) sc.classList.remove('on'); setTimeout(() => { md.hidden = true; if (!UI.sheet) sc.hidden = true; }, 180); onClose && onClose(); };
+  const close = () => { blurField(); md.classList.remove('on'); if (!UI.sheet) sc.classList.remove('on'); setTimeout(() => { md.hidden = true; if (!UI.sheet) sc.hidden = true; }, 180); onClose && onClose(); };
   md.querySelectorAll('[data-close]').forEach(b => b.onclick = close);
   const first = md.querySelector('button'); first && first.focus();
   return close;
@@ -2634,6 +2646,7 @@ function newsHTML(id){
   return `<div class="card-h"><h2>${title}</h2><small>${when}</small></div>${body}${dart}<p class="muted nw-f">제목을 누르면 원문이 새 창으로 열립니다.</p>`;
 }
 function closeSheet(){
+  blurField();
   const sh = $('#sheet'), sc = $('#scrim');
   sh.classList.remove('on'); sc.classList.remove('on');
   UI.sheet = null;
