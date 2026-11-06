@@ -512,35 +512,90 @@ html.gated body{overflow:hidden}
 .mg-up{background:var(--up)} .mg-dn{background:var(--down)}
 /* 주사위 세계여행 */
 html.bm-open,html.bm-open body{overflow:hidden}
-.bm-ov{position:fixed;inset:0;z-index:70;background:var(--paper);overflow:auto;-webkit-overflow-scrolling:touch;padding:calc(10px + env(safe-area-inset-top)) 8px calc(16px + env(safe-area-inset-bottom));display:flex;flex-direction:column;align-items:center;gap:10px}
+/* iOS Safari에서 흐림 효과(backdrop-filter)가 걸린 머리글·탭 막대가 위 레이어를 뚫고 비쳐 보이는 문제: 게임 화면을 연 동안 아예 숨긴다 */
+html.bm-open .top,html.bm-open .tabbar{visibility:hidden}
+.bm-ov{position:fixed;inset:0;z-index:70;background:radial-gradient(120% 80% at 50% 0%,color-mix(in srgb,var(--brass) 10%,var(--paper)),var(--paper) 60%);overflow:auto;-webkit-overflow-scrolling:touch;padding:calc(10px + env(safe-area-inset-top)) 8px calc(16px + env(safe-area-inset-bottom));display:flex;flex-direction:column;align-items:center;gap:10px}
 .bm-ov[hidden]{display:none}
 .bm-top{width:min(100%,560px);display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:8px}
 .bm-top .btn{height:34px;padding:0 12px}
+.bm-tr{display:flex;gap:6px}
+.bm-spd{font-size:12px}
 .bm-ttl{text-align:center;display:grid;line-height:1.25}
 .bm-ttl b{font-size:15.5px;font-weight:800}
 .bm-ttl small{font-size:12px;color:var(--ink-3)}
-.bm-board{width:min(100%,560px);aspect-ratio:1;display:grid;grid-template-columns:repeat(9,minmax(0,1fr));grid-template-rows:repeat(9,minmax(0,1fr));gap:2px}
-.bm-c{position:relative;min-width:0;min-height:0;border:1px solid var(--rule);border-radius:5px;background:var(--surface);padding:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;overflow:hidden;color:var(--ink);font:inherit}
+.bm-board{position:relative;width:min(100%,560px);aspect-ratio:1;display:grid;grid-template-columns:repeat(9,minmax(0,1fr));grid-template-rows:repeat(9,minmax(0,1fr));gap:2px}
+.bm-board.shake{animation:bmshake .45s}
+@keyframes bmshake{0%,100%{transform:none}20%{transform:translate(-5px,2px)}40%{transform:translate(5px,-2px)}60%{transform:translate(-3px,1px)}80%{transform:translate(3px,0)}}
+.bm-c{position:relative;min-width:0;min-height:0;border:1px solid var(--rule);border-radius:6px;background:var(--surface);padding:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:0;overflow:hidden;color:var(--ink);font:inherit;transition:box-shadow .25s}
 .bm-c.bm-k{background:var(--surface-2)}
-.bm-c.own{box-shadow:inset 0 0 0 2px var(--oc)}
+.bm-c.own{box-shadow:inset 0 0 0 2px var(--oc);background:color-mix(in srgb,var(--oc) 12%,var(--surface))}
 .bm-c.sel{outline:2px solid var(--ink);outline-offset:-1px}
-.bm-c.fly{border-color:var(--brass)}
+.bm-c.fly{border-color:var(--brass);animation:bmglow 1s infinite alternate}
+@keyframes bmglow{to{background:color-mix(in srgb,var(--brass) 22%,var(--surface))}}
+.bm-c.pop{animation:bmpop .55s cubic-bezier(.3,1.6,.5,1)}
+@keyframes bmpop{0%{transform:scale(1)}35%{transform:scale(1.28);z-index:3}100%{transform:scale(1)}}
+.bm-c.shine{animation:bmpop .55s cubic-bezier(.3,1.6,.5,1)}
+.bm-c.shine .bm-bld{animation:bmbld .7s cubic-bezier(.3,1.7,.5,1)}
+@keyframes bmbld{0%{transform:translateY(60%) scale(.2);opacity:0}60%{transform:translateY(-15%) scale(1.3);opacity:1}100%{transform:none}}
 .bm-band{position:absolute;left:0;right:0;top:0;height:4px}
-.bm-n{font-size:clamp(8px,2.2vw,12px);font-weight:750;line-height:1.1;text-align:center;word-break:keep-all;padding:0 1px;margin-top:3px}
-.bm-sp{color:var(--brass);margin-top:0}
-.bm-p{font-size:clamp(7.5px,1.9vw,10.5px);color:var(--ink-3);font-weight:650;line-height:1}
+.bm-n{font-size:clamp(8px,2.2vw,12px);font-weight:750;line-height:1.1;text-align:center;word-break:keep-all;padding:0 1px;margin-top:6px}
+.bm-ic{font-size:clamp(11px,3vw,17px);line-height:1;margin-top:5px}
+.bm-sp{color:var(--brass);margin-top:1px}
+.bm-p{font-size:clamp(7.5px,1.9vw,10.5px);color:var(--ink-3);font-weight:650;line-height:1.1}
 .bm-c.own .bm-p{color:var(--oc)}
-.bm-tks{position:absolute;left:2px;right:2px;bottom:2px;display:flex;justify-content:center;gap:1px;flex-wrap:wrap}
-.bm-tk{width:clamp(7px,2vw,11px);height:clamp(7px,2vw,11px);border-radius:50%;border:1.5px solid var(--paper);display:block}
+.bm-bld{position:absolute;right:1px;top:4px;font-size:clamp(8px,2.2vw,12px);line-height:1}
+.bm-toks{position:absolute;inset:0;pointer-events:none}
+.bm-tok{position:absolute;left:0;top:0;transition:transform .15s ease-out;z-index:2}
+.bm-tok[hidden]{display:none}
+.bm-tok-i{width:100%;height:100%;border-radius:50% 50% 46% 46%;background:radial-gradient(circle at 35% 30%,color-mix(in srgb,var(--pc) 55%,#fff),var(--pc) 55%,color-mix(in srgb,var(--pc) 70%,#000));box-shadow:0 2px 0 color-mix(in srgb,var(--pc) 55%,#000),0 4px 8px rgba(0,0,0,.45);display:grid;place-items:center;color:#fff;font-weight:850;font-size:clamp(7px,1.9vw,11px);text-shadow:0 1px 1px rgba(0,0,0,.4)}
+.bm-tok.turn .bm-tok-i{outline:2px solid #fff;outline-offset:1px;animation:bmbob 1s ease-in-out infinite}
+@keyframes bmbob{50%{transform:translateY(-14%)}}
+.bm-tok-i.hop{animation:bmhop .15s ease-out}
+@keyframes bmhop{50%{transform:translateY(-55%) scale(1.08,.94)}100%{transform:none}}
+.bm-tok-i.fly{animation:bmflyk .62s ease-in-out}
+@keyframes bmflyk{50%{transform:translateY(-160%) scale(1.5)}100%{transform:none}}
+.bm-fx{position:absolute;inset:0;pointer-events:none;overflow:visible;z-index:5}
+.bm-float{position:absolute;font-weight:850;font-size:clamp(12px,3.4vw,16px);white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,.6);font-family:var(--f-num)}
+.bm-float.up{color:#4FE0A0}.bm-float.dn{color:#FF7B7B}
+.bm-coin{position:absolute;width:clamp(14px,3.6vw,20px);height:clamp(14px,3.6vw,20px);border-radius:50%;background:radial-gradient(circle at 35% 30%,#FFF3C4,#E9B949 55%,#B07D12);color:#7A5200;font-size:clamp(8px,2.2vw,11px);font-weight:900;display:grid;place-items:center;box-shadow:0 1px 3px rgba(0,0,0,.4)}
+.bm-banner{position:absolute;left:50%;top:50%;padding:10px 18px;border-radius:14px;background:color-mix(in srgb,var(--surface) 92%,transparent);border:2px solid var(--ink-2);font-weight:900;font-size:clamp(16px,5vw,26px);white-space:nowrap;box-shadow:0 8px 24px rgba(0,0,0,.4);color:var(--ink)}
+.bm-banner.gold{border-color:#E2B45E;color:#F2CB7A}
+.bm-banner.red{border-color:#FF6B6B;color:#FF8A8A}
+.bm-banner.green{border-color:#36C38A;color:#5EE0A8}
+.bm-banner.small{font-size:clamp(13px,3.8vw,18px);padding:7px 14px;top:72%}
+.bm-conf{position:absolute;top:0;width:7px;height:11px;border-radius:2px}
+.bm-card{position:absolute;left:50%;top:50%;width:min(60%,260px);aspect-ratio:3/2;perspective:800px}
+.bm-card-i{position:relative;width:100%;height:100%;transform-style:preserve-3d}
+.bm-card-b,.bm-card-f{position:absolute;inset:0;border-radius:14px;backface-visibility:hidden;-webkit-backface-visibility:hidden;display:grid;place-items:center;align-content:center;gap:6px;text-align:center;padding:10px;box-shadow:0 10px 30px rgba(0,0,0,.45)}
+.bm-card-b{background:linear-gradient(135deg,#6B4CD9,#3B6CF0);font-size:clamp(28px,8vw,44px);color:#fff}
+.bm-card-b small{font-size:13px;font-weight:800;letter-spacing:.2em}
+.bm-card-f{background:#FFF8E6;color:#2A2010;transform:rotateY(180deg);border:3px solid #E2B45E}
+.bm-card-f small{font-size:11px;font-weight:800;color:#B07D12;letter-spacing:.2em}
+.bm-card-f b{font-size:clamp(13px,3.8vw,17px);line-height:1.35;word-break:keep-all}
 .bm-mid{grid-row:2/9;grid-column:2/9;display:flex;flex-direction:column;gap:6px;padding:6px;min-width:0;min-height:0;overflow:auto}
-.bm-row{display:flex;align-items:center;gap:8px}
-.bm-dice{display:flex;gap:4px;flex:0 0 auto}
-.bm-dice span{width:clamp(26px,7vw,38px);height:clamp(26px,7vw,38px);border-radius:8px;background:var(--surface);border:1px solid var(--rule);display:grid;place-items:center;font-weight:800;font-size:clamp(14px,4vw,20px);font-family:var(--f-num)}
-.bm-msg{font-size:clamp(11px,3vw,13.5px);color:var(--ink-2);line-height:1.35;min-width:0}
-.bm-msg b{color:var(--brass)}
+.bm-row{display:flex;align-items:center;gap:10px}
+.bm-dice{display:flex;gap:8px;flex:0 0 auto;perspective:400px}
+.bm-die{--s:clamp(26px,7.5vw,40px);width:var(--s);height:var(--s)}
+.bm-cube{position:relative;width:100%;height:100%;transform-style:preserve-3d;transition:transform .3s}
+.bm-f{position:absolute;inset:0;border-radius:18%;background:linear-gradient(145deg,#fff,#E6E9F0);border:1px solid #C9CEDA;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);padding:14%;backface-visibility:hidden;-webkit-backface-visibility:hidden}
+.bm-f i{display:block;margin:auto;width:70%;height:70%;border-radius:50%}
+.bm-f i.on{background:#1B2235}
+.bm-f.f1 i.on{background:#E0484E;width:85%;height:85%}
+
+.bm-f.f1{transform:translateZ(calc(var(--s) / 2))}
+.bm-f.f6{transform:rotateY(180deg) translateZ(calc(var(--s) / 2))}
+.bm-f.f3{transform:rotateY(90deg) translateZ(calc(var(--s) / 2))}
+.bm-f.f4{transform:rotateY(-90deg) translateZ(calc(var(--s) / 2))}
+.bm-f.f5{transform:rotateX(90deg) translateZ(calc(var(--s) / 2))}
+.bm-f.f2{transform:rotateX(-90deg) translateZ(calc(var(--s) / 2))}
+.bm-dice.rolling .bm-die{animation:bmtoss .8s cubic-bezier(.3,.6,.4,1)}
+@keyframes bmtoss{0%{transform:translateY(0)}30%{transform:translateY(-45%)}60%{transform:translateY(0)}78%{transform:translateY(-12%)}100%{transform:none}}
+.bm-dice.dbl .bm-f{box-shadow:0 0 0 2px #E2B45E}
+.bm-msg{font-size:clamp(11px,3vw,13.5px);color:var(--ink-2);line-height:1.35;min-width:0;font-weight:650}
 .bm-act{display:grid;gap:6px}
 .bm-act .btn{height:clamp(32px,8vw,42px)}
-.bm-roll{width:100%;font-size:15px}
+.bm-roll{width:100%;font-size:15px;animation:bmbtn 1.4s ease-in-out infinite}
+@keyframes bmbtn{50%{transform:scale(1.03)}}
 .bm-q{margin:0;font-size:clamp(11.5px,3.1vw,14px);line-height:1.4}
 .bm-q small{display:block;color:var(--ink-3);font-size:.85em}
 .bm-acts{display:flex;gap:6px}.bm-acts .btn{flex:1}
@@ -549,12 +604,13 @@ html.bm-open,html.bm-open body{overflow:hidden}
 .bm-log{list-style:none;margin:0;padding:0;font-size:clamp(10px,2.7vw,12px);color:var(--ink-3);line-height:1.45}
 .bm-log li:first-child{color:var(--ink-2)}
 .bm-pls{width:min(100%,560px);display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
-.bm-pl{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:2px 6px;padding:7px 10px;border:1px solid var(--rule);border-radius:10px;background:var(--surface);font-size:13px}
-.bm-pl.on{border-color:var(--ink-2)}
+.bm-pl{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:2px 6px;padding:7px 10px;border:1px solid var(--rule);border-radius:10px;background:var(--surface);font-size:13px;transition:border-color .2s,transform .2s}
+.bm-pl.on{border-color:var(--ink-2);transform:translateY(-2px)}
 .bm-pl.out{opacity:.45}
 .bm-pl i{width:10px;height:10px;border-radius:50%}
 .bm-pl b{font-size:13.5px}
 .bm-pl small{grid-column:2/4;color:var(--ink-3);font-size:11px}
+@media (prefers-reduced-motion: reduce){.bm-tok.turn .bm-tok-i,.bm-roll,.bm-c.fly{animation:none}}
 html[data-game=live] .c-news{order:3}
 /* ───────── 상세 차트 ───────── */
 .ap-head{margin:14px 0 2px}
@@ -746,7 +802,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.9.0';
+const VERSION = '1.10.0';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -2952,9 +3008,10 @@ function mgAnswer(ans, close){
    달러 판돈을 걸고 시작하며, 끝났을 때 순위에 따라 판돈의 배수를 돌려받는다(배수의 평균은 1배라서 실력이 같으면 기대 손익 0).
    게임 상태는 S.bm.cur에 저장된다. 한 턴의 결과는 주사위를 굴리는 순간 모두 계산해 저장한 뒤 애니메이션만 보여 준다
    (새로고침으로 주사위를 다시 굴릴 수 없게). 엔진(BME)은 화면 코드와 분리되어 있다. */
-const BM = {perDay:3, minBet:10, maxBet:1000, rounds:15, start:300, salary:30, jail:2,
+// 누군가 처음 파산하면 끝난다. 끝없이 길어지지 않게 통행료가 바퀴마다 esc씩(처음 통행료 기준) 오르고, 안전장치로 cap바퀴에서 총자산 순으로 끝낸다
+const BM = {perDay:3, minBet:10, maxBet:1000, waitDays:3, cap:80, esc:0.1, start:300, salary:20, jail:2,
   pay:{2:[2, 0], 3:[2.5, 0.5, 0], 4:[3, 1, 0, 0]},      // 참가자 수별 순위 배수 (평균 1)
-  rent:[0.1, 0.5, 1.2, 2.2], build:0.5, group:2, buildNames:['땅', '별장', '빌딩', '호텔'],
+  rent:[0.2, 1.0, 2.4, 4.4], build:0.5, group:2, buildNames:['땅', '별장', '빌딩', '호텔'],
   names:['나', '알파', '베타', '감마'], cols:['#E2B45E', '#4C9AFF', '#FF6B6B', '#36C38A']};
 // 칸: c = 도시(g 그룹, p 가격), k = 특수칸
 const BM_SQ = (() => {
@@ -2989,12 +3046,18 @@ const BME = {
     return g;
   },
   shuffle(g, rnd){ const d = BM_CARDS.map((_, i) => i); for (let i = d.length - 1; i > 0; i--){ const j = Math.floor(rnd() * (i + 1)); [d[i], d[j]] = [d[j], d[i]]; } g.deck = d; },
+  // 화면용: 지금 돈·땅·건물 상태를 이벤트로 남긴다 (애니메이션이 이 지점에 오면 화면 숫자가 바뀐다)
+  snap(g, ev){ if (ev) ev.push({t:'snap', v:BME.view(g)}); },
+  view: g => ({cash:g.pl.map(p => p.cash), out:g.pl.map(p => p.out), own:g.own.slice(), lv:g.lv.slice(), fund:g.fund, jail:g.pl.map(p => p.jail), free:g.pl.map(p => p.free)}),
   log(g, s){ g.log.push(s); if (g.log.length > 40) g.log.splice(0, g.log.length - 40); },
   rent(g, sq){
     const c = BM_SQ[sq], o = g.own[sq]; if (c.t !== 'city' || o < 0) return 0;
     const full = BM_SQ.every((x, k) => x.t !== 'city' || x.g !== c.g || g.own[k] === o);
-    return Math.max(1, Math.round(c.p * BM.rent[g.lv[sq]])) * (full ? BM.group : 1);
+    return BME.rentAt(g, sq, g.lv[sq]) * (full ? BM.group : 1);
   },
+  // 단계 lv의 기본 통행료 × 지금 바퀴의 인상률 (같은 색 2배 전)
+  rentAt: (g, sq, lv) => Math.max(1, Math.round(BM_SQ[sq].p * BM.rent[lv] * BME.escF(g))),
+  escF: g => 1 + BM.esc * (Math.max(1, g.round) - 1),
   buildCost: sq => Math.round(BM_SQ[sq].p * BM.build),
   assets(g, i){
     let a = g.pl[i].cash;
@@ -3009,35 +3072,48 @@ const BME = {
     if (p.cash >= amt){
       p.cash -= amt;
       if (to >= 0) g.pl[to].cash += amt; else g.fund += amt;
+      BME.snap(g, ev);
       return true;
     }
     const got = p.cash; p.cash = 0;
     if (to >= 0) g.pl[to].cash += got; else g.fund += got;
     p.out = true; p.outAt = ++g.outN; p.jail = 0;
     g.own.forEach((o, k) => { if (o === i){ g.own[k] = -1; g.lv[k] = 0; } });
-    BME.log(g, `${p.nm} 파산`); ev.push({t:'msg', s:`${p.nm} 파산!`});
+    BME.log(g, `${p.nm} 파산`); ev.push({t:'msg', s:`${p.nm} 파산!`, k:'bankrupt', i}); BME.snap(g, ev);
     return false;
   },
   liquidate(g, i, amt, ev){
+    const own0 = g.own.filter(o => o === i).length + g.lv.reduce((a, l, k) => a + (g.own[k] === i ? l : 0), 0);
+    BME._liq(g, i, amt);
+    const own1 = g.own.filter(o => o === i).length + g.lv.reduce((a, l, k) => a + (g.own[k] === i ? l : 0), 0);
+    if (own1 < own0 && ev){ ev.push({t:'msg', s:`${g.pl[i].nm} 돈이 모자라 건물·땅을 팔았다`, k:'sell', i}); BME.snap(g, ev); }
+  },
+  _liq(g, i, amt){
     const p = g.pl[i], mine = g.own.map((o, k) => o === i ? k : -1).filter(k => k >= 0).sort((a, b) => BM_SQ[a].p - BM_SQ[b].p);
     for (const k of mine){ while (p.cash < amt && g.lv[k] > 0){ g.lv[k]--; p.cash += Math.floor(BME.buildCost(k) / 2); BME.log(g, `${p.nm} ${BM_SQ[k].n} 건물 매각`); } }
     for (const k of mine){ if (p.cash >= amt) break; if (g.own[k] === i){ g.own[k] = -1; p.cash += Math.floor(BM_SQ[k].p / 2); BME.log(g, `${p.nm} ${BM_SQ[k].n} 땅 매각`); } }
   },
   // from에서 d칸 이동 (d<0이면 뒤로). 출발을 지나거나 서면 월급
   move(g, i, d, ev){
-    const p = g.pl[i], path = [];
+    const p = g.pl[i];
+    let path = [];
     for (let s = 0; s < Math.abs(d); s++){
       p.pos = (p.pos + (d > 0 ? 1 : BM_SQ.length - 1)) % BM_SQ.length; path.push(p.pos);
-      if (d > 0 && p.pos === 0){ p.cash += BM.salary; BME.log(g, `${p.nm} 출발 통과 +${BM.salary}만`); }
+      if (d > 0 && p.pos === 0){
+        ev.push({t:'move', i, path, back:d < 0}); path = [];
+        p.cash += BM.salary; BME.log(g, `${p.nm} 출발 통과 +${BM.salary}만`);
+        ev.push({t:'msg', s:`출발 통과 +${BM.salary}만`, k:'salary', i, quick:true}); BME.snap(g, ev);
+      }
     }
-    ev.push({t:'move', i, path});
+    if (path.length) ev.push({t:'move', i, path, back:d < 0});
   },
   goTo(g, i, sq, ev, salary){
     const p = g.pl[i], d = (sq - p.pos + BM_SQ.length) % BM_SQ.length;
     if (salary) BME.move(g, i, d, ev);
     else { p.pos = sq; ev.push({t:'move', i, path:[sq], jump:true}); }
+    if (salary && sq === 0 && d === 0) BME.snap(g, ev);
   },
-  toJail(g, i, ev){ const p = g.pl[i]; BME.goTo(g, i, 8, ev, false); p.jail = BM.jail; g.again = false; BME.log(g, `${p.nm} 무인도에 갇힘`); },
+  toJail(g, i, ev){ const p = g.pl[i]; BME.goTo(g, i, 8, ev, false); p.jail = BM.jail; g.again = false; BME.log(g, `${p.nm} 무인도에 갇힘`); ev.push({t:'msg', s:'무인도에 갇혔다', k:'jail', i}); BME.snap(g, ev); },
   // 지금 칸의 효과. 사람의 결정이 필요하면 g.pending을 세우고 멈춘다
   land(g, i, ev, rnd, depth = 0){
     const p = g.pl[i], c = BM_SQ[p.pos], sq = p.pos;
@@ -3050,38 +3126,38 @@ const BME = {
         if (g.lv[sq] < 3 && p.cash >= BME.buildCost(sq)){ if (p.me) g.pending = {k:'build', sq}; else if (BME.botBuild(g, i, sq)) BME.build(g, i, sq, ev); }
       } else if (!g.pl[o].out){
         const r = BME.rent(g, sq);
-        BME.log(g, `${p.nm} → ${g.pl[o].nm} 통행료 ${r}만 (${c.n})`); ev.push({t:'msg', s:`${c.n} 통행료 ${r}만`});
+        BME.log(g, `${p.nm} → ${g.pl[o].nm} 통행료 ${r}만 (${c.n})`); ev.push({t:'msg', s:`통행료 ${r}만`, k:'rent', i, to:o, sq, v:r});
         BME.pay(g, i, r, o, ev);
       }
     } else if (c.t === 'tax'){
       const t = Math.max(5, Math.round(p.cash * 0.1));
-      BME.log(g, `${p.nm} 세금 ${t}만`); ev.push({t:'msg', s:`세금 ${t}만`});
+      BME.log(g, `${p.nm} 세금 ${t}만`); ev.push({t:'msg', s:`세금 ${t}만`, k:'tax', i});
       BME.pay(g, i, t, -1, ev);
     } else if (c.t === 'fund'){
-      if (g.fund > 0){ BME.log(g, `${p.nm} 여행기금 ${g.fund}만 받음`); ev.push({t:'msg', s:`여행기금 ${g.fund}만 받음`}); p.cash += g.fund; g.fund = 0; }
+      if (g.fund > 0){ BME.log(g, `${p.nm} 여행기금 ${g.fund}만 받음`); ev.push({t:'msg', s:`여행기금 ${g.fund}만!`, k:'fund', i}); p.cash += g.fund; g.fund = 0; BME.snap(g, ev); }
     } else if (c.t === 'island'){
-      if (!p.jail){ p.jail = BM.jail; g.again = false; BME.log(g, `${p.nm} 무인도에 갇힘`); }
+      if (!p.jail){ p.jail = BM.jail; g.again = false; BME.log(g, `${p.nm} 무인도에 갇힘`); ev.push({t:'msg', s:'무인도에 갇혔다', k:'jail', i}); BME.snap(g, ev); }
     } else if (c.t === 'plane'){
       if (p.me) g.pending = {k:'fly'};
-      else { const to = BME.botFly(g, i); BME.log(g, `${p.nm} 비행기로 ${BM_SQ[to].n}`); BME.goTo(g, i, to, ev, true); BME.land(g, i, ev, rnd, depth + 1); }
+      else { const to = BME.botFly(g, i); BME.log(g, `${p.nm} 비행기로 ${BM_SQ[to].n}`); ev.push({t:'msg', s:`${BM_SQ[to].n}(으)로 비행`, k:'fly', i, sq:to}); BME.goTo(g, i, to, ev, true); BME.land(g, i, ev, rnd, depth + 1); }
     } else if (c.t === 'chance'){
       if (!g.deck.length) BME.shuffle(g, rnd);
       const card = BM_CARDS[g.deck.pop()];
       BME.log(g, `${p.nm} 찬스: ${card.s}`); ev.push({t:'card', s:card.s, i});
-      if (card.d > 0) p.cash += card.d;
+      if (card.d > 0){ p.cash += card.d; BME.snap(g, ev); }
       else if (card.d < 0) BME.pay(g, i, -card.d, -1, ev);
       else if (card.repair){ const n = g.own.reduce((a, o, k) => a + (o === i ? g.lv[k] : 0), 0); if (n) BME.pay(g, i, n * card.repair, -1, ev); }
       else if (card.each){
         g.pl.forEach((q, j) => { if (j === i || q.out || p.out) return; if (card.each > 0) BME.pay(g, j, card.each, i, ev); else BME.pay(g, i, -card.each, j, ev); });
       }
-      else if (card.free) p.free++;
+      else if (card.free){ p.free++; BME.snap(g, ev); }
       else if (card.jail) BME.toJail(g, i, ev);
       else if (card.go !== undefined){ BME.goTo(g, i, card.go, ev, true); BME.land(g, i, ev, rnd, depth + 1); }
       else if (card.step){ BME.move(g, i, card.step, ev); BME.land(g, i, ev, rnd, depth + 1); }
     }
   },
-  buy(g, i, sq, ev){ const p = g.pl[i]; p.cash -= BM_SQ[sq].p; g.own[sq] = i; BME.log(g, `${p.nm} ${BM_SQ[sq].n} 구입 (${BM_SQ[sq].p}만)`); ev && ev.push({t:'msg', s:`${BM_SQ[sq].n} 구입`}); },
-  build(g, i, sq, ev){ const p = g.pl[i], c = BME.buildCost(sq); p.cash -= c; g.lv[sq]++; BME.log(g, `${p.nm} ${BM_SQ[sq].n}에 ${BM.buildNames[g.lv[sq]]} (${c}만)`); ev && ev.push({t:'msg', s:`${BM_SQ[sq].n} ${BM.buildNames[g.lv[sq]]}`}); },
+  buy(g, i, sq, ev){ const p = g.pl[i]; p.cash -= BM_SQ[sq].p; g.own[sq] = i; BME.log(g, `${p.nm} ${BM_SQ[sq].n} 구입 (${BM_SQ[sq].p}만)`); if (ev){ ev.push({t:'msg', s:`${BM_SQ[sq].n} 구입!`, k:'buy', i, sq}); BME.snap(g, ev); } },
+  build(g, i, sq, ev){ const p = g.pl[i], c = BME.buildCost(sq); p.cash -= c; g.lv[sq]++; BME.log(g, `${p.nm} ${BM_SQ[sq].n}에 ${BM.buildNames[g.lv[sq]]} (${c}만)`); if (ev){ ev.push({t:'msg', s:`${BM.buildNames[g.lv[sq]]} 건설!`, k:'build', i, sq, v:g.lv[sq]}); BME.snap(g, ev); } },
   // 컴퓨터의 판단: 현금을 어느 정도 남겨 두고 산다
   botBuy: (g, i, sq) => g.pl[i].cash - BM_SQ[sq].p >= 40,
   botBuild: (g, i, sq) => g.pl[i].cash - BME.buildCost(sq) >= 70,
@@ -3104,9 +3180,9 @@ const BME = {
     g.dice = [a, b]; g.pending = null; g.again = false;
     ev.push({t:'dice', a, b, i});
     if (p.jail > 0){
-      if (p.free > 0){ p.free--; p.jail = 0; BME.log(g, `${p.nm} 탈출권으로 무인도 탈출`); }
-      else if (a === b){ p.jail = 0; BME.log(g, `${p.nm} 같은 눈으로 무인도 탈출`); BME.move(g, i, a + b, ev); BME.land(g, i, ev, rnd); BME.afterAction(g); return ev; }
-      else { p.jail--; BME.log(g, `${p.nm} 무인도 (${p.jail ? `${p.jail}턴 더` : '다음 턴에 나감'})`); ev.push({t:'msg', s:'무인도에서 못 나감'}); BME.afterAction(g); return ev; }
+      if (p.free > 0){ p.free--; p.jail = 0; BME.log(g, `${p.nm} 탈출권으로 무인도 탈출`); ev.push({t:'msg', s:'탈출권으로 무인도 탈출', k:'escape', i}); BME.snap(g, ev); }
+      else if (a === b){ p.jail = 0; BME.log(g, `${p.nm} 같은 눈으로 무인도 탈출`); ev.push({t:'msg', s:'무인도 탈출!', k:'escape', i}); BME.snap(g, ev); BME.move(g, i, a + b, ev); BME.land(g, i, ev, rnd); BME.afterAction(g); return ev; }
+      else { p.jail--; BME.log(g, `${p.nm} 무인도 (${p.jail ? `${p.jail}턴 더` : '다음 턴에 나감'})`); ev.push({t:'msg', s:'무인도에서 못 나감', k:'stuck', i}); BME.snap(g, ev); BME.afterAction(g); return ev; }
     }
     if (a === b){
       g.dbl++;
@@ -3133,6 +3209,7 @@ const BME = {
     else if (pd.k === 'fly'){
       const to = arg >= 0 && arg < BM_SQ.length && arg !== 24 ? arg : 0;
       BME.log(g, `${g.pl[i].nm} 비행기로 ${BM_SQ[to].n}`);
+      ev.push({t:'msg', s:`${BM_SQ[to].n}(으)로 비행`, k:'fly', i, sq:to});
       BME.goTo(g, i, to, ev, true); BME.land(g, i, ev, rnd, 1);
     }
     BME.afterAction(g);
@@ -3142,7 +3219,7 @@ const BME = {
   afterAction(g){
     if (g.pending) return;
     const p = g.pl[g.turn];
-    if (g.pl[0].out || BME.alive(g) <= 1){ g.over = true; g.pending = null; return; }
+    if (g.outN > 0 || g.pl[0].out || BME.alive(g) <= 1){ g.over = true; g.pending = null; return; }   // 누군가 파산하면 끝
     if (g.again && !p.out && !p.jail){ g.again = false; g.pending = p.me ? {k:'roll'} : null; return; }
     BME.next(g);
   },
@@ -3151,7 +3228,7 @@ const BME = {
     let t = g.turn;
     do { t = (t + 1) % g.n; if (t === (g.first || 0)) g.round++; } while (g.pl[t].out);
     g.turn = t;
-    if (g.round > BM.rounds){ g.over = true; g.pending = null; return; }
+    if (g.round > BM.cap){ g.over = true; g.pending = null; return; }
     g.pending = g.pl[t].me ? {k:'roll'} : null;
   },
   // 순위: 살아남은 사람은 총자산 순(같으면 컴퓨터가 앞), 파산한 사람은 늦게 파산한 순
@@ -3169,29 +3246,43 @@ function bmToday(){
   if (!Array.isArray(S.bm.hist)) S.bm.hist = [];
   return S.bm;
 }
+// 가입하고 waitDays일이 지나야 할 수 있다 (가입하자마자 판돈으로 순자산을 불리지 못하게). 로그인 안 했으면 이 기록을 시작한 때부터
+function bmLockLeft(){
+  let t0 = ACC.user ? Date.parse(ACC.user.created_at || '') : NaN;
+  if (!Number.isFinite(t0)) t0 = S && S.started;
+  if (!Number.isFinite(t0)) return 0;
+  return Math.max(0, t0 + BM.waitDays * 864e5 - Date.now());
+}
+function bmLockText(ms){
+  const h = Math.ceil(ms / 36e5), d = Math.floor(h / 24);
+  return d ? `${d}일 ${h % 24}시간` : `${h}시간`;
+}
 function bmCardHTML(){
   const b = bmToday(), left = BM.perDay - b.n, g = b.cur;
   INFO.bm = {t:'주사위 세계여행', h:`<div class="prose"><ul>
     <li>컴퓨터 1~3명과 32칸 세계 도시 보드를 주사위로 돕니다. 모두 ${BM.start}만(게임 속 돈)으로 시작하고, 출발 칸을 지나거나 서면 ${BM.salary}만을 받습니다.</li>
     <li>주인 없는 도시에 서면 살 수 있고, 내 도시에 다시 서면 별장 → 빌딩 → 호텔을 한 단계씩 올립니다(단계마다 땅값의 절반). 남의 도시에 서면 통행료를 내고, 같은 색 도시를 모두 가진 사람에게는 통행료가 ${BM.group}배입니다.</li>
-    <li>통행료(만) = 땅값 × 단계별 배수 [땅 ${BM.rent[0]}, 별장 ${BM.rent[1]}, 빌딩 ${BM.rent[2]}, 호텔 ${BM.rent[3]}] (반올림, 최소 1)</li>
+    <li>통행료(만) = 땅값 × 단계 배수 × (1 + ${BM.esc} × (바퀴 수 − 1)), 반올림, 최소 1. 단계 배수는 땅 ${BM.rent[0]}, 별장 ${BM.rent[1]}, 빌딩 ${BM.rent[2]}, 호텔 ${BM.rent[3]}이고, 바퀴는 첫 차례 사람이 한 바퀴 돌 때마다 1씩 늘어 통행료가 처음보다 ${Math.round(BM.esc * 100)}%p씩 오릅니다.</li>
     <li>같은 눈이 나오면 한 번 더 굴리고, 세 번 연속이면 무인도로 갑니다. 무인도에서는 ${BM.jail}턴 동안 같은 눈이 나와야 나갑니다. 비행기 칸에 서면 원하는 칸으로 날아갑니다. 세금 칸은 현금의 10%(최소 5만)를 여행기금에 내고, 여행기금 칸에 서면 모인 돈을 받습니다.</li>
     <li>돈이 모자라면 건물 → 땅 순으로(싼 것부터) 산 값의 절반에 자동으로 팔고, 그래도 모자라면 파산합니다.</li>
-    <li>${BM.rounds}바퀴가 지나거나 한 명만 남으면 끝납니다. 순위는 총자산(현금 + 땅값 + 건물값) 순이고, 내가 파산하면 그 자리에서 끝납니다.</li>
+    <li>누군가 한 명 파산하면 그 자리에서 끝납니다. 파산한 사람이 꼴찌이고, 나머지는 총자산(현금 + 땅값 + 건물값) 순입니다. 혹시 ${BM.cap}바퀴까지 아무도 파산하지 않으면 그때 총자산 순으로 끝냅니다.</li>
     <li>판돈 ${fmtUSD(BM.minBet, 0)}~${fmtUSD(BM.maxBet, 0)}을 달러 통장에서 걸고 시작합니다. 끝나면 순위에 따라 판돈의 배수를 돌려받습니다. 2명: 1위 2배 / 3명: 1위 2.5배, 2위 0.5배 / 4명: 1위 3배, 2위 1배 (나머지 0). 배수의 평균이 1배라서 실력이 같으면 기대 손익은 0입니다.</li>
+    <li>가입하고 ${BM.waitDays}일이 지나야 할 수 있습니다(로그인하지 않았으면 이 기록을 시작한 때부터).</li>
     <li>${isLive() ? '하루' : '게임 속 거래일마다'} ${BM.perDay}판까지. 도중에 닫아도 이어서 할 수 있고, 기권하면 판돈을 잃습니다.</li>
     <li>딴 돈과 잃은 돈은 투자 손익처럼 순자산·수익률·랭킹에 그대로 반영됩니다.</li></ul></div>`};
-  const label = g ? '이어 하기' : S.over ? '파산해서 할 수 없습니다' : left > 0 ? '새 게임' : '오늘은 끝 (내일 다시)';
+  const lock = g ? 0 : bmLockLeft();
+  const label = g ? '이어 하기' : S.over ? '파산해서 할 수 없습니다' : lock ? `${bmLockText(lock)} 뒤부터` : left > 0 ? '새 게임' : '오늘은 끝 (내일 다시)';
   const h = b.hist.slice(0, 3).map(x => `<span class="${cls(x.pay - x.stake)}">${x.rank}/${x.n}위 ${signUSD(x.pay - x.stake)}</span>`).join(' · ');
   return `<div class="card-h"><h2>주사위 세계여행 ${infoBtn('bm')}</h2><small>${isLive() ? '오늘' : '이번 거래일'} ${b.n}/${BM.perDay}판</small></div>
-    ${g ? `<p class="mg-desc">진행 중: ${g.round}/${BM.rounds}바퀴, 판돈 ${fmtUSD(g.stake)}</p>` : h ? `<p class="mg-desc">최근 ${h}</p>` : `<p class="mg-desc">판돈을 걸고 컴퓨터와 도시를 사고파는 주사위 보드게임</p>`}
-    <div class="mg-foot"><span class="muted">${g ? '' : `달러 통장 <b class="num">${fmtUSDn(S.usd)}</b>`}</span><button class="btn solid" id="bmGo" ${!g && (S.over || left <= 0) ? 'disabled' : ''}>${label}</button></div>`;
+    ${lock ? `<p class="mg-desc">${ACC.user ? '가입' : '이 기록을 시작'}하고 ${BM.waitDays}일이 지나야 할 수 있습니다.</p>` : g ? `<p class="mg-desc">진행 중: ${g.round}바퀴째, 판돈 ${fmtUSD(g.stake)}</p>` : h ? `<p class="mg-desc">최근 ${h}</p>` : `<p class="mg-desc">판돈을 걸고 컴퓨터와 도시를 사고파는 주사위 보드게임</p>`}
+    <div class="mg-foot"><span class="muted">${g ? '' : `달러 통장 <b class="num">${fmtUSDn(S.usd)}</b>`}</span><button class="btn solid" id="bmGo" ${!g && (S.over || left <= 0 || lock) ? 'disabled' : ''}>${label}</button></div>`;
 }
 function bmSetup(){
   const b = bmToday();
   if (b.cur) return bmOpen();
   if (S.over) return toast('파산해서 할 수 없습니다', true);
   if (b.n >= BM.perDay) return toast('오늘 할 수 있는 판을 다 했습니다', true);
+  if (bmLockLeft()) return toast(`가입하고 ${BM.waitDays}일이 지나야 할 수 있습니다 (${bmLockText(bmLockLeft())} 남음)`, true);
   UI.bmN = UI.bmN || 2; UI.bmBet = UI.bmBet || '';
   const close = showModal(`<h2>주사위 세계여행</h2><div id="bmSet"></div>
     <div class="acts"><button class="btn" data-close>닫기</button><button class="btn solid" id="bmStart">시작</button></div>`);
@@ -3218,7 +3309,7 @@ function bmSetup(){
   $('#bmStart').onclick = () => {
     const bet = Math.round((parseFloat(UI.bmBet) || 0) * 100) / 100, max = Math.min(BM.maxBet, Math.floor(S.usd));
     const b2 = bmToday();
-    if (b2.cur || b2.n >= BM.perDay || !(bet >= BM.minBet && bet <= max)) return;
+    if (b2.cur || b2.n >= BM.perDay || bmLockLeft() || !(bet >= BM.minBet && bet <= max)) return;
     S.usd = Math.round((S.usd - bet) * 100) / 100;
     b2.n++; b2.cur = BME.newGame(UI.bmN + 1, bet, Math.random);
     UI.bmBet = '';
@@ -3227,18 +3318,23 @@ function bmSetup(){
   };
 }
 
-const BMV = {busy:false, t:null, sel:-1, tok:null, msg:'', card:null};
+const BMV = {busy:false, gen:0, sel:-1, tok:null, view:null, msg:'', built:false};
 function bmG(){ return S && S.bm && S.bm.cur; }
+const bmFast = () => !!SET.bmFast;
+const bmReduce = () => { try { return matchMedia('(prefers-reduced-motion: reduce)').matches; } catch(e){ return false; } };
+// 애니메이션 시간: 빠르게 켜면 절반
+const bmMs = ms => Math.round(ms * (bmFast() ? 0.45 : 1) * (bmReduce() ? 0.5 : 1));
+function bmWait(ms){ const gen = BMV.gen; return new Promise((res, rej) => setTimeout(() => (gen === BMV.gen && bmOpenNow()) ? res() : rej('stop'), bmMs(ms))); }
 function bmOpen(){
   if (!bmG()) return;
   let ov = $('#bmOv');
   if (!ov){ ov = document.createElement('div'); ov.id = 'bmOv'; ov.className = 'bm-ov'; ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-modal', 'true'); document.body.appendChild(ov); }
   ov.hidden = false; document.documentElement.classList.add('bm-open');
-  BMV.sel = -1; BMV.tok = null; BMV.msg = ''; BMV.card = null;
-  bmRender(); bmTick();
+  BMV.gen++; BMV.busy = false; BMV.sel = -1; BMV.tok = null; BMV.view = null; BMV.msg = ''; BMV.built = false;
+  bmBuild(); bmUpdate(); bmTick();
 }
 function bmHide(){
-  clearTimeout(BMV.t); BMV.busy = false; BMV.tok = null;
+  BMV.gen++; BMV.busy = false; BMV.tok = null; BMV.view = null;
   const ov = $('#bmOv'); if (!ov || ov.hidden) return;
   ov.hidden = true;
   document.documentElement.classList.remove('bm-open');
@@ -3252,97 +3348,295 @@ function bmCell(k){
   if (k <= 24) return [1, 1 + (k - 16)];
   return [1 + (k - 24), 9];
 }
-function bmRender(){
-  const ov = $('#bmOv'), g = bmG(); if (!ov || !g) return;
-  const pos = BMV.tok || g.pl.map(p => p.pos);
-  const me = g.pl[0], pd = g.pending, myTurn = g.turn === 0 && !BMV.busy;
-  const cells = BM_SQ.map((c, k) => {
-    const [r, col] = bmCell(k), o = g.own[k];
-    const toks = g.pl.map((p, i) => p.out ? '' : pos[i] === k ? `<i class="bm-tk" style="background:${BM.cols[i]}"></i>` : '').join('');
-    const side = k < 8 ? 'b' : k < 16 ? 'l' : k < 24 ? 't' : 'r';
-    const corner = k % 8 === 0;
-    const fly = pd && pd.k === 'fly' && myTurn && k !== 24;
-    const body = c.t === 'city'
-      ? `<span class="bm-band" style="background:${BM_GCOL[c.g]}"></span><span class="bm-n">${c.n}</span><span class="bm-p">${o >= 0 ? (g.lv[k] ? '▲'.repeat(g.lv[k]) : '땅') : c.p + '만'}</span>`
-      : `<span class="bm-n bm-sp">${c.n}</span>${c.t === 'fund' && g.fund ? `<span class="bm-p">${g.fund}만</span>` : ''}`;
-    return `<button class="bm-c bm-${side}${corner ? ' bm-k' : ''}${o >= 0 ? ' own' : ''}${fly ? ' fly' : ''}${BMV.sel === k ? ' sel' : ''}" data-bmsq="${k}" style="grid-row:${r};grid-column:${col};${o >= 0 ? `--oc:${BM.cols[o]}` : ''}">${body}<span class="bm-tks">${toks}</span></button>`;
-  }).join('');
-  const plist = g.pl.map((p, i) => `<div class="bm-pl${g.turn === i && !g.over ? ' on' : ''}${p.out ? ' out' : ''}"><i style="background:${BM.cols[i]}"></i><span>${p.nm}${p.jail ? ' 🏝' : ''}${p.free ? ' 🎫' : ''}</span><b class="num">${p.out ? '파산' : p.cash + '만'}</b><small class="num">${p.out ? '' : '자산 ' + BME.assets(g, i) + '만'}</small></div>`).join('');
-  const d = g.dice ? `<div class="bm-dice"><span>${g.dice[0]}</span><span>${g.dice[1]}</span></div>` : '<div class="bm-dice"><span>?</span><span>?</span></div>';
-  let act = '';
-  if (g.over) act = `<button class="btn solid" id="bmEnd">결과 보기</button>`;
-  else if (BMV.busy || g.turn !== 0) act = `<p class="bm-wait">${g.pl[g.turn].nm} 차례…</p>`;
-  else if (pd && pd.k === 'roll') act = `<button class="btn solid bm-roll" id="bmRoll">주사위 굴리기</button>`;
-  else if (pd && pd.k === 'buy'){ const c = BM_SQ[pd.sq]; act = `<p class="bm-q">${c.n}을(를) ${c.p}만에 살까요? <small>통행료 ${Math.max(1, Math.round(c.p * BM.rent[0]))}만부터</small></p><div class="bm-acts"><button class="btn" data-bmyes="0">안 산다</button><button class="btn solid" data-bmyes="1">산다</button></div>`; }
-  else if (pd && pd.k === 'build'){ const c = BM_SQ[pd.sq], nx = g.lv[pd.sq] + 1; act = `<p class="bm-q">${c.n}에 ${BM.buildNames[nx]}을(를) ${BME.buildCost(pd.sq)}만에 지을까요? <small>통행료 ${Math.max(1, Math.round(c.p * BM.rent[nx]))}만으로</small></p><div class="bm-acts"><button class="btn" data-bmyes="0">안 짓는다</button><button class="btn solid" data-bmyes="1">짓는다</button></div>`; }
-  else if (pd && pd.k === 'fly') act = `<p class="bm-q">날아갈 칸을 누르세요${BMV.sel >= 0 && BMV.sel !== 24 ? `: <b>${BM_SQ[BMV.sel].n}</b>` : ''}</p><div class="bm-acts"><button class="btn solid" id="bmFly" ${BMV.sel < 0 || BMV.sel === 24 ? 'disabled' : ''}>여기로 날아가기</button></div>`;
-  const info = BMV.sel >= 0 && !(pd && pd.k === 'fly') ? bmInfo(g, BMV.sel) : '';
-  const logs = g.log.slice(-4).reverse().map(s => `<li>${esc(s)}</li>`).join('');
-  ov.innerHTML = `<div class="bm-top"><button class="btn" id="bmClose">닫기</button><div class="bm-ttl"><b>주사위 세계여행</b><small>${Math.min(g.round, BM.rounds)}/${BM.rounds}바퀴 · 판돈 ${fmtUSD(g.stake)}</small></div>${g.over ? '<span></span>' : '<button class="btn" id="bmQuit">기권</button>'}</div>
-    <div class="bm-board">${cells}
-      <div class="bm-mid">
-        <div class="bm-row">${d}<div class="bm-msg">${BMV.card ? `<b>찬스</b> ${esc(BMV.card)}` : esc(BMV.msg)}</div></div>
-        <div class="bm-act">${act}</div>
-        ${info}
-        <ul class="bm-log">${logs}</ul>
-      </div>
-    </div>
-    <div class="bm-pls">${plist}</div>
-`;
+const BM_ICON = {start:'🏁', chance:'❓', tax:'💸', island:'🏝️', fund:'💰', plane:'✈️'};
+const BM_BLD = ['', '🏠', '🏢', '🏨'];
+// 주사위 한 개 (정육면체). 면: 앞 1, 뒤 6, 오른쪽 3, 왼쪽 4, 위 5, 아래 2
+const BM_PIPS = {1:[5], 2:[1, 9], 3:[1, 5, 9], 4:[1, 3, 7, 9], 5:[1, 3, 5, 7, 9], 6:[1, 3, 4, 6, 7, 9]};
+const BM_FACE = {1:'rotateX(0deg) rotateY(0deg)', 6:'rotateY(180deg)', 3:'rotateY(-90deg)', 4:'rotateY(90deg)', 5:'rotateX(-90deg)', 2:'rotateX(90deg)'};
+function bmDieHTML(){
+  const face = (n, cls) => `<div class="bm-f ${cls}">${[1, 2, 3, 4, 5, 6, 7, 8, 9].map(k => `<i${BM_PIPS[n].includes(k) ? ' class="on"' : ''}></i>`).join('')}</div>`;
+  return `<div class="bm-die"><div class="bm-cube">${face(1, 'f1')}${face(6, 'f6')}${face(3, 'f3')}${face(4, 'f4')}${face(5, 'f5')}${face(2, 'f2')}</div></div>`;
 }
+function bmBuild(){
+  const ov = $('#bmOv'), g = bmG(); if (!ov || !g) return;
+  const cells = BM_SQ.map((c, k) => {
+    const [r, col] = bmCell(k), side = k < 8 ? 'b' : k < 16 ? 'l' : k < 24 ? 't' : 'r';
+    const body = c.t === 'city'
+      ? `<span class="bm-band" style="background:${BM_GCOL[c.g]}"></span><span class="bm-n">${c.n}</span><span class="bm-p"></span><span class="bm-bld"></span>`
+      : `<span class="bm-ic">${BM_ICON[c.t]}</span><span class="bm-n bm-sp">${c.n}</span><span class="bm-p"></span>`;
+    return `<button class="bm-c bm-${side}${k % 8 === 0 ? ' bm-k' : ''} bm-t-${c.t}" data-bmsq="${k}" style="grid-row:${r};grid-column:${col}">${body}</button>`;
+  }).join('');
+  const toks = g.pl.map((p, i) => `<div class="bm-tok" data-tok="${i}" style="--pc:${BM.cols[i]}"><div class="bm-tok-i"><span>${p.me ? '나' : p.nm[0]}</span></div></div>`).join('');
+  ov.innerHTML = `<div class="bm-top"><button class="btn" id="bmClose">닫기</button><div class="bm-ttl"><b>주사위 세계여행</b><small id="bmSub"></small></div><div class="bm-tr"><button class="btn bm-spd" id="bmSpd"></button><button class="btn" id="bmQuit">기권</button></div></div>
+    <div class="bm-board" id="bmBoard">${cells}
+      <div class="bm-mid">
+        <div class="bm-row"><div class="bm-dice" id="bmDice">${bmDieHTML()}${bmDieHTML()}</div><div class="bm-msg" id="bmMsg"></div></div>
+        <div class="bm-act" id="bmActBox"></div>
+        <div id="bmInfoBox"></div>
+        <ul class="bm-log" id="bmLog"></ul>
+      </div>
+      <div class="bm-toks">${toks}</div>
+      <div class="bm-fx" id="bmFx"></div>
+    </div>
+    <div class="bm-pls" id="bmPls">${g.pl.map((p, i) => `<div class="bm-pl" data-pl="${i}"><i style="background:${BM.cols[i]}"></i><span class="bm-pn"></span><b class="num bm-pc"></b><small class="num bm-pa"></small></div>`).join('')}</div>`;
+  BMV.built = true;
+  const d = g.dice || [1, 1];
+  $$('#bmDice .bm-cube').forEach((c, k) => { c.style.transform = BM_FACE[d[k]]; });
+  if (!bmBuild.rs){ bmBuild.rs = true; window.addEventListener('resize', () => { if (bmOpenNow()) bmPlace(true); }); }
+  requestAnimationFrame(() => bmPlace(true));
+}
+// 화면에 보이는 상태: 애니메이션 중에는 재생한 지점까지의 상태
+const bmV = g => BMV.view || BME.view(g);
+function bmUpdate(){
+  const ov = $('#bmOv'), g = bmG(); if (!ov || !g) return;
+  if (!BMV.built) bmBuild();
+  const V = bmV(g), pd = g.pending, myTurn = g.turn === 0 && !BMV.busy && !g.over;
+  const cur = BMV.busy && BMV.actor !== undefined ? BMV.actor : g.turn;   // 애니메이션 중에는 움직이는 사람
+  $('#bmSub').textContent = `${Math.min(g.round, BM.cap)}바퀴 · 통행료 +${Math.round((BME.escF(g) - 1) * 100)}% · ${fmtUSD(g.stake)}`;
+  $('#bmSpd').textContent = bmFast() ? '빠르게 ✓' : '빠르게';
+  $('#bmQuit').hidden = g.over;
+  BM_SQ.forEach((c, k) => {
+    const el = ov.querySelector(`[data-bmsq="${k}"]`); if (!el) return;
+    const o = V.own[k];
+    el.classList.toggle('own', o >= 0);
+    el.style.setProperty('--oc', o >= 0 ? BM.cols[o] : 'transparent');
+    el.classList.toggle('fly', !!(pd && pd.k === 'fly' && myTurn && k !== 24));
+    el.classList.toggle('sel', BMV.sel === k);
+    const pEl = el.querySelector('.bm-p');
+    if (c.t === 'city'){
+      pEl.textContent = o >= 0 ? `${BME.rent({...g, own:V.own, lv:V.lv}, k)}만` : `${c.p}만`;
+      el.querySelector('.bm-bld').textContent = BM_BLD[V.lv[k]] || '';
+    } else pEl.textContent = c.t === 'fund' && V.fund ? `${V.fund}만` : '';
+  });
+  // 참가자
+  g.pl.forEach((p, i) => {
+    const el = ov.querySelector(`[data-pl="${i}"]`); if (!el) return;
+    const out = V.out[i];
+    el.classList.toggle('on', cur === i && !(g.over && !BMV.busy));
+    el.classList.toggle('out', out);
+    el.querySelector('.bm-pn').textContent = `${p.nm}${V.jail[i] ? ' 🏝️' : ''}${V.free[i] ? ' 🎫' : ''}`;
+    el.querySelector('.bm-pc').textContent = out ? '파산' : `${V.cash[i]}만`;
+    let a = V.cash[i]; V.own.forEach((o, k) => { if (o === i) a += BM_SQ[k].p + V.lv[k] * BME.buildCost(k); });
+    el.querySelector('.bm-pa').textContent = out ? '' : `자산 ${a}만`;
+    const t = ov.querySelector(`[data-tok="${i}"]`); if (t){ t.hidden = out; t.classList.toggle('turn', cur === i && !(g.over && !BMV.busy)); }
+  });
+  // 행동 버튼
+  let act = '';
+  if (g.over && !BMV.busy) act = `<button class="btn solid bm-roll" id="bmEnd">결과 보기</button>`;
+  else if (BMV.busy || g.turn !== 0) act = `<p class="bm-wait">${cur === 0 ? '내' : g.pl[cur].nm} 차례…</p>`;
+  else if (pd && pd.k === 'roll') act = `<button class="btn solid bm-roll" id="bmRoll">🎲 주사위 굴리기</button>`;
+  else if (pd && pd.k === 'buy'){ const c = BM_SQ[pd.sq]; act = `<p class="bm-q">${c.n}을(를) ${c.p}만에 살까요? <small>지금 통행료 ${BME.rentAt(g, pd.sq, 0)}만부터</small></p><div class="bm-acts"><button class="btn" data-bmyes="0">안 산다</button><button class="btn solid" data-bmyes="1">산다</button></div>`; }
+  else if (pd && pd.k === 'build'){ const c = BM_SQ[pd.sq], nx = g.lv[pd.sq] + 1; act = `<p class="bm-q">${c.n}에 ${BM_BLD[nx]} ${BM.buildNames[nx]}을(를) ${BME.buildCost(pd.sq)}만에 지을까요? <small>지금 통행료 ${BME.rentAt(g, pd.sq, nx)}만으로</small></p><div class="bm-acts"><button class="btn" data-bmyes="0">안 짓는다</button><button class="btn solid" data-bmyes="1">짓는다</button></div>`; }
+  else if (pd && pd.k === 'fly') act = `<p class="bm-q">✈️ 날아갈 칸을 누르세요${BMV.sel >= 0 && BMV.sel !== 24 ? `: <b>${BM_SQ[BMV.sel].n}</b>` : ''}</p><div class="bm-acts"><button class="btn solid" id="bmFly" ${BMV.sel < 0 || BMV.sel === 24 ? 'disabled' : ''}>여기로 날아가기</button></div>`;
+  const ab = $('#bmActBox'); if (ab.dataset.h !== act){ ab.innerHTML = act; ab.dataset.h = act; }
+  $('#bmMsg').textContent = BMV.msg;
+  $('#bmInfoBox').innerHTML = BMV.sel >= 0 && !(pd && pd.k === 'fly') ? bmInfo(g, BMV.sel) : '';
+  $('#bmLog').innerHTML = BMV.busy ? $('#bmLog').innerHTML : g.log.slice(-4).reverse().map(s => `<li>${esc(s)}</li>`).join('');
+  bmPlace(false);
+}
+const bmRender = bmUpdate;
 function bmInfo(g, k){
   const c = BM_SQ[k];
   if (c.t !== 'city') return `<p class="bm-info"><b>${c.n}</b></p>`;
   const o = g.own[k];
-  return `<p class="bm-info"><b>${c.n}</b> 땅 ${c.p}만 · 건물 단계당 ${BME.buildCost(k)}만 · 통행료 ${BM.rent.map(m => Math.max(1, Math.round(c.p * m))).join('/')}만${o >= 0 ? ` · 주인 ${g.pl[o].nm} (${BM.buildNames[g.lv[k]]}, 지금 ${BME.rent(g, k)}만)` : ''}</p>`;
+  return `<p class="bm-info"><b>${c.n}</b> 땅 ${c.p}만 · 건물 단계당 ${BME.buildCost(k)}만 · 지금 통행료 ${BM.rent.map((m, lv) => BME.rentAt(g, k, lv)).join('/')}만${o >= 0 ? ` · 주인 ${g.pl[o].nm} (${BM.buildNames[g.lv[k]]}, 지금 ${BME.rent(g, k)}만)` : ''}</p>`;
 }
-// 이벤트(주사위·이동·찬스)를 차례로 보여 준다. 상태는 이미 저장돼 있다
-function bmPlay(ev, start, done){
+// 말의 위치(보드 기준 픽셀). 같은 칸에 여럿이면 옆으로 비켜 선다
+function bmTokXY(i, k){
+  const b = $('#bmBoard'), el = b && b.querySelector(`[data-bmsq="${k}"]`); if (!el) return [0, 0];
+  // 칸 아래쪽 절반에 2×2로 선다 (이름을 가리지 않게)
+  const w = el.offsetWidth, h = el.offsetHeight, sz = Math.min(w, h) * 0.36;
+  const xy = [[0.3, 0.58], [0.7, 0.58], [0.3, 0.84], [0.7, 0.84]][i];
+  return [el.offsetLeft + w * xy[0] - sz / 2, el.offsetTop + h * xy[1] - sz / 2, sz];
+}
+function bmPlace(instant){
   const g = bmG(); if (!g) return;
-  BMV.busy = true; BMV.tok = start.slice(); BMV.card = null;
-  let k = 0;
-  const stepEv = () => {
-    if (!bmOpenNow()){ BMV.busy = false; BMV.tok = null; return; }
-    if (k >= ev.length){ BMV.busy = false; BMV.tok = null; bmRender(); done && done(); return; }
-    const e = ev[k++];
-    if (e.t === 'dice'){ const sv = g.dice; g.dice = [e.a, e.b]; BMV.msg = `${g.pl[e.i].nm}: ${e.a} + ${e.b}${e.a === e.b ? ' (같은 눈)' : ''}`; bmRender(); g.dice = sv; BMV.t = setTimeout(stepEv, 420); }
-    else if (e.t === 'move'){
-      const path = e.path.slice();
-      const mv = () => {
-        if (!bmOpenNow()){ BMV.busy = false; return; }
-        if (!path.length){ BMV.t = setTimeout(stepEv, 120); return; }
-        BMV.tok[e.i] = path.shift(); bmRender();
-        BMV.t = setTimeout(mv, e.jump ? 260 : 110);
-      };
-      mv();
+  const pos = BMV.tok || g.pl.map(p => p.pos);
+  g.pl.forEach((p, i) => {
+    const t = document.querySelector(`#bmOv [data-tok="${i}"]`); if (!t) return;
+    const [x, y, sz] = bmTokXY(i, pos[i]);
+    if (instant) t.style.transition = 'none';
+    t.style.width = t.style.height = sz + 'px';
+    t.style.transform = `translate(${x}px, ${y}px)`;
+    if (instant){ t.offsetWidth; t.style.transition = ''; }
+  });
+}
+// 효과: 떠오르는 글자, 날아가는 동전, 가운데 배너, 칸 튀기기
+function bmCenterOf(el){
+  const b = $('#bmBoard'); if (!b || !el) return [0, 0];
+  const r = el.getBoundingClientRect(), br = b.getBoundingClientRect();
+  return [r.left - br.left + r.width / 2, r.top - br.top + r.height / 2];
+}
+function bmFloat(el, text, cls){
+  const fx = $('#bmFx'); if (!fx || !el) return;
+  const [x, y] = bmCenterOf(el);
+  const f = document.createElement('div'); f.className = 'bm-float ' + (cls || ''); f.textContent = text;
+  f.style.left = x + 'px'; f.style.top = y + 'px';
+  fx.appendChild(f);
+  f.animate([{transform:'translate(-50%,-50%) scale(.6)', opacity:0}, {transform:'translate(-50%,-110%) scale(1.15)', opacity:1, offset:.25}, {transform:'translate(-50%,-260%) scale(1)', opacity:0}], {duration:bmMs(1100), easing:'ease-out'}).onfinish = () => f.remove();
+}
+function bmCoins(fromEl, toEl, n){
+  const fx = $('#bmFx'); if (!fx || !fromEl || !toEl) return;
+  const [x0, y0] = bmCenterOf(fromEl), [x1, y1] = bmCenterOf(toEl);
+  for (let k = 0; k < n; k++){
+    const c = document.createElement('div'); c.className = 'bm-coin'; c.textContent = '₩';
+    c.style.left = x0 + 'px'; c.style.top = y0 + 'px';
+    fx.appendChild(c);
+    const mx = (x0 + x1) / 2 + (Math.random() - 0.5) * 60, my = Math.min(y0, y1) - 40 - Math.random() * 40;
+    c.animate([{transform:'translate(-50%,-50%) scale(.4)', opacity:0}, {transform:`translate(calc(-50% + ${mx - x0}px), calc(-50% + ${my - y0}px)) scale(1.1)`, opacity:1, offset:.45},
+               {transform:`translate(calc(-50% + ${x1 - x0}px), calc(-50% + ${y1 - y0}px)) scale(.7)`, opacity:.9}],
+      {duration:bmMs(750), delay:bmMs(70 * k), easing:'cubic-bezier(.3,.7,.4,1)', fill:'backwards'}).onfinish = () => c.remove();
+  }
+}
+function bmBanner(text, cls, ms = 900){
+  const fx = $('#bmFx'); if (!fx) return;
+  const b = document.createElement('div'); b.className = 'bm-banner ' + (cls || ''); b.textContent = text;
+  fx.appendChild(b);
+  b.animate([{transform:'translate(-50%,-50%) scale(.3) rotate(-6deg)', opacity:0}, {transform:'translate(-50%,-50%) scale(1.12) rotate(2deg)', opacity:1, offset:.18},
+             {transform:'translate(-50%,-50%) scale(1)', opacity:1, offset:.3}, {transform:'translate(-50%,-50%) scale(1)', opacity:1, offset:.8}, {transform:'translate(-50%,-62%) scale(.96)', opacity:0}],
+    {duration:bmMs(ms), easing:'ease-out'}).onfinish = () => b.remove();
+}
+function bmPop(k, cls){
+  const el = document.querySelector(`#bmOv [data-bmsq="${k}"]`); if (!el) return;
+  el.classList.remove('pop', 'shine'); el.offsetWidth; el.classList.add(cls || 'pop');
+}
+function bmShake(){ const b = $('#bmBoard'); if (!b) return; b.classList.remove('shake'); b.offsetWidth; b.classList.add('shake'); }
+function bmConfetti(){
+  const fx = $('#bmFx'); if (!fx) return;
+  const cols = ['#E2B45E', '#4C9AFF', '#FF6B6B', '#36C38A', '#C58CFF'];
+  for (let k = 0; k < 60; k++){
+    const c = document.createElement('i'); c.className = 'bm-conf'; c.style.background = cols[k % cols.length];
+    c.style.left = (10 + Math.random() * 80) + '%'; fx.appendChild(c);
+    const dx = (Math.random() - 0.5) * 160, rot = Math.random() * 720;
+    c.animate([{transform:'translate(0,-20px) rotate(0)', opacity:1}, {transform:`translate(${dx}px, ${300 + Math.random() * 200}px) rotate(${rot}deg)`, opacity:0}],
+      {duration:1400 + Math.random() * 900, delay:Math.random() * 300, easing:'cubic-bezier(.2,.6,.4,1)'}).onfinish = () => c.remove();
+  }
+}
+// 주사위 굴리기: 몇 바퀴 구른 뒤 나온 눈으로 멈춘다
+async function bmRollDice(a, b){
+  const cubes = $$('#bmDice .bm-cube'), box = $('#bmDice');
+  box.classList.add('rolling');
+  cubes.forEach((c, k) => {
+    const v = k ? b : a, spin = `rotateX(${720 + 360 * Math.floor(Math.random() * 2)}deg) rotateY(${720 + 360 * Math.floor(Math.random() * 2)}deg) `;
+    c.style.transition = 'none';
+    c.style.transform = `rotateX(${Math.random() * 360}deg) rotateY(${Math.random() * 360}deg)`;
+    c.offsetWidth;
+    c.style.transition = `transform ${bmMs(780)}ms cubic-bezier(.2,.75,.25,1)`;
+    c.style.transform = spin + BM_FACE[v];
+  });
+  await bmWait(800);
+  box.classList.remove('rolling');
+  box.classList.toggle('dbl', a === b);
+}
+const bmPlEl = i => document.querySelector(`#bmOv [data-pl="${i}"]`);
+const bmTokEl = i => document.querySelector(`#bmOv [data-tok="${i}"]`);
+async function bmHopTo(i, k, big){
+  BMV.tok[i] = k;
+  const t = bmTokEl(i); if (!t) return;
+  const inner = t.querySelector('.bm-tok-i');
+  inner.classList.remove('hop', 'fly'); inner.offsetWidth; inner.classList.add(big ? 'fly' : 'hop');
+  t.style.transition = `transform ${bmMs(big ? 620 : 150)}ms ${big ? 'cubic-bezier(.45,0,.3,1)' : 'ease-out'}`;
+  bmPlace(false);
+  await bmWait(big ? 680 : 165);
+}
+// 이벤트를 차례로 재생한다. 게임 상태는 이미 저장돼 있고, 화면 상태(BMV.view)만 이벤트를 따라 바뀐다
+async function bmPlay(ev, v0, done){
+  const g = bmG(); if (!g) return;
+  BMV.busy = true; BMV.tok = g.pl.map(p => p.pos); BMV.view = v0; BMV.actor = v0.turn;
+  BMV.tok = (v0.pos || BMV.tok).slice();
+  bmUpdate();
+  try {
+    for (const e of ev){
+      if (e.t === 'dice'){
+        BMV.msg = `${g.pl[e.i].nm} 굴리는 중…`; bmUpdate();
+        await bmRollDice(e.a, e.b);
+        BMV.msg = `${g.pl[e.i].nm}: ${e.a} + ${e.b} = ${e.a + e.b}`; bmUpdate();
+        if (e.a === e.b) bmBanner('같은 눈! 🎲', 'gold', 750);
+        await bmWait(e.a === e.b ? 450 : 200);
+      } else if (e.t === 'move'){
+        if (e.jump){ await bmHopTo(e.i, e.path[0], true); continue; }
+        for (const k of e.path) await bmHopTo(e.i, k, false);
+        await bmWait(90);
+      } else if (e.t === 'card'){
+        await bmCard(e.s);
+      } else if (e.t === 'snap'){
+        const old = BMV.view; BMV.view = e.v;
+        // 돈이 움직인 사람: 떠오르는 숫자, 준 사람 → 받은 사람 동전
+        const dl = e.v.cash.map((c, i) => c - old.cash[i]);
+        dl.forEach((d, i) => { if (d) bmFloat(bmPlEl(i), `${d > 0 ? '+' : '−'}${Math.abs(d)}만`, d > 0 ? 'up' : 'dn'); });
+        const giver = dl.findIndex(d => d < 0), taker = dl.findIndex(d => d > 0);
+        if (giver >= 0 && taker >= 0) bmCoins(bmTokEl(giver), bmTokEl(taker), Math.min(8, 3 + Math.round(-dl[giver] / 15)));
+        else if (giver >= 0 && e.v.fund > old.fund) bmCoins(bmTokEl(giver), document.querySelector('#bmOv [data-bmsq="16"]'), 4);
+        else if (taker >= 0 && e.v.fund < old.fund) bmCoins(document.querySelector('#bmOv [data-bmsq="16"]'), bmTokEl(taker), 6);
+        // 새 땅·건물
+        e.v.own.forEach((o, k) => { if (o >= 0 && old.own[k] !== o) bmPop(k, 'pop'); if (e.v.lv[k] > old.lv[k]) bmPop(k, 'shine'); });
+        bmUpdate();
+        if (dl.some(d => d)) await bmWait(260);
+      } else if (e.t === 'msg'){
+        BMV.msg = e.s; bmUpdate();
+        const me = e.i === 0, k = e.k;
+        if (k === 'buy'){ bmBanner(`🚩 ${e.s}`, me ? 'gold' : '', 800); await bmWait(500); }
+        else if (k === 'build'){ bmBanner(`${BM_BLD[e.v] || '🏗️'} ${e.s}`, me ? 'gold' : '', 850); await bmWait(550); }
+        else if (k === 'rent'){ bmBanner(`💸 ${e.s}`, e.to === 0 ? 'green' : me ? 'red' : '', 900); if (e.v >= 40) bmShake(); await bmWait(520); }
+        else if (k === 'tax'){ bmBanner(`💸 ${e.s}`, '', 750); await bmWait(420); }
+        else if (k === 'fund'){ bmBanner(`💰 ${e.s}`, me ? 'green' : '', 900); await bmWait(500); }
+        else if (k === 'salary'){ bmFloat(bmTokEl(e.i), `+${BM.salary}만`, 'up'); await bmWait(120); }
+        else if (k === 'jail'){ bmBanner('🏝️ 무인도!', me ? 'red' : '', 900); await bmWait(550); }
+        else if (k === 'stuck'){ bmBanner('🏝️ 탈출 실패', '', 700); await bmWait(400); }
+        else if (k === 'escape'){ bmBanner('🚤 무인도 탈출!', me ? 'green' : '', 800); await bmWait(450); }
+        else if (k === 'fly'){ bmBanner(`✈️ ${e.s}`, '', 800); await bmWait(450); }
+        else if (k === 'bankrupt'){ bmBanner(`💥 ${e.s}`, 'red', 1200); bmShake(); await bmWait(800); }
+        else if (k === 'sell'){ bmBanner('🏚️ 매각', 'red', 800); await bmWait(450); }
+        else await bmWait(500);
+      }
     }
-    else if (e.t === 'card'){ BMV.card = e.s; bmRender(); BMV.t = setTimeout(() => { BMV.card = null; stepEv(); }, 1100); }
-    else { BMV.msg = e.s; bmRender(); BMV.t = setTimeout(stepEv, 650); }
-  };
-  stepEv();
+  } catch(err){ if (err !== 'stop') console.error(err); BMV.busy = false; BMV.tok = null; BMV.view = null; return; }
+  BMV.busy = false; BMV.tok = null; BMV.view = null;
+  bmUpdate();
+  if (g.over){
+    const rank = BME.ranking(g).indexOf(0) + 1;
+    bmBanner(rank === 1 ? '🏆 1위!' : g.pl[0].out ? '💥 파산' : `${rank}위`, rank === 1 ? 'gold' : '', 1600);
+    if (rank === 1) bmConfetti();
+  } else if (v0.turn !== undefined && g.turn !== v0.turn) bmBanner(g.pl[g.turn].me ? '내 차례!' : `${g.pl[g.turn].nm} 차례`, 'small ' + (g.pl[g.turn].me ? 'gold' : ''), 750);
+  done && done();
+}
+// 찬스 카드: 뒤집어서 보여 준다
+async function bmCard(text){
+  const fx = $('#bmFx'); if (!fx) return;
+  const c = document.createElement('div'); c.className = 'bm-card';
+  c.innerHTML = `<div class="bm-card-i"><div class="bm-card-b">❓<small>찬스</small></div><div class="bm-card-f"><small>찬스</small><b>${esc(text)}</b></div></div>`;
+  fx.appendChild(c);
+  const inner = c.firstElementChild;
+  c.animate([{transform:'translate(-50%,-50%) scale(.2)', opacity:0}, {transform:'translate(-50%,-50%) scale(1)', opacity:1}], {duration:bmMs(260), easing:'ease-out', fill:'forwards'});
+  await bmWait(300);
+  inner.style.transition = `transform ${bmMs(450)}ms ease-in-out`; inner.style.transform = 'rotateY(180deg)';
+  try { await bmWait(1300); }
+  finally { c.animate([{opacity:1}, {opacity:0, transform:'translate(-50%,-50%) scale(.85)'}], {duration:bmMs(200), fill:'forwards'}).onfinish = () => c.remove(); }
+  await bmWait(150);
 }
 // 한 단계 진행: 컴퓨터 차례면 자동으로 굴린다
 function bmTick(){
-  clearTimeout(BMV.t);
   const g = bmG(); if (!g || !bmOpenNow() || BMV.busy) return;
-  if (g.over){ bmRender(); return; }
-  if (g.pl[g.turn].me){ bmRender(); return; }
-  const start = g.pl.map(p => p.pos);
-  BMV.busy = true; bmRender();
-  BMV.t = setTimeout(() => {
+  bmUpdate();
+  if (g.over || g.pl[g.turn].me) return;
+  const gen = BMV.gen;
+  BMV.busy = true; bmUpdate();
+  setTimeout(() => {
+    if (gen !== BMV.gen) return;
     const g2 = bmG(); if (!g2 || !bmOpenNow()){ BMV.busy = false; return; }
+    const v0 = {...BME.view(g2), pos:g2.pl.map(p => p.pos), turn:g2.turn};
     const ev = BME.roll(g2, Math.random);
     save();
-    bmPlay(ev, start, () => { BMV.t = setTimeout(bmTick, 350); });
-  }, 450);
+    bmPlay(ev, v0, () => setTimeout(() => { if (gen === BMV.gen) bmTick(); }, bmMs(350)));
+  }, bmMs(500));
 }
 function bmAct(fn){
   const g = bmG(); if (!g || BMV.busy) return;
-  const start = g.pl.map(p => p.pos);
+  const v0 = {...BME.view(g), pos:g.pl.map(p => p.pos), turn:g.turn}, gen = BMV.gen;
   const ev = fn(g);
   BMV.sel = -1;
   save();
-  bmPlay(ev, start, () => { BMV.t = setTimeout(bmTick, 300); });
+  bmPlay(ev, v0, () => setTimeout(() => { if (gen === BMV.gen) bmTick(); }, bmMs(250)));
 }
 function bmFinish(forfeit){
   const b = bmToday(), g = b.cur; if (!g) return;
@@ -3369,6 +3663,7 @@ document.addEventListener('click', e => {
   if (t.id === 'bmGo'){ bmSetup(); return; }
   const g = bmG(); if (!g) return;
   if (t.id === 'bmClose'){ bmHide(); return; }
+  if (t.id === 'bmSpd'){ SET.bmFast = !SET.bmFast; saveSet(); bmUpdate(); return; }
   if (t.id === 'bmQuit'){
     const c = showModal(`<h2>기권할까요?</h2><p>판돈 ${fmtUSD(g.stake)}을 잃고 게임이 끝납니다.</p><div class="acts"><button class="btn" data-close>계속하기</button><button class="btn solid" id="bmQuitYes">기권</button></div>`);
     $('#bmQuitYes').onclick = () => { c(); setTimeout(() => bmFinish(true), 200); };
