@@ -516,17 +516,17 @@ html.bm-open,html.bm-open body{overflow:hidden}
 html.bm-open .top,html.bm-open .tabbar{visibility:hidden}
 .bm-ov{position:fixed;inset:0;z-index:70;background:radial-gradient(120% 80% at 50% 0%,color-mix(in srgb,var(--brass) 10%,var(--paper)),var(--paper) 60%);overflow:auto;-webkit-overflow-scrolling:touch;padding:calc(10px + env(safe-area-inset-top)) 8px calc(16px + env(safe-area-inset-bottom));display:flex;flex-direction:column;align-items:center;gap:10px}
 .bm-ov[hidden]{display:none}
-.bm-top{width:min(100%,560px);display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:8px}
+.bm-top{width:min(100%,620px);display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:8px}
 .bm-top .btn{height:34px;padding:0 12px}
 .bm-tr{display:flex;gap:6px}
 .bm-spd{font-size:12px}
 .bm-ttl{text-align:center;display:grid;line-height:1.25}
 .bm-ttl b{font-size:15.5px;font-weight:800}
 .bm-ttl small{font-size:12px;color:var(--ink-3)}
-.bm-board{position:relative;width:min(100%,560px);aspect-ratio:1;display:grid;grid-template-columns:repeat(9,minmax(0,1fr));grid-template-rows:repeat(9,minmax(0,1fr));gap:2px}
+.bm-board{position:relative;width:min(100%,620px);aspect-ratio:1;display:grid;grid-template-columns:repeat(11,minmax(0,1fr));grid-template-rows:repeat(11,minmax(0,1fr));gap:1.5px}
 .bm-board.shake{animation:bmshake .45s}
 @keyframes bmshake{0%,100%{transform:none}20%{transform:translate(-5px,2px)}40%{transform:translate(5px,-2px)}60%{transform:translate(-3px,1px)}80%{transform:translate(3px,0)}}
-.bm-c{position:relative;min-width:0;min-height:0;border:1px solid var(--rule);border-radius:6px;background:var(--surface);padding:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:0;overflow:hidden;color:var(--ink);font:inherit;transition:box-shadow .25s}
+.bm-c{position:relative;min-width:0;min-height:0;border:1px solid var(--rule);border-radius:4px;background:var(--surface);padding:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:0;overflow:hidden;color:var(--ink);font:inherit;transition:box-shadow .25s}
 .bm-c.bm-k{background:var(--surface-2)}
 .bm-c.own{box-shadow:inset 0 0 0 2px var(--oc);background:color-mix(in srgb,var(--oc) 12%,var(--surface))}
 .bm-c.sel{outline:2px solid var(--ink);outline-offset:-1px}
@@ -537,13 +537,14 @@ html.bm-open .top,html.bm-open .tabbar{visibility:hidden}
 .bm-c.shine{animation:bmpop .55s cubic-bezier(.3,1.6,.5,1)}
 .bm-c.shine .bm-bld{animation:bmbld .7s cubic-bezier(.3,1.7,.5,1)}
 @keyframes bmbld{0%{transform:translateY(60%) scale(.2);opacity:0}60%{transform:translateY(-15%) scale(1.3);opacity:1}100%{transform:none}}
-.bm-band{position:absolute;left:0;right:0;top:0;height:4px}
-.bm-n{font-size:clamp(8px,2.2vw,12px);font-weight:750;line-height:1.1;text-align:center;word-break:keep-all;padding:0 1px;margin-top:6px}
-.bm-ic{font-size:clamp(11px,3vw,17px);line-height:1;margin-top:5px}
+.bm-band{position:absolute;left:0;right:0;top:0;height:3px}
+.bm-n{font-size:clamp(7px,1.8vw,11px);font-weight:750;line-height:1.05;text-align:center;word-break:keep-all;padding:0 1px;margin-top:5px;letter-spacing:-.03em}
+.bm-ic{font-size:clamp(10px,2.6vw,16px);line-height:1;margin-top:4px}
+.bm-ic.sm{font-size:clamp(7px,1.7vw,10px);margin-top:4px;margin-bottom:-3px}
 .bm-sp{color:var(--brass);margin-top:1px}
-.bm-p{font-size:clamp(7.5px,1.9vw,10.5px);color:var(--ink-3);font-weight:650;line-height:1.1}
+.bm-p{font-size:clamp(6.5px,1.6vw,9.5px);color:var(--ink-3);font-weight:650;line-height:1.1;white-space:nowrap;letter-spacing:-.03em}
 .bm-c.own .bm-p{color:var(--oc)}
-.bm-bld{position:absolute;right:1px;top:4px;font-size:clamp(8px,2.2vw,12px);line-height:1}
+.bm-bld{position:absolute;left:0;right:0;bottom:1px;text-align:center;font-size:clamp(6px,1.5vw,9px);line-height:1;letter-spacing:-.15em}
 .bm-toks{position:absolute;inset:0;pointer-events:none}
 .bm-tok{position:absolute;left:0;top:0;transition:transform .15s ease-out;z-index:2}
 .bm-tok[hidden]{display:none}
@@ -572,7 +573,7 @@ html.bm-open .top,html.bm-open .tabbar{visibility:hidden}
 .bm-card-f{background:#FFF8E6;color:#2A2010;transform:rotateY(180deg);border:3px solid #E2B45E}
 .bm-card-f small{font-size:11px;font-weight:800;color:#B07D12;letter-spacing:.2em}
 .bm-card-f b{font-size:clamp(13px,3.8vw,17px);line-height:1.35;word-break:keep-all}
-.bm-mid{grid-row:2/9;grid-column:2/9;display:flex;flex-direction:column;gap:6px;padding:6px;min-width:0;min-height:0;overflow:auto}
+.bm-mid{grid-row:2/11;grid-column:2/11;display:flex;flex-direction:column;gap:6px;padding:6px;min-width:0;min-height:0;overflow:auto}
 .bm-row{display:flex;align-items:center;gap:10px}
 .bm-dice{display:flex;gap:8px;flex:0 0 auto;perspective:400px}
 .bm-die{--s:clamp(26px,7.5vw,40px);width:var(--s);height:var(--s)}
@@ -608,7 +609,7 @@ html.bm-open .top,html.bm-open .tabbar{visibility:hidden}
 .bm-info{margin:0;font-size:clamp(10.5px,2.8vw,12.5px);color:var(--ink-2);line-height:1.4}
 .bm-log{list-style:none;margin:0;padding:0;font-size:clamp(10px,2.7vw,12px);color:var(--ink-3);line-height:1.45}
 .bm-log li:first-child{color:var(--ink-2)}
-.bm-pls{width:min(100%,560px);display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.bm-pls{width:min(100%,620px);display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
 .bm-pl{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:2px 6px;padding:7px 10px;border:1px solid var(--rule);border-radius:10px;background:var(--surface);font-size:13px;transition:border-color .2s,transform .2s}
 .bm-pl.on{border-color:var(--ink-2);transform:translateY(-2px)}
 .bm-pl.out{opacity:.45}
@@ -807,7 +808,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.11.2';
+const VERSION = '1.12.0';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -3009,42 +3010,83 @@ function mgAnswer(ans, close){
 }
 
 /* ───────── 미니게임: 주사위 세계여행 (컴퓨터 상대 보드게임) ─────────
-   32칸 보드를 주사위로 돈다. 도시를 사고, 건물을 올리고, 남의 도시에 서면 통행료를 낸다.
-   달러 판돈을 걸고 시작하며, 끝났을 때 순위에 따라 판돈의 배수를 돌려받는다(배수의 평균은 1배라서 실력이 같으면 기대 손익 0).
-   게임 상태는 S.bm.cur에 저장된다. 한 턴의 결과는 주사위를 굴리는 순간 모두 계산해 저장한 뒤 애니메이션만 보여 준다
-   (새로고침으로 주사위를 다시 굴릴 수 없게). 엔진(BME)은 화면 코드와 분리되어 있다. */
-// 누군가 처음 파산하면 끝난다. 끝없이 길어지지 않게 통행료가 바퀴마다 esc씩(처음 통행료 기준) 오르고, 안전장치로 cap바퀴에서 총자산 순으로 끝낸다
+   부루마불(씨앗사) 1탄의 땅값·통행료·건설비·황금열쇠를 따른 40칸 보드. 숫자의 출처: 나무위키 '부루마불/주요 카드'(2023-07-02 판)와
+   '부루마불'(2016-12-14 판), 위키백과 '부루마불'(시작 자금 293만, 월급 20만). 자료에 없는 부분(황금열쇠 칸 위치, 카드 장수,
+   건물 통행료를 더하는 방식, 우주여행비 등)은 INFO 설명에 따로 적었다.
+   돈은 모두 '천 원' 단위 정수로 다룬다 (예: 2천 = 2, 1만 2천 = 12, 293만 = 2930).
+   한 명만 남을 때까지(나머지가 모두 파산할 때까지) 한다. 달러 판돈을 걸고, 끝난 순위에 따라 판돈의 배수를 돌려받는다(평균 1배).
+   한 턴의 결과는 주사위를 굴리는 순간 모두 계산해 저장한 뒤 애니메이션만 보여 준다 (새로고침으로 다시 굴릴 수 없게). */
 const BM = {minBet:10, maxBet:1000, waitDays:0,   // 가입 후 대기 일수 (0이면 끔. 잠시 꺼 둠, 다시 켤 때 3)
-  cap:80, esc:0.1, start:300, salary:20, jail:2,
+  start:2930, salary:200, jail:3, fundIn:150, spaceFee:200,
   pay:{2:[2, 0], 3:[2.5, 0.5, 0], 4:[3, 1, 0, 0]},      // 참가자 수별 순위 배수 (평균 1)
-  rent:[0.2, 1.0, 2.4, 4.4], build:0.5, group:2, buildNames:['땅', '별장', '빌딩', '호텔'],
-  names:['나', '알파', '베타', '감마'], cols:['#E2B45E', '#4C9AFF', '#FF6B6B', '#36C38A']};
-// 칸: c = 도시(g 그룹, p 가격), k = 특수칸
+  names:['나', '알파', '베타', '감마'], cols:['#E2B45E', '#4C9AFF', '#FF6B6B', '#36C38A'],
+  regions:[{n:'아시아', c:'#E0484E'}, {n:'유럽', c:'#E2B94B'}, {n:'아메리카·오세아니아', c:'#3FB96B'}, {n:'대도시', c:'#4C7DF0'}]};
+// 도시: p 땅값, c [별장, 빌딩, 호텔] 건설비, r [대지료, 별장 1채, 별장 2채, 빌딩, 호텔] 통행료 (천 원)
+// 특수 땅(sp): 사기만 하고 건물을 못 짓는다. r = 통행료
 const BM_SQ = (() => {
-  const C = (n, g, p) => ({t:'city', n, g, p});
+  const A = [50, 150, 250], E = [100, 300, 500], G = [150, 450, 750], B = [200, 600, 1000];
+  const C = (n, g, p, c, r, s) => ({t:'city', n, s:s || n, g, p, c, r});
+  const P = (n, p, r, s) => ({t:'city', sp:true, n, s:s || n, g:-1, p, r:[r]});
+  const K = {t:'key', n:'황금열쇠', s:'열쇠'};
   return [
-    {t:'start', n:'출발'}, C('방콕', 0, 6), {t:'chance', n:'찬스'}, C('마닐라', 0, 6), C('하노이', 0, 8), {t:'tax', n:'세금'}, C('카이로', 1, 10), C('두바이', 1, 10),
-    {t:'island', n:'무인도'}, C('이스탄불', 1, 12), {t:'chance', n:'찬스'}, C('아테네', 2, 14), C('로마', 2, 14), C('마드리드', 2, 16), C('리우', 3, 18), C('상파울루', 3, 20),
-    {t:'fund', n:'여행기금'}, C('베를린', 4, 22), {t:'chance', n:'찬스'}, C('파리', 4, 22), C('런던', 4, 24), C('싱가포르', 5, 26), C('홍콩', 5, 26), C('상하이', 5, 28),
-    {t:'plane', n:'비행기'}, C('토론토', 6, 30), {t:'chance', n:'찬스'}, C('시카고', 6, 30), C('뉴욕', 6, 32), {t:'tax', n:'세금'}, C('도쿄', 7, 35), C('서울', 7, 40)
+    {t:'start', n:'출발', s:'출발'},
+    C('타이베이', 0, 50, A, [2, 10, 30, 90, 250]), K, C('베이징', 0, 80, A, [4, 20, 60, 180, 450]), C('마닐라', 0, 80, A, [4, 20, 60, 180, 450]),
+    P('제주도', 200, 300), C('싱가포르', 0, 100, A, [6, 30, 90, 270, 550], '싱가폴'), K, C('카이로', 0, 100, A, [6, 30, 90, 270, 550]), C('이스탄불', 0, 120, A, [8, 40, 100, 300, 600], '이스탄불'),
+    {t:'island', n:'무인도', s:'무인도'},
+    C('아테네', 1, 140, E, [10, 50, 150, 450, 750]), K, C('코펜하겐', 1, 160, E, [12, 60, 180, 500, 900], '코펜하겐'), C('스톡홀름', 1, 160, E, [12, 60, 180, 500, 900], '스톡홀름'),
+    P('콩코드 여객기', 200, 300, '콩코드'), C('베른', 1, 180, E, [14, 70, 200, 550, 950]), K, C('베를린', 1, 160, E, [12, 60, 180, 500, 900]), C('오타와', 1, 200, E, [16, 80, 220, 600, 1000]),
+    {t:'fundOut', n:'사회복지기금 수령', s:'기금받기'},
+    C('부에노스아이레스', 2, 220, [150, 400, 750], [18, 90, 250, 700, 1050], '부에노스'), K, C('상파울루', 2, 240, G, [20, 100, 300, 750, 1100], '상파울루'), C('시드니', 2, 240, G, [20, 100, 300, 750, 1100]),
+    P('부산', 500, 600), C('하와이', 2, 260, G, [22, 110, 330, 800, 1150]), C('리스본', 2, 260, G, [22, 110, 330, 800, 1150]), P('퀸 엘리자베스호', 300, 250, '퀸엘리'), C('마드리드', 2, 280, G, [24, 120, 360, 850, 1200], '마드리드'),
+    {t:'space', n:'우주여행', s:'우주여행'},
+    C('도쿄', 3, 300, B, [26, 130, 390, 900, 1270]), P('컬럼비아호', 450, 300, '컬럼비아'), C('파리', 3, 320, B, [28, 150, 450, 1000, 1400]), C('로마', 3, 320, B, [28, 150, 450, 1000, 1400]), K,
+    C('런던', 3, 350, B, [35, 170, 500, 1100, 1500]), C('뉴욕', 3, 350, B, [35, 170, 500, 1100, 1500]), {t:'fundIn', n:'사회복지기금 접수', s:'기금내기'}, P('서울', 1000, 2000)
   ];
 })();
-const BM_GCOL = ['#9C7BD9', '#D98C5F', '#5FB3D9', '#6CC487', '#D96C8F', '#C9B458', '#5F7FD9', '#E05A5A'];
+const BM_N = BM_SQ.length;   // 40
+const BM_IDX = n => BM_SQ.findIndex(c => c.n === n);
+// 황금열쇠 30장 (2탄 전용 카드와, 다른 사람이 심사해야 하는 '장기자랑'은 뺐다)
 const BM_CARDS = [
-  {s:'배당금이 들어왔다', d:15}, {s:'성과급을 받았다', d:10}, {s:'산 주식이 급등했다', d:25},
-  {s:'세무조사로 추징금을 냈다', d:-15}, {s:'과속 벌금을 냈다', d:-8}, {s:'건물 수리비 (건물 1단계마다 3만)', repair:3},
-  {s:'출발 칸으로 간다', go:0}, {s:'무인도로 간다', jail:true}, {s:'비행기 칸으로 간다', go:24},
-  {s:'앞으로 3칸 간다', step:3}, {s:'뒤로 3칸 간다', step:-3}, {s:'서울로 간다', go:31},
-  {s:'생일이라 모두에게 5만씩 받았다', each:5}, {s:'모두에게 5만씩 기부했다', each:-5},
-  {s:'무인도 탈출권을 얻었다 (자동으로 쓴다)', free:true}, {s:'여행기금 칸으로 간다', go:16}
+  {s:'반액대매출: 가장 비싼 땅을 건물과 함께 은행에 반값에 판다', half:true},
+  {s:'정기종합소득세: 호텔 15만, 빌딩 10만, 별장 3만씩 낸다', tax:[30, 100, 150]},
+  {s:'건물수리비: 호텔 10만, 빌딩 6만, 별장 3만씩 낸다', tax:[30, 60, 100]},
+  {s:'방범비: 호텔 5만, 빌딩 3만, 별장 1만씩 낸다', tax:[10, 30, 50]},
+  {s:'무인도 탈출권을 얻었다 (무인도에서 자동으로 쓴다)', free:true},
+  {s:'우대권을 얻었다 (다음 통행료 1번 면제, 자동으로 쓴다)', coupon:true}, {s:'우대권을 얻었다 (다음 통행료 1번 면제, 자동으로 쓴다)', coupon:true},
+  {s:'뒤로 2칸 간다', step:-2}, {s:'뒤로 3칸 간다', step:-3},
+  {s:'관광여행: 제주도로 간다', go:'제주도'}, {s:'관광여행: 부산으로 간다', go:'부산'}, {s:'관광여행: 서울로 간다', go:'서울'},
+  {s:'무인도로 간다 (출발을 지나도 월급 없음)', jail:true},
+  {s:'사회복지기금 배당: 기금 받는 칸으로 간다', go:'사회복지기금 수령'},
+  {s:'세계일주 초대권: 한 바퀴 돌아 월급과 사회복지기금을 받는다', world:true},
+  {s:'우주여행 초대권: 우주여행 칸으로 간다 (우주여행비 면제)', space:true},
+  {s:'유람선 여행: 퀸 엘리자베스호를 타고 베이징으로 간다', go:'베이징'},
+  {s:'항공여행: 콩코드 여객기를 타고 타이베이로 간다', go:'타이베이'},
+  {s:'고속도로: 출발 칸으로 간다', go:'출발'},
+  {s:'노벨평화상 수상: 상금 30만', d:300}, {s:'복권 당첨: 20만', d:200}, {s:'자동차 경주 우승: 상금 10만', d:100},
+  {s:'장학금 혜택: 10만', d:100}, {s:'연금 혜택: 5만', d:50},
+  {s:'해외유학: 10만 낸다', d:-100}, {s:'병원비: 5만 낸다', d:-50}, {s:'과속운전 벌금: 5만 낸다', d:-50},
+  {s:'생일 축하: 모두에게 1천 원씩 받는다', each:1},
+  {s:'자동차 경주 우승: 상금 10만', d:100}, {s:'복권 당첨: 20만', d:200}
 ];
+// 건물 상태: lv = 별장 수(0~2) + 3 × 빌딩(0/1) + 6 × 호텔(0/1)
+const bmV = x => x % 3, bmB = x => Math.floor(x / 3) % 2, bmH = x => Math.floor(x / 6);
+const bmLv = (v, b, h) => v + 3 * b + 6 * h;
+// 돈 표시: 천 원 단위 → "1만 2천", "2천", "293만"
+function bmW(v){
+  const neg = v < 0; v = Math.abs(Math.round(v));
+  const m = Math.floor(v / 10), k = v % 10;
+  return (neg ? '−' : '') + (m && k ? `${m}만 ${k}천` : m ? `${m}만` : `${k}천`);
+}
+
+// 칸 안의 짧은 표시: 10만 이상은 만 단위 반올림(159만), 그 아래는 1.2만·2천
+function bmWs(v){ v = Math.round(v); return v >= 100 ? `${Math.round(v / 10)}만` : v % 10 === 0 ? `${v / 10}만` : v >= 10 ? `${(v / 10).toFixed(1)}만` : `${v}천`; }
 
 const BME = {
   newGame(nPl, stake, rnd){
-    const g = {v:1, stake, n:nPl, round:1, turn:0, fund:0, dbl:0, again:false, outN:0, over:false,
-      pl:Array.from({length:nPl}, (_, i) => ({nm:BM.names[i], me:i === 0, pos:0, cash:BM.start, out:false, outAt:0, jail:0, free:0})),
-      own:BM_SQ.map(() => -1), lv:BM_SQ.map(() => 0), deck:[], pending:null, log:[], dice:null};
-    // 먼저 굴리는 쪽이 땅을 먼저 사서 유리하므로 첫 차례는 무작위로 정한다 (바퀴 수는 첫 차례 사람 기준)
+    const g = {v:2, stake, n:nPl, round:1, turn:0, fund:0, dbl:0, again:false, outN:0, over:false,
+      pl:Array.from({length:nPl}, (_, i) => ({nm:BM.names[i], me:i === 0, pos:0, cash:BM.start, out:false, outAt:0, jail:0, free:0, coupon:0, space:0})),
+      own:BM_SQ.map(() => -1), lv:BM_SQ.map(() => 0), bought:BM_SQ.map(() => 0), deck:[], pending:null, log:[], dice:null};
+    // 먼저 굴리는 쪽이 땅을 먼저 사서 유리하므로 첫 차례는 무작위로 정한다
     g.first = g.turn = Math.floor(rnd() * nPl);
     g.pending = g.turn === 0 ? {k:'roll'} : null;
     BME.log(g, `${g.pl[g.turn].nm}부터 시작`);
@@ -3052,180 +3094,249 @@ const BME = {
     return g;
   },
   shuffle(g, rnd){ const d = BM_CARDS.map((_, i) => i); for (let i = d.length - 1; i > 0; i--){ const j = Math.floor(rnd() * (i + 1)); [d[i], d[j]] = [d[j], d[i]]; } g.deck = d; },
-  // 화면용: 지금 돈·땅·건물 상태를 이벤트로 남긴다 (애니메이션이 이 지점에 오면 화면 숫자가 바뀐다)
   snap(g, ev){ if (ev) ev.push({t:'snap', v:BME.view(g)}); },
-  view: g => ({cash:g.pl.map(p => p.cash), out:g.pl.map(p => p.out), own:g.own.slice(), lv:g.lv.slice(), fund:g.fund, jail:g.pl.map(p => p.jail), free:g.pl.map(p => p.free)}),
+  view: g => ({cash:g.pl.map(p => p.cash), out:g.pl.map(p => p.out), own:g.own.slice(), lv:g.lv.slice(), fund:g.fund,
+    jail:g.pl.map(p => p.jail), free:g.pl.map(p => p.free), coupon:g.pl.map(p => p.coupon), space:g.pl.map(p => p.space)}),
   log(g, s){ g.log.push(s); if (g.log.length > 40) g.log.splice(0, g.log.length - 40); },
-  rent(g, sq){
-    const c = BM_SQ[sq], o = g.own[sq]; if (c.t !== 'city' || o < 0) return 0;
-    const full = BM_SQ.every((x, k) => x.t !== 'city' || x.g !== c.g || g.own[k] === o);
-    return BME.rentAt(g, sq, g.lv[sq]) * (full ? BM.group : 1);
+  // 통행료 = 대지료 + 별장(1채 또는 2채 값) + 빌딩 + 호텔. 특수 땅은 정해진 통행료
+  rentOf(sq, lv){
+    const c = BM_SQ[sq]; if (c.t !== 'city') return 0;
+    if (c.sp) return c.r[0];
+    const v = bmV(lv);
+    return c.r[0] + (v ? c.r[v] : 0) + (bmB(lv) ? c.r[3] : 0) + (bmH(lv) ? c.r[4] : 0);
   },
-  // 단계 lv의 기본 통행료 × 지금 바퀴의 인상률 (같은 색 2배 전)
-  rentAt: (g, sq, lv) => Math.max(1, Math.round(BM_SQ[sq].p * BM.rent[lv] * BME.escF(g))),
-  escF: g => 1 + BM.esc * (Math.max(1, g.round) - 1),
-  buildCost: sq => Math.round(BM_SQ[sq].p * BM.build),
+  rent: (g, sq) => g.own[sq] < 0 ? 0 : BME.rentOf(sq, g.lv[sq]),
+  // 건설비 합 (땅값 제외)
+  bldCost(sq, lv){ const c = BM_SQ[sq]; return c.sp ? 0 : bmV(lv) * c.c[0] + bmB(lv) * c.c[1] + bmH(lv) * c.c[2]; },
   assets(g, i){
     let a = g.pl[i].cash;
-    g.own.forEach((o, k) => { if (o === i) a += BM_SQ[k].p + g.lv[k] * BME.buildCost(k); });
+    g.own.forEach((o, k) => { if (o === i) a += BM_SQ[k].p + BME.bldCost(k, g.lv[k]); });
     return a;
   },
   alive: g => g.pl.filter(p => !p.out).length,
-  // 돈 내기: 모자라면 사람은 팔 것을 고르고, 컴퓨터는 통행료가 낮은 것부터 자동으로 판다. 그래도 모자라면 파산
+  // 지을 수 있는 것: 별장(2채까지), 빌딩(1), 호텔(1)
+  canBuild(g, sq){
+    const c = BM_SQ[sq], lv = g.lv[sq], out = [];
+    if (c.t !== 'city' || c.sp) return out;
+    if (bmV(lv) < 2) out.push({k:'v', cost:c.c[0], nm:'별장'});
+    if (!bmB(lv)) out.push({k:'b', cost:c.c[1], nm:'빌딩'});
+    if (!bmH(lv)) out.push({k:'h', cost:c.c[2], nm:'호텔'});
+    return out;
+  },
+  // 판 값: 맨 비싼 건물부터 한 개씩(호텔 → 빌딩 → 별장) 건설비의 절반, 건물이 없으면 땅값의 절반
+  sellOne(g, k){
+    const c = BM_SQ[k], lv = g.lv[k];
+    if (bmH(lv)) return Math.floor(c.c[2] / 2);
+    if (bmB(lv)) return Math.floor(c.c[1] / 2);
+    if (bmV(lv)) return Math.floor(c.c[0] / 2);
+    return Math.floor(c.p / 2);
+  },
+  sellName(g, k){ const lv = g.lv[k]; return bmH(lv) ? '호텔' : bmB(lv) ? '빌딩' : bmV(lv) ? '별장' : '땅'; },
+  sellUnit(g, k){   // 한 개 팔고 받은 돈을 돌려준다
+    const v = BME.sellOne(g, k), lv = g.lv[k];
+    if (bmH(lv)) g.lv[k] -= 6; else if (bmB(lv)) g.lv[k] -= 3; else if (bmV(lv)) g.lv[k] -= 1;
+    else { g.own[k] = -1; g.bought[k] = 0; }
+    return v;
+  },
+  sellValue(g, i){
+    let v = 0;
+    g.own.forEach((o, k) => { if (o !== i) return; const c = BM_SQ[k], lv = g.lv[k]; v += Math.floor(c.p / 2);
+      if (!c.sp) v += bmV(lv) * Math.floor(c.c[0] / 2) + bmB(lv) * Math.floor(c.c[1] / 2) + bmH(lv) * Math.floor(c.c[2] / 2); });
+    return v;
+  },
+  need: g => g.pending && g.pending.k === 'sell' ? g.pending.pays.reduce((a, x) => a + x.amt, 0) : 0,
+  // 돈 내기. 사람이 모자라면 팔 것을 고르도록 멈추고, 컴퓨터는 통행료가 낮은 것부터 자동으로 판다. 다 팔아도 모자라면 파산
   pay(g, i, amt, to, ev){
     const p = g.pl[i];
-    // 사람이 돈이 모자라면: 팔 것을 직접 고르도록 멈춘다 (다 팔아도 모자라면 바로 파산)
+    if (amt <= 0) return true;
     if (p.me && g.pending && g.pending.k === 'sell'){ g.pending.pays.push({amt, to}); return true; }
     if (p.me && p.cash < amt && p.cash + BME.sellValue(g, i) >= amt){
       g.pending = {k:'sell', who:i, pays:[{amt, to}]};
-      BME.log(g, `${p.nm} 돈이 모자람 (${amt}만 필요)`); ev.push({t:'msg', s:`돈이 모자랍니다! ${amt}만 필요`, k:'short', i});
+      BME.log(g, `${p.nm} 돈이 모자람 (${bmW(amt)} 필요)`); ev.push({t:'msg', s:`돈이 모자랍니다! ${bmW(amt)} 필요`, k:'short', i});
       return true;
     }
     if (p.cash < amt) BME.liquidate(g, i, amt, ev);
     if (p.cash >= amt){
       p.cash -= amt;
-      if (to >= 0) g.pl[to].cash += amt; else g.fund += amt;
+      if (to >= 0) g.pl[to].cash += amt; else if (to === -2) g.fund += amt;   // -1 은행, -2 사회복지기금
       BME.snap(g, ev);
       return true;
     }
-    const got = p.cash; p.cash = 0;
-    if (to >= 0) g.pl[to].cash += got; else g.fund += got;
-    p.out = true; p.outAt = ++g.outN; p.jail = 0;
-    g.own.forEach((o, k) => { if (o === i){ g.own[k] = -1; g.lv[k] = 0; } });
-    BME.log(g, `${p.nm} 파산`); ev.push({t:'msg', s:`${p.nm} 파산!`, k:'bankrupt', i}); BME.snap(g, ev);
+    BME.bankrupt(g, i, to, ev);
     return false;
   },
-  // 판 값: 건물 한 단계마다 건설비의 절반, 땅은 땅값의 절반 (내림)
-  sellOne(g, k){ return g.lv[k] > 0 ? Math.floor(BME.buildCost(k) / 2) : Math.floor(BM_SQ[k].p / 2); },
-  sellValue(g, i){ let v = 0; g.own.forEach((o, k) => { if (o === i) v += g.lv[k] * Math.floor(BME.buildCost(k) / 2) + Math.floor(BM_SQ[k].p / 2); }); return v; },
-  need: g => g.pending && g.pending.k === 'sell' ? g.pending.pays.reduce((a, x) => a + x.amt, 0) : 0,
-  // 사람이 고른 칸 하나를 판다 (건물이 있으면 맨 위 건물 한 단계, 없으면 땅). 모자란 돈이 채워지거나 팔 게 없으면 낸다
-  sell(g, k, ev){
-    const pd = g.pending; ev = ev || [];
-    if (!pd || pd.k !== 'sell') return ev;
-    const i = pd.who, p = g.pl[i];
-    if (k === 'auto') BME._liq(g, i, BME.need(g));
-    else if (g.own[k] === i){
-      const v = BME.sellOne(g, k);
-      if (g.lv[k] > 0){ g.lv[k]--; BME.log(g, `${p.nm} ${BM_SQ[k].n} 건물 매각 +${v}만`); }
-      else { g.own[k] = -1; BME.log(g, `${p.nm} ${BM_SQ[k].n} 땅 매각 +${v}만`); }
-      p.cash += v;
-      ev.push({t:'msg', s:`${BM_SQ[k].n} 매각 +${v}만`, k:'sold', i, sq:k});
-      BME.snap(g, ev);
-    }
-    const need = BME.need(g);
-    if (p.cash >= need || !g.own.some(o => o === i)){
-      g.pending = null;
-      for (const x of pd.pays) BME.pay(g, i, x.amt, x.to, ev);
-      BME.afterAction(g);
-    }
-    return ev;
+  bankrupt(g, i, to, ev){
+    const p = g.pl[i], got = p.cash; p.cash = 0;
+    if (to >= 0) g.pl[to].cash += got; else if (to === -2) g.fund += got;
+    p.out = true; p.outAt = ++g.outN; p.jail = 0; p.space = 0;
+    g.own.forEach((o, k) => { if (o === i){ g.own[k] = -1; g.lv[k] = 0; g.bought[k] = 0; } });
+    BME.log(g, `${p.nm} 파산`); ev.push({t:'msg', s:`${p.nm} 파산!`, k:'bankrupt', i}); BME.snap(g, ev);
   },
   liquidate(g, i, amt, ev){
-    const own0 = g.own.filter(o => o === i).length + g.lv.reduce((a, l, k) => a + (g.own[k] === i ? l : 0), 0);
+    const n0 = BME.sellValue(g, i);
     BME._liq(g, i, amt);
-    const own1 = g.own.filter(o => o === i).length + g.lv.reduce((a, l, k) => a + (g.own[k] === i ? l : 0), 0);
-    if (own1 < own0 && ev){ ev.push({t:'msg', s:`${g.pl[i].nm} 돈이 모자라 건물·땅을 팔았다`, k:'sell', i}); BME.snap(g, ev); }
+    if (BME.sellValue(g, i) < n0 && ev){ ev.push({t:'msg', s:`${g.pl[i].nm} 돈이 모자라 땅·건물을 팔았다`, k:'sell', i}); BME.snap(g, ev); }
   },
+  // 지금 통행료가 가장 낮은 땅부터 한 개씩 판다 (같으면 땅값이 싼 곳부터). 팔 때마다 통행료가 바뀌므로 매번 다시 고른다
   _liq(g, i, amt){
-    // 지금 통행료가 가장 낮은 도시부터 한 단계씩(건물이 있으면 맨 위 건물, 없으면 땅) 판다. 팔 때마다 통행료가 바뀌므로(같은 색 2배가 깨지는 등) 매번 다시 고른다.
-    // 통행료가 같으면 땅값이 싼 도시부터
     const p = g.pl[i];
     while (p.cash < amt){
       let k = -1, kr = Infinity;
       g.own.forEach((o, q) => { if (o !== i) return; const r = BME.rent(g, q); if (r < kr || (r === kr && BM_SQ[q].p < BM_SQ[k].p)){ k = q; kr = r; } });
       if (k < 0) break;
-      const v = BME.sellOne(g, k);
-      if (g.lv[k] > 0){ g.lv[k]--; BME.log(g, `${p.nm} ${BM_SQ[k].n} 건물 매각 +${v}만`); }
-      else { g.own[k] = -1; BME.log(g, `${p.nm} ${BM_SQ[k].n} 땅 매각 +${v}만`); }
-      p.cash += v;
+      const nm = BME.sellName(g, k), v = BME.sellUnit(g, k);
+      p.cash += v; BME.log(g, `${p.nm} ${BM_SQ[k].n} ${nm} 매각 +${bmW(v)}`);
     }
   },
-  // from에서 d칸 이동 (d<0이면 뒤로). 출발을 지나거나 서면 월급
-  move(g, i, d, ev){
+  sell(g, k, ev, rnd){
+    const pd = g.pending; ev = ev || []; rnd = rnd || Math.random;
+    if (!pd || pd.k !== 'sell') return ev;
+    const i = pd.who, p = g.pl[i];
+    if (k === 'auto') BME._liq(g, i, BME.need(g));
+    else if (g.own[k] === i){
+      const nm = BME.sellName(g, k), v = BME.sellUnit(g, k);
+      p.cash += v; BME.log(g, `${p.nm} ${BM_SQ[k].n} ${nm} 매각 +${bmW(v)}`);
+      ev.push({t:'msg', s:`${BM_SQ[k].s} ${nm} 매각 +${bmW(v)}`, k:'sold', i, sq:k});
+      BME.snap(g, ev);
+    }
+    if (p.cash >= BME.need(g) || !g.own.some(o => o === i)){
+      g.pending = null;
+      for (const x of pd.pays) BME.pay(g, i, x.amt, x.to, ev);
+      // 우주여행비를 내려고 팔았으면 이어서 날아간다
+      if (pd.after && pd.after.space !== undefined && !p.out && !g.pending){
+        const to = pd.after.space;
+        BME.log(g, `${p.nm} 우주여행으로 ${BM_SQ[to].n}`); ev.push({t:'msg', s:`${BM_SQ[to].s}(으)로 우주여행`, k:'fly', i, sq:to});
+        BME.goTo(g, i, to, ev, true); BME.land(g, i, ev, rnd, 1);
+      }
+      BME.afterAction(g);
+    }
+    return ev;
+  },
+  // d칸 이동 (d<0이면 뒤로). 앞으로 가다 출발을 지나거나 서면 월급
+  move(g, i, d, ev, noSalary){
     const p = g.pl[i];
     let path = [];
     for (let s = 0; s < Math.abs(d); s++){
-      p.pos = (p.pos + (d > 0 ? 1 : BM_SQ.length - 1)) % BM_SQ.length; path.push(p.pos);
-      if (d > 0 && p.pos === 0){
-        ev.push({t:'move', i, path, back:d < 0}); path = [];
-        p.cash += BM.salary; BME.log(g, `${p.nm} 출발 통과 +${BM.salary}만`);
-        ev.push({t:'msg', s:`출발 통과 +${BM.salary}만`, k:'salary', i, quick:true}); BME.snap(g, ev);
+      p.pos = (p.pos + (d > 0 ? 1 : BM_N - 1)) % BM_N; path.push(p.pos);
+      if (d > 0 && p.pos === 0 && !noSalary){
+        ev.push({t:'move', i, path}); path = [];
+        p.cash += BM.salary; BME.log(g, `${p.nm} 출발 통과 월급 +${bmW(BM.salary)}`);
+        ev.push({t:'msg', s:`월급 +${bmW(BM.salary)}`, k:'salary', i, quick:true}); BME.snap(g, ev);
       }
     }
-    if (path.length) ev.push({t:'move', i, path, back:d < 0});
+    if (path.length) ev.push({t:'move', i, path});
   },
   goTo(g, i, sq, ev, salary){
-    const p = g.pl[i], d = (sq - p.pos + BM_SQ.length) % BM_SQ.length;
+    const p = g.pl[i], d = (sq - p.pos + BM_N) % BM_N;
     if (salary) BME.move(g, i, d, ev);
     else { p.pos = sq; ev.push({t:'move', i, path:[sq], jump:true}); }
-    if (salary && sq === 0 && d === 0) BME.snap(g, ev);
   },
-  toJail(g, i, ev){ const p = g.pl[i]; BME.goTo(g, i, 8, ev, false); p.jail = BM.jail; g.again = false; BME.log(g, `${p.nm} 무인도에 갇힘`); ev.push({t:'msg', s:'무인도에 갇혔다', k:'jail', i}); BME.snap(g, ev); },
+  toJail(g, i, ev){ const p = g.pl[i]; BME.goTo(g, i, 10, ev, false); p.jail = BM.jail; g.again = false; BME.log(g, `${p.nm} 무인도에 갇힘`); ev.push({t:'msg', s:'무인도에 갇혔다', k:'jail', i}); BME.snap(g, ev); },
   // 지금 칸의 효과. 사람의 결정이 필요하면 g.pending을 세우고 멈춘다
   land(g, i, ev, rnd, depth = 0){
     const p = g.pl[i], c = BM_SQ[p.pos], sq = p.pos;
-    if (p.out || depth > 4) return;
+    if (p.out || depth > 5) return;
     if (c.t === 'city'){
       const o = g.own[sq];
       if (o < 0){
-        if (p.cash >= c.p){ if (p.me) g.pending = {k:'buy', sq}; else if (BME.botBuy(g, i, sq)) BME.buy(g, i, sq, ev); }   // 땅을 처음 산 자리에서는 건물을 짓지 못한다 (다음에 다시 서야 지을 수 있다)
+        if (p.cash >= c.p){ if (p.me) g.pending = {k:'buy', sq}; else if (BME.botBuy(g, i, sq)) BME.buy(g, i, sq, ev); }
       } else if (o === i){
-        if (g.lv[sq] < 3 && p.cash >= BME.buildCost(sq)){ if (p.me) g.pending = {k:'build', sq}; else if (BME.botBuild(g, i, sq)) BME.build(g, i, sq, ev); }
+        // 산 그 차례가 아니면 건물을 지을 수 있다
+        if (g.bought[sq] !== BME.turnId(g) && BME.canBuild(g, sq).some(x => p.cash >= x.cost)){ if (p.me) g.pending = {k:'build', sq}; else BME.botBuild(g, i, sq, ev); }
       } else if (!g.pl[o].out){
         const r = BME.rent(g, sq);
-        BME.log(g, `${p.nm} → ${g.pl[o].nm} 통행료 ${r}만 (${c.n})`); ev.push({t:'msg', s:`통행료 ${r}만`, k:'rent', i, to:o, sq, v:r});
-        BME.pay(g, i, r, o, ev);
+        if (p.coupon > 0){ p.coupon--; BME.log(g, `${p.nm} 우대권으로 ${c.n} 통행료 면제`); ev.push({t:'msg', s:`우대권으로 통행료 면제`, k:'coupon', i}); BME.snap(g, ev); }
+        else { BME.log(g, `${p.nm} → ${g.pl[o].nm} 통행료 ${bmW(r)} (${c.n})`); ev.push({t:'msg', s:`통행료 ${bmW(r)}`, k:'rent', i, to:o, sq, v:r}); BME.pay(g, i, r, o, ev); }
       }
-    } else if (c.t === 'tax'){
-      const t = Math.max(5, Math.round(p.cash * 0.1));
-      BME.log(g, `${p.nm} 세금 ${t}만`); ev.push({t:'msg', s:`세금 ${t}만`, k:'tax', i});
-      BME.pay(g, i, t, -1, ev);
-    } else if (c.t === 'fund'){
-      if (g.fund > 0){ BME.log(g, `${p.nm} 여행기금 ${g.fund}만 받음`); ev.push({t:'msg', s:`여행기금 ${g.fund}만!`, k:'fund', i}); p.cash += g.fund; g.fund = 0; BME.snap(g, ev); }
+    } else if (c.t === 'fundIn'){
+      BME.log(g, `${p.nm} 사회복지기금 ${bmW(BM.fundIn)} 냄`); ev.push({t:'msg', s:`사회복지기금 ${bmW(BM.fundIn)}`, k:'tax', i});
+      BME.pay(g, i, BM.fundIn, -2, ev);
+    } else if (c.t === 'fundOut'){
+      if (g.fund > 0){ BME.log(g, `${p.nm} 사회복지기금 ${bmW(g.fund)} 받음`); ev.push({t:'msg', s:`사회복지기금 ${bmW(g.fund)}!`, k:'fund', i}); p.cash += g.fund; g.fund = 0; BME.snap(g, ev); }
     } else if (c.t === 'island'){
       if (!p.jail){ p.jail = BM.jail; g.again = false; BME.log(g, `${p.nm} 무인도에 갇힘`); ev.push({t:'msg', s:'무인도에 갇혔다', k:'jail', i}); BME.snap(g, ev); }
-    } else if (c.t === 'plane'){
-      if (p.me) g.pending = {k:'fly'};
-      else { const to = BME.botFly(g, i); BME.log(g, `${p.nm} 비행기로 ${BM_SQ[to].n}`); ev.push({t:'msg', s:`${BM_SQ[to].n}(으)로 비행`, k:'fly', i, sq:to}); BME.goTo(g, i, to, ev, true); BME.land(g, i, ev, rnd, depth + 1); }
-    } else if (c.t === 'chance'){
+    } else if (c.t === 'space'){
+      // 다음 차례에 주사위 대신 원하는 칸으로 간다 (컬럼비아호 주인에게 우주여행비)
+      if (!p.space){ p.space = p.spaceFree ? 2 : 1; p.spaceFree = 0; g.again = false; BME.log(g, `${p.nm} 우주여행 대기`); ev.push({t:'msg', s:'다음 차례에 우주여행', k:'fly', i}); BME.snap(g, ev); }
+    } else if (c.t === 'key'){
       if (!g.deck.length) BME.shuffle(g, rnd);
       const card = BM_CARDS[g.deck.pop()];
-      BME.log(g, `${p.nm} 찬스: ${card.s}`); ev.push({t:'card', s:card.s, i});
-      if (card.d > 0){ p.cash += card.d; BME.snap(g, ev); }
-      else if (card.d < 0) BME.pay(g, i, -card.d, -1, ev);
-      else if (card.repair){ const n = g.own.reduce((a, o, k) => a + (o === i ? g.lv[k] : 0), 0); if (n) BME.pay(g, i, n * card.repair, -1, ev); }
-      else if (card.each){
-        g.pl.forEach((q, j) => { if (j === i || q.out || p.out) return; if (card.each > 0) BME.pay(g, j, card.each, i, ev); else BME.pay(g, i, -card.each, j, ev); });
-      }
-      else if (card.free){ p.free++; BME.snap(g, ev); }
-      else if (card.jail) BME.toJail(g, i, ev);
-      else if (card.go !== undefined){ BME.goTo(g, i, card.go, ev, true); BME.land(g, i, ev, rnd, depth + 1); }
-      else if (card.step){ BME.move(g, i, card.step, ev); BME.land(g, i, ev, rnd, depth + 1); }
+      BME.log(g, `${p.nm} 황금열쇠: ${card.s}`); ev.push({t:'card', s:card.s, i});
+      BME.card(g, i, card, ev, rnd, depth);
     }
   },
-  buy(g, i, sq, ev){ const p = g.pl[i]; p.cash -= BM_SQ[sq].p; g.own[sq] = i; BME.log(g, `${p.nm} ${BM_SQ[sq].n} 구입 (${BM_SQ[sq].p}만)`); if (ev){ ev.push({t:'msg', s:`${BM_SQ[sq].n} 구입!`, k:'buy', i, sq}); BME.snap(g, ev); } },
-  build(g, i, sq, ev){ const p = g.pl[i], c = BME.buildCost(sq); p.cash -= c; g.lv[sq]++; BME.log(g, `${p.nm} ${BM_SQ[sq].n}에 ${BM.buildNames[g.lv[sq]]} (${c}만)`); if (ev){ ev.push({t:'msg', s:`${BM.buildNames[g.lv[sq]]} 건설!`, k:'build', i, sq, v:g.lv[sq]}); BME.snap(g, ev); } },
-  // 컴퓨터의 판단: 현금을 어느 정도 남겨 두고 산다
-  botBuy: (g, i, sq) => g.pl[i].cash - BM_SQ[sq].p >= 40,
-  botBuild: (g, i, sq) => g.pl[i].cash - BME.buildCost(sq) >= 70,
-  botFly(g, i){
+  card(g, i, card, ev, rnd, depth){
+    const p = g.pl[i];
+    if (card.d > 0){ p.cash += card.d; BME.snap(g, ev); }
+    else if (card.d < 0) BME.pay(g, i, -card.d, -1, ev);
+    else if (card.tax){
+      let t = 0; g.own.forEach((o, k) => { if (o === i){ const lv = g.lv[k]; t += bmV(lv) * card.tax[0] + bmB(lv) * card.tax[1] + bmH(lv) * card.tax[2]; } });
+      if (t) BME.pay(g, i, t, -1, ev);
+    }
+    else if (card.half){
+      let k = -1; g.own.forEach((o, q) => { if (o === i && (k < 0 || BM_SQ[q].p > BM_SQ[k].p)) k = q; });
+      if (k >= 0){ const v = Math.floor((BM_SQ[k].p + BME.bldCost(k, g.lv[k])) / 2); g.own[k] = -1; g.lv[k] = 0; g.bought[k] = 0; p.cash += v; BME.log(g, `${p.nm} ${BM_SQ[k].n} 반값 매각 +${bmW(v)}`); ev.push({t:'msg', s:`${BM_SQ[k].s} 반값 매각 +${bmW(v)}`, k:'sell', i}); BME.snap(g, ev); }
+    }
+    else if (card.free){ p.free++; BME.snap(g, ev); }
+    else if (card.coupon){ p.coupon++; BME.snap(g, ev); }
+    else if (card.each){ g.pl.forEach((q, j) => { if (j === i || q.out || p.out) return; BME.pay(g, j, card.each, i, ev); }); }
+    else if (card.jail) BME.toJail(g, i, ev);
+    else if (card.world){
+      BME.move(g, i, BM_N, ev);
+      if (g.fund > 0){ p.cash += g.fund; BME.log(g, `${p.nm} 사회복지기금 ${bmW(g.fund)} 받음`); ev.push({t:'msg', s:`사회복지기금 ${bmW(g.fund)}!`, k:'fund', i}); g.fund = 0; BME.snap(g, ev); }
+    }
+    else if (card.space){ p.spaceFree = 1; BME.goTo(g, i, 30, ev, true); BME.land(g, i, ev, rnd, depth + 1); }
+    else if (card.go !== undefined){ BME.goTo(g, i, BM_IDX(card.go), ev, true); BME.land(g, i, ev, rnd, depth + 1); }
+    else if (card.step){ BME.move(g, i, card.step, ev); BME.land(g, i, ev, rnd, depth + 1); }
+  },
+  // 같은 차례에 산 땅에는 짓지 못하게 차례 번호를 센다
+  turnId: g => g.round * 10 + g.turn,
+  buy(g, i, sq, ev){
+    const p = g.pl[i]; p.cash -= BM_SQ[sq].p; g.own[sq] = i; g.bought[sq] = BME.turnId(g);
+    BME.log(g, `${p.nm} ${BM_SQ[sq].n} 구입 (${bmW(BM_SQ[sq].p)})`);
+    if (ev){ ev.push({t:'msg', s:`${BM_SQ[sq].s} 구입!`, k:'buy', i, sq}); BME.snap(g, ev); }
+  },
+  build(g, i, sq, kind, ev){
+    const p = g.pl[i], c = BM_SQ[sq], opt = BME.canBuild(g, sq).find(x => x.k === kind);
+    if (!opt || p.cash < opt.cost) return false;
+    p.cash -= opt.cost; g.lv[sq] += kind === 'v' ? 1 : kind === 'b' ? 3 : 6;
+    BME.log(g, `${p.nm} ${c.n}에 ${opt.nm} (${bmW(opt.cost)})`);
+    if (ev){ ev.push({t:'msg', s:`${opt.nm} 건설!`, k:'build', i, sq, v:kind}); BME.snap(g, ev); }
+    return true;
+  },
+  // 컴퓨터의 판단: 현금을 어느 정도 남겨 두고 사고 짓는다
+  botBuy: (g, i, sq) => g.pl[i].cash - BM_SQ[sq].p >= 300,
+  botBuild(g, i, sq, ev){
+    for (const k of ['h', 'b', 'v', 'v']){
+      const o = BME.canBuild(g, sq).find(x => x.k === k);
+      if (o && g.pl[i].cash - o.cost >= 500) BME.build(g, i, sq, k, ev);
+    }
+  },
+  botSpace(g, i){
     const p = g.pl[i];
     let best = -1, bv = -1;
-    BM_SQ.forEach((c, k) => {
-      if (c.t !== 'city') return;
-      if (g.own[k] < 0 && p.cash - c.p >= 40 && c.p > bv){ best = k; bv = c.p; }
-    });
+    BM_SQ.forEach((c, k) => { if (c.t === 'city' && g.own[k] < 0 && p.cash - c.p >= 300 && c.p > bv){ best = k; bv = c.p; } });
     if (best >= 0) return best;
-    BM_SQ.forEach((c, k) => { if (c.t === 'city' && g.own[k] === i && g.lv[k] < 3 && p.cash - BME.buildCost(k) >= 70 && c.p > bv){ best = k; bv = c.p; } });
+    BM_SQ.forEach((c, k) => { if (c.t === 'city' && g.own[k] === i && BME.canBuild(g, k).some(x => p.cash - x.cost >= 500) && c.p > bv){ best = k; bv = c.p; } });
     if (best >= 0) return best;
-    return g.fund >= BM.salary ? 16 : 0;
+    return g.fund >= BM.salary ? 20 : 0;
   },
-  // 주사위를 굴려 한 번 움직인다 (같은 눈이면 g.again)
+  // 우주여행: 컬럼비아호 주인(나 말고)에게 우주여행비를 내고 원하는 칸으로 간다
+  space(g, i, to, ev, rnd){
+    const p = g.pl[i], col = BM_IDX('컬럼비아호'), o = g.own[col], free = p.space === 2;
+    p.space = 0;
+    if (!free && o >= 0 && o !== i && !g.pl[o].out){ BME.log(g, `${p.nm} 우주여행비 ${bmW(BM.spaceFee)} → ${g.pl[o].nm}`); ev.push({t:'msg', s:`우주여행비 ${bmW(BM.spaceFee)}`, k:'rent', i, to:o, sq:col, v:BM.spaceFee}); BME.pay(g, i, BM.spaceFee, o, ev); }
+    if (p.out || (g.pending && g.pending.k === 'sell')){ if (g.pending) g.pending.after = {space:to}; return; }
+    BME.log(g, `${p.nm} 우주여행으로 ${BM_SQ[to].n}`); ev.push({t:'msg', s:`${BM_SQ[to].s}(으)로 우주여행`, k:'fly', i, sq:to});
+    BME.goTo(g, i, to, ev, true); BME.land(g, i, ev, rnd, 1);
+  },
+  // 주사위를 굴려 한 번 움직인다 (같은 눈이면 g.again). 우주여행 대기 중이면 주사위 대신 날아간다(컴퓨터)
   roll(g, rnd){
     const i = g.turn, p = g.pl[i], ev = [];
+    g.pending = null; g.again = false;
+    if (p.space){ BME.space(g, i, BME.botSpace(g, i), ev, rnd); BME.afterAction(g); return ev; }
     const a = 1 + Math.floor(rnd() * 6), b = 1 + Math.floor(rnd() * 6);
-    g.dice = [a, b]; g.pending = null; g.again = false;
+    g.dice = [a, b];
     ev.push({t:'dice', a, b, i});
     if (p.jail > 0){
       if (p.free > 0){ p.free--; p.jail = 0; BME.log(g, `${p.nm} 탈출권으로 무인도 탈출`); ev.push({t:'msg', s:'탈출권으로 무인도 탈출', k:'escape', i}); BME.snap(g, ev); }
@@ -3242,32 +3353,28 @@ const BME = {
     BME.afterAction(g);
     return ev;
   },
-  // 사람의 결정 (buy / build / fly)
+  // 사람의 결정: buy (yes) / build (arg = 'v'|'b'|'h', yes=false면 그만) / space (arg = 칸)
   decide(g, yes, arg, rnd){
     const i = g.turn, pd = g.pending, ev = [];
     if (!pd) return ev;
     g.pending = null;
-    if (pd.k === 'buy' && yes && g.pl[i].cash >= BM_SQ[pd.sq].p){
-      BME.buy(g, i, pd.sq, ev);
+    if (pd.k === 'buy' && yes && g.pl[i].cash >= BM_SQ[pd.sq].p) BME.buy(g, i, pd.sq, ev);
+    else if (pd.k === 'build' && yes){
+      BME.build(g, i, pd.sq, arg, ev);
+      if (BME.canBuild(g, pd.sq).some(x => g.pl[i].cash >= x.cost)){ g.pending = {k:'build', sq:pd.sq}; return ev; }   // 더 지을 수 있으면 계속
     }
-    else if (pd.k === 'build' && yes && g.lv[pd.sq] < 3 && g.pl[i].cash >= BME.buildCost(pd.sq)){
-      BME.build(g, i, pd.sq, ev);
-    }
-    else if (pd.k === 'fly'){
-      const to = arg >= 0 && arg < BM_SQ.length && arg !== 24 ? arg : 0;
-      BME.log(g, `${g.pl[i].nm} 비행기로 ${BM_SQ[to].n}`);
-      ev.push({t:'msg', s:`${BM_SQ[to].n}(으)로 비행`, k:'fly', i, sq:to});
-      BME.goTo(g, i, to, ev, true); BME.land(g, i, ev, rnd, 1);
+    else if (pd.k === 'space'){
+      const to = arg >= 0 && arg < BM_N && arg !== 30 ? arg : 0;
+      BME.space(g, i, to, ev, rnd);
     }
     BME.afterAction(g);
     return ev;
   },
-  // 결정이 남아 있지 않으면: 같은 눈이면 한 번 더, 아니면 다음 사람
   afterAction(g){
     if (g.pending) return;
     const p = g.pl[g.turn];
-    if (g.outN > 0 || g.pl[0].out || BME.alive(g) <= 1){ g.over = true; g.pending = null; return; }   // 누군가 파산하면 끝
-    if (g.again && !p.out && !p.jail){ g.again = false; g.pending = p.me ? {k:'roll'} : null; return; }
+    if (g.pl[0].out || BME.alive(g) <= 1){ g.over = true; g.pending = null; return; }   // 한 명만 남거나 내가 파산하면 끝
+    if (g.again && !p.out && !p.jail && !p.space){ g.again = false; g.pending = p.me ? {k:'roll'} : null; return; }
     BME.next(g);
   },
   next(g){
@@ -3275,10 +3382,10 @@ const BME = {
     let t = g.turn;
     do { t = (t + 1) % g.n; if (t === (g.first || 0)) g.round++; } while (g.pl[t].out);
     g.turn = t;
-    if (g.round > BM.cap){ g.over = true; g.pending = null; return; }
-    g.pending = g.pl[t].me ? {k:'roll'} : null;
+    const p = g.pl[t];
+    g.pending = p.me ? (p.space ? {k:'space'} : {k:'roll'}) : null;
   },
-  // 순위: 살아남은 사람은 총자산 순(같으면 컴퓨터가 앞), 파산한 사람은 늦게 파산한 순
+  // 순위: 살아남은 사람(내가 파산해 일찍 끝났으면 그들끼리는 총자산 순, 같으면 컴퓨터가 앞), 그다음 늦게 파산한 순
   ranking(g){
     return g.pl.map((p, i) => ({i, a:p.out ? -1 : BME.assets(g, i), outAt:p.outAt, me:p.me}))
       .sort((x, y) => (y.a - x.a) || (y.outAt - x.outAt) || (x.me - y.me)).map(x => x.i);
@@ -3291,6 +3398,8 @@ function bmToday(){
   if (!S.bm || typeof S.bm !== 'object') S.bm = {day:bmKey(), n:0, cur:null, hist:[]};
   if (S.bm.day !== bmKey()){ S.bm.day = bmKey(); S.bm.n = 0; }
   if (!Array.isArray(S.bm.hist)) S.bm.hist = [];
+  // 예전 32칸 규칙으로 하던 판은 이어 할 수 없어 판돈을 돌려준다
+  if (S.bm.cur && S.bm.cur.v !== 2){ const st = +S.bm.cur.stake || 0; S.bm.cur = null; if (st > 0){ receiveUSD(st); setTimeout(() => toast(`규칙이 바뀌어 하던 판을 끝내고 판돈 ${fmtUSD(st)}을 돌려드렸습니다`), 300); } save(); }
   return S.bm;
 }
 // 가입하고 waitDays일이 지나야 할 수 있다 (가입하자마자 판돈으로 순자산을 불리지 못하게). 로그인 안 했으면 이 기록을 시작한 때부터
@@ -3307,13 +3416,16 @@ function bmLockText(ms){
 }
 function bmCardHTML(){
   const b = bmToday(), g = b.cur;
-  INFO.bm = {t:'주사위 세계여행', h:`<div class="prose"><ul>
-    <li>컴퓨터 1~3명과 32칸 세계 도시 보드를 주사위로 돕니다. 모두 ${BM.start}만(게임 속 돈)으로 시작하고, 출발 칸을 지나거나 서면 ${BM.salary}만을 받습니다.</li>
-    <li>주인 없는 도시에 서면 살 수 있고(산 그 자리에서는 건물을 짓지 못합니다), 내 도시에 다시 서면 별장 → 빌딩 → 호텔을 한 단계씩 올립니다(단계마다 땅값의 절반). 남의 도시에 서면 통행료를 내고, 같은 색 도시를 모두 가진 사람에게는 통행료가 ${BM.group}배입니다.</li>
-    <li>통행료(만) = 땅값 × 단계 배수 × (1 + ${BM.esc} × (바퀴 수 − 1)), 반올림, 최소 1. 단계 배수는 땅 ${BM.rent[0]}, 별장 ${BM.rent[1]}, 빌딩 ${BM.rent[2]}, 호텔 ${BM.rent[3]}이고, 바퀴는 첫 차례 사람이 한 바퀴 돌 때마다 1씩 늘어 통행료가 처음보다 ${Math.round(BM.esc * 100)}%p씩 오릅니다.</li>
-    <li>같은 눈이 나오면 한 번 더 굴리고, 세 번 연속이면 무인도로 갑니다. 무인도에서는 ${BM.jail}턴 동안 같은 눈이 나와야 나갑니다. 비행기 칸에 서면 원하는 칸으로 날아갑니다. 세금 칸은 현금의 10%(최소 5만)를 여행기금에 내고, 여행기금 칸에 서면 모인 돈을 받습니다.</li>
-    <li>돈이 모자라면 팔 땅이나 건물을 직접 고릅니다. 건물이 있는 도시는 맨 위 건물 한 단계부터 팔리고, 건물은 건설비의 절반, 땅은 땅값의 절반(내림)을 받습니다. 모자란 돈이 채워지면 바로 내고, 가진 것을 다 팔아도 모자라면 파산합니다. 컴퓨터는 지금 통행료가 낮은 도시부터 자동으로 팝니다(자동 팔기 버튼도 같은 순서).</li>
-    <li>누군가 한 명 파산하면 그 자리에서 끝납니다. 파산한 사람이 꼴찌이고, 나머지는 총자산(현금 + 땅값 + 건물값) 순입니다. 혹시 ${BM.cap}바퀴까지 아무도 파산하지 않으면 그때 총자산 순으로 끝냅니다.</li>
+  INFO.bm = {t:'주사위 세계여행', h:`<div class="prose"><p>부루마불(씨앗사) 1탄의 땅값·통행료·건설비·황금열쇠를 따랐습니다. 숫자는 나무위키 '부루마불/주요 카드'(2023년 7월 판)와 위키백과 '부루마불'에서 가져왔고, 자료에 없는 부분은 아래에 '자료 없음'으로 표시했습니다. 돈은 게임 속 돈입니다.</p><ul>
+    <li>40칸 보드, 컴퓨터 1~3명. 모두 ${bmW(BM.start)}으로 시작하고, 출발을 지나거나 서면 월급 ${bmW(BM.salary)}을 받습니다.</li>
+    <li>주인 없는 땅에 서면 살 수 있습니다. 내 도시에 다시 서면 별장(2채까지)·빌딩(1)·호텔(1)을 원하는 만큼 짓습니다(산 그 차례에는 못 짓습니다). 제주도·부산·서울·콩코드 여객기·퀸 엘리자베스호·컬럼비아호는 건물을 못 짓는 특수 땅입니다.</li>
+    <li>통행료 = 대지료 + 별장(1채 또는 2채 값) + 빌딩 + 호텔. 땅을 누르면 금액이 나옵니다. (건물 통행료를 더하는 방식은 자료 없음, 흔히 쓰는 방식)</li>
+    <li>같은 눈이면 한 번 더, 세 번 연속이면 무인도. 무인도에서는 ${BM.jail}턴 동안 같은 눈이 나와야 나가고, 탈출권이 있으면 바로 나갑니다(자료 없음: 턴 수는 흔히 쓰는 규칙).</li>
+    <li>우주여행 칸에 서면 다음 차례에 주사위 대신 원하는 칸으로 가고, 컬럼비아호 주인에게 우주여행비 ${bmW(BM.spaceFee)}을 냅니다(2016년 판 나무위키 기준).</li>
+    <li>사회복지기금 접수 칸에 서면 ${bmW(BM.fundIn)}을 기금에 내고, 사회복지기금 수령 칸에 서면 모인 기금을 모두 받습니다.</li>
+    <li>황금열쇠 30장(2탄 전용 카드와 장기자랑은 뺌). 장수는 자료 없음: 우대권 2장, 관광여행 3장(제주도·부산·서울), 복권·자동차 경주 각 2장, 나머지 1장씩. 황금열쇠 칸 6곳의 정확한 위치도 자료 없음(흔히 알려진 배치).</li>
+    <li>돈이 모자라면 팔 땅이나 건물을 직접 고릅니다(호텔 → 빌딩 → 별장 → 땅 순으로 하나씩, 건설비·땅값의 절반). 다 팔아도 모자라면 파산합니다. 자동 팔기와 컴퓨터는 지금 통행료가 낮은 땅부터 팝니다.</li>
+    <li>한 명만 남을 때까지(나머지가 모두 파산할 때까지) 합니다. 순위는 늦게 파산한 순이고, 내가 파산하면 그 자리에서 끝납니다.</li>
     <li>판돈 ${fmtUSD(BM.minBet, 0)}~${fmtUSD(BM.maxBet, 0)}을 달러 통장에서 걸고 시작합니다. 끝나면 순위에 따라 판돈의 배수를 돌려받습니다. 2명: 1위 2배 / 3명: 1위 2.5배, 2위 0.5배 / 4명: 1위 3배, 2위 1배 (나머지 0). 배수의 평균이 1배라서 실력이 같으면 기대 손익은 0입니다.</li>
     ${BM.waitDays ? `<li>가입하고 ${BM.waitDays}일이 지나야 할 수 있습니다(로그인하지 않았으면 이 기록을 시작한 때부터).</li>` : ''}
     <li>판 수 제한은 없습니다. 도중에 닫아도 이어서 할 수 있고, 기권하면 판돈을 잃습니다.</li>
@@ -3389,14 +3501,16 @@ function bmHide(){
 }
 const bmOpenNow = () => { const ov = $('#bmOv'); return !!(ov && !ov.hidden); };
 // 칸 번호 → 9×9 격자 위치 (0 = 오른쪽 아래, 시계 반대 방향)
-function bmCell(k){
-  if (k <= 8) return [9, 9 - k];
-  if (k <= 16) return [9 - (k - 8), 1];
-  if (k <= 24) return [1, 1 + (k - 16)];
-  return [1 + (k - 24), 9];
+function bmCell(k){   // 11×11 격자
+  if (k <= 10) return [11, 11 - k];
+  if (k <= 20) return [11 - (k - 10), 1];
+  if (k <= 30) return [1, 1 + (k - 20)];
+  return [1 + (k - 30), 11];
 }
-const BM_ICON = {start:'🏁', chance:'❓', tax:'💸', island:'🏝️', fund:'💰', plane:'✈️'};
-const BM_BLD = ['', '🏠', '🏢', '🏨'];
+const BM_ICON = {start:'🏁', key:'🔑', island:'🏝️', fundOut:'💰', fundIn:'💸', space:'🚀'};
+const BM_SPI = {'제주도':'🌴', '부산':'⚓', '서울':'⭐', '콩코드 여객기':'✈️', '퀸 엘리자베스호':'🚢', '컬럼비아호':'🛰️'};
+const BM_BI = {v:'🏠', b:'🏢', h:'🏨'};
+const bmBldIcons = lv => '🏠'.repeat(bmV(lv)) + (bmB(lv) ? '🏢' : '') + (bmH(lv) ? '🏨' : '');
 // 주사위 한 개 (정육면체). 면: 앞 1, 뒤 6, 오른쪽 3, 왼쪽 4, 위 5, 아래 2
 const BM_PIPS = {1:[5], 2:[1, 9], 3:[1, 5, 9], 4:[1, 3, 7, 9], 5:[1, 3, 5, 7, 9], 6:[1, 3, 4, 6, 7, 9]};
 const BM_FACE = {1:'rotateX(0deg) rotateY(0deg)', 6:'rotateY(180deg)', 3:'rotateY(-90deg)', 4:'rotateY(90deg)', 5:'rotateX(-90deg)', 2:'rotateX(90deg)'};
@@ -3407,11 +3521,12 @@ function bmDieHTML(){
 function bmBuild(){
   const ov = $('#bmOv'), g = bmG(); if (!ov || !g) return;
   const cells = BM_SQ.map((c, k) => {
-    const [r, col] = bmCell(k), side = k < 8 ? 'b' : k < 16 ? 'l' : k < 24 ? 't' : 'r';
+    const [r, col] = bmCell(k), side = k < 10 ? 'b' : k < 20 ? 'l' : k < 30 ? 't' : 'r';
     const body = c.t === 'city'
-      ? `<span class="bm-band" style="background:${BM_GCOL[c.g]}"></span><span class="bm-n">${c.n}</span><span class="bm-p"></span><span class="bm-bld"></span>`
-      : `<span class="bm-ic">${BM_ICON[c.t]}</span><span class="bm-n bm-sp">${c.n}</span><span class="bm-p"></span>`;
-    return `<button class="bm-c bm-${side}${k % 8 === 0 ? ' bm-k' : ''} bm-t-${c.t}" data-bmsq="${k}" style="grid-row:${r};grid-column:${col}">${body}</button>`;
+      ? (c.sp ? `<span class="bm-band" style="background:var(--ink-3)"></span><span class="bm-ic sm">${BM_SPI[c.n] || '★'}</span><span class="bm-n">${c.s}</span><span class="bm-p"></span>`
+              : `<span class="bm-band" style="background:${BM.regions[c.g].c}"></span><span class="bm-n">${c.s}</span><span class="bm-p"></span><span class="bm-bld"></span>`)
+      : `<span class="bm-ic">${BM_ICON[c.t]}</span><span class="bm-n bm-sp">${c.s}</span><span class="bm-p"></span>`;
+    return `<button class="bm-c bm-${side}${k % 10 === 0 ? ' bm-k' : ''} bm-t-${c.t}" data-bmsq="${k}" style="grid-row:${r};grid-column:${col}">${body}</button>`;
   }).join('');
   const toks = g.pl.map((p, i) => `<div class="bm-tok" data-tok="${i}" style="--pc:${BM.cols[i]}"><div class="bm-tok-i"><span>${p.me ? '나' : p.nm[0]}</span></div></div>`).join('');
   ov.innerHTML = `<div class="bm-top"><button class="btn" id="bmClose">닫기</button><div class="bm-ttl"><b>주사위 세계여행</b><small id="bmSub"></small></div><div class="bm-tr"><button class="btn bm-spd" id="bmSpd"></button><button class="btn" id="bmQuit">기권</button></div></div>
@@ -3433,13 +3548,13 @@ function bmBuild(){
   requestAnimationFrame(() => bmPlace(true));
 }
 // 화면에 보이는 상태: 애니메이션 중에는 재생한 지점까지의 상태
-const bmV = g => BMV.view || BME.view(g);
+const bmVw = g => BMV.view || BME.view(g);
 function bmUpdate(){
   const ov = $('#bmOv'), g = bmG(); if (!ov || !g) return;
   if (!BMV.built) bmBuild();
-  const V = bmV(g), pd = g.pending, myTurn = g.turn === 0 && !BMV.busy && !g.over;
+  const V = bmVw(g), pd = g.pending, myTurn = g.turn === 0 && !BMV.busy && !g.over;
   const cur = BMV.busy && BMV.actor !== undefined ? BMV.actor : g.turn;   // 애니메이션 중에는 움직이는 사람
-  $('#bmSub').textContent = `${Math.min(g.round, BM.cap)}바퀴 · 통행료 +${Math.round((BME.escF(g) - 1) * 100)}% · ${fmtUSD(g.stake)}`;
+  $('#bmSub').textContent = `${g.round}바퀴 · 판돈 ${fmtUSD(g.stake)}`;
   $('#bmSpd').textContent = bmFast() ? '빠르게 ✓' : '빠르게';
   $('#bmQuit').hidden = g.over;
   BM_SQ.forEach((c, k) => {
@@ -3447,14 +3562,14 @@ function bmUpdate(){
     const o = V.own[k];
     el.classList.toggle('own', o >= 0);
     el.style.setProperty('--oc', o >= 0 ? BM.cols[o] : 'transparent');
-    el.classList.toggle('fly', !!(pd && pd.k === 'fly' && myTurn && k !== 24));
+    el.classList.toggle('fly', !!(pd && pd.k === 'space' && myTurn && k !== 30));
     el.classList.toggle('sel', BMV.sel === k);
     el.classList.toggle('sellable', !!(pd && pd.k === 'sell' && !BMV.busy && V.own[k] === 0));
     const pEl = el.querySelector('.bm-p');
     if (c.t === 'city'){
-      pEl.textContent = o >= 0 ? `${BME.rent({...g, own:V.own, lv:V.lv}, k)}만` : `${c.p}만`;
-      el.querySelector('.bm-bld').textContent = BM_BLD[V.lv[k]] || '';
-    } else pEl.textContent = c.t === 'fund' && V.fund ? `${V.fund}만` : '';
+      pEl.textContent = bmWs(o >= 0 ? BME.rentOf(k, V.lv[k]) : c.p);
+      const bl = el.querySelector('.bm-bld'); if (bl) bl.textContent = bmBldIcons(V.lv[k]);
+    } else pEl.textContent = c.t === 'fundOut' && V.fund ? bmWs(V.fund) : '';
   });
   // 참가자
   g.pl.forEach((p, i) => {
@@ -3462,10 +3577,10 @@ function bmUpdate(){
     const out = V.out[i];
     el.classList.toggle('on', cur === i && !(g.over && !BMV.busy));
     el.classList.toggle('out', out);
-    el.querySelector('.bm-pn').textContent = `${p.nm}${V.jail[i] ? ' 🏝️' : ''}${V.free[i] ? ' 🎫' : ''}`;
-    el.querySelector('.bm-pc').textContent = out ? '파산' : `${V.cash[i]}만`;
-    let a = V.cash[i]; V.own.forEach((o, k) => { if (o === i) a += BM_SQ[k].p + V.lv[k] * BME.buildCost(k); });
-    el.querySelector('.bm-pa').textContent = out ? '' : `자산 ${a}만`;
+    el.querySelector('.bm-pn').textContent = `${p.nm}${V.jail[i] ? ' 🏝️' : ''}${V.space && V.space[i] ? ' 🚀' : ''}${V.free[i] ? ' 🎫' : ''}${V.coupon && V.coupon[i] ? ' 🎟️'.repeat(V.coupon[i]) : ''}`;
+    el.querySelector('.bm-pc').textContent = out ? '파산' : bmW(V.cash[i]);
+    let a = V.cash[i]; V.own.forEach((o, k) => { if (o === i) a += BM_SQ[k].p + BME.bldCost(k, V.lv[k]); });
+    el.querySelector('.bm-pa').textContent = out ? '' : `자산 ${bmW(a)}`;
     const t = ov.querySelector(`[data-tok="${i}"]`); if (t){ t.hidden = out; t.classList.toggle('turn', cur === i && !(g.over && !BMV.busy)); }
   });
   // 행동 버튼
@@ -3473,17 +3588,21 @@ function bmUpdate(){
   if (g.over && !BMV.busy) act = `<button class="btn solid bm-roll" id="bmEnd">결과 보기</button>`;
   else if (!BMV.busy && pd && pd.k === 'sell'){
     const need = BME.need(g), cash = g.pl[0].cash;
-    const list = BM_SQ.map((c, k) => g.own[k] === 0 ? `<button class="btn bm-sell" data-bmsell="${k}"><span>${c.n} ${g.lv[k] ? `${BM_BLD[g.lv[k]]} ${BM.buildNames[g.lv[k]]}` : '땅'}</span><b class="num">+${BME.sellOne(g, k)}만</b></button>` : '').join('');
-    act = `<p class="bm-q">💸 돈이 모자랍니다. 팔 땅이나 건물을 고르세요 <small>내야 할 돈 ${need}만 · 현금 ${cash}만 · <b>${Math.max(0, need - cash)}만 더 필요</b> (건물이 있으면 맨 위 건물부터 팝니다)</small></p><div class="bm-sells">${list}</div><div class="bm-acts"><button class="btn" data-bmsell="auto">통행료 낮은 것부터 자동으로 팔기</button></div>`;
+    const list = BM_SQ.map((c, k) => g.own[k] === 0 ? `<button class="btn bm-sell" data-bmsell="${k}"><span>${c.s} ${BME.sellName(g, k)}</span><b class="num">+${bmW(BME.sellOne(g, k))}</b></button>` : '').join('');
+    act = `<p class="bm-q">💸 돈이 모자랍니다. 팔 땅이나 건물을 고르세요 <small>내야 할 돈 ${bmW(need)} · 현금 ${bmW(cash)} · <b>${bmW(Math.max(0, need - cash))} 더 필요</b> (한 도시에서는 호텔 → 빌딩 → 별장 → 땅 순으로 팔립니다)</small></p><div class="bm-sells">${list}</div><div class="bm-acts"><button class="btn" data-bmsell="auto">통행료 낮은 것부터 자동으로 팔기</button></div>`;
   }
   else if (BMV.busy || g.turn !== 0) act = `<p class="bm-wait">${cur === 0 ? '내' : g.pl[cur].nm} 차례…</p>`;
   else if (pd && pd.k === 'roll') act = `<button class="btn solid bm-roll" id="bmRoll">🎲 주사위 굴리기</button>`;
-  else if (pd && pd.k === 'buy'){ const c = BM_SQ[pd.sq]; act = `<p class="bm-q">${c.n}을(를) ${c.p}만에 살까요? <small>지금 통행료 ${BME.rentAt(g, pd.sq, 0)}만부터</small></p><div class="bm-acts"><button class="btn" data-bmyes="0">안 산다</button><button class="btn solid" data-bmyes="1">산다</button></div>`; }
-  else if (pd && pd.k === 'build'){ const c = BM_SQ[pd.sq], nx = g.lv[pd.sq] + 1; act = `<p class="bm-q">${c.n}에 ${BM_BLD[nx]} ${BM.buildNames[nx]}을(를) ${BME.buildCost(pd.sq)}만에 지을까요? <small>지금 통행료 ${BME.rentAt(g, pd.sq, nx)}만으로</small></p><div class="bm-acts"><button class="btn" data-bmyes="0">안 짓는다</button><button class="btn solid" data-bmyes="1">짓는다</button></div>`; }
-  else if (pd && pd.k === 'fly') act = `<p class="bm-q">✈️ 날아갈 칸을 누르세요${BMV.sel >= 0 && BMV.sel !== 24 ? `: <b>${BM_SQ[BMV.sel].n}</b>` : ''}</p><div class="bm-acts"><button class="btn solid" id="bmFly" ${BMV.sel < 0 || BMV.sel === 24 ? 'disabled' : ''}>여기로 날아가기</button></div>`;
+  else if (pd && pd.k === 'buy'){ const c = BM_SQ[pd.sq]; act = `<p class="bm-q">${c.n}을(를) ${bmW(c.p)}에 살까요? <small>${c.sp ? `통행료 ${bmW(c.r[0])} (건물 없음)` : `대지료 ${bmW(c.r[0])}, 건물을 지으면 최대 ${bmW(BME.rentOf(pd.sq, bmLv(2, 1, 1)))}`} · 현금 ${bmW(g.pl[0].cash)}</small></p><div class="bm-acts"><button class="btn" data-bmyes="0">안 산다</button><button class="btn solid" data-bmyes="1">산다</button></div>`; }
+  else if (pd && pd.k === 'build'){
+    const c = BM_SQ[pd.sq], lv = g.lv[pd.sq], cash = g.pl[0].cash;
+    const opts = BME.canBuild(g, pd.sq).map(o => { const nl = lv + (o.k === 'v' ? 1 : o.k === 'b' ? 3 : 6); return `<button class="btn bm-sell" data-bmbuild="${o.k}" ${cash < o.cost ? 'disabled' : ''}><span>${BM_BI[o.k]} ${o.nm} ${bmW(o.cost)}</span><b class="num">→ ${bmW(BME.rentOf(pd.sq, nl))}</b></button>`; }).join('');
+    act = `<p class="bm-q">${c.n}에 무엇을 지을까요? <small>지금 ${bmBldIcons(lv) || '건물 없음'} · 통행료 ${bmW(BME.rentOf(pd.sq, lv))} · 현금 ${bmW(cash)}</small></p><div class="bm-sells">${opts}</div><div class="bm-acts"><button class="btn" data-bmyes="0">그만 짓기</button></div>`;
+  }
+  else if (pd && pd.k === 'space') act = `<p class="bm-q">🚀 우주여행: 갈 칸을 누르세요${BMV.sel >= 0 && BMV.sel !== 30 ? `: <b>${BM_SQ[BMV.sel].n}</b>` : ''} <small>컬럼비아호 주인이 다른 사람이면 우주여행비 ${bmW(BM.spaceFee)}${g.pl[0].space === 2 ? ' (초대권으로 면제)' : ''}</small></p><div class="bm-acts"><button class="btn solid" id="bmSpace" ${BMV.sel < 0 || BMV.sel === 30 ? 'disabled' : ''}>여기로 가기</button></div>`;
   const ab = $('#bmActBox'); if (ab.dataset.h !== act){ ab.innerHTML = act; ab.dataset.h = act; }
   $('#bmMsg').textContent = BMV.msg;
-  $('#bmInfoBox').innerHTML = BMV.sel >= 0 && !(pd && pd.k === 'fly') ? bmInfo(g, BMV.sel) : '';
+  $('#bmInfoBox').innerHTML = BMV.sel >= 0 && !(pd && pd.k === 'space') ? bmInfo(g, BMV.sel) : '';
   $('#bmLog').innerHTML = BMV.busy ? $('#bmLog').innerHTML : g.log.slice(-4).reverse().map(s => `<li>${esc(s)}</li>`).join('');
   bmPlace(false);
 }
@@ -3491,8 +3610,9 @@ const bmRender = bmUpdate;
 function bmInfo(g, k){
   const c = BM_SQ[k];
   if (c.t !== 'city') return `<p class="bm-info"><b>${c.n}</b></p>`;
-  const o = g.own[k];
-  return `<p class="bm-info"><b>${c.n}</b> 땅 ${c.p}만 · 건물 단계당 ${BME.buildCost(k)}만 · 지금 통행료 ${BM.rent.map((m, lv) => BME.rentAt(g, k, lv)).join('/')}만${o >= 0 ? ` · 주인 ${g.pl[o].nm} (${BM.buildNames[g.lv[k]]}, 지금 ${BME.rent(g, k)}만)` : ''}</p>`;
+  const o = g.own[k], own = o >= 0 ? ` · 주인 ${g.pl[o].nm}${c.sp ? '' : ` (${bmBldIcons(g.lv[k]) || '땅만'})`}, 지금 통행료 ${bmW(BME.rent(g, k))}` : '';
+  if (c.sp) return `<p class="bm-info"><b>${c.n}</b> 땅값 ${bmW(c.p)} · 통행료 ${bmW(c.r[0])} · 건물 없음${own}</p>`;
+  return `<p class="bm-info"><b>${c.n}</b> 땅값 ${bmW(c.p)} · 건설비 별장 ${bmW(c.c[0])}/빌딩 ${bmW(c.c[1])}/호텔 ${bmW(c.c[2])} · 통행료 대지 ${bmW(c.r[0])}, 별장 1채 +${bmW(c.r[1])}, 2채 +${bmW(c.r[2])}, 빌딩 +${bmW(c.r[3])}, 호텔 +${bmW(c.r[4])}${own}</p>`;
 }
 // 말의 위치(보드 기준 픽셀). 같은 칸에 여럿이면 옆으로 비켜 선다
 function bmTokXY(i, k){
@@ -3616,11 +3736,11 @@ async function bmPlay(ev, v0, done){
         const old = BMV.view; BMV.view = e.v;
         // 돈이 움직인 사람: 떠오르는 숫자, 준 사람 → 받은 사람 동전
         const dl = e.v.cash.map((c, i) => c - old.cash[i]);
-        dl.forEach((d, i) => { if (d) bmFloat(bmPlEl(i), `${d > 0 ? '+' : '−'}${Math.abs(d)}만`, d > 0 ? 'up' : 'dn'); });
+        dl.forEach((d, i) => { if (d) bmFloat(bmPlEl(i), `${d > 0 ? '+' : '−'}${bmW(Math.abs(d))}`, d > 0 ? 'up' : 'dn'); });
         const giver = dl.findIndex(d => d < 0), taker = dl.findIndex(d => d > 0);
         if (giver >= 0 && taker >= 0) bmCoins(bmTokEl(giver), bmTokEl(taker), Math.min(8, 3 + Math.round(-dl[giver] / 15)));
-        else if (giver >= 0 && e.v.fund > old.fund) bmCoins(bmTokEl(giver), document.querySelector('#bmOv [data-bmsq="16"]'), 4);
-        else if (taker >= 0 && e.v.fund < old.fund) bmCoins(document.querySelector('#bmOv [data-bmsq="16"]'), bmTokEl(taker), 6);
+        else if (giver >= 0 && e.v.fund > old.fund) bmCoins(bmTokEl(giver), document.querySelector('#bmOv [data-bmsq="20"]'), 4);
+        else if (taker >= 0 && e.v.fund < old.fund) bmCoins(document.querySelector('#bmOv [data-bmsq="20"]'), bmTokEl(taker), 6);
         // 새 땅·건물
         e.v.own.forEach((o, k) => { if (o >= 0 && old.own[k] !== o) bmPop(k, 'pop'); if (e.v.lv[k] > old.lv[k]) bmPop(k, 'shine'); });
         bmUpdate();
@@ -3629,15 +3749,16 @@ async function bmPlay(ev, v0, done){
         BMV.msg = e.s; bmUpdate();
         const me = e.i === 0, k = e.k;
         if (k === 'buy'){ bmBanner(`🚩 ${e.s}`, me ? 'gold' : '', 800); await bmWait(500); }
-        else if (k === 'build'){ bmBanner(`${BM_BLD[e.v] || '🏗️'} ${e.s}`, me ? 'gold' : '', 850); await bmWait(550); }
+        else if (k === 'build'){ bmBanner(`${BM_BI[e.v] || '🏗️'} ${e.s}`, me ? 'gold' : '', 850); await bmWait(550); }
+        else if (k === 'coupon'){ bmBanner('🎟️ 우대권 사용', me ? 'green' : '', 800); await bmWait(450); }
         else if (k === 'rent'){ bmBanner(`💸 ${e.s}`, e.to === 0 ? 'green' : me ? 'red' : '', 900); if (e.v >= 40) bmShake(); await bmWait(520); }
         else if (k === 'tax'){ bmBanner(`💸 ${e.s}`, '', 750); await bmWait(420); }
         else if (k === 'fund'){ bmBanner(`💰 ${e.s}`, me ? 'green' : '', 900); await bmWait(500); }
-        else if (k === 'salary'){ bmFloat(bmTokEl(e.i), `+${BM.salary}만`, 'up'); await bmWait(120); }
+        else if (k === 'salary'){ bmFloat(bmTokEl(e.i), `+${bmW(BM.salary)}`, 'up'); await bmWait(120); }
         else if (k === 'jail'){ bmBanner('🏝️ 무인도!', me ? 'red' : '', 900); await bmWait(550); }
         else if (k === 'stuck'){ bmBanner('🏝️ 탈출 실패', '', 700); await bmWait(400); }
         else if (k === 'escape'){ bmBanner('🚤 무인도 탈출!', me ? 'green' : '', 800); await bmWait(450); }
-        else if (k === 'fly'){ bmBanner(`✈️ ${e.s}`, '', 800); await bmWait(450); }
+        else if (k === 'fly'){ bmBanner(`🚀 ${e.s}`, '', 800); await bmWait(450); }
         else if (k === 'bankrupt'){ bmBanner(`💥 ${e.s}`, 'red', 1200); bmShake(); await bmWait(800); }
         else if (k === 'sell'){ bmBanner('🏚️ 매각', 'red', 800); await bmWait(450); }
         else if (k === 'short'){ bmBanner('💸 돈이 모자랍니다!', 'red', 1000); bmShake(); await bmWait(600); }
@@ -3655,11 +3776,11 @@ async function bmPlay(ev, v0, done){
   } else if (v0.turn !== undefined && g.turn !== v0.turn) bmBanner(g.pl[g.turn].me ? '내 차례!' : `${g.pl[g.turn].nm} 차례`, 'small ' + (g.pl[g.turn].me ? 'gold' : ''), 750);
   done && done();
 }
-// 찬스 카드: 뒤집어서 보여 준다
+// 황금열쇠 카드: 뒤집어서 보여 준다
 async function bmCard(text){
   const fx = $('#bmFx'); if (!fx) return;
   const c = document.createElement('div'); c.className = 'bm-card';
-  c.innerHTML = `<div class="bm-card-i"><div class="bm-card-b">❓<small>찬스</small></div><div class="bm-card-f"><small>찬스</small><b>${esc(text)}</b></div></div>`;
+  c.innerHTML = `<div class="bm-card-i"><div class="bm-card-b">🔑<small>황금열쇠</small></div><div class="bm-card-f"><small>황금열쇠</small><b>${esc(text)}</b></div></div>`;
   fx.appendChild(c);
   const inner = c.firstElementChild;
   c.animate([{transform:'translate(-50%,-50%) scale(.2)', opacity:0}, {transform:'translate(-50%,-50%) scale(1)', opacity:1}], {duration:bmMs(260), easing:'ease-out', fill:'forwards'});
@@ -3706,7 +3827,7 @@ function bmFinish(forfeit){
   b.cur = null;
   commit();
   bmHide();
-  const rows = r ? r.map((i, k) => `<div><span>${k + 1}위 ${g.pl[i].nm}</span><b class="num">${g.pl[i].out ? '파산' : '자산 ' + BME.assets(g, i) + '만'}</b></div>`).join('') : '';
+  const rows = r ? r.map((i, k) => `<div><span>${k + 1}위 ${g.pl[i].nm}</span><b class="num">${g.pl[i].out ? '파산' : '자산 ' + bmW(BME.assets(g, i))}</b></div>`).join('') : '';
   showModal(`<h2 class="${pay > g.stake ? 'up' : ''}">${forfeit ? '기권했습니다' : `${rank}위 (${g.n}명 중)`}</h2>
     ${rows ? `<div class="bd" style="margin-bottom:10px">${rows}</div>` : ''}
     <div class="bd"><div><span>판돈</span><b class="num">${fmtUSD(g.stake)}</b></div><div><span>돌려받은 돈 (${mult}배)</span><b class="num">${fmtUSD(pay)}</b></div>
@@ -3733,8 +3854,9 @@ document.addEventListener('click', e => {
   if (BMV.busy || g.turn !== 0 || g.over) { if (t.dataset.bmsq){ BMV.sel = +t.dataset.bmsq; bmRender(); } return; }
   if (t.id === 'bmRoll'){ bmAct(g2 => BME.roll(g2, Math.random)); return; }
   if (t.dataset.bmyes !== undefined){ bmAct(g2 => BME.decide(g2, t.dataset.bmyes === '1', -1, Math.random)); return; }
-  if (t.id === 'bmFly'){ const to = BMV.sel; if (to >= 0 && to !== 24) bmAct(g2 => BME.decide(g2, true, to, Math.random)); return; }
-  if (t.dataset.bmsq){ const k = +t.dataset.bmsq; BMV.sel = BMV.sel === k && !(g.pending && g.pending.k === 'fly') ? -1 : k; bmRender(); return; }
+  if (t.id === 'bmSpace'){ const to = BMV.sel; if (to >= 0 && to !== 30) bmAct(g2 => BME.decide(g2, true, to, Math.random)); return; }
+  if (t.dataset.bmbuild){ const kd = t.dataset.bmbuild; bmAct(g2 => BME.decide(g2, true, kd, Math.random)); return; }
+  if (t.dataset.bmsq){ const k = +t.dataset.bmsq; BMV.sel = BMV.sel === k && !(g.pending && g.pending.k === 'space') ? -1 : k; bmRender(); return; }
 });
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && bmOpenNow() && $('#modal').hidden) bmHide(); });
 
