@@ -153,6 +153,14 @@ html[data-conv=us] .hero .ret.up{color:#5FE0AE} html[data-conv=us] .hero .ret.do
 .mv .nm{min-width:0;font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .mv .flag{font-size:10.5px;color:var(--ink-3);font-weight:700;margin-right:4px}
 .mv .pc{font-weight:700;font-size:13.5px;white-space:nowrap}
+.mv-more{grid-column:1 / -1;display:flex;align-items:center;justify-content:center;gap:4px;margin-top:4px;height:34px;border:1px solid var(--rule);border-radius:10px;background:var(--surface);color:var(--ink-2);font-size:12.5px;font-weight:700;width:100%}
+.mv-more svg{width:16px;height:16px}
+.mv-tools{display:flex;gap:8px;flex-wrap:wrap;justify-content:space-between;margin:2px 0 6px}
+.mv-all{margin-top:6px;max-height:min(60vh,560px)}
+.mv-all .mv:first-of-type{border-top:0}
+.mv .rk{display:inline-block;min-width:22px;margin-right:8px;text-align:right;font-size:11.5px;color:var(--ink-3);font-weight:700}
+.mv-r{display:flex;gap:10px;align-items:baseline;white-space:nowrap}
+.mv-r .muted{font-size:12.5px}
 
 .news{list-style:none;margin:0;padding:0}
 .news li{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;padding:10px 0;border-top:1px solid var(--rule)}
@@ -376,6 +384,13 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
 .qty input{height:46px;border-radius:12px;border:1px solid var(--rule);background:var(--surface);text-align:center;font-weight:780;font-size:19px;font-family:var(--f-num);min-width:0}
 .quick{display:flex;gap:6px;flex-wrap:wrap}
 .quick button{flex:1 1 0;min-width:72px;height:34px;border-radius:10px;border:1px solid var(--rule);background:var(--surface);font-size:12.5px;font-weight:700;color:var(--ink-2)}
+.obal{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.obal div{border:1px solid var(--rule);border-radius:10px;padding:7px 10px;display:grid;gap:1px;background:var(--surface)}
+.obal div:last-child{grid-column:1 / -1;display:flex;justify-content:space-between;align-items:center;padding:6px 10px}
+.obal span{font-size:11.5px;color:var(--ink-3)}
+.obal b{font-size:14px;font-weight:760;color:var(--ink)}
+.obal div:last-child b{font-size:12.5px;color:var(--ink-2)}
+.obal .main{border-color:var(--ink-2)}
 .bd{display:grid;gap:4px;font-size:13px}
 .bd div{display:flex;justify-content:space-between;color:var(--ink-2)}
 .bd div b{color:var(--ink);font-weight:700}
@@ -445,6 +460,14 @@ html.gated body{overflow:hidden}
 .linkbtn{border:0;background:none;padding:0;color:var(--brass);font-weight:750;font-size:inherit;text-decoration:underline;text-underline-offset:3px}
 .gate-msg{font-size:13.5px;color:var(--ink-2);min-height:1.2em;text-align:center}
 .gate-msg.bad{color:var(--danger)}
+.g-accts{display:grid;gap:6px;margin-bottom:12px}
+.g-acc-h,.g-acc-or{font-size:12.5px;color:var(--ink-3);font-weight:650}
+.g-acc-or{text-align:center;margin-top:6px}
+.g-acc{display:grid;text-align:left;gap:1px;padding:10px 14px;border:1px solid var(--rule);border-radius:12px;background:var(--surface-2);color:var(--ink);font-size:14.5px}
+.g-acc small{color:var(--ink-3);font-size:12px;font-weight:500}
+.acct-list{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end}
+.btn.acct{display:grid;text-align:left;gap:0;line-height:1.25;height:auto;padding:6px 12px}
+.btn.acct small{color:var(--ink-3);font-size:11px;font-weight:500}
 .gate-guest{text-align:center;font-size:13.5px;color:var(--ink-3)}
 /* ───────── 랭킹 ───────── */
 .seg-s button{padding:5px 11px;font-size:12.5px}
@@ -656,6 +679,7 @@ html[data-game=live] .c-news{order:3}
     </div>
     <div class="gate-box">
       <h2 id="gateTitle">계정 확인 중</h2>
+      <div id="gAccts" class="g-accts" hidden></div>
       <div id="gateForm" hidden>
         <input id="gEmail" type="email" placeholder="이메일" autocomplete="username" aria-label="이메일">
         <input id="gPw" type="password" placeholder="비밀번호 (6자 이상)" autocomplete="current-password" aria-label="비밀번호">
@@ -666,7 +690,7 @@ html[data-game=live] .c-news{order:3}
       </div>
       <div class="gate-msg" id="gMsg" role="status"></div>
     </div>
-    <div class="gate-guest">MAGI 계정이 있다면 그대로 로그인하면 됩니다.<br><button class="linkbtn" id="gGuest">로그인 없이 하기</button></div>
+    <div class="gate-guest"><span id="gGuestHint">MAGI 계정이 있다면 그대로 로그인하면 됩니다.<br></span><button class="linkbtn" id="gGuest">로그인 없이 하기</button></div>
   </div>
 </div>
 
@@ -677,7 +701,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.7.0';
+const VERSION = '1.8.0';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -2056,6 +2080,28 @@ function showModal(html, onClose, locked){
 const INFO = {};
 const infoBtn = (key, label) => `<button class="info-btn" data-info="${key}" aria-label="${esc(label || '자세히')}">${label ? esc(label) : 'ⓘ'}</button>`;
 const infoRow = (key, title, sub) => `<section class="card info-row"><div><h2>${title}</h2>${sub ? `<small class="muted">${sub}</small>` : ''}</div><button class="btn" data-info="${key}">보기</button></section>`;
+/* 크게 움직인 종목 전체 목록 (팝업). 상승/하락, 시장(전체·한국·미국)을 고른다 */
+function moversAll(){
+  const live = isLive();
+  const pool = STOCKS.filter(s => !(live && LIVE.miss.has(s.id)) && (UI.mvMkt === 'all' || s.m === UI.mvMkt));
+  const ch = pool.map(s => ({s, c:price(s.id)/prevPrice(s.id) - 1}));
+  return UI.mvSide === 'dn' ? ch.filter(x => x.c < 0).sort((a, b) => a.c - b.c) : ch.filter(x => x.c > 0).sort((a, b) => b.c - a.c);
+}
+function openMovers(){
+  UI.mvSide = UI.mvSide || 'up'; UI.mvMkt = UI.mvMkt || 'all';
+  showModal(`<h2>크게 움직인 종목</h2><div id="mvBox"></div><div class="acts"><button class="btn solid" data-close>닫기</button></div>`);
+  $('#modal').dataset.kind = 'info';
+  renderMovers();
+}
+function renderMovers(){
+  const box = $('#mvBox'); if (!box) return;
+  const list = moversAll();
+  const seg = (k, v, l) => `<button data-${k}="${v}" aria-pressed="${UI[k === 'mvside' ? 'mvSide' : 'mvMkt'] === v}">${l}</button>`;
+  box.innerHTML = `<div class="mv-tools"><div class="seg">${seg('mvside', 'up', '상승')}${seg('mvside', 'dn', '하락')}</div>
+      <div class="seg">${seg('mvmkt', 'all', '전체')}${seg('mvmkt', 'KR', '한국')}${seg('mvmkt', 'US', '미국')}</div></div>
+    <small class="muted">전 거래일 종가 대비, ${list.length.toLocaleString()}종목</small>
+    <div class="info-body mv-all">${list.length ? list.map((x, i) => `<button class="mv" data-mvopen="${x.s.id}"><span class="nm"><span class="rk num">${i + 1}</span><span class="flag">${x.s.m}</span>${esc(x.s.n)}</span><span class="mv-r"><span class="num muted">${fmtPx(x.s, price(x.s.id))}</span><span class="pc ${cls(x.c)}">${fmtPct(x.c)}</span></span></button>`).join('') : '<p class="empty">없음</p>'}</div>`;
+}
 function openInfo(key){
   const it = INFO[key]; if (!it) return;
   showModal(`<h2>${it.t}</h2><div class="info-body">${it.h}</div><div class="acts"><button class="btn solid" data-close>닫기</button></div>`);
@@ -2254,13 +2300,16 @@ function renderHome(){
 
   const pool = STOCKS.filter(s => !(live && LIVE.miss.has(s.id)));
   const ch = pool.map(s => ({s, c:price(s.id)/prevPrice(s.id) - 1}));
-  const ups = ch.filter(x => x.c > 0).sort((a, b) => b.c - a.c).slice(0, 5);
-  const dns = ch.filter(x => x.c < 0).sort((a, b) => a.c - b.c).slice(0, 5);
+  const upsAll = ch.filter(x => x.c > 0).sort((a, b) => b.c - a.c);
+  const dnsAll = ch.filter(x => x.c < 0).sort((a, b) => a.c - b.c);
+  const ups = upsAll.slice(0, 10), dns = dnsAll.slice(0, 10);
+  const more = upsAll.length > 10 || dnsAll.length > 10;
   const mvRow = x => `<button class="mv" data-open="${x.s.id}"><span class="nm"><span class="flag">${x.s.m}</span>${esc(x.s.n)}</span><span class="pc ${cls(x.c)}">${fmtPct(x.c)}</span></button>`;
   const hasMoves = live ? (LIVE.dates.KR.length > 1 || LIVE.dates.US.length > 1) : S.day > 0;
   $('#mvDate').textContent = live ? `한국 ${fmtDate(last(LIVE.dates.KR), false)}, 미국 ${fmtDate(last(LIVE.dates.US), false)}` : (S.day ? fmtDate(S.date, false) : '');
   $('#movers').innerHTML = hasMoves
     ? `<div><h3>상승</h3>${ups.map(mvRow).join('') || '<p class="empty">없음</p>'}</div><div><h3>하락</h3>${dns.map(mvRow).join('') || '<p class="empty">없음</p>'}</div>`
+      + (more ? `<button class="mv-more" id="mvMore" aria-label="크게 움직인 종목 더 보기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg><span>더 보기</span></button>` : '')
     : `<p class="empty" style="grid-column:1/-1">${live ? '시세가 들어오면 전 거래일 대비 등락이 여기에 표시됩니다.' : '지금은 2026년 10월 23일 종가 상태입니다. 위의 다음 거래일 버튼을 누르면 하루치 시세가 움직입니다.'}</p>`;
 
   if (live){
@@ -2305,7 +2354,7 @@ function renderMarket(){
     <div class="mkt-head">
       <div class="seg" role="group" aria-label="시장 선택"><button data-mkt="KR">한국 300</button><button data-mkt="US">미국 300</button></div>
       <div class="tools">
-        <label class="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><span class="sr">종목 검색</span><input id="q" type="search" placeholder="종목명, 티커, 종목코드" autocomplete="off"><button type="button" class="q-clear" id="qClear" aria-label="검색어 지우기" hidden>×</button></label>
+        <label class="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><span class="sr">종목 검색</span><input id="q" type="search" placeholder="종목명, 티커, 종목코드" autocomplete="off" value="${esc(UI.qRaw || '')}"><button type="button" class="q-clear" id="qClear" aria-label="검색어 지우기"${UI.qRaw ? '' : ' hidden'}>×</button></label>
         <select class="pick" id="sortSel" aria-label="정렬"><option value="cap">시가총액순</option><option value="up">상승률순</option><option value="down">하락률순</option><option value="base">기준가 대비</option><option value="own">보유 종목 먼저</option></select>
         <select class="pick" id="secSel" aria-label="업종"></select>
       </div>
@@ -2313,9 +2362,9 @@ function renderMarket(){
     <div class="list-head" aria-hidden="true"><span></span><span>종목</span><span>시가총액</span><span>기준가 대비</span><span>최근 30일</span><span>현재가</span></div>
     <div class="list" id="mktList"></div>
     <p class="muted" style="margin:10px 2px 0" id="mktFoot"></p>`;
-    $('#q').addEventListener('input', e => { UI.q = e.target.value.trim().toLowerCase(); $('#qClear').hidden = !e.target.value; renderMarketList(); });
+    $('#q').addEventListener('input', e => { UI.qRaw = e.target.value; UI.q = e.target.value.trim().toLowerCase(); $('#qClear').hidden = !e.target.value; renderMarketList(); });
     // 검색어 한 번에 지우기 (label 안이라 기본 동작을 막아 입력칸에 다시 초점만 준다)
-    $('#qClear').addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); const q = $('#q'); q.value = ''; UI.q = ''; $('#qClear').hidden = true; renderMarketList(); q.focus(); });
+    $('#qClear').addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); const q = $('#q'); q.value = ''; UI.q = ''; UI.qRaw = ''; $('#qClear').hidden = true; renderMarketList(); q.focus(); });
     $('#sortSel').addEventListener('change', e => { UI.sort = e.target.value; renderMarketList(); });
     $('#secSel').addEventListener('change', e => { UI.sector = e.target.value; renderMarketList(); });
   }
@@ -3200,6 +3249,13 @@ function typingOrder(){
   return !!(a && box && box.contains(a) && (a.id === 'qtyIn' || a.id === 'rpxIn'));
 }
 /* soft면 입력칸은 그대로 두고 data-dyn 표시가 있는 부분만 새 내용으로 바꾼다 */
+/* 매수 화면 위의 통장 잔액 (각 통장의 원래 통화로). 이 종목을 결제하는 통장에 테두리 */
+function balStripHTML(krw){
+  return `<div class="obal">
+      <div${krw ? '' : ' class="main"'}><span>달러 통장</span><b class="num">${fmtUSDn(S.usd)}</b></div>
+      <div${krw ? ' class="main"' : ''}><span>원화 통장</span><b class="num">${fmtKRWn(S.krw)}</b></div>
+      <div><span>마이너스통장 남은 한도</span><b class="num">${fmtUSDn(odAvail())}</b></div></div>`;
+}
 function setOrderHTML(box, html, soft){
   // 다른 종목·다른 주문 화면으로 바뀌었으면 입력 중이어도 전부 다시 그린다 (예전 입력칸의 통화·이벤트가 남지 않게)
   const key = `${UI.sheet}|${UI.otype}|${UI.side}`;
@@ -3272,6 +3328,7 @@ function renderOrderResv(soft){
     <label class="amt"><span>${krw ? '₩' : '$'}</span><input id="rpxIn" type="text" inputmode="${krw ? 'numeric' : 'decimal'}" autocomplete="off" value="${esc(groupNum(pxStr))}" aria-label="조건 가격"></label>
     <p class="muted rsv-d" data-dyn="desc">현재가 ${fmtPxN(s, cur)}. ${desc}</p>
     <div class="rsv-warn" data-dyn="warn">${lowWarn}</div>
+    <div data-dyn="bal">${side === 'buy' ? balStripHTML(krw) : ''}</div>
     <div class="qty"><button data-qd="-1" aria-label="1주 줄이기">−</button><input id="qtyIn" type="number" inputmode="numeric" min="1" step="1" value="${q || ''}" aria-label="수량(주)"><button data-qd="1" aria-label="1주 늘리기">+</button></div>
     <div class="quick" data-dyn="quick">${side === 'buy'
       ? `<button data-qn="${Math.max(maxB ? 1 : 0, Math.floor(maxB / 2))}">절반 ${Math.floor(maxB / 2).toLocaleString()}주</button><button data-qn="${maxB}">최대 ${maxB.toLocaleString()}주</button>`
@@ -3319,6 +3376,7 @@ function renderOrder(soft){
   const full = setOrderHTML(box, `${otypeSegHTML()}
     <div data-dyn="alert">${!ct.ok ? `<div class="alert bad">${esc(ct.why)}</div>` : ''}</div>
     <div class="seg" role="group" aria-label="주문 종류"><button data-side="buy" aria-pressed="${side === 'buy'}">매수</button><button data-side="sell" aria-pressed="${side === 'sell'}">매도</button></div>
+    <div data-dyn="bal">${side === 'buy' ? balStripHTML(krw) : ''}</div>
     <div class="qty"><button data-qd="-1" aria-label="1주 줄이기">−</button><input id="qtyIn" type="number" inputmode="numeric" min="1" step="1" value="${q || ''}" aria-label="수량(주)"><button data-qd="1" aria-label="1주 늘리기">+</button></div>
     <div class="quick" data-dyn="quick">${side === 'buy'
       ? `<button data-qf=".5">50%</button><button data-qf="1" title="원화·달러 통장을 서로 바꿔 쓰는 것까지 포함, 마이너스통장 제외">최대 ${maxQ.toLocaleString()}주</button>`
@@ -3471,6 +3529,47 @@ const ACC = {sb:null, user:null, nick:'', ready:false, err:null, loadedFor:undef
 function isGuestSession(){ try { return sessionStorage.getItem(GUEST_KEY) === '1'; } catch(e){ return false; } }
 function setGuestSession(v){ try { v ? sessionStorage.setItem(GUEST_KEY, '1') : sessionStorage.removeItem(GUEST_KEY); } catch(e){} }
 
+/* 이 기기에서 로그인했던 계정들 (빠른 전환용). 지금 계정의 로그인 토큰은 Supabase가 이미 이 기기 저장소에 두므로,
+   같은 저장소에 다른 계정들의 토큰도 두고 setSession으로 바꿔 낀다. 비밀번호는 저장하지 않는다. */
+const ACCTS_KEY = 'seed10k.accounts.v1', ACCTS_MAX = 5;
+function acctList(){ try { const a = JSON.parse(localStorage.getItem(ACCTS_KEY)); return Array.isArray(a) ? a.filter(x => x && x.id && x.rt) : []; } catch(e){ return []; } }
+function acctStore(a){ try { localStorage.setItem(ACCTS_KEY, JSON.stringify(a.slice(0, ACCTS_MAX))); } catch(e){} }
+function acctRemember(session){
+  if (!session || !session.user || !session.refresh_token) return;
+  const u = session.user, list = acctList(), old = list.find(x => x.id === u.id);
+  const row = {id:u.id, email:u.email || (old && old.email) || '', nick:(u.user_metadata && u.user_metadata.nickname) || (old && old.nick) || '',
+               at:session.access_token, rt:session.refresh_token};
+  acctStore([row, ...list.filter(x => x.id !== u.id)]);
+}
+function acctForget(id){ acctStore(acctList().filter(x => x.id !== id)); }
+const acctOthers = () => acctList().filter(x => !ACC.user || x.id !== ACC.user.id);
+async function leaveAccount(){   // 지금 계정의 기록을 서버에 올리고, 최신 토큰을 목록에 남긴다
+  if (!ACC.user) return;
+  save(); clearTimeout(ACC.cloudT);
+  try { await pushCloud(); await pushRank(); } catch(e){}
+  try { const {data} = await ACC.sb.auth.getSession(); acctRemember(data && data.session); } catch(e){}
+}
+async function switchAccount(id){
+  if (!ACC.sb || ACC.busy || (ACC.user && ACC.user.id === id)) return;
+  const t = acctList().find(x => x.id === id); if (!t) return;
+  ACC.busy = true;
+  try {
+    await leaveAccount();
+    const {error} = await ACC.sb.auth.setSession({access_token:t.at, refresh_token:t.rt});
+    if (error){
+      acctForget(id);
+      toast(`${t.nick || t.email} 계정은 로그인이 만료되어 다시 로그인해야 합니다`, true);
+      if (ACC.user) renderTab();
+      openGate(true); $('#gEmail').value = t.email; $('#gPw').value = '';
+      return;
+    }
+    toast(`${t.nick || t.email} 계정으로 바꿨습니다`);
+  } catch(e){ toast('계정을 바꾸지 못했습니다', true); }
+  finally { ACC.busy = false; }
+}
+function acctListHTML(btnCls){
+  return acctOthers().map(a => `<button class="${btnCls}" data-acct="${esc(a.id)}"><b>${esc(a.nick || a.email)}</b>${a.nick ? `<small>${esc(a.email)}</small>` : ''}</button>`).join('');
+}
 function initAccount(){
   if (!window.supabase || !window.supabase.createClient){
     ACC.err = '로그인 서버에 연결하지 못했습니다. 인터넷 연결을 확인하거나 로그인 없이 하세요.';
@@ -3484,6 +3583,7 @@ function initAccount(){
 async function handleSession(session){
   const u = session ? session.user : null, newId = u ? u.id : null;
   ACC.ready = true;
+  acctRemember(session);   // 토큰이 갱신될 때마다 목록의 토큰도 최신으로
   if (ACC.loadedFor === newId){ ACC.user = u; if (u) ACC.nick = (u.user_metadata && u.user_metadata.nickname) || ACC.nick; return; }
   // 계정이 바뀌었다 (로그인, 로그아웃, 다른 탭에서 계정 전환)
   clearTimeout(ACC.cloudT); clearTimeout(ACC.rankT);
@@ -3493,6 +3593,8 @@ async function handleSession(session){
   ACC.ranks = {}; ACC.ranksAt = {}; ACC.myRank = {};
   stopAuto();
   if (UI.sheet) closeSheet();
+  // 검색어는 계정마다 따로 — 바뀐 계정에서는 비운다 (입력칸과 필터가 어긋나지 않게 둘 다)
+  UI.q = ''; UI.qRaw = ''; { const q = $('#q'); if (q){ q.value = ''; const c = $('#qClear'); if (c) c.hidden = true; } }
   if (u){
     setGuestSession(false);
     renderGate();   // 로그인됐으니 로그인 화면부터 닫는다 (기록 옮기기 질문이 가려지지 않게)
@@ -3753,12 +3855,15 @@ async function signOut(){
   await pushCloud();
   await pushRank();
   setGuestSession(false);
+  if (ACC.user) acctForget(ACC.user.id);
   await ACC.sb.auth.signOut();
   toast('로그아웃했습니다');
 }
 function accountRowsHTML(){
   if (ACC.user){
     return `<div class="set-row"><div class="l">계정<small>${esc(ACC.user.email || '')}${ACC.lastSync ? `, 서버 저장 ${kstTime(ACC.lastSync)}` : ''}</small>${ACC.syncErr ? `<small style="color:var(--down)">서버 저장 실패 ${kstTime(ACC.syncErr.at)}: ${esc(ACC.syncErr.text)}</small>` : ''}</div><button class="btn" id="btnLogout">로그아웃</button></div>
+      <div class="set-row"><div class="l">계정 전환<small>이 기기에서 로그인했던 계정으로 비밀번호 없이 바로 바꿉니다 (최대 ${ACCTS_MAX}개)</small></div>
+        <div class="acct-list">${acctListHTML('btn acct')}<button class="btn" id="btnAcctAdd">＋ 계정 추가</button></div></div>
       <div class="set-row"><div class="l">랭킹 닉네임<small>랭킹에는 이메일이 아니라 닉네임만 보입니다</small></div>
         <div class="act" style="flex:0 1 260px"><label class="amt"><input id="nickIn" maxlength="12" value="${esc(ACC.nick)}" placeholder="2~12자" aria-label="닉네임"></label><button class="btn" id="btnNick">저장</button></div></div>`;
   }
@@ -3766,9 +3871,10 @@ function accountRowsHTML(){
 }
 
 /* 로그인 화면 */
-function openGate(){ setGuestSession(false); ACC.gateMode = 'login'; renderGate(true); }
+function openGate(adding){ if (!ACC.user) setGuestSession(false); ACC.gateMode = 'login'; ACC.gateAdd = !!(adding && ACC.user); gateMsg(''); renderGate(true); }
 function renderGate(forceOpen){
   const gate = $('#gate');
+  if (!forceOpen) ACC.gateAdd = false;
   const show = forceOpen || (!ACC.user && (!ACC.ready || !isGuestSession()));
   gate.hidden = !show;
   document.documentElement.classList.toggle('gated', show);
@@ -3781,6 +3887,12 @@ function renderGate(forceOpen){
   $('#gSubmit').textContent = signup ? '회원가입' : '로그인';
   $('#gSwitchText').textContent = signup ? '이미 계정이 있나요?' : '계정이 없나요?';
   $('#gSwitch').textContent = signup ? '로그인' : '회원가입';
+  // 이 기기에서 로그인했던 다른 계정: 누르면 바로 그 계정으로
+  const others = ACC.ready && ACC.sb ? acctOthers() : [];
+  $('#gAccts').hidden = !others.length || signup;
+  $('#gAccts').innerHTML = others.length ? `<div class="g-acc-h">이 기기에서 로그인했던 계정</div>${acctListHTML('g-acc')}<div class="g-acc-or">또는 다른 계정으로 로그인</div>` : '';
+  $('#gGuestHint').hidden = ACC.gateAdd;
+  $('#gGuest').textContent = ACC.gateAdd ? '취소' : '로그인 없이 하기';
   if (ACC.err) gateMsg(ACC.err, true);
 }
 function gateMsg(t, bad){ const m = $('#gMsg'); m.textContent = t || ''; m.classList.toggle('bad', !!bad); }
@@ -3796,6 +3908,7 @@ async function gateSubmit(){
   }
   ACC.busy = true; $('#gSubmit').disabled = true;
   try {
+    if (ACC.user) await leaveAccount();   // 계정 추가: 지금 계정 기록부터 올려 둔다 (로그아웃하지 않으므로 이 계정 토큰은 계속 쓸 수 있다)
     if (signup){
       gateMsg('가입하는 중입니다.');
       const nick = $('#gNick').value.trim();
@@ -3817,6 +3930,7 @@ $('#gSubmit').addEventListener('click', gateSubmit);
 ['#gEmail', '#gPw', '#gPw2', '#gNick'].forEach(sel => $(sel).addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); gateSubmit(); } }));
 $('#gSwitch').addEventListener('click', () => { ACC.gateMode = ACC.gateMode === 'signup' ? 'login' : 'signup'; gateMsg(''); renderGate(true); });
 $('#gGuest').addEventListener('click', () => {
+  if (ACC.user){ renderGate(); return; }   // 계정 추가 화면에서 취소
   setGuestSession(true); renderGate();
   if (!SET.mode) showModePicker(true);
 });
@@ -3830,6 +3944,10 @@ document.addEventListener('click', e => {
   if (t.id === 'btnFX'){ openFX(); return; }
   if (t.id === 'mgGo'){ mgStart(); return; }
   if (t.dataset.info){ openInfo(t.dataset.info); return; }
+  if (t.id === 'mvMore'){ openMovers(); return; }
+  if (t.dataset.mvside){ UI.mvSide = t.dataset.mvside; renderMovers(); return; }
+  if (t.dataset.mvmkt){ UI.mvMkt = t.dataset.mvmkt; renderMovers(); return; }
+  if (t.dataset.mvopen){ const id = t.dataset.mvopen, c = $('#modal [data-close]'); c && c.click(); setTimeout(() => openSheet(id), 200); return; }
   if (t.dataset.fxdir){ UI.fxDir = t.dataset.fxdir; UI.fxAmt = ''; renderFX(); return; }
   if (t.dataset.fxby){ UI.fxBy = t.dataset.fxby; UI.fxAmt = ''; renderFX(); const i = $('#fxIn'); i && i.focus(); return; }
   if (t.dataset.fxq){ UI.fxBy = 'from'; const have = UI.fxDir === 'u2k' ? S.usd : S.krw; UI.fxAmt = UI.fxDir === 'u2k' ? String(Math.floor(have * +t.dataset.fxq * 100) / 100) : String(Math.floor(have * +t.dataset.fxq)); renderFX(); return; }
@@ -3877,6 +3995,8 @@ document.addEventListener('click', e => {
   if (t.dataset.rankmode){ UI.rankMode = t.dataset.rankmode; refreshRanks(true); return; }
   if (t.id === 'btnLoginOpen'){ openGate(); return; }
   if (t.id === 'btnLogout'){ signOut(); return; }
+  if (t.id === 'btnAcctAdd'){ openGate(true); return; }
+  if (t.dataset.acct){ switchAccount(t.dataset.acct); return; }
   if (t.id === 'btnNick'){ saveNickname($('#nickIn').value); return; }
   if (t.id === 'btnRankNick'){ saveNickname($('#rankNickIn').value); return; }
   if (t.id === 'btnRefresh' || t.id === 'btnRefresh2'){ loadLive(false).then(() => { if (LIVE.ok) toast('시세를 새로 받았습니다'); }); return; }
