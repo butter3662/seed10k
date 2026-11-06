@@ -677,7 +677,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.6.1';
+const VERSION = '1.7.0';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -751,9 +751,27 @@ const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>'
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 const last = a => a[a.length - 1];
 const MINUS = '−';
-function fmtUSD(v, d = 2){ const s = Math.abs(v).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d}); return (v < 0 ? MINUS : '') + '$' + s; }
-function fmtKRW(v){ return (v < 0 ? MINUS : '') + Math.round(Math.abs(v)).toLocaleString('ko-KR') + '원'; }
+/* 금액 표시. 설정의 '표시 통화'(SET.disp)에 따라 바꿔 보여 준다:
+   real: 원래 통화 그대로 (한국 주식·원화 통장은 원, 나머지는 달러)
+   usd: 모두 달러로 (원 ÷ 매매기준율 X)
+   krw: 모두 원화로 (달러 × 매매기준율 X)
+   환산에는 지금 매매기준율을 쓴다. 이름 끝 n(fmtUSDn, fmtKRWn, fmtPxN)은 설정과 상관없이 원래 통화로 쓴다
+   (주문 조건 가격, 환전 화면, 통장처럼 실제 통화가 중요한 곳) */
+function fmtUSDn(v, d = 2){ const s = Math.abs(v).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d}); return (v < 0 ? MINUS : '') + '$' + s; }
+function fmtKRWn(v){ return (v < 0 ? MINUS : '') + Math.round(Math.abs(v)).toLocaleString('ko-KR') + '원'; }
+const dispMode = () => { try { return SET.disp || 'real'; } catch(e){ return 'real'; } };   // SET이 만들어지기 전이면 실제 통화
+const fxNow = () => { try { const x = FX(); return x > 0 ? x : 1; } catch(e){ return 1; } };
+function fmtUSD(v, d = 2){ return dispMode() === 'krw' ? fmtKRWn(v * fxNow()) : fmtUSDn(v, d); }
+function fmtKRW(v){ return dispMode() === 'usd' ? fmtUSDn(v / fxNow()) : fmtKRWn(v); }
 function fmtPx(s, p){ return s.cur === 'KRW' ? fmtKRW(p) : fmtUSD(p); }
+function fmtPxN(s, p){ return s.cur === 'KRW' ? fmtKRWn(p) : fmtUSDn(p); }
+/* 종목 통화 cur의 값 v를 표시 통화로: {v, cur} */
+function toDisp(cur, v){
+  const m = dispMode();
+  if (m === 'usd' && cur === 'KRW') return {v:v / fxNow(), cur:'USD'};
+  if (m === 'krw' && cur === 'USD') return {v:v * fxNow(), cur:'KRW'};
+  return {v, cur};
+}
 function fmtPct(v, d = 2){ if (!isFinite(v)) return '0.00%'; const s = Math.abs(v * 100).toFixed(d) + '%'; return (v > 0.000005 ? '+' : v < -0.000005 ? MINUS : '') + s; }
 function signUSD(v){ return (v > 0.004 ? '+' : '') + fmtUSD(v); }
 function cls(v){ return v > 0.000005 ? 'up' : v < -0.000005 ? 'down' : 'flat'; }
@@ -762,6 +780,7 @@ function fmtCapKRW(krw){
   return jo >= 1 ? jo.toLocaleString('ko-KR',{maximumFractionDigits:1}) + '조원' : Math.round(krw/1e8).toLocaleString('ko-KR') + '억원';
 }
 function fmtCapUSD(usd){ return usd >= 1e12 ? '$' + (usd/1e12).toFixed(2) + 'T' : '$' + (usd/1e9).toFixed(1) + 'B'; }
+function fmtCap(s){ const d = toDisp(s.cur, capNative(s)); return d.cur === 'KRW' ? fmtCapKRW(d.v) : fmtCapUSD(d.v); }
 function fmtFX(v){ return v.toLocaleString('ko-KR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
 function tickKR(p){
   const t = p < 2000 ? 1 : p < 5000 ? 5 : p < 20000 ? 10 : p < 50000 ? 50 : p < 200000 ? 100 : p < 500000 ? 500 : 1000;
@@ -996,7 +1015,8 @@ function spendUSD(x){ if (x <= S.usd + 1e-9){ S.usd -= x; return 0; } const od =
 /* 대출 kind에 amt를 빌린다: 빚은 amt × (1 + 수수료)만큼 늘고, 수수료는 낸 이자로 센다 */
 function addLoan(kind, amt){ const fee = amt * META.loanFee; S.loans[kind].bal += amt + fee; S.interestPaid += fee; return fee; }
 function receiveUSD(x){ if (S.loans.od.bal > 0){ const r = Math.min(x, S.loans.od.bal); S.loans.od.bal -= r; x -= r; } S.usd += x; }
-function exchange(dir, amt, silent){
+/* noRepay: 원화 → 달러로 받은 달러를 마이너스통장 상환에 먼저 쓰지 않고 그대로 통장에 넣는다 (바로 주식 살 돈으로 쓸 때) */
+function exchange(dir, amt, silent, noRepay){
   if (S.over) return toast('파산해서 환전할 수 없습니다', true);
   amt = dir === 'u2k' ? Math.floor(amt * 100 + 1e-6) / 100 : Math.floor(amt + 1e-9);   // 1.13 × 100 = 112.999… 같은 부동소수 오차로 1센트가 깎이지 않게
   if (!(amt > 0)) return toast('금액을 입력하세요', true);
@@ -1009,7 +1029,7 @@ function exchange(dir, amt, silent){
   } else {
     if (amt > S.krw) return toast(`원화가 부족합니다 (원화 통장 ${fmtKRW(S.krw)})`, true);
     S.krw -= amt;
-    receiveUSD(q.to);
+    if (noRepay) S.usd += q.to; else receiveUSD(q.to);
   }
   S.feesPaid += q.feeUSD; S.fxFees = (S.fxFees || 0) + q.feeUSD;
   (S.fxLog = S.fxLog || []).unshift({dt:tradeDateLabel(), at:Date.now(), dir, from:q.from, to:q.to, rate:q.rate});
@@ -1041,6 +1061,37 @@ function maxBuy(id, withOd = true){
   const avail = s.cur === 'KRW' ? S.krw : S.usd + (withOd ? odAvail() : 0);
   return Math.max(0, Math.floor(avail / one + 1e-9));
 }
+/* 매수 자금 계획 (q주, 체결 가격 px): 그 종목 통화 통장 → 모자라면 다른 통화 통장을 바꿔 채움 → 그래도 모자라면 마이너스통장.
+   반환(달러 금액은 USD, 원화 금액은 KRW):
+   o: 주문 견적, own: 그 종목 통화 통장에서 쓰는 금액(종목 통화), fxFrom: 바꿀 다른 통화 금액, fxTo: 바꿔서 받는 종목 통화 금액,
+   od: 마이너스통장으로 빌리는 달러, ok: 마이너스통장 한도 안인가 */
+function buyPlan(id, q, px){
+  const s = BY_ID[id], o = quote(id, 'buy', q, px);
+  let own, fxFrom = 0, fxTo = 0, od = 0;
+  if (s.cur === 'KRW'){
+    own = Math.min(S.krw, o.total);
+    const need = o.total - own;
+    if (need > 0){ fxFrom = usdForKRW(need); fxTo = exQuote('u2k', fxFrom).to; od = Math.max(0, fxFrom - S.usd); }
+  } else {
+    own = Math.min(S.usd, o.total);
+    const need = o.total - own;
+    if (need > 1e-9 && S.krw >= 1){
+      const A = fxFromForTarget('k2u', need);
+      fxFrom = Math.min(A, Math.floor(S.krw)); fxTo = exQuote('k2u', fxFrom).to;
+    }
+    od = Math.max(0, need - fxTo);
+  }
+  if (od < 0.005) od = 0;   // 1센트 미만 부동소수 찌꺼기
+  return {o, own, fxFrom, fxTo, od, ok:od <= odAvail() + 1e-6};
+}
+/* 마이너스통장 없이(두 통화 통장을 서로 바꿔 써서) 살 수 있는 최대 수량 */
+function maxBuyAuto(id){
+  const s = BY_ID[id], one = quote(id, 'buy', 1).total, r = fxRates();
+  const funds = s.cur === 'KRW' ? S.krw + Math.max(0, S.usd - 0.02) * r.sell : S.usd + S.krw / r.buy;
+  let q = Math.max(0, Math.floor(funds / one + 1e-9));
+  while (q > 0 && buyPlan(id, q).od > 1e-9) q--;
+  return q;
+}
 /* 한국 주식: 원화가 모자라면 달러를 바꿔서 살 수 있는 최대 수량 */
 function maxBuyWithFX(id){
   const s = BY_ID[id]; if (s.cur !== 'KRW') return maxBuy(id, true);
@@ -1068,10 +1119,16 @@ function doBuy(id, q, tag, autoFX, fill){
       const usd = usdForKRW(o.total - S.krw);
       if (usd > S.usd + odAvail() + 1e-6) return toast('환전할 달러가 부족합니다', true);
       const x = exchange('u2k', usd, true); if (!x) return false;
-      toast(`${fmtUSD(x.from)}를 ${fmtKRW(x.to)}으로 환전했습니다`);
+      toast(`${fmtUSDn(x.from)}를 ${fmtKRWn(x.to)}으로 환전했습니다`);
     }
     S.krw -= o.total;
   } else {
+    // 달러가 모자라면 원화를 먼저 바꿔 채우고(마이너스통장 상환에 쓰지 않음), 그래도 모자란 만큼만 마이너스통장
+    if (o.total > S.usd + 1e-9 && autoFX && S.krw >= 1){
+      const pl = buyPlan(id, q, fill && fill.p);
+      if (!pl.ok) return toast('주문 가능 금액이 부족합니다', true);
+      if (pl.fxFrom > 0){ const x = exchange('k2u', pl.fxFrom, true, true); if (!x) return false; toast(`${fmtKRWn(x.from)}을 ${fmtUSDn(x.to)}로 환전했습니다`); }
+    }
     if (o.total > S.usd + odAvail() + 1e-6) return toast('주문 가능 금액이 부족합니다', true);
     useOd = spendUSD(o.total);
   }
@@ -1199,14 +1256,14 @@ function fillT(t, o){ return t.replace('{n}', o.n || '').replace('{k}', o.k || '
    예약 매수: 가격이 정한 값 이하가 되면 산다.  예약 매도: 정한 값이 현재가보다 높으면 그 값 이상, 낮으면 그 값 이하가 되면 판다.
    체결가는 조건을 처음 만족한 시세(정한 값이 아님). 유효기간은 실제 시세 30일, 시뮬레이션 30거래일.
    실제 시세 모드는 주문한 뒤의 5분 봉·일별 종가·최신가를 차례로 보며 판정하므로, 꺼 둔 동안 닿았어도 다시 열 때 체결된다.
-   돈과 보유 수량은 체결할 때 확인한다. 한국 주식은 원화가 모자라면 달러를 바꿔 채운다. */
+   돈과 보유 수량은 체결할 때 확인한다. 그 나라 통화가 모자라면 다른 통화 통장을 바꿔 채운다. */
 const ORDER_MAX = 30, ORDER_DAYS = 30;
 const condMet = (o, p) => o.kind === 'le' ? p <= o.px : p >= o.px;
 function ordersOf(id){ return (S.orders || []).filter(o => o.st === 'wait' && (!id || o.id === id)); }
 function orderKindLabel(o){ return o.side === 'buy' ? '예약 매수' : '예약 매도'; }
 /* 예약 매도의 조건 방향: 조건 가격이 현재가 이상이면 그 값까지 오르면, 아래면 그 값까지 내려가면 판다 */
 const sellKind = (px, cur) => px >= cur ? 'ge' : 'le';
-function orderCondText(o){ const s = BY_ID[o.id]; return `${fmtPx(s, o.px)} ${o.kind === 'le' ? '이하' : '이상'}`; }
+function orderCondText(o){ const s = BY_ID[o.id]; return `${fmtPxN(s, o.px)} ${o.kind === 'le' ? '이하' : '이상'}`; }
 function orderExpText(o){ return o.exp ? `${fmtDate(zoneParts('Asia/Seoul', new Date(o.exp)).date, false)}까지` : `${Math.max(0, o.expD - S.day)}거래일 남음`; }
 const ORDER_LAG_MS = 60e3;   // 예약 주문 판정 시작: 주문 시각보다 최대 이만큼 앞선 시세까지 (화면 가격은 최대 1분 묵을 수 있다)
 function placeOrder(id, side, kind, px, q){
@@ -2175,7 +2232,7 @@ function renderHome(){
   const tot = kr + us + cu + ck || 1;
   // 막대 길이는 모두 달러로 환산해 비교하고, 금액 글씨는 설정(한국 자산 표시)에 따라 원화 자산을 원래 원화로 쓴다
   let krKRW = 0; for (const id in S.pos) if (BY_ID[id].cur === 'KRW') krKRW += S.pos[id].q * price(id);
-  const inKRW = SET.krd !== 'usd';
+  const inKRW = dispMode() !== 'usd';
   const seg = [{l:'한국 주식', v:kr, c:'#6E8BFF', t:inKRW ? fmtKRW(krKRW) : null}, {l:'미국 주식', v:us, c:'#E2B45E'}, {l:'달러', v:cu, c:'#B9C3D6'}, {l:'원화', v:ck, c:'#8FA0BF', t:inKRW ? fmtKRW(S.krw) : null}];
   $('#mixBar').innerHTML = seg.map(s => `<i style="width:${(s.v/tot*100).toFixed(2)}%;background:${s.c}"></i>`).join('');
   $('#mixLeg').innerHTML = seg.map(s => `<span><i style="background:${s.c}"></i>${s.l} <b>${s.t || fmtUSD(s.v, 0)}</b></span>`).join('')
@@ -2292,7 +2349,7 @@ function renderMarketList(){
       <span class="rk">${s.etf ? 'ETF' : rankOf[s.id]}</span>
       <span class="mono" style="--h:${SECTORS[s.s].h}" aria-hidden="true">${esc(monoText(s))}</span>
       <span class="nmb"><div class="n">${esc(s.n)}${own}</div><div class="s">${esc(s.t)} ${s.m === 'KR' ? s.x : ''} ${SECTORS[s.s].ko}</div></span>
-      <span class="wcol num">${s.etf ? `<span class="muted">${esc(s.ix)} ${s.lev === 1 ? '' : (s.lev > 0 ? s.lev + '배' : MINUS + Math.abs(s.lev) + '배')}</span>` : s.cur === 'KRW' ? fmtCapKRW(capNative(s)) : fmtCapUSD(capNative(s))}</span>
+      <span class="wcol num">${s.etf ? `<span class="muted">${esc(s.ix)} ${s.lev === 1 ? '' : (s.lev > 0 ? s.lev + '배' : MINUS + Math.abs(s.lev) + '배')}</span>` : fmtCap(s)}</span>
       <span class="wcol num ${cls(bc(s))}">${fmtPct(bc(s))}</span>
       ${sparkSVG(a, cls(p/a[Math.max(0, a.length-30)]-1))}
       <span class="px"><div class="p num">${fmtPx(s, p)}</div><div class="c num ${miss ? 'flat' : cls(c)}">${miss ? '시세 없음' : showChange ? fmtPct(c) : '기준가'}</div></span>
@@ -2367,7 +2424,7 @@ function renderAssets(){
           <div class="bench">${benchRow('내 순자산', ret, 'var(--brass)')}${benchRow('한국 300', kRet, '#6E8BFF')}${benchRow('미국 300', uRet, '#8A93A6')}</div>
         </section>
         <section class="card ao4"><div class="card-h"><h2>환전 내역</h2><small>최근 20건</small></div>
-          ${(S.fxLog || []).length ? `<div class="tbl-wrap"><table class="trades"><thead><tr><th>날짜</th><th>방향</th><th class="r">낸 금액</th><th class="r">받은 금액</th></tr></thead><tbody>${S.fxLog.slice(0, 20).map(x => `<tr><td>${fmtDate(x.dt, false)}</td><td>${x.dir === 'u2k' ? '달러 → 원화' : '원화 → 달러'}<br><span class="muted">1달러 = ${fmtFX(x.rate)}원</span></td><td class="r num">${x.dir === 'u2k' ? fmtUSD(x.from) : fmtKRW(x.from)}</td><td class="r num">${x.dir === 'u2k' ? fmtKRW(x.to) : fmtUSD(x.to)}</td></tr>`).join('')}</tbody></table></div>` : '<p class="empty">환전 내역이 없습니다.</p>'}
+          ${(S.fxLog || []).length ? `<div class="tbl-wrap"><table class="trades"><thead><tr><th>날짜</th><th>방향</th><th class="r">낸 금액</th><th class="r">받은 금액</th></tr></thead><tbody>${S.fxLog.slice(0, 20).map(x => `<tr><td>${fmtDate(x.dt, false)}</td><td>${x.dir === 'u2k' ? '달러 → 원화' : '원화 → 달러'}<br><span class="muted">1달러 = ${fmtFX(x.rate)}원</span></td><td class="r num">${x.dir === 'u2k' ? fmtUSDn(x.from) : fmtKRWn(x.from)}</td><td class="r num">${x.dir === 'u2k' ? fmtKRWn(x.to) : fmtUSDn(x.to)}</td></tr>`).join('')}</tbody></table></div>` : '<p class="empty">환전 내역이 없습니다.</p>'}
         </section>
       </div>
     </div>
@@ -2500,7 +2557,7 @@ function renderInfo(){
         <div class="fx-item"><h4>주식 결제 금액</h4>
           <div class="eq"><i>T</i> = <i>P</i> × <i>q</i> × (1 ± <i>c</i>)</div>
           <ul class="defs"><li><span class="sym">T</span><span>통장에서 빠지거나(매수, +) 들어오는(매도, −) 금액. 한국 주식은 원화 통장, 미국 주식은 달러 통장</span></li><li><span class="sym">P</span><span>체결가</span></li><li><span class="sym">q</span><span>수량(주)</span></li><li><span class="sym">c</span><span>거래 수수료율 0.001</span></li></ul>
-          <p class="prose" style="margin:8px 0 0">한국 주식을 살 때 원화가 모자라면, 주문 화면에서 부족한 만큼만 달러를 원화로 바꾼 뒤 사는 버튼을 쓸 수 있습니다.</p>
+          <p class="prose" style="margin:8px 0 0">주식을 살 때 그 나라 통화가 모자라면 다른 통화 통장에서 부족한 만큼만 자동으로 환전해서 삽니다(한국 주식은 달러 → 원화, 미국 주식은 원화 → 달러). 두 통장을 합쳐도 모자라면 마이너스통장 한도 안에서 빌립니다. 주문 화면의 '50%·최대' 버튼은 마이너스통장을 빼고 두 통장만으로 살 수 있는 수량입니다.</p>
         </div>
         <div class="fx-item"><h4>한국 300·미국 300 지수</h4>
           <div class="eq"><i>I</i><sub>t</sub> = 1000 × Σ<sub>i</sub> <i>W</i><sub>i</sub> (<i>P</i><sub>i,t</sub> ÷ <i>P</i><sub>i,0</sub>) ÷ Σ<sub>i</sub> <i>W</i><sub>i</sub></div>
@@ -2546,8 +2603,8 @@ function renderInfo(){
         <div class="seg"><button data-setmode="live" aria-pressed="${live}">실제 시세</button><button data-setmode="sim" aria-pressed="${!live}">시뮬레이션</button></div></div>
       <div class="set-row"><div class="l">상승·하락 색<small>한국식은 상승 빨강, 미국식은 상승 초록</small></div>
         <div class="seg"><button data-conv="kr" aria-pressed="${SET.conv === 'kr'}">한국식</button><button data-conv="us" aria-pressed="${SET.conv === 'us'}">미국식</button></div></div>
-      <div class="set-row"><div class="l">한국 자산 표시<small>홈 화면 자산 구성에서 한국 주식과 원화 통장 금액을 원화 그대로 쓸지, 달러로 환산할지 고릅니다</small></div>
-        <div class="seg"><button data-krd="krw" aria-pressed="${SET.krd !== 'usd'}">원화</button><button data-krd="usd" aria-pressed="${SET.krd === 'usd'}">달러 환산</button></div></div>
+      <div class="set-row"><div class="l">금액 표시 통화<small>실제: 한국 주식·원화는 원, 나머지는 달러. 달러로만·원화로만: 모든 금액을 지금 매매기준율로 바꿔 보여 줍니다(통장, 환전, 예약 주문 조건 가격은 실제 통화 그대로)</small></div>
+        <div class="seg"><button data-disp="real" aria-pressed="${dispMode() === 'real'}">실제</button><button data-disp="usd" aria-pressed="${dispMode() === 'usd'}">달러로만</button><button data-disp="krw" aria-pressed="${dispMode() === 'krw'}">원화로만</button></div></div>
       <div class="set-row"><div class="l">화면 테마</div>
         <div class="seg"><button data-theme="auto" aria-pressed="${SET.theme === 'auto'}">자동</button><button data-theme="light" aria-pressed="${SET.theme === 'light'}">밝게</button><button data-theme="dark" aria-pressed="${SET.theme === 'dark'}">어둡게</button></div></div>
       ${live ? '' : `<div class="set-row"><div class="l">자동 진행 속도<small>헤더의 ▶▶ 버튼으로 켜고 끕니다</small></div>
@@ -2934,7 +2991,8 @@ function niceTicks(lo, hi, n){
   for (let v = Math.ceil(lo / step) * step; v <= hi + 1e-9; v += step) out.push(+v.toFixed(10));
   return out;
 }
-function fmtAxis(s, v){ return s.cur === 'KRW' ? Math.round(v).toLocaleString('ko-KR') : v >= 1000 ? Math.round(v).toLocaleString('en-US') : v.toFixed(v >= 100 ? 0 : 2); }
+function fmtAxis(s, v){ const d = toDisp(s.cur, v); return fmtAxisCur(d.cur, d.v); }
+function fmtAxisCur(cur, v){ return cur === 'KRW' ? Math.round(v).toLocaleString('ko-KR') : v >= 1000 ? Math.round(v).toLocaleString('en-US') : v.toFixed(v >= 100 ? 0 : 2); }
 function xLabels(ser, range, xs){
   const out = [], seen = new Set();
   const lab = (i, text) => { if (!seen.has(text)){ seen.add(text); out.push({x:xs(i), text}); } };
@@ -3055,7 +3113,8 @@ function renderChartHead(){
   const when = i === null || i === undefined
     ? (UI.crange === '1D' && ser.session ? `${RANGE_TEXT['1D']}` : RANGE_TEXT[UI.crange])
     : chartTimeLabel(ser, i, UI.crange);
-  const chTxt = s.cur === 'KRW' ? `${ch > 0 ? '+' : ch < 0 ? MINUS : ''}${Math.abs(Math.round(ch)).toLocaleString('ko-KR')}원` : `${ch > 0 ? '+' : ch < 0 ? MINUS : ''}$${Math.abs(ch).toFixed(2)}`;
+  const chD = toDisp(s.cur, ch);
+  const chTxt = chD.cur === 'KRW' ? `${ch > 0 ? '+' : ch < 0 ? MINUS : ''}${Math.abs(Math.round(chD.v)).toLocaleString('ko-KR')}원` : `${ch > 0 ? '+' : ch < 0 ? MINUS : ''}$${Math.abs(chD.v).toFixed(2)}`;
   el.innerHTML = `<div class="big num">${fmtPx(s, val)}</div><div class="ap-chg"><span class="num ${cls(ch)}">${chTxt} (${fmtPct(pct)})</span><span class="ap-when">${esc(when)}</span></div>`;
 }
 function todayRange(id){
@@ -3094,7 +3153,11 @@ function renderSheet(){
       <button class="close" aria-label="닫기"><svg viewBox="0 0 14 14"><path d="M2 2l10 10M12 2L2 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
     </div>
     <div class="ap-head" id="apHead"></div>
-    ${note ? `<div class="sh-sub">${esc(note)}${s.cur === 'KRW' ? `,&nbsp; 약 ${fmtUSD(p / FX())}` : ''}</div>` : (s.cur === 'KRW' ? `<div class="sh-sub">약 ${fmtUSD(p / FX())}</div>` : '')}
+    ${(() => {
+      // 다른 통화 표시: '실제'면 한국 주식에 달러 환산을, 환산해 보여 주는 중이면 원래 통화 가격을 덧붙인다
+      const alt = dispMode() === 'real' ? (s.cur === 'KRW' ? `약 ${fmtUSDn(p / FX())}` : '') : (toDisp(s.cur, p).cur !== s.cur ? `실제 ${fmtPxN(s, p)}` : '');
+      return note ? `<div class="sh-sub">${esc(note)}${alt ? `,&nbsp; ${alt}` : ''}</div>` : (alt ? `<div class="sh-sub">${alt}</div>` : '');
+    })()}
     <div class="ap-chart" id="apChart"></div>
     <div class="ap-ranges" role="group" aria-label="차트 기간">${rangeList().map(r => `<button data-crange="${r.k}" aria-pressed="${UI.crange === r.k}">${r.l}</button>`).join('')}</div>
     ${chErr ? `<p class="muted" style="margin:4px 0 0">상세 차트 파일을 받지 못해 일별 종가로 그렸습니다.</p>` : ''}
@@ -3102,7 +3165,7 @@ function renderSheet(){
       ${tr ? `<div><dt>오늘 시작</dt><dd class="num">${fmtPx(s, tr.open)}</dd></div><div><dt>전일 종가</dt><dd class="num">${fmtPx(s, prevPrice(id))}</dd></div><div><dt>오늘 최고</dt><dd class="num">${fmtPx(s, tr.hi)}</dd></div><div><dt>오늘 최저</dt><dd class="num">${fmtPx(s, tr.lo)}</dd></div>` : `<div><dt>전일 종가</dt><dd class="num">${fmtPx(s, prevPrice(id))}</dd></div><div><dt>10/23 종가</dt><dd class="num">${fmtPx(s, basePrice(s))}</dd></div>`}
       <div><dt>${live ? '52주 최고' : '게임 중 최고'}</dt><dd class="num">${fmtPx(s, live ? w52.hi : Math.max(...hist(id)))}</dd></div>
       <div><dt>${live ? '52주 최저' : '게임 중 최저'}</dt><dd class="num">${fmtPx(s, live ? w52.lo : Math.min(...hist(id)))}</dd></div>
-      ${s.etf ? `<div><dt>기초지수</dt><dd class="num">${esc(s.ix)} ${s.lev === 1 ? '' : (s.lev > 0 ? s.lev + '배' : MINUS + Math.abs(s.lev) + '배')}</dd></div>` : `<div><dt>시가총액</dt><dd class="num">${s.cur === 'KRW' ? fmtCapKRW(capNative(s)) : fmtCapUSD(capNative(s))}</dd></div>`}
+      ${s.etf ? `<div><dt>기초지수</dt><dd class="num">${esc(s.ix)} ${s.lev === 1 ? '' : (s.lev > 0 ? s.lev + '배' : MINUS + Math.abs(s.lev) + '배')}</dd></div>` : `<div><dt>시가총액</dt><dd class="num">${fmtCap(s)}</dd></div>`}
       <div><dt>10/23 대비</dt><dd class="num ${cls(p / basePrice(s) - 1)}">${fmtPct(p / basePrice(s) - 1)}</dd></div>
       ${divStatsHTML(s, p, live)}
     </dl>
@@ -3138,7 +3201,10 @@ function typingOrder(){
 }
 /* soft면 입력칸은 그대로 두고 data-dyn 표시가 있는 부분만 새 내용으로 바꾼다 */
 function setOrderHTML(box, html, soft){
-  if (!soft){ box.innerHTML = html; return true; }
+  // 다른 종목·다른 주문 화면으로 바뀌었으면 입력 중이어도 전부 다시 그린다 (예전 입력칸의 통화·이벤트가 남지 않게)
+  const key = `${UI.sheet}|${UI.otype}|${UI.side}`;
+  if (soft && box.dataset.key !== key) soft = false;
+  if (!soft){ box.innerHTML = html; box.dataset.key = key; return true; }
   const tmp = document.createElement('div'); tmp.innerHTML = html;
   box.querySelectorAll('[data-dyn]').forEach(el => { const n = tmp.querySelector(`[data-dyn="${el.dataset.dyn}"]`); if (n) el.replaceWith(n); });
   return false;
@@ -3192,11 +3258,11 @@ function renderOrderResv(soft){
   else if (UI.rpx == null) err = '조건 가격을 정하세요. 지금은 현재가로 채워 두었습니다.';   // 아직 손대지 않은 칸: 현재가라 당연히 조건에 맞으므로 그 오류는 띄우지 않는다
   else if (condMet({kind, px}, cur)) err = '지금 가격이 이미 조건에 맞습니다. 바로 주문을 이용하세요.';
   else if (ordersOf().length >= ORDER_MAX) err = `예약 주문은 ${ORDER_MAX}개까지 걸 수 있습니다.`;
-  const desc = side === 'buy' ? `가격이 ${fmtPx(s, px)} 이하로 내려오면 삽니다.`
-    : kind === 'ge' ? `가격이 ${fmtPx(s, px)} 이상으로 오르면 팝니다.` : `가격이 ${fmtPx(s, px)} 이하로 내려가면 팝니다.`;
+  const desc = side === 'buy' ? `가격이 ${fmtPxN(s, px)} 이하로 내려오면 삽니다.`
+    : kind === 'ge' ? `가격이 ${fmtPxN(s, px)} 이상으로 오르면 팝니다.` : `가격이 ${fmtPxN(s, px)} 이하로 내려가면 팝니다.`;
   const label = side === 'buy' ? '예약 매수 걸기' : '예약 매도 걸기';
   // 평균 매수가보다 낮게 파는 예약이면 경고만 한다 (막지는 않는다)
-  const lowWarn = side === 'sell' && P && px > 0 && px < P.avg ? `평균 매수가(${fmtPx(s, P.avg)})보다 가격이 낮습니다.` : '';
+  const lowWarn = side === 'sell' && P && px > 0 && px < P.avg ? `평균 매수가(${fmtPxN(s, P.avg)})보다 가격이 낮습니다.` : '';
   const one = quote(id, 'buy', 1, px > 0 ? px : cur).total;
   const avail = krw ? S.krw + Math.max(0, S.usd + odAvail() - 0.02) * fxRates().sell : S.usd + odAvail();
   const maxB = one > 0 ? Math.max(0, Math.floor(avail / one + 1e-9)) : 0;
@@ -3204,14 +3270,14 @@ function renderOrderResv(soft){
     <div class="seg" role="group" aria-label="주문 종류"><button data-side="buy" aria-pressed="${side === 'buy'}">예약 매수</button><button data-side="sell" aria-pressed="${side === 'sell'}">예약 매도</button></div>
     <div class="rsv-l">조건 가격</div>
     <label class="amt"><span>${krw ? '₩' : '$'}</span><input id="rpxIn" type="text" inputmode="${krw ? 'numeric' : 'decimal'}" autocomplete="off" value="${esc(groupNum(pxStr))}" aria-label="조건 가격"></label>
-    <p class="muted rsv-d" data-dyn="desc">현재가 ${fmtPx(s, cur)}. ${desc}</p>
+    <p class="muted rsv-d" data-dyn="desc">현재가 ${fmtPxN(s, cur)}. ${desc}</p>
     <div class="rsv-warn" data-dyn="warn">${lowWarn}</div>
     <div class="qty"><button data-qd="-1" aria-label="1주 줄이기">−</button><input id="qtyIn" type="number" inputmode="numeric" min="1" step="1" value="${q || ''}" aria-label="수량(주)"><button data-qd="1" aria-label="1주 늘리기">+</button></div>
     <div class="quick" data-dyn="quick">${side === 'buy'
       ? `<button data-qn="${Math.max(maxB ? 1 : 0, Math.floor(maxB / 2))}">절반 ${Math.floor(maxB / 2).toLocaleString()}주</button><button data-qn="${maxB}">최대 ${maxB.toLocaleString()}주</button>`
       : `<button data-qn="${Math.max(held ? 1 : 0, Math.floor(held / 2))}">절반</button><button data-qn="${held}">전량 ${held.toLocaleString()}주</button>`}</div>
     <div class="bd" data-dyn="bd">
-      <div><span>${side === 'buy' ? '조건 가격에 살 때 금액' : '조건 가격에 팔 때 받을 금액'} (수수료 포함)</span><b class="num">${fmtPx(s, est.total)}</b></div>
+      <div><span>${side === 'buy' ? '조건 가격에 살 때 금액' : '조건 가격에 팔 때 받을 금액'} (수수료 포함)</span><b class="num">${fmtPxN(s, est.total)}</b></div>
       <div><span>유효기간</span><b>${isLive() ? `${ORDER_DAYS}일` : `${ORDER_DAYS}거래일`}</b></div>
     </div>
     <p class="muted rsv-d">실제 체결가는 조건에 처음 닿은 시세입니다. 돈과 보유 수량은 체결할 때 확인합니다.</p>
@@ -3232,43 +3298,40 @@ function renderOrder(soft){
   const P = S.pos[id];
   const side = UI.side;
   const krw = s.cur === 'KRW';
-  const maxQ = side === 'buy' ? maxBuy(id, false) : (P ? P.q : 0);
-  const maxX = side === 'buy' ? maxBuyWithFX(id) : 0;
+  // 빠른 수량 버튼: 매수는 두 통화 통장을 서로 바꿔 쓰는 것까지, 마이너스통장은 빼고 센다
+  const maxQ = side === 'buy' ? maxBuyAuto(id) : (P ? P.q : 0);
   const q = Math.max(0, Math.floor(UI.qty) || 0);
   const o = quote(id, side, Math.max(q, 0));
   const ct = canTrade(s, side);
-  const wallet = walletOf(s);
-  let err = '', needFX = 0, needUSD = 0, odUse = 0;
+  const pl = side === 'buy' && q >= 1 ? buyPlan(id, q) : null;
+  let err = '';
   if (!ct.ok) err = ct.why;
   else if (q < 1) err = '수량을 입력하세요.';
   else if (side === 'sell' && (!P || q > P.q)) err = P ? `보유 수량(${P.q}주)을 넘었습니다.` : '보유하지 않은 종목입니다.';
-  else if (side === 'buy' && krw && o.total > S.krw){
-    needFX = o.total - S.krw; needUSD = usdForKRW(needFX);
-    if (needUSD > S.usd + odAvail() + 1e-6) err = `원화 통장과 달러를 모두 합쳐도 부족합니다.`;
-  } else if (side === 'buy' && !krw && o.total > S.usd + odAvail() + 1e-6) err = `주문 가능 금액(${fmtUSD(S.usd + odAvail())})을 넘었습니다.`;
-  if (side === 'buy' && !err){
-    if (!krw && o.total > S.usd) odUse = o.total - S.usd;
-    if (krw && needUSD > S.usd) odUse = needUSD - S.usd;
-  }
-  const r = fxRates();
+  else if (pl && !pl.ok) err = '원화·달러 통장과 마이너스통장 한도를 모두 합쳐도 부족합니다.';
+  const r = fxRates(), X = r.base;
+  // 아래 금액은 모두 달러로 맞춰 보여 준다 (원화는 매매기준율 X로 환산, 표시 통화 설정이 원화면 원화로)
+  const usdOf = v => krw ? v / X : v;
+  const nat = v => krw ? `<small class="muted">${fmtKRWn(v)}</small> ` : '';
   const goLabel = !ct.ok ? '지금은 거래할 수 없습니다'
     : side === 'sell' ? `${q ? q.toLocaleString() + '주 ' : ''}매도하기`
-    : needFX > 0 && !err ? `${fmtUSD(needUSD)} 환전하고 매수하기` : `${q ? q.toLocaleString() + '주 ' : ''}매수하기`;
+    : pl && pl.fxFrom > 0 && !err ? `환전하고 ${q.toLocaleString()}주 매수하기` : `${q ? q.toLocaleString() + '주 ' : ''}매수하기`;
   const full = setOrderHTML(box, `${otypeSegHTML()}
     <div data-dyn="alert">${!ct.ok ? `<div class="alert bad">${esc(ct.why)}</div>` : ''}</div>
     <div class="seg" role="group" aria-label="주문 종류"><button data-side="buy" aria-pressed="${side === 'buy'}">매수</button><button data-side="sell" aria-pressed="${side === 'sell'}">매도</button></div>
     <div class="qty"><button data-qd="-1" aria-label="1주 줄이기">−</button><input id="qtyIn" type="number" inputmode="numeric" min="1" step="1" value="${q || ''}" aria-label="수량(주)"><button data-qd="1" aria-label="1주 늘리기">+</button></div>
     <div class="quick" data-dyn="quick">${side === 'buy'
-      ? `<button data-qf=".5">${krw ? '원화' : '달러'} 50%</button><button data-qf="1">${krw ? '원화' : '달러'} 최대 ${maxQ.toLocaleString()}주</button>${krw && maxX > maxQ ? `<button data-qn="${maxX}" title="달러를 원화로 바꾸는 것까지 포함">환전 포함 ${maxX.toLocaleString()}주</button>` : ''}${!krw && maxBuy(id, true) > maxQ ? `<button data-qn="${maxBuy(id, true)}" title="마이너스통장 한도까지 포함">마통 포함 ${maxBuy(id, true).toLocaleString()}주</button>` : ''}`
+      ? `<button data-qf=".5">50%</button><button data-qf="1" title="원화·달러 통장을 서로 바꿔 쓰는 것까지 포함, 마이너스통장 제외">최대 ${maxQ.toLocaleString()}주</button>`
       : `<button data-qf=".5">절반</button><button data-qf="1">전량 ${maxQ.toLocaleString()}주</button>`}</div>
     <div class="bd" data-dyn="bd">
-      <div><span>주문 금액</span><b class="num">${fmtPx(s, o.gross)}</b></div>
-      <div><span>거래 수수료 0.1%</span><b class="num">${fmtPx(s, o.fee)}</b></div>
-      <div class="tot"><span>${side === 'buy' ? '결제할 금액' : '받을 금액'}</span><b class="num">${fmtPx(s, o.total)}</b></div>
-      <div><span>${krw ? '원화 통장' : '달러 통장'}</span><b class="num">${fmtPx(s, wallet)}</b></div>
-      ${needFX > 0 ? `<div class="fxneed"><span>원화 부족분 ${fmtKRW(needFX)}을 환전 (1달러 = ${fmtFX(r.sell)}원, 수수료 ${(r.f*100).toFixed(2)}%)</span><b class="num">${fmtUSD(needUSD)}</b></div>` : ''}
+      <div><span>주문 금액</span><b class="num">${nat(o.gross)}${fmtUSD(usdOf(o.gross))}</b></div>
+      <div><span>거래 수수료 0.1%</span><b class="num">${nat(o.fee)}${fmtUSD(usdOf(o.fee))}</b></div>
+      <div class="tot"><span>${side === 'buy' ? '결제할 금액' : '받을 금액'}</span><b class="num">${nat(o.total)}${fmtUSD(usdOf(o.total))}</b></div>
+      ${pl ? `
+      ${pl.own > 0 ? `<div><span>${krw ? '원화 통장에서' : '달러 통장에서'}</span><b class="num">${nat(pl.own)}${fmtUSD(usdOf(pl.own))}</b></div>` : ''}
+      ${pl.fxFrom > 0 ? `<div class="fxneed"><span>${krw ? `달러 → 원화 환전 (1달러 = ${fmtFX(r.sell)}원, 수수료 ${(r.f*100).toFixed(2)}%)` : `원화 ${fmtKRWn(pl.fxFrom)} → 달러 환전 (1달러 = ${fmtFX(r.buy)}원, 수수료 ${(r.f*100).toFixed(2)}%)`}</span><b class="num">${krw ? fmtUSD(pl.fxFrom) : fmtUSD(pl.fxTo)}</b></div>` : ''}
+      ${pl.od > 0 ? `<div><span>마이너스통장 사용 (한도 안에서 자동)</span><b class="num" style="color:var(--warn)">${fmtUSD(pl.od)}</b></div>` : ''}` : ''}
       ${side === 'sell' && krw ? `<div><span>매도대금은 원화 통장으로 들어갑니다</span><b></b></div>` : ''}
-      ${odUse > 0 ? `<div><span>마이너스통장 사용</span><b class="num" style="color:var(--warn)">${fmtUSD(odUse)}</b></div>` : ''}
     </div>
     <div class="err" role="status" data-dyn="err">${ct.ok && err && q >= 1 ? esc(err) : ''}</div>
     <button class="go ${side}" id="goBtn" data-dyn="go" ${err ? 'disabled' : ''}>${goLabel}</button>
@@ -3338,8 +3401,8 @@ function walletHTML(){
   const r = fxRates();
   return `<div class="card-h"><h2>통장</h2><small>매매기준율 1달러 = ${fmtFX(r.base)}원</small></div>
     <div class="wallets">
-      <div class="wl"><span class="wl-flag">USD</span><div class="wl-b"><div class="wl-n">달러 통장</div><div class="wl-v num">${fmtUSD(S.usd)}</div>${S.loans.od.bal > 0 ? `<div class="wl-s" style="color:var(--warn)">마이너스통장 ${MINUS}${fmtUSD(S.loans.od.bal)}</div>` : '<div class="wl-s">미국 주식, 대출</div>'}</div></div>
-      <div class="wl"><span class="wl-flag kr">KRW</span><div class="wl-b"><div class="wl-n">원화 통장</div><div class="wl-v num">${fmtKRW(S.krw)}</div><div class="wl-s">약 ${fmtUSD(S.krw / r.base)}, 한국 주식</div></div></div>
+      <div class="wl"><span class="wl-flag">USD</span><div class="wl-b"><div class="wl-n">달러 통장</div><div class="wl-v num">${fmtUSDn(S.usd)}</div>${S.loans.od.bal > 0 ? `<div class="wl-s" style="color:var(--warn)">마이너스통장 ${MINUS}${fmtUSDn(S.loans.od.bal)}</div>` : '<div class="wl-s">미국 주식, 대출</div>'}</div></div>
+      <div class="wl"><span class="wl-flag kr">KRW</span><div class="wl-b"><div class="wl-n">원화 통장</div><div class="wl-v num">${fmtKRWn(S.krw)}</div><div class="wl-s">약 ${fmtUSDn(S.krw / r.base)}, 한국 주식</div></div></div>
     </div>
     <button class="btn solid wl-go" id="btnFX">환전하기</button>`;
 }
@@ -3376,8 +3439,8 @@ function renderFX(){
   const q = amt > 0 ? exQuote(dir, amt) : null;
   const have = u2k ? S.usd : S.krw;
   let err = '';
-  if (amt > 0 && u2k && amt > S.usd + odAvail() + 1e-6) err = `쓸 수 있는 달러는 ${fmtUSD(S.usd + odAvail())}입니다.`;
-  if (amt > 0 && !u2k && amt > S.krw) err = `원화 통장에는 ${fmtKRW(S.krw)}이 있습니다.`;
+  if (amt > 0 && u2k && amt > S.usd + odAvail() + 1e-6) err = `쓸 수 있는 달러는 ${fmtUSDn(S.usd + odAvail())}입니다.`;
+  if (amt > 0 && !u2k && amt > S.krw) err = `원화 통장에는 ${fmtKRWn(S.krw)}이 있습니다.`;
   if (q && q.to <= 0) err = '금액이 너무 작습니다.';
   box.innerHTML = `<h2>환전</h2>
     <div class="seg fx-seg" role="group" aria-label="환전 방향"><button data-fxdir="u2k" aria-pressed="${u2k}">달러 → 원화</button><button data-fxdir="k2u" aria-pressed="${!u2k}">원화 → 달러</button></div>
@@ -3385,14 +3448,14 @@ function renderFX(){
     <label class="amt fx-amt"><span>${(u2k !== byTo) ? '$' : '₩'}</span><input id="fxIn" type="number" inputmode="decimal" min="0" step="${(u2k !== byTo) ? '0.01' : '1'}" value="${esc(UI.fxAmt)}" placeholder="${byTo ? '받을 금액' : '바꿀 금액'}" aria-label="${byTo ? '받을 금액' : '바꿀 금액'}"></label>
     ${byTo ? '' : '<div class="quick"><button data-fxq=".25">25%</button><button data-fxq=".5">50%</button><button data-fxq="1">전액</button></div>'}
     <div class="bd">
-      <div><span>보유 ${u2k ? '달러' : '원화'}</span><b class="num">${u2k ? fmtUSD(have) : fmtKRW(have)}</b></div>
+      <div><span>보유 ${u2k ? '달러' : '원화'}</span><b class="num">${u2k ? fmtUSDn(have) : fmtKRWn(have)}</b></div>
       <div><span>매매기준율</span><b class="num">${fmtFX(r.base)}원</b></div>
       <div><span>수수료율 = 1% × (1 − 우대율 ${Math.round(fxPref() * 100)}%)</span><b class="num">${(r.f * 100).toFixed(2)}%</b></div>
       <div><span>적용 환율 (${u2k ? '달러 팔 때' : '달러 살 때'})</span><b class="num">${fmtFX(u2k ? r.sell : r.buy)}원</b></div>
-      ${q ? `<div><span>수수료</span><b class="num">${fmtUSD(q.feeUSD)} 상당</b></div>${byTo ? `<div class="tot"><span>내야 할 금액</span><b class="num">${u2k ? fmtUSD(amt) : fmtKRW(amt)}</b></div>` : ''}<div class="tot"><span>받을 금액</span><b class="num">${u2k ? fmtKRW(q.to) : fmtUSD(q.to)}</b></div>` : ''}
+      ${q ? `<div><span>수수료</span><b class="num">${fmtUSDn(q.feeUSD)} 상당</b></div>${byTo ? `<div class="tot"><span>내야 할 금액</span><b class="num">${u2k ? fmtUSDn(amt) : fmtKRWn(amt)}</b></div>` : ''}<div class="tot"><span>받을 금액</span><b class="num">${u2k ? fmtKRWn(q.to) : fmtUSDn(q.to)}</b></div>` : ''}
     </div>
-    ${u2k && amt > S.usd && !err ? `<div class="alert">달러가 모자란 ${fmtUSD(amt - S.usd)}은 마이너스통장에서 빌립니다.</div>` : ''}
-    ${!u2k && S.loans.od.bal > 0 ? `<div class="alert">받은 달러는 마이너스통장 사용액(${fmtUSD(S.loans.od.bal)})을 먼저 갚는 데 씁니다.</div>` : ''}
+    ${u2k && amt > S.usd && !err ? `<div class="alert">달러가 모자란 ${fmtUSDn(amt - S.usd)}은 마이너스통장에서 빌립니다.</div>` : ''}
+    ${!u2k && S.loans.od.bal > 0 ? `<div class="alert">받은 달러는 마이너스통장 사용액(${fmtUSDn(S.loans.od.bal)})을 먼저 갚는 데 씁니다.</div>` : ''}
     <div class="err">${esc(err)}</div>
     <div class="acts"><button class="btn" data-fxclose>닫기</button><button class="btn solid" id="fxGo" ${!q || err ? 'disabled' : ''}>환전하기</button></div>
     <p class="muted" style="margin:10px 0 0">우대율은 신용등급으로 정해집니다. 1등급 90%에서 등급마다 10%p씩 줄어 10등급은 0%입니다. 지금 ${g()}등급.</p>`;
@@ -3790,7 +3853,7 @@ document.addEventListener('click', e => {
   if (t.dataset.qn){ UI.qty = +t.dataset.qn; renderOrder(); return; }
   if (t.dataset.qd){ UI.qty = Math.max(1, (UI.qty || 0) + +t.dataset.qd); renderOrder(); return; }
   if (t.dataset.qf){
-    const id = UI.sheet, maxQ = UI.side === 'buy' ? maxBuy(id, false) : (S.pos[id] ? S.pos[id].q : 0);
+    const id = UI.sheet, maxQ = UI.side === 'buy' ? maxBuyAuto(id) : (S.pos[id] ? S.pos[id].q : 0);
     UI.qty = Math.max(maxQ ? 1 : 0, Math.floor(maxQ * +t.dataset.qf)); renderOrder(); return;
   }
   if (t.id === 'goBtn'){
@@ -3808,7 +3871,7 @@ document.addEventListener('click', e => {
   }
   if (t.dataset.setmode){ if (t.dataset.setmode !== S.mode){ setMode(t.dataset.setmode); toast(t.dataset.setmode === 'live' ? '실제 시세 모드로 바꿨습니다' : '시뮬레이션 모드로 바꿨습니다'); } return; }
   if (t.dataset.conv){ SET.conv = t.dataset.conv; saveSet(); applyTheme(); renderTab(); return; }
-  if (t.dataset.krd){ SET.krd = t.dataset.krd; saveSet(); renderTab(); return; }
+  if (t.dataset.disp){ SET.disp = t.dataset.disp; saveSet(); renderHeader(); renderTab(); if (UI.sheet) renderSheet(); return; }
   if (t.dataset.theme){ SET.theme = t.dataset.theme; saveSet(); applyTheme(); renderTab(); return; }
   if (t.dataset.speed !== undefined){ SET.speed = +t.dataset.speed; saveSet(); if (UI.auto) startAuto(); renderTab(); return; }
   if (t.dataset.rankmode){ UI.rankMode = t.dataset.rankmode; refreshRanks(true); return; }
