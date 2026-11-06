@@ -807,7 +807,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.11.1';
+const VERSION = '1.11.2';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -3071,7 +3071,7 @@ const BME = {
     return a;
   },
   alive: g => g.pl.filter(p => !p.out).length,
-  // 돈 내기: 모자라면 건물 → 땅 순서로(싼 것부터) 절반 값에 판다. 그래도 모자라면 파산
+  // 돈 내기: 모자라면 사람은 팔 것을 고르고, 컴퓨터는 통행료가 낮은 것부터 자동으로 판다. 그래도 모자라면 파산
   pay(g, i, amt, to, ev){
     const p = g.pl[i];
     // 사람이 돈이 모자라면: 팔 것을 직접 고르도록 멈춘다 (다 팔아도 모자라면 바로 파산)
@@ -3128,9 +3128,18 @@ const BME = {
     if (own1 < own0 && ev){ ev.push({t:'msg', s:`${g.pl[i].nm} 돈이 모자라 건물·땅을 팔았다`, k:'sell', i}); BME.snap(g, ev); }
   },
   _liq(g, i, amt){
-    const p = g.pl[i], mine = g.own.map((o, k) => o === i ? k : -1).filter(k => k >= 0).sort((a, b) => BM_SQ[a].p - BM_SQ[b].p);
-    for (const k of mine){ while (p.cash < amt && g.lv[k] > 0){ g.lv[k]--; p.cash += Math.floor(BME.buildCost(k) / 2); BME.log(g, `${p.nm} ${BM_SQ[k].n} 건물 매각`); } }
-    for (const k of mine){ if (p.cash >= amt) break; if (g.own[k] === i){ g.own[k] = -1; p.cash += Math.floor(BM_SQ[k].p / 2); BME.log(g, `${p.nm} ${BM_SQ[k].n} 땅 매각`); } }
+    // 지금 통행료가 가장 낮은 도시부터 한 단계씩(건물이 있으면 맨 위 건물, 없으면 땅) 판다. 팔 때마다 통행료가 바뀌므로(같은 색 2배가 깨지는 등) 매번 다시 고른다.
+    // 통행료가 같으면 땅값이 싼 도시부터
+    const p = g.pl[i];
+    while (p.cash < amt){
+      let k = -1, kr = Infinity;
+      g.own.forEach((o, q) => { if (o !== i) return; const r = BME.rent(g, q); if (r < kr || (r === kr && BM_SQ[q].p < BM_SQ[k].p)){ k = q; kr = r; } });
+      if (k < 0) break;
+      const v = BME.sellOne(g, k);
+      if (g.lv[k] > 0){ g.lv[k]--; BME.log(g, `${p.nm} ${BM_SQ[k].n} 건물 매각 +${v}만`); }
+      else { g.own[k] = -1; BME.log(g, `${p.nm} ${BM_SQ[k].n} 땅 매각 +${v}만`); }
+      p.cash += v;
+    }
   },
   // from에서 d칸 이동 (d<0이면 뒤로). 출발을 지나거나 서면 월급
   move(g, i, d, ev){
@@ -3303,7 +3312,7 @@ function bmCardHTML(){
     <li>주인 없는 도시에 서면 살 수 있고(산 그 자리에서는 건물을 짓지 못합니다), 내 도시에 다시 서면 별장 → 빌딩 → 호텔을 한 단계씩 올립니다(단계마다 땅값의 절반). 남의 도시에 서면 통행료를 내고, 같은 색 도시를 모두 가진 사람에게는 통행료가 ${BM.group}배입니다.</li>
     <li>통행료(만) = 땅값 × 단계 배수 × (1 + ${BM.esc} × (바퀴 수 − 1)), 반올림, 최소 1. 단계 배수는 땅 ${BM.rent[0]}, 별장 ${BM.rent[1]}, 빌딩 ${BM.rent[2]}, 호텔 ${BM.rent[3]}이고, 바퀴는 첫 차례 사람이 한 바퀴 돌 때마다 1씩 늘어 통행료가 처음보다 ${Math.round(BM.esc * 100)}%p씩 오릅니다.</li>
     <li>같은 눈이 나오면 한 번 더 굴리고, 세 번 연속이면 무인도로 갑니다. 무인도에서는 ${BM.jail}턴 동안 같은 눈이 나와야 나갑니다. 비행기 칸에 서면 원하는 칸으로 날아갑니다. 세금 칸은 현금의 10%(최소 5만)를 여행기금에 내고, 여행기금 칸에 서면 모인 돈을 받습니다.</li>
-    <li>돈이 모자라면 팔 땅이나 건물을 직접 고릅니다. 건물이 있는 도시는 맨 위 건물 한 단계부터 팔리고, 건물은 건설비의 절반, 땅은 땅값의 절반(내림)을 받습니다. 모자란 돈이 채워지면 바로 내고, 가진 것을 다 팔아도 모자라면 파산합니다. 컴퓨터는 싼 것부터 자동으로 팝니다.</li>
+    <li>돈이 모자라면 팔 땅이나 건물을 직접 고릅니다. 건물이 있는 도시는 맨 위 건물 한 단계부터 팔리고, 건물은 건설비의 절반, 땅은 땅값의 절반(내림)을 받습니다. 모자란 돈이 채워지면 바로 내고, 가진 것을 다 팔아도 모자라면 파산합니다. 컴퓨터는 지금 통행료가 낮은 도시부터 자동으로 팝니다(자동 팔기 버튼도 같은 순서).</li>
     <li>누군가 한 명 파산하면 그 자리에서 끝납니다. 파산한 사람이 꼴찌이고, 나머지는 총자산(현금 + 땅값 + 건물값) 순입니다. 혹시 ${BM.cap}바퀴까지 아무도 파산하지 않으면 그때 총자산 순으로 끝냅니다.</li>
     <li>판돈 ${fmtUSD(BM.minBet, 0)}~${fmtUSD(BM.maxBet, 0)}을 달러 통장에서 걸고 시작합니다. 끝나면 순위에 따라 판돈의 배수를 돌려받습니다. 2명: 1위 2배 / 3명: 1위 2.5배, 2위 0.5배 / 4명: 1위 3배, 2위 1배 (나머지 0). 배수의 평균이 1배라서 실력이 같으면 기대 손익은 0입니다.</li>
     ${BM.waitDays ? `<li>가입하고 ${BM.waitDays}일이 지나야 할 수 있습니다(로그인하지 않았으면 이 기록을 시작한 때부터).</li>` : ''}
@@ -3465,7 +3474,7 @@ function bmUpdate(){
   else if (!BMV.busy && pd && pd.k === 'sell'){
     const need = BME.need(g), cash = g.pl[0].cash;
     const list = BM_SQ.map((c, k) => g.own[k] === 0 ? `<button class="btn bm-sell" data-bmsell="${k}"><span>${c.n} ${g.lv[k] ? `${BM_BLD[g.lv[k]]} ${BM.buildNames[g.lv[k]]}` : '땅'}</span><b class="num">+${BME.sellOne(g, k)}만</b></button>` : '').join('');
-    act = `<p class="bm-q">💸 돈이 모자랍니다. 팔 땅이나 건물을 고르세요 <small>내야 할 돈 ${need}만 · 현금 ${cash}만 · <b>${Math.max(0, need - cash)}만 더 필요</b> (건물이 있으면 맨 위 건물부터 팝니다)</small></p><div class="bm-sells">${list}</div><div class="bm-acts"><button class="btn" data-bmsell="auto">싼 것부터 자동으로 팔기</button></div>`;
+    act = `<p class="bm-q">💸 돈이 모자랍니다. 팔 땅이나 건물을 고르세요 <small>내야 할 돈 ${need}만 · 현금 ${cash}만 · <b>${Math.max(0, need - cash)}만 더 필요</b> (건물이 있으면 맨 위 건물부터 팝니다)</small></p><div class="bm-sells">${list}</div><div class="bm-acts"><button class="btn" data-bmsell="auto">통행료 낮은 것부터 자동으로 팔기</button></div>`;
   }
   else if (BMV.busy || g.turn !== 0) act = `<p class="bm-wait">${cur === 0 ? '내' : g.pl[cur].nm} 차례…</p>`;
   else if (pd && pd.k === 'roll') act = `<button class="btn solid bm-roll" id="bmRoll">🎲 주사위 굴리기</button>`;
