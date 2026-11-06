@@ -808,7 +808,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.12.0';
+const VERSION = '1.12.1';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -3239,7 +3239,7 @@ const BME = {
     if (c.t === 'city'){
       const o = g.own[sq];
       if (o < 0){
-        if (p.cash >= c.p){ if (p.me) g.pending = {k:'buy', sq}; else if (BME.botBuy(g, i, sq)) BME.buy(g, i, sq, ev); }
+        if (p.cash >= c.p){ if (p.me) g.pending = {k:'buy', sq}; else if (BME.botBuy(g, i, sq)) BME.buy(g, i, sq, ev); else BME.log(g, `${p.nm} ${c.n} 안 삼 (현금 ${bmW(Math.round(BME.reserve(g, i) * BME.ai.buyF))}은 남겨 둠)`); }
       } else if (o === i){
         // 산 그 차례가 아니면 건물을 지을 수 있다
         if (g.bought[sq] !== BME.turnId(g) && BME.canBuild(g, sq).some(x => p.cash >= x.cost)){ if (p.me) g.pending = {k:'build', sq}; else BME.botBuild(g, i, sq, ev); }
@@ -3304,20 +3304,45 @@ const BME = {
     if (ev){ ev.push({t:'msg', s:`${opt.nm} 건설!`, k:'build', i, sq, v:kind}); BME.snap(g, ev); }
     return true;
   },
-  // 컴퓨터의 판단: 현금을 어느 정도 남겨 두고 사고 짓는다
-  botBuy: (g, i, sq) => g.pl[i].cash - BM_SQ[sq].p >= 300,
+  // ── 컴퓨터의 판단 ──
+  // 위험: 다음 주사위(2~12칸 앞)에 걸릴 수 있는 남의 땅 통행료의 최댓값과 기댓값, 보드 전체에서 가장 비싼 남의 통행료
+  danger(g, i){
+    const p = g.pl[i]; let exp = 0, max = 0, top = 0;
+    const toll = k => { const o = g.own[k]; return o >= 0 && o !== i && !g.pl[o].out ? BME.rent(g, k) : BM_SQ[k].t === 'fundIn' ? BM.fundIn : 0; };
+    for (let s = 2; s <= 12; s++){ const r = toll((p.pos + s) % BM_N), pr = (6 - Math.abs(s - 7)) / 36; exp += pr * r; if (r > max) max = r; }
+    g.own.forEach((o, k) => { if (o >= 0 && o !== i && !g.pl[o].out) top = Math.max(top, BME.rent(g, k)); });
+    return {exp, max, top};
+  },
+  // 남겨 둘 현금: 바로 앞 위험과 보드 전체 위험을 섞는다 (팔면 반값이 되므로 파산 직전까지 쓰지 않는다)
+  reserve(g, i){ const d = BME.danger(g, i), A = BME.ai; return Math.max(A.resMin, Math.round(A.resMax * d.max + A.resTop * d.top + A.resExp * d.exp)); },
+  // 값은 자동 대전 수만 판으로 고른 것 (풀매수 전략과 맞붙여 같거나 조금 나은 범위에서, 현금을 남기는 쪽으로)
+  ai:{resMin:100, resMax:0.2, resTop:0.03, resExp:0, buyF:0.8, maxBuild:2, minScore:0},
+  botBuy(g, i, sq){
+    const c = BM_SQ[sq], p = g.pl[i];
+    // 땅은 싸고 나중에 건물을 올릴 자리라 짓기보다 덜 아껴 둔다
+    return p.cash - c.p >= BME.reserve(g, i) * BME.ai.buyF;
+  },
+  // 짓기: 늘어나는 통행료 ÷ 건설비가 큰 것부터, 남겨 둘 현금을 지키는 만큼만, 한 번에 maxBuild개까지
   botBuild(g, i, sq, ev){
-    for (const k of ['h', 'b', 'v', 'v']){
-      const o = BME.canBuild(g, sq).find(x => x.k === k);
-      if (o && g.pl[i].cash - o.cost >= 500) BME.build(g, i, sq, k, ev);
+    let n = 0;
+    while (n < BME.ai.maxBuild){
+      const lv = g.lv[sq], base = BME.rentOf(sq, lv), res = BME.reserve(g, i);
+      const opts = BME.canBuild(g, sq).map(o => ({...o, gain:BME.rentOf(sq, lv + (o.k === 'v' ? 1 : o.k === 'b' ? 3 : 6)) - base}))
+        .filter(o => g.pl[i].cash - o.cost >= res && o.gain / o.cost > BME.ai.minScore).sort((x, y) => y.gain / y.cost - x.gain / x.cost);
+      if (!opts.length){
+        if (!n && BME.canBuild(g, sq).some(o => g.pl[i].cash >= o.cost)) BME.log(g, `${g.pl[i].nm} ${BM_SQ[sq].n}에 안 지음 (다음 위험 대비 현금 ${bmW(res)} 남김)`);
+        break;
+      }
+      BME.build(g, i, sq, opts[0].k, ev); n++;
     }
   },
+  // 우주여행 목적지: 살 수 있는 주인 없는 땅(통행료 잠재력 큰 곳) → 지을 수 있는 내 땅 → 기금 → 출발. 남의 땅은 피한다
   botSpace(g, i){
-    const p = g.pl[i];
+    const p = g.pl[i], res = BME.reserve(g, i);
     let best = -1, bv = -1;
-    BM_SQ.forEach((c, k) => { if (c.t === 'city' && g.own[k] < 0 && p.cash - c.p >= 300 && c.p > bv){ best = k; bv = c.p; } });
+    BM_SQ.forEach((c, k) => { if (c.t !== 'city' || g.own[k] >= 0 || p.cash - c.p < res * BME.ai.buyF) return; const v = c.sp ? c.r[0] : BME.rentOf(k, bmLv(2, 1, 1)) / 4; if (v > bv){ best = k; bv = v; } });
     if (best >= 0) return best;
-    BM_SQ.forEach((c, k) => { if (c.t === 'city' && g.own[k] === i && BME.canBuild(g, k).some(x => p.cash - x.cost >= 500) && c.p > bv){ best = k; bv = c.p; } });
+    BM_SQ.forEach((c, k) => { if (c.t !== 'city' || g.own[k] !== i) return; const o = BME.canBuild(g, k).filter(x => p.cash - x.cost >= res); if (!o.length) return; const v = Math.max(...o.map(x => BME.rentOf(k, g.lv[k] + (x.k === 'v' ? 1 : x.k === 'b' ? 3 : 6)) - BME.rentOf(k, g.lv[k]))); if (v > bv){ best = k; bv = v; } });
     if (best >= 0) return best;
     return g.fund >= BM.salary ? 20 : 0;
   },
