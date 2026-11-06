@@ -600,6 +600,11 @@ html.bm-open .top,html.bm-open .tabbar{visibility:hidden}
 .bm-q small{display:block;color:var(--ink-3);font-size:.85em}
 .bm-acts{display:flex;gap:6px}.bm-acts .btn{flex:1}
 .bm-wait{margin:0;color:var(--ink-3);font-size:13px}
+.bm-sells{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;max-height:38vh;overflow:auto}
+.bm-sell{height:auto!important;min-height:32px;padding:5px 8px;display:flex;justify-content:space-between;align-items:center;gap:4px;font-size:clamp(10.5px,2.9vw,13px);text-align:left}
+.bm-sell b{color:#4FE0A0;white-space:nowrap}
+.bm-c.sellable{border-color:#FF6B6B;animation:bmsellg 1s infinite alternate}
+@keyframes bmsellg{to{background:color-mix(in srgb,#FF6B6B 22%,var(--surface))}}
 .bm-info{margin:0;font-size:clamp(10.5px,2.8vw,12.5px);color:var(--ink-2);line-height:1.4}
 .bm-log{list-style:none;margin:0;padding:0;font-size:clamp(10px,2.7vw,12px);color:var(--ink-3);line-height:1.45}
 .bm-log li:first-child{color:var(--ink-2)}
@@ -802,7 +807,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.10.2';
+const VERSION = '1.11.0';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -3069,6 +3074,13 @@ const BME = {
   // 돈 내기: 모자라면 건물 → 땅 순서로(싼 것부터) 절반 값에 판다. 그래도 모자라면 파산
   pay(g, i, amt, to, ev){
     const p = g.pl[i];
+    // 사람이 돈이 모자라면: 팔 것을 직접 고르도록 멈춘다 (다 팔아도 모자라면 바로 파산)
+    if (p.me && g.pending && g.pending.k === 'sell'){ g.pending.pays.push({amt, to}); return true; }
+    if (p.me && p.cash < amt && p.cash + BME.sellValue(g, i) >= amt){
+      g.pending = {k:'sell', who:i, pays:[{amt, to}]};
+      BME.log(g, `${p.nm} 돈이 모자람 (${amt}만 필요)`); ev.push({t:'msg', s:`돈이 모자랍니다! ${amt}만 필요`, k:'short', i});
+      return true;
+    }
     if (p.cash < amt) BME.liquidate(g, i, amt, ev);
     if (p.cash >= amt){
       p.cash -= amt;
@@ -3082,6 +3094,32 @@ const BME = {
     g.own.forEach((o, k) => { if (o === i){ g.own[k] = -1; g.lv[k] = 0; } });
     BME.log(g, `${p.nm} 파산`); ev.push({t:'msg', s:`${p.nm} 파산!`, k:'bankrupt', i}); BME.snap(g, ev);
     return false;
+  },
+  // 판 값: 건물 한 단계마다 건설비의 절반, 땅은 땅값의 절반 (내림)
+  sellOne(g, k){ return g.lv[k] > 0 ? Math.floor(BME.buildCost(k) / 2) : Math.floor(BM_SQ[k].p / 2); },
+  sellValue(g, i){ let v = 0; g.own.forEach((o, k) => { if (o === i) v += g.lv[k] * Math.floor(BME.buildCost(k) / 2) + Math.floor(BM_SQ[k].p / 2); }); return v; },
+  need: g => g.pending && g.pending.k === 'sell' ? g.pending.pays.reduce((a, x) => a + x.amt, 0) : 0,
+  // 사람이 고른 칸 하나를 판다 (건물이 있으면 맨 위 건물 한 단계, 없으면 땅). 모자란 돈이 채워지거나 팔 게 없으면 낸다
+  sell(g, k, ev){
+    const pd = g.pending; ev = ev || [];
+    if (!pd || pd.k !== 'sell') return ev;
+    const i = pd.who, p = g.pl[i];
+    if (k === 'auto') BME._liq(g, i, BME.need(g));
+    else if (g.own[k] === i){
+      const v = BME.sellOne(g, k);
+      if (g.lv[k] > 0){ g.lv[k]--; BME.log(g, `${p.nm} ${BM_SQ[k].n} 건물 매각 +${v}만`); }
+      else { g.own[k] = -1; BME.log(g, `${p.nm} ${BM_SQ[k].n} 땅 매각 +${v}만`); }
+      p.cash += v;
+      ev.push({t:'msg', s:`${BM_SQ[k].n} 매각 +${v}만`, k:'sold', i, sq:k});
+      BME.snap(g, ev);
+    }
+    const need = BME.need(g);
+    if (p.cash >= need || !g.own.some(o => o === i)){
+      g.pending = null;
+      for (const x of pd.pays) BME.pay(g, i, x.amt, x.to, ev);
+      BME.afterAction(g);
+    }
+    return ev;
   },
   liquidate(g, i, amt, ev){
     const own0 = g.own.filter(o => o === i).length + g.lv.reduce((a, l, k) => a + (g.own[k] === i ? l : 0), 0);
@@ -3266,7 +3304,7 @@ function bmCardHTML(){
     <li>주인 없는 도시에 서면 살 수 있고, 내 도시에 다시 서면 별장 → 빌딩 → 호텔을 한 단계씩 올립니다(단계마다 땅값의 절반). 남의 도시에 서면 통행료를 내고, 같은 색 도시를 모두 가진 사람에게는 통행료가 ${BM.group}배입니다.</li>
     <li>통행료(만) = 땅값 × 단계 배수 × (1 + ${BM.esc} × (바퀴 수 − 1)), 반올림, 최소 1. 단계 배수는 땅 ${BM.rent[0]}, 별장 ${BM.rent[1]}, 빌딩 ${BM.rent[2]}, 호텔 ${BM.rent[3]}이고, 바퀴는 첫 차례 사람이 한 바퀴 돌 때마다 1씩 늘어 통행료가 처음보다 ${Math.round(BM.esc * 100)}%p씩 오릅니다.</li>
     <li>같은 눈이 나오면 한 번 더 굴리고, 세 번 연속이면 무인도로 갑니다. 무인도에서는 ${BM.jail}턴 동안 같은 눈이 나와야 나갑니다. 비행기 칸에 서면 원하는 칸으로 날아갑니다. 세금 칸은 현금의 10%(최소 5만)를 여행기금에 내고, 여행기금 칸에 서면 모인 돈을 받습니다.</li>
-    <li>돈이 모자라면 건물 → 땅 순으로(싼 것부터) 산 값의 절반에 자동으로 팔고, 그래도 모자라면 파산합니다.</li>
+    <li>돈이 모자라면 팔 땅이나 건물을 직접 고릅니다. 건물이 있는 도시는 맨 위 건물 한 단계부터 팔리고, 건물은 건설비의 절반, 땅은 땅값의 절반(내림)을 받습니다. 모자란 돈이 채워지면 바로 내고, 가진 것을 다 팔아도 모자라면 파산합니다. 컴퓨터는 싼 것부터 자동으로 팝니다.</li>
     <li>누군가 한 명 파산하면 그 자리에서 끝납니다. 파산한 사람이 꼴찌이고, 나머지는 총자산(현금 + 땅값 + 건물값) 순입니다. 혹시 ${BM.cap}바퀴까지 아무도 파산하지 않으면 그때 총자산 순으로 끝냅니다.</li>
     <li>판돈 ${fmtUSD(BM.minBet, 0)}~${fmtUSD(BM.maxBet, 0)}을 달러 통장에서 걸고 시작합니다. 끝나면 순위에 따라 판돈의 배수를 돌려받습니다. 2명: 1위 2배 / 3명: 1위 2.5배, 2위 0.5배 / 4명: 1위 3배, 2위 1배 (나머지 0). 배수의 평균이 1배라서 실력이 같으면 기대 손익은 0입니다.</li>
     ${BM.waitDays ? `<li>가입하고 ${BM.waitDays}일이 지나야 할 수 있습니다(로그인하지 않았으면 이 기록을 시작한 때부터).</li>` : ''}
@@ -3403,6 +3441,7 @@ function bmUpdate(){
     el.style.setProperty('--oc', o >= 0 ? BM.cols[o] : 'transparent');
     el.classList.toggle('fly', !!(pd && pd.k === 'fly' && myTurn && k !== 24));
     el.classList.toggle('sel', BMV.sel === k);
+    el.classList.toggle('sellable', !!(pd && pd.k === 'sell' && !BMV.busy && V.own[k] === 0));
     const pEl = el.querySelector('.bm-p');
     if (c.t === 'city'){
       pEl.textContent = o >= 0 ? `${BME.rent({...g, own:V.own, lv:V.lv}, k)}만` : `${c.p}만`;
@@ -3424,6 +3463,11 @@ function bmUpdate(){
   // 행동 버튼
   let act = '';
   if (g.over && !BMV.busy) act = `<button class="btn solid bm-roll" id="bmEnd">결과 보기</button>`;
+  else if (!BMV.busy && pd && pd.k === 'sell'){
+    const need = BME.need(g), cash = g.pl[0].cash;
+    const list = BM_SQ.map((c, k) => g.own[k] === 0 ? `<button class="btn bm-sell" data-bmsell="${k}"><span>${c.n} ${g.lv[k] ? `${BM_BLD[g.lv[k]]} ${BM.buildNames[g.lv[k]]}` : '땅'}</span><b class="num">+${BME.sellOne(g, k)}만</b></button>` : '').join('');
+    act = `<p class="bm-q">💸 돈이 모자랍니다. 팔 땅이나 건물을 고르세요 <small>내야 할 돈 ${need}만 · 현금 ${cash}만 · <b>${Math.max(0, need - cash)}만 더 필요</b> (건물이 있으면 맨 위 건물부터 팝니다)</small></p><div class="bm-sells">${list}</div><div class="bm-acts"><button class="btn" data-bmsell="auto">싼 것부터 자동으로 팔기</button></div>`;
+  }
   else if (BMV.busy || g.turn !== 0) act = `<p class="bm-wait">${cur === 0 ? '내' : g.pl[cur].nm} 차례…</p>`;
   else if (pd && pd.k === 'roll') act = `<button class="btn solid bm-roll" id="bmRoll">🎲 주사위 굴리기</button>`;
   else if (pd && pd.k === 'buy'){ const c = BM_SQ[pd.sq]; act = `<p class="bm-q">${c.n}을(를) ${c.p}만에 살까요? <small>지금 통행료 ${BME.rentAt(g, pd.sq, 0)}만부터</small></p><div class="bm-acts"><button class="btn" data-bmyes="0">안 산다</button><button class="btn solid" data-bmyes="1">산다</button></div>`; }
@@ -3588,6 +3632,8 @@ async function bmPlay(ev, v0, done){
         else if (k === 'fly'){ bmBanner(`✈️ ${e.s}`, '', 800); await bmWait(450); }
         else if (k === 'bankrupt'){ bmBanner(`💥 ${e.s}`, 'red', 1200); bmShake(); await bmWait(800); }
         else if (k === 'sell'){ bmBanner('🏚️ 매각', 'red', 800); await bmWait(450); }
+        else if (k === 'short'){ bmBanner('💸 돈이 모자랍니다!', 'red', 1000); bmShake(); await bmWait(600); }
+        else if (k === 'sold'){ await bmWait(300); }
         else await bmWait(500);
       }
     }
@@ -3619,7 +3665,7 @@ async function bmCard(text){
 function bmTick(){
   const g = bmG(); if (!g || !bmOpenNow() || BMV.busy) return;
   bmUpdate();
-  if (g.over || g.pl[g.turn].me) return;
+  if (g.over || g.pl[g.turn].me || (g.pending && g.pending.k === 'sell')) return;   // 팔 것 고르기는 남의 차례에도 사람이 해야 한다
   const gen = BMV.gen;
   BMV.busy = true; bmUpdate();
   setTimeout(() => {
@@ -3671,6 +3717,11 @@ document.addEventListener('click', e => {
     return;
   }
   if (t.id === 'bmEnd'){ bmFinish(false); return; }
+  // 팔 것 고르기 (남의 차례에 생길 수도 있다)
+  if (!BMV.busy && g.pending && g.pending.k === 'sell'){
+    const k = t.dataset.bmsell !== undefined ? t.dataset.bmsell : t.dataset.bmsq !== undefined && g.own[+t.dataset.bmsq] === 0 ? t.dataset.bmsq : null;
+    if (k !== null){ bmAct(g2 => BME.sell(g2, k === 'auto' ? 'auto' : +k)); return; }
+  }
   if (BMV.busy || g.turn !== 0 || g.over) { if (t.dataset.bmsq){ BMV.sel = +t.dataset.bmsq; bmRender(); } return; }
   if (t.id === 'bmRoll'){ bmAct(g2 => BME.roll(g2, Math.random)); return; }
   if (t.dataset.bmyes !== undefined){ bmAct(g2 => BME.decide(g2, t.dataset.bmyes === '1', -1, Math.random)); return; }
