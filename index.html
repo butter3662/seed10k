@@ -802,7 +802,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.10.0';
+const VERSION = '1.10.1';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -3009,7 +3009,7 @@ function mgAnswer(ans, close){
    게임 상태는 S.bm.cur에 저장된다. 한 턴의 결과는 주사위를 굴리는 순간 모두 계산해 저장한 뒤 애니메이션만 보여 준다
    (새로고침으로 주사위를 다시 굴릴 수 없게). 엔진(BME)은 화면 코드와 분리되어 있다. */
 // 누군가 처음 파산하면 끝난다. 끝없이 길어지지 않게 통행료가 바퀴마다 esc씩(처음 통행료 기준) 오르고, 안전장치로 cap바퀴에서 총자산 순으로 끝낸다
-const BM = {perDay:3, minBet:10, maxBet:1000, waitDays:3, cap:80, esc:0.1, start:300, salary:20, jail:2,
+const BM = {minBet:10, maxBet:1000, waitDays:3, cap:80, esc:0.1, start:300, salary:20, jail:2,
   pay:{2:[2, 0], 3:[2.5, 0.5, 0], 4:[3, 1, 0, 0]},      // 참가자 수별 순위 배수 (평균 1)
   rent:[0.2, 1.0, 2.4, 4.4], build:0.5, group:2, buildNames:['땅', '별장', '빌딩', '호텔'],
   names:['나', '알파', '베타', '감마'], cols:['#E2B45E', '#4C9AFF', '#FF6B6B', '#36C38A']};
@@ -3258,7 +3258,7 @@ function bmLockText(ms){
   return d ? `${d}일 ${h % 24}시간` : `${h}시간`;
 }
 function bmCardHTML(){
-  const b = bmToday(), left = BM.perDay - b.n, g = b.cur;
+  const b = bmToday(), g = b.cur;
   INFO.bm = {t:'주사위 세계여행', h:`<div class="prose"><ul>
     <li>컴퓨터 1~3명과 32칸 세계 도시 보드를 주사위로 돕니다. 모두 ${BM.start}만(게임 속 돈)으로 시작하고, 출발 칸을 지나거나 서면 ${BM.salary}만을 받습니다.</li>
     <li>주인 없는 도시에 서면 살 수 있고, 내 도시에 다시 서면 별장 → 빌딩 → 호텔을 한 단계씩 올립니다(단계마다 땅값의 절반). 남의 도시에 서면 통행료를 내고, 같은 색 도시를 모두 가진 사람에게는 통행료가 ${BM.group}배입니다.</li>
@@ -3268,20 +3268,19 @@ function bmCardHTML(){
     <li>누군가 한 명 파산하면 그 자리에서 끝납니다. 파산한 사람이 꼴찌이고, 나머지는 총자산(현금 + 땅값 + 건물값) 순입니다. 혹시 ${BM.cap}바퀴까지 아무도 파산하지 않으면 그때 총자산 순으로 끝냅니다.</li>
     <li>판돈 ${fmtUSD(BM.minBet, 0)}~${fmtUSD(BM.maxBet, 0)}을 달러 통장에서 걸고 시작합니다. 끝나면 순위에 따라 판돈의 배수를 돌려받습니다. 2명: 1위 2배 / 3명: 1위 2.5배, 2위 0.5배 / 4명: 1위 3배, 2위 1배 (나머지 0). 배수의 평균이 1배라서 실력이 같으면 기대 손익은 0입니다.</li>
     <li>가입하고 ${BM.waitDays}일이 지나야 할 수 있습니다(로그인하지 않았으면 이 기록을 시작한 때부터).</li>
-    <li>${isLive() ? '하루' : '게임 속 거래일마다'} ${BM.perDay}판까지. 도중에 닫아도 이어서 할 수 있고, 기권하면 판돈을 잃습니다.</li>
+    <li>판 수 제한은 없습니다. 도중에 닫아도 이어서 할 수 있고, 기권하면 판돈을 잃습니다.</li>
     <li>딴 돈과 잃은 돈은 투자 손익처럼 순자산·수익률·랭킹에 그대로 반영됩니다.</li></ul></div>`};
   const lock = g ? 0 : bmLockLeft();
-  const label = g ? '이어 하기' : S.over ? '파산해서 할 수 없습니다' : lock ? `${bmLockText(lock)} 뒤부터` : left > 0 ? '새 게임' : '오늘은 끝 (내일 다시)';
+  const label = g ? '이어 하기' : S.over ? '파산해서 할 수 없습니다' : lock ? `${bmLockText(lock)} 뒤부터` : '새 게임';
   const h = b.hist.slice(0, 3).map(x => `<span class="${cls(x.pay - x.stake)}">${x.rank}/${x.n}위 ${signUSD(x.pay - x.stake)}</span>`).join(' · ');
-  return `<div class="card-h"><h2>주사위 세계여행 ${infoBtn('bm')}</h2><small>${isLive() ? '오늘' : '이번 거래일'} ${b.n}/${BM.perDay}판</small></div>
+  return `<div class="card-h"><h2>주사위 세계여행 ${infoBtn('bm')}</h2><small>${isLive() ? '오늘' : '이번 거래일'} ${b.n}판</small></div>
     ${lock ? `<p class="mg-desc">${ACC.user ? '가입' : '이 기록을 시작'}하고 ${BM.waitDays}일이 지나야 할 수 있습니다.</p>` : g ? `<p class="mg-desc">진행 중: ${g.round}바퀴째, 판돈 ${fmtUSD(g.stake)}</p>` : h ? `<p class="mg-desc">최근 ${h}</p>` : `<p class="mg-desc">판돈을 걸고 컴퓨터와 도시를 사고파는 주사위 보드게임</p>`}
-    <div class="mg-foot"><span class="muted">${g ? '' : `달러 통장 <b class="num">${fmtUSDn(S.usd)}</b>`}</span><button class="btn solid" id="bmGo" ${!g && (S.over || left <= 0 || lock) ? 'disabled' : ''}>${label}</button></div>`;
+    <div class="mg-foot"><span class="muted">${g ? '' : `달러 통장 <b class="num">${fmtUSDn(S.usd)}</b>`}</span><button class="btn solid" id="bmGo" ${!g && (S.over || lock) ? 'disabled' : ''}>${label}</button></div>`;
 }
 function bmSetup(){
   const b = bmToday();
   if (b.cur) return bmOpen();
   if (S.over) return toast('파산해서 할 수 없습니다', true);
-  if (b.n >= BM.perDay) return toast('오늘 할 수 있는 판을 다 했습니다', true);
   if (bmLockLeft()) return toast(`가입하고 ${BM.waitDays}일이 지나야 할 수 있습니다 (${bmLockText(bmLockLeft())} 남음)`, true);
   UI.bmN = UI.bmN || 2; UI.bmBet = UI.bmBet || '';
   const close = showModal(`<h2>주사위 세계여행</h2><div id="bmSet"></div>
@@ -3309,7 +3308,7 @@ function bmSetup(){
   $('#bmStart').onclick = () => {
     const bet = Math.round((parseFloat(UI.bmBet) || 0) * 100) / 100, max = Math.min(BM.maxBet, Math.floor(S.usd));
     const b2 = bmToday();
-    if (b2.cur || b2.n >= BM.perDay || bmLockLeft() || !(bet >= BM.minBet && bet <= max)) return;
+    if (b2.cur || bmLockLeft() || !(bet >= BM.minBet && bet <= max)) return;
     S.usd = Math.round((S.usd - bet) * 100) / 100;
     b2.n++; b2.cur = BME.newGame(UI.bmN + 1, bet, Math.random);
     UI.bmBet = '';
