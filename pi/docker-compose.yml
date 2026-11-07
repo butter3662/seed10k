@@ -1,0 +1,16 @@
+# SEED 10K 시세 수집기 (라즈베리파이)
+# 실행: cd ~/seed10k/pi && docker compose up -d
+# 로그: docker compose logs -f --tail 50
+services:
+  seed10k-quotes:
+    image: denoland/deno:2.7.11      # arm64(라즈베리파이)와 amd64 모두 있는 공식 이미지
+    init: true
+    restart: unless-stopped          # 파이를 다시 켜거나 프로세스가 멈추면 자동으로 다시 켠다
+    env_file: .env
+    environment:
+      SEED10K_NO_SERVE: "1"
+    volumes:
+      - ..:/app:ro                   # 저장소 전체를 읽기 전용으로 (index.ts, names.ts를 그대로 쓴다)
+    working_dir: /app
+    command: ["run", "--allow-net", "--allow-env", "pi/runner.ts"]
+    # 밖에서 접속할 포트는 열지 않는다 (나가는 요청만 한다)

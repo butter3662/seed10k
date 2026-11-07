@@ -201,8 +201,9 @@ export async function yahooNews(sym: string): Promise<News[]> {
 
 /* 묵은 종목부터 NEWS_PER_RUN개의 뉴스를 받아 저장한다 */
 export async function refreshNews() {
-  const rows: { id: string; at: string | null }[] = await (await rest("seed10k_news?select=id,at", { headers: restHeaders() })).json();
+  const rows: { id: string; at: string | null; ko?: News[] | null }[] = await (await rest("seed10k_news?select=id,at,ko:items->ko", { headers: restHeaders() })).json();
   const at = new Map(rows.map((r) => [r.id, r.at ? Date.parse(r.at) : 0]));
+  const oldKo = new Map(rows.map((r) => [r.id, r.ko ?? null]));
   const hasNaver = !!(Deno.env.get("NAVER_CLIENT_ID") && Deno.env.get("NAVER_CLIENT_SECRET"));
   // 네이버 키가 생겼으면, 키가 없어서 한국어 기사가 비어 있던(ko = null) 종목을 먼저 다시 받는다
   if (hasNaver) {
@@ -220,7 +221,8 @@ export async function refreshNews() {
       naverNews(meta.n).catch((e) => { errs.push(`${id} 네이버: ${(e as Error).message}`); return [] as News[]; }),
       meta.m === "US" ? yahooNews(meta.t).catch((e) => { errs.push(`${id} Yahoo: ${(e as Error).message}`); return [] as News[]; }) : Promise.resolve([] as News[]),
     ]);
-    out.push({ id, at: new Date().toISOString(), items: { ko, en } });
+    // 네이버 키가 없는 곳(예: 키를 안 넣은 라즈베리파이)에서 돌 때는 이미 받아 둔 한국어 기사를 지우지 않는다
+    out.push({ id, at: new Date().toISOString(), items: { ko: ko === null ? oldKo.get(id) ?? null : ko, en } });
   }
   if (out.length) {
     await rest("seed10k_news?on_conflict=id", {
@@ -695,7 +697,8 @@ async function runSlow(at: Date, act: { KR: boolean; US: boolean; FX: boolean },
 type EdgeRT = { waitUntil(p: Promise<unknown>): void };
 const edgeRuntime = (globalThis as unknown as { EdgeRuntime?: EdgeRT }).EdgeRuntime;
 
-Deno.serve(async () => {
+// 라즈베리파이 수집기(pi/runner.ts)는 이 파일의 run()만 가져다 쓴다. 그때는 HTTP 서버를 열지 않는다.
+if (!Deno.env.get("SEED10K_NO_SERVE")) Deno.serve(async () => {
   try {
     // Supabase에서는 1분 작업을 응답 뒤에 이어서 돌린다 (EdgeRuntime.waitUntil). 그 밖의 환경에서는 끝까지 기다린다
     const out = await run(new Date(), edgeRuntime ? (p) => edgeRuntime.waitUntil(p) : undefined);
