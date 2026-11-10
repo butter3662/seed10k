@@ -11,6 +11,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: |
-          python3 probe/p3.py
+          python3 probe/p4.py
           git config user.name gha; git config user.email gha@users.noreply.github.com
-          git add probe/p3.txt && git commit -m "자료 확인 결과" && git push origin HEAD:tmp-yahoo-test
+          git add probe/p4.txt && git commit -m "자료 확인 결과" && git push origin HEAD:tmp-yahoo-test
