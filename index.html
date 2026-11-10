@@ -510,6 +510,93 @@ html.gated body{overflow:hidden}
 .mg-chart svg{display:block;overflow:visible}
 .modal .acts .mg-up,.modal .acts .mg-dn{flex:1;font-weight:750;color:#fff;border:0}
 .mg-up{background:var(--up)} .mg-dn{background:var(--down)}
+/* 투자 탭 하위 탭 */
+.subtabs{position:sticky;top:var(--top-h,56px);z-index:5;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px;padding:6px 0 10px;background:var(--paper)}
+.subtabs button{height:36px;border:1px solid var(--rule);border-radius:999px;background:var(--surface);color:var(--ink-2);font-weight:750;font-size:14px}
+.subtabs button[aria-selected="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.subpane{display:grid;gap:12px}
+.subpane[hidden]{display:none}
+.bd-row{display:grid;grid-template-columns:minmax(0,1fr) auto 64px;gap:10px;align-items:center;width:100%;padding:10px 0;border:0;border-top:1px solid var(--rule);background:none;text-align:left;color:var(--ink)}
+.bd-row:first-of-type{border-top:0}
+.bd-n{display:grid;gap:1px;min-width:0}
+.bd-n b{font-size:14.5px;font-weight:750}
+.bd-n small{font-size:11.5px;color:var(--ink-3)}
+.bd-y{font-weight:750;font-size:14.5px;text-align:right}
+.bd-c{font-size:12.5px;text-align:right;font-weight:650}
+.bd-hold{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:10px;align-items:center;padding:10px 0;border-top:1px solid var(--rule)}
+.bd-hold:first-of-type{border-top:0}
+.bd-v{display:grid;text-align:right;gap:1px}
+.bd-v b{font-size:14px}.bd-v small{font-size:11.5px}
+.bd-hold .btn{height:32px;padding:0 12px}
+/* 도박 */
+.gam-il.on{border-color:#FF6B6B;background:color-mix(in srgb,#FF6B6B 8%,var(--surface))}
+.sw{width:50px;height:28px;border-radius:999px;border:1px solid var(--rule);background:var(--surface-2);position:relative;padding:0}
+.sw i{position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:var(--ink-3);transition:transform .2s,background .2s}
+.sw.on{background:#FF6B6B;border-color:#FF6B6B}.sw.on i{transform:translateX(22px);background:#fff}
+.police{text-align:center}
+.police h2{color:#FF6B6B;font-size:24px;margin:8px 0}
+.siren{display:flex;justify-content:center;gap:10px;margin:4px 0}
+.siren i{width:34px;height:34px;border-radius:50%;background:#FF3B3B;box-shadow:0 0 18px #FF3B3B;animation:siren .5s infinite alternate}
+.siren i:last-child{background:#3B7BFF;box-shadow:0 0 18px #3B7BFF;animation-delay:.25s}
+@keyframes siren{to{opacity:.2;transform:scale(.85)}}
+.busted{text-decoration:line-through;text-decoration-color:#FF3B3B;text-decoration-thickness:2.5px;color:var(--ink-2)}
+.sl-board{position:relative;width:min(100%,560px);aspect-ratio:1;display:grid;grid-template-columns:repeat(10,minmax(0,1fr));grid-template-rows:repeat(10,minmax(0,1fr));border-radius:10px;overflow:hidden;border:1px solid var(--rule)}
+.sl-c{position:relative;display:flex;align-items:flex-start;justify-content:flex-start;padding:2px 3px}
+.sl-c.a{background:color-mix(in srgb,var(--brass) 10%,var(--surface))}.sl-c.b{background:var(--surface)}
+.sl-c span{font-size:clamp(7px,1.8vw,10.5px);color:var(--ink-3);font-weight:700}
+.sl-svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.sl-lad line{stroke:#B98A4E;stroke-width:3.2;stroke-linecap:round}
+.sl-lad line.rung{stroke-width:2.4}
+.sl-snk{fill:none;stroke-width:7;stroke-linecap:round;opacity:.85}
+.sl-tok{position:absolute;left:0;top:0;transition:transform .15s ease-out;z-index:3}
+.sl-tok span{display:grid;place-items:center;width:100%;height:100%;border-radius:50%;background:radial-gradient(circle at 35% 30%,color-mix(in srgb,var(--pc) 55%,#fff),var(--pc) 55%,color-mix(in srgb,var(--pc) 70%,#000));color:#fff;font-weight:850;font-size:clamp(8px,2vw,11px);box-shadow:0 2px 6px rgba(0,0,0,.45)}
+.sl-tok span.hop{animation:bmhop .15s ease-out}
+.sl-panel{width:min(100%,560px);display:grid;gap:8px}
+.oe-score{display:flex;justify-content:space-between;align-items:center;margin:4px 0 8px;font-size:14px}
+.oe-score b{font-size:20px;margin-left:4px}
+.oe-hand{height:110px;border-radius:14px;background:var(--surface-2);display:grid;place-items:center;align-content:center;gap:6px;overflow:hidden}
+.oe-hand .fist{font-size:56px}
+.oe-hand.shake .fist{animation:oeshake .3s infinite}
+@keyframes oeshake{25%{transform:rotate(-12deg)}75%{transform:rotate(12deg)}}
+.oe-marbles{display:flex;flex-wrap:wrap;gap:4px;justify-content:center;max-width:260px}
+.oe-marbles i{width:14px;height:14px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff,#7FB2FF 45%,#2F5FD0);opacity:0;animation:oem .25s forwards;animation-delay:var(--d)}
+@keyframes oem{from{opacity:0;transform:scale(.2)}to{opacity:1;transform:none}}
+.oe-res{text-align:center;margin:8px 0;font-weight:800}
+/* 복권 */
+.ls{display:grid;gap:4px;margin:6px 0 10px}
+.ls-row{display:grid;grid-template-columns:22px 52px minmax(0,1fr);gap:6px;align-items:center;padding:6px 8px;border:1px solid var(--rule);border-radius:10px;background:var(--surface);color:var(--ink);text-align:left}
+.ls-row.on{border-color:var(--brass)}
+.ls-m{font-size:12px;color:var(--ink-3)}
+.ls-n{display:flex;gap:3px;flex-wrap:wrap;align-items:center;font-size:12px}
+.lb{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;font-style:normal;font-weight:800;font-size:11.5px;color:#fff;text-shadow:0 1px 1px rgba(0,0,0,.35)}
+.lb.c1{background:#F2B705}.lb.c2{background:#3D8BFD}.lb.c3{background:#E5484D}.lb.c4{background:#8A94A6}.lb.c5{background:#30A46C}
+.lb.miss{opacity:.35}.lb.hit{box-shadow:0 0 0 2px var(--paper),0 0 0 4px var(--brass)}.lb.bon{box-shadow:0 0 0 2px var(--paper),0 0 0 4px #9C7BD9}
+.lgrid{display:grid;grid-template-columns:repeat(9,minmax(0,1fr));gap:4px}
+.lg{height:34px;border:1px solid var(--rule);border-radius:8px;background:var(--surface);color:var(--ink);font-weight:700;font-size:13px}
+.lg.on{background:#E5484D;color:#fff;border-color:#E5484D}
+.lt-tix{border-top:1px solid var(--rule);padding:10px 0;display:grid;gap:5px}
+.lt-tix:first-of-type{border-top:0}
+.lt-h{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.lt-h .btn{height:30px;padding:0 10px;margin-left:auto}
+.lt-h > span{margin-left:auto;font-size:13px;font-weight:700}
+.lt-g{display:grid;grid-template-columns:18px 44px minmax(0,1fr) auto;gap:6px;align-items:center}
+.lt-rk{font-size:12.5px;font-weight:800}
+.lt-win{display:flex;gap:5px;align-items:center;flex-wrap:wrap}
+.lt-win .lb{width:30px;height:30px;font-size:13px}
+.sp-list{display:flex;flex-wrap:wrap;gap:8px}
+.sp-mini{width:64px;height:72px;border-radius:10px;border:1px solid var(--rule);background:linear-gradient(160deg,#FFD84D,#FF8A3D);font-size:26px;display:grid;place-items:center;align-content:center;color:#5A2A00}
+.sp-mini small{font-size:11px;font-weight:800}
+.sp-ticket{border-radius:14px;background:linear-gradient(160deg,#FFE27A,#FF9B4A 60%,#FF6F61);padding:10px;color:#3B1A00}
+.sp-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
+.sp-head b{font-size:18px;letter-spacing:.04em}.sp-head small{font-size:11.5px;font-weight:700}
+.sp-area{position:relative;display:grid;gap:6px;background:#FFF8E1;border-radius:10px;padding:8px;user-select:none;-webkit-user-select:none}
+.sp-g{display:grid;grid-template-columns:40px 40px 1fr;gap:6px;align-items:center;padding:4px 8px;border-radius:8px;font-size:26px}
+.sp-g b{font-size:15px;text-align:right}
+.sp-g.win{background:#FFD84D;box-shadow:0 0 0 2px #E5484D inset}
+.sp-area canvas{position:absolute;inset:0;width:100%;height:100%;border-radius:10px;cursor:pointer}
+.sp-res{text-align:center;margin-top:8px;font-size:16px;font-weight:800;display:grid;gap:2px}
+.sp-res small{font-size:12px;font-weight:600}
+table.mini{border-collapse:collapse;margin:6px 0}table.mini td,table.mini th{padding:3px 10px 3px 0;text-align:left;font-size:13px}
 /* 주사위 세계여행 */
 html.bm-open,html.bm-open body{overflow:hidden}
 /* iOS Safari에서 흐림 효과(backdrop-filter)가 걸린 머리글·탭 막대가 위 레이어를 뚫고 비쳐 보이는 문제: 게임 화면을 연 동안 아예 숨긴다 */
@@ -599,7 +686,7 @@ html.bm-open .top,html.bm-open .tabbar{visibility:hidden}
 @keyframes bmbtn{50%{transform:scale(1.03)}}
 .bm-q{margin:0;font-size:clamp(11.5px,3.1vw,14px);line-height:1.4}
 .bm-q small{display:block;color:var(--ink-3);font-size:.85em}
-.bm-acts{display:flex;gap:6px}.bm-acts .btn{flex:1}
+.bm-acts{display:flex;gap:6px;flex-wrap:wrap}.bm-acts .btn{flex:1 1 auto}
 .bm-wait{margin:0;color:var(--ink-3);font-size:13px}
 .bm-sells{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;max-height:38vh;overflow:auto}
 .bm-sell{height:auto!important;min-height:32px;padding:5px 8px;display:flex;justify-content:space-between;align-items:center;gap:4px;font-size:clamp(10.5px,2.9vw,13px);text-align:left}
@@ -759,7 +846,7 @@ html[data-game=live] .c-news{order:3}
 
 <main id="main">
   <section class="view" id="v-home" aria-label="홈"></section>
-  <section class="view" id="v-market" aria-label="시장"></section>
+  <section class="view" id="v-market" aria-label="투자"></section>
   <section class="view" id="v-assets" aria-label="내 자산"></section>
   <section class="view" id="v-loans" aria-label="대출"></section>
   <section class="view" id="v-info" aria-label="규칙과 설정"></section>
@@ -767,7 +854,7 @@ html[data-game=live] .c-news{order:3}
 
 <nav class="tabbar" aria-label="화면">
   <button data-tab="home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5L12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>홈</button>
-  <button data-tab="market"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l5-6 4 3 6-8 3 4"/><path d="M3 21h18"/></svg>시장</button>
+  <button data-tab="market"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l5-6 4 3 6-8 3 4"/><path d="M3 21h18"/></svg>투자</button>
   <button data-tab="assets"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="14" rx="3"/><path d="M3 10h18M16 15h2"/><path d="M7 6V4.5A1.5 1.5 0 0 1 8.5 3h7A1.5 1.5 0 0 1 17 4.5V6"/></svg>내 자산</button>
   <button data-tab="loans" id="tabLoans"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-5 9 5"/><path d="M5 9v9M10 9v9M14 9v9M19 9v9M3 20h18"/></svg>대출</button>
   <button data-tab="info"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg>규칙·설정</button>
@@ -808,7 +895,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.12.3';
+const VERSION = '2.0.0';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -1099,7 +1186,7 @@ function holdingsUSD(filter){
 }
 const debt = () => S.loans.credit.bal + S.loans.margin.bal + S.loans.od.bal;
 const cashUSD = () => S.usd + S.krw / FX();
-const netWorth = () => cashUSD() + holdingsUSD() - debt();
+const netWorth = () => cashUSD() + holdingsUSD() + altUSD() - debt();   // altUSD: 채권·주택 (inv.js)
 function capUSD(s){ const r = price(s.id) / basePrice(s); return s.cur === 'KRW' ? s.mc * r / FX() : s.mc * r; }
 function capNative(s){ return s.mc * price(s.id) / basePrice(s); }
 function g(){ return clamp(Math.round(S.grade), 1, 10); }
@@ -2363,7 +2450,6 @@ function renderHome(){
         </article>
         <section class="card c-wallet" id="walletCard"></section>
         <section class="card c-mg" id="mgCard"></section>
-        <section class="card c-mg" id="bmCard"></section>
         <section class="card c-news"><div class="card-h"><h2 id="newsH"></h2><small id="newsS"></small></div><div id="newsBody"></div></section>
       </div>
       <div class="col-b">
@@ -2399,7 +2485,6 @@ function renderHome(){
 
   $('#walletCard').innerHTML = walletHTML();
   $('#mgCard').innerHTML = mgCardHTML();
-  $('#bmCard').innerHTML = bmCardHTML();
   const tiles = [{l:'한국 300 지수', a:idxHist('KR')}, {l:'미국 300 지수', a:idxHist('US')}, {l:'원/달러 환율', a:fxHist(), fx:true}];
   $('#pulse').innerHTML = tiles.map(t => {
     const a = t.a, cur = last(a), prev = a.length > 1 ? a[a.length-2] : a[0];
@@ -2455,8 +2540,9 @@ function liveStatusHTML(){
 }
 
 /* ───────── 렌더: 시장 ───────── */
-function renderMarket(){
-  const v = $('#v-market');
+function renderMarket(){ renderInvest(); }
+function renderStockPane(){
+  const v = $('#mk-stock'); if (!v) return renderInvest();
   if (!v.dataset.built){
     v.dataset.built = 1;
     v.innerHTML = `
@@ -2541,7 +2627,7 @@ function renderAssets(){
   const holdRows = ids.map(id => {
     const s = BY_ID[id], P = S.pos[id], p = price(id);
     const val = P.q * toUSD(s, p), plN = P.q * p - P.cost, plr = P.cost ? plN / P.cost : 0;
-    return `<button class="hold" data-open="${id}">
+    return `<button class="hold" data-open="${id}" data-from="assets">
       <span class="mono" style="--h:${SECTORS[s.s].h}">${esc(monoText(s))}</span>
       <span class="nmb"><div class="n">${esc(s.n)}</div><div class="s">${P.q.toLocaleString()}주, 평균 ${fmtPx(s, P.avg)}</div></span>
       <span class="px"><div class="p num">${s.cur === 'KRW' ? fmtKRW(P.q * p) : fmtUSD(val)}</div><div class="c num ${cls(plN)}">${s.cur === 'KRW' ? (plN > 0 ? '+' : '') + fmtKRW(plN) : signUSD(plN)} (${fmtPct(plr)})</div></span>
@@ -2565,8 +2651,9 @@ function renderAssets(){
     <div class="assets-grid">
       <div class="as-a">
       <section class="card ao1"><div class="card-h"><h2>보유 종목</h2><small>${ids.length}개</small></div>
-        ${holdRows || '<p class="empty">아직 보유한 종목이 없습니다. 시장 탭에서 종목을 눌러 매수해 보세요.</p>'}
+        ${holdRows || '<p class="empty">아직 보유한 종목이 없습니다. 투자 탭에서 종목을 눌러 매수해 보세요.</p>'}
       </section>
+      ${altAssetsHTML()}
         <section class="card ao5"><div class="card-h"><h2>거래 내역</h2><small>최근 60건</small></div>
           ${tr ? `<div class="tbl-wrap"><table class="trades"><thead><tr><th>날짜</th><th>구분</th><th>종목</th><th class="r">결제 금액</th></tr></thead><tbody>${tr}</tbody></table></div>` : '<p class="empty">거래 내역이 없습니다.</p>'}
         </section>
@@ -3460,7 +3547,7 @@ function bmCardHTML(){
     <li>황금열쇠 30장(2탄 전용 카드와 장기자랑은 뺌). 장수는 자료 없음: 우대권 2장, 관광여행 3장(제주도·부산·서울), 복권·자동차 경주 각 2장, 나머지 1장씩. 황금열쇠 칸 6곳의 정확한 위치도 자료 없음(흔히 알려진 배치).</li>
     <li>돈이 모자라면 팔 땅이나 건물을 직접 고릅니다(호텔 → 빌딩 → 별장 → 땅 순으로 하나씩, 건설비·땅값의 절반). 다 팔아도 모자라면 파산합니다. 자동 팔기와 컴퓨터는 지금 통행료가 낮은 땅부터 팝니다.</li>
     <li>한 명만 남을 때까지(나머지가 모두 파산할 때까지) 합니다. 순위는 늦게 파산한 순이고, 내가 파산하면 그 자리에서 끝납니다.</li>
-    <li>판돈 ${fmtUSD(BM.minBet, 0)}~${fmtUSD(BM.maxBet, 0)}을 달러 통장에서 걸고 시작합니다. 끝나면 순위에 따라 판돈의 배수를 돌려받습니다. 2명: 1위 2배 / 3명: 1위 2.5배, 2위 0.5배 / 4명: 1위 3배, 2위 1배 (나머지 0). 배수의 평균이 1배라서 실력이 같으면 기대 손익은 0입니다.</li>
+    <li>판돈 ${fmtUSD(BM.minBet, 0)}~${fmtUSD(GAM.bm.off, 0)}(불법 모드 ${fmtUSD(GAM.bm.on, 0)})을 달러 통장에서 걸고 시작합니다. 끝나면 순위에 따라 판돈의 배수를 돌려받습니다. 2명: 1위 2배 / 3명: 1위 2.5배, 2위 0.5배 / 4명: 1위 3배, 2위 1배 (나머지 0). 배수의 평균이 1배라서 실력이 같으면 기대 손익은 0입니다.</li>
     ${BM.waitDays ? `<li>가입하고 ${BM.waitDays}일이 지나야 할 수 있습니다(로그인하지 않았으면 이 기록을 시작한 때부터).</li>` : ''}
     <li>판 수 제한은 없습니다. 도중에 닫아도 이어서 할 수 있고, 기권하면 판돈을 잃습니다.</li>
     <li>딴 돈과 잃은 돈은 투자 손익처럼 순자산·수익률·랭킹에 그대로 반영됩니다.</li></ul></div>`};
@@ -3481,13 +3568,13 @@ function bmSetup(){
     <div class="acts"><button class="btn" data-close>닫기</button><button class="btn solid" id="bmStart">시작</button></div>`);
   const draw = () => {
     const box = $('#bmSet'); if (!box) return;
-    const max = Math.min(BM.maxBet, Math.floor(S.usd));
+    const max = gamMax('bm');
     const bet = parseFloat(String(UI.bmBet).replace(/,/g, '')) || 0;
     const mult = BM.pay[UI.bmN + 1];
     const err = max < BM.minBet ? `달러 통장에 ${fmtUSDn(BM.minBet)} 이상 있어야 합니다.` : bet && (bet < BM.minBet || bet > max) ? `판돈은 ${fmtUSDn(BM.minBet, 0)}~${fmtUSDn(max, 0)}입니다.` : '';
     box.innerHTML = `<p style="margin:0 0 8px">컴퓨터 상대 수</p>
       <div class="seg" style="margin-bottom:12px">${[1, 2, 3].map(k => `<button data-bmn="${k}" aria-pressed="${UI.bmN === k}">${k}명</button>`).join('')}</div>
-      <p style="margin:0 0 6px">판돈 (달러 통장 ${fmtUSDn(S.usd)})</p>
+      <p style="margin:0 0 6px">판돈 (한도 ${fmtUSDn(gamIl() ? GAM.bm.on : GAM.bm.off, 0)}${gamIl() ? ', 🚨 불법 모드' : ''} · 달러 통장 ${fmtUSDn(S.usd)})</p>
       <label class="amt"><span>$</span><input id="bmBetIn" type="text" inputmode="decimal" placeholder="${BM.minBet}~${max}" value="${esc(UI.bmBet)}"></label>
       <div class="quick" style="margin:8px 0">${[10, 50, 100, 500].filter(v => v <= max).map(v => `<button data-bmbet="${v}">$${v}</button>`).join('')}${max >= BM.minBet ? `<button data-bmbet="${max}">최대</button>` : ''}</div>
       <div class="bd">${mult.map((m, k) => `<div><span>${k + 1}위</span><b class="num">${m}배${bet > 0 ? ` = ${fmtUSD(bet * m)}` : ''}</b></div>`).join('')}</div>
@@ -3500,11 +3587,11 @@ function bmSetup(){
   };
   draw();
   $('#bmStart').onclick = () => {
-    const bet = Math.round((parseFloat(UI.bmBet) || 0) * 100) / 100, max = Math.min(BM.maxBet, Math.floor(S.usd));
+    const bet = Math.round((parseFloat(UI.bmBet) || 0) * 100) / 100, max = gamMax('bm');
     const b2 = bmToday();
     if (b2.cur || bmLockLeft() || !(bet >= BM.minBet && bet <= max)) return;
     S.usd = Math.round((S.usd - bet) * 100) / 100;
-    b2.n++; b2.cur = BME.newGame(UI.bmN + 1, bet, Math.random);
+    b2.n++; b2.cur = BME.newGame(UI.bmN + 1, bet, Math.random); b2.cur.il = gamIl();
     UI.bmBet = '';
     commit(); close();
     setTimeout(bmOpen, 200);
@@ -3531,7 +3618,7 @@ function bmHide(){
   const ov = $('#bmOv'); if (!ov || ov.hidden) return;
   ov.hidden = true;
   document.documentElement.classList.remove('bm-open');
-  if (UI.tab === 'home') renderTab();
+  if (UI.tab === 'market') renderTab();
 }
 const bmOpenNow = () => { const ov = $('#bmOv'); return !!(ov && !ov.hidden); };
 // 칸 번호 → 9×9 격자 위치 (0 = 오른쪽 아래, 시계 반대 방향)
@@ -3860,8 +3947,10 @@ function bmFinish(forfeit){
   b.hist = b.hist.slice(0, 10);
   const r = forfeit ? null : BME.ranking(g);
   b.cur = null;
+  altLog('gamble', `주사위 세계여행 ${forfeit ? '기권' : rank + '위'}${g.il ? ' (불법)' : ''}`, pay - g.stake, 'USD');
   commit();
   bmHide();
+  police('bm', g.il);
   const rows = r ? r.map((i, k) => `<div><span>${k + 1}위 ${g.pl[i].nm}</span><b class="num">${g.pl[i].out ? '파산' : '자산 ' + bmW(BME.assets(g, i))}</b></div>`).join('') : '';
   showModal(`<h2 class="${pay > g.stake ? 'up' : ''}">${forfeit ? '기권했습니다' : `${rank}위 (${g.n}명 중)`}</h2>
     ${rows ? `<div class="bd" style="margin-bottom:10px">${rows}</div>` : ''}
@@ -3894,6 +3983,841 @@ document.addEventListener('click', e => {
   if (t.dataset.bmsq){ const k = +t.dataset.bmsq; BMV.sel = BMV.sel === k && !(g.pending && g.pending.k === 'space') ? -1 : k; bmRender(); return; }
 });
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && bmOpenNow() && $('#modal').hidden) bmHide(); });
+
+/* ───────── 도박 탭: 불법 모드 · 경찰 단속 · 뱀사다리 · 홀짝 (주사위 세계여행은 bm.js) ───────── */
+// 판돈 한도(달러): 불법 모드를 끄면 off, 켜면 on. 불법 모드로 한 판을 끝낼 때마다 p의 확률로 경찰 단속
+const GAM = {
+  bm:{nm:'주사위 세계여행', min:10, off:100, on:1000, p:0.05},
+  sl:{nm:'뱀사다리', min:5, off:50, on:500, p:0.025},
+  oe:{nm:'홀짝', min:1, off:10, on:100, p:0.005},
+  fine:300
+};
+function gamS(){ if (!S.gam || typeof S.gam !== 'object') S.gam = {il:false, bust:0}; return S.gam; }
+const gamIl = () => !!gamS().il;
+const gamMax = k => Math.min(gamIl() ? GAM[k].on : GAM[k].off, Math.floor(Math.max(0, S.usd)));
+// 판돈 고르기 공통 화면. onStart(bet)
+function betDialog(k, title, extraHTML, onStart){
+  const G = GAM[k];
+  UI.betIn = UI.betIn || {};
+  const close = showModal(`<h2>${title}</h2>${extraHTML || ''}<div id="betBox"></div>
+    <div class="acts"><button class="btn" data-close>닫기</button><button class="btn solid" id="betGo">시작</button></div>`);
+  const draw = () => {
+    const box = $('#betBox'); if (!box) return;
+    const max = gamMax(k), lim = gamIl() ? G.on : G.off;
+    const bet = parseFloat(String(UI.betIn[k] || '').replace(/,/g, '')) || 0;
+    const err = max < G.min ? `달러 통장에 ${fmtUSDn(G.min)} 이상 있어야 합니다.` : bet && (bet < G.min || bet > max) ? `판돈은 ${fmtUSDn(G.min, 0)}~${fmtUSDn(max, 0)}입니다.` : '';
+    box.innerHTML = `<p style="margin:0 0 6px">판돈 (한도 ${fmtUSDn(lim, 0)}${gamIl() ? ', 🚨 불법 모드' : ''} · 달러 통장 ${fmtUSDn(S.usd)})</p>
+      <label class="amt"><span>$</span><input id="betIn" type="text" inputmode="decimal" placeholder="${G.min}~${max}" value="${esc(UI.betIn[k] || '')}"></label>
+      <div class="quick" style="margin:8px 0">${[1, 5, 10, 50, 100, 500].filter(v => v >= G.min && v <= max).map(v => `<button data-betq="${v}">$${v}</button>`).join('')}${max >= G.min ? `<button data-betq="${max}">최대</button>` : ''}</div>
+      ${gamIl() ? `<p class="muted" style="margin:0 0 6px">불법 모드: 이 판이 끝날 때 ${(G.p * 100).toFixed(1)}% 확률로 경찰 단속 (벌금 ${fmtUSDn(GAM.fine, 0)}, 랭킹 이름에 영구 빨간 줄)</p>` : ''}
+      <div class="err" role="status">${esc(err)}</div>`;
+    $('#betGo').disabled = !!err || !(bet >= G.min && bet <= max);
+    const inp = $('#betIn');
+    inp.addEventListener('input', () => { UI.betIn[k] = inp.value.replace(/[^\d.]/g, ''); const pos = inp.selectionStart; draw(); const i2 = $('#betIn'); i2.focus(); try { i2.setSelectionRange(pos, pos); } catch(e){} });
+    box.querySelectorAll('[data-betq]').forEach(x => x.onclick = () => { UI.betIn[k] = x.dataset.betq; draw(); });
+  };
+  draw();
+  $('#betGo').onclick = () => {
+    const bet = Math.round((parseFloat(UI.betIn[k]) || 0) * 100) / 100;
+    if (!(bet >= G.min && bet <= gamMax(k))) return;
+    S.usd = Math.round((S.usd - bet) * 100) / 100;
+    UI.betIn[k] = '';
+    close();
+    setTimeout(() => onStart(bet), 180);
+  };
+}
+// 판이 끝날 때. il: 그 판을 불법 모드로 시작했는지. 단속되면 true
+function police(k, il){
+  if (!il || Math.random() >= GAM[k].p) return false;
+  const G = gamS();
+  G.bust = (G.bust || 0) + 1; G.bustAt = Date.now();
+  const od = spendUSD(GAM.fine);
+  altLog('police', `🚨 경찰 단속 (${GAM[k].nm}) 벌금`, -GAM.fine, 'USD');
+  commit();
+  markBusted();
+  const html = `<div class="police"><div class="siren"><i></i><i></i></div><h2>🚨 경찰 단속!</h2>
+      <p>불법 도박(${GAM[k].nm}) 현장이 적발됐습니다. 벌금 <b>${fmtUSDn(GAM.fine, 0)}</b>을 냈습니다${od > 0 ? ` (달러가 모자라 마이너스통장에서 ${fmtUSDn(od)})` : ''}.</p>
+      <p class="muted">랭킹의 이름에 빨간 줄이 영구히 그어집니다.</p></div>
+      <div class="acts"><button class="btn solid" data-close>확인</button></div>`;
+  // 결과 창이 떠 있으면 닫힌 뒤에 띄운다
+  const tryShow = () => { if ($('#modal').hidden) showModal(html); else setTimeout(tryShow, 300); };
+  setTimeout(tryShow, 900);
+  return true;
+}
+// 랭킹 빨간 줄: 서버의 seed10k_busted 표에 한 번 남기면 지울 수 없다 (supabase/seed10k_busted.sql)
+async function markBusted(){
+  if (!ACC.sb || !ACC.user) return;
+  try { await ACC.sb.from('seed10k_busted').insert({user_id:ACC.user.id}); } catch(e){}
+  ACC.busted = ACC.busted || new Set(); ACC.busted.add(ACC.user.id);
+}
+
+/* ── 도박 탭 화면 ── */
+function renderGamblePane(p){
+  const il = gamIl(), G = gamS();
+  p.innerHTML = `<section class="card gam-il ${il ? 'on' : ''}"><div class="card-h"><h2>${il ? '🚨' : '🎲'} 불법 모드</h2><button class="sw ${il ? 'on' : ''}" id="ilSw" role="switch" aria-checked="${il}"><i></i></button></div>
+      <p class="mg-desc">${il ? '켜짐' : '꺼짐'}: 판돈 한도 ${['bm', 'sl', 'oe'].map(k => `${GAM[k].nm} ${fmtUSDn(il ? GAM[k].on : GAM[k].off, 0)}`).join(' · ')}</p>
+      <p class="muted" style="margin:4px 0 0">켜면 한도가 10배가 되지만, 한 판이 끝날 때마다 경찰 단속 확률이 있습니다 (${['bm', 'sl', 'oe'].map(k => `${GAM[k].nm} ${(GAM[k].p * 100).toFixed(1)}%`).join(' · ')}). 단속되면 벌금 ${fmtUSDn(GAM.fine, 0)}과 랭킹 이름에 영구 빨간 줄.${G.bust ? ` <b class="down">단속 ${G.bust}회</b>` : ''}</p></section>
+    <section class="card c-mg" id="bmCard">${bmCardHTML()}</section>
+    <section class="card c-mg" id="slCard">${slCardHTML()}</section>
+    <section class="card c-mg" id="oeCard">${oeCardHTML()}</section>`;
+}
+document.addEventListener('click', e => {
+  const t = e.target.closest('button'); if (!t) return;
+  if (t.id === 'ilSw'){ const G = gamS(); G.il = !G.il; save(); renderInvest(); toast(G.il ? '🚨 불법 모드를 켰습니다' : '불법 모드를 껐습니다'); return; }
+  if (t.id === 'slGo'){ slStart(); return; }
+  if (t.id === 'oeGo'){ oeStart(); return; }
+  if (t.dataset.oe){ oePick(t.dataset.oe); return; }
+});
+
+/* ── 뱀사다리: 1~100칸, 주사위 1개, 컴퓨터 1명과 경주 ──
+   사다리 아래에 서면 위로, 뱀 머리에 서면 꼬리로. 100을 넘치는 눈이 나오면 넘친 만큼 뒤로 물러난다. 먼저 100에 도착하면 이긴다.
+   이기면 판돈의 2배 (먼저 굴리는 쪽은 무작위라 기대값은 판돈과 같다) */
+const SL_LAD = {1:38, 4:14, 9:31, 21:42, 28:84, 36:44, 51:67, 71:91, 80:100};
+const SL_SNK = {16:6, 47:26, 49:11, 56:53, 62:19, 64:60, 87:24, 93:73, 95:75, 98:78};
+const SLE = {
+  newGame(stake, il, rnd){ const first = rnd() < 0.5 ? 0 : 1; return {v:1, stake, il, pos:[0, 0], turn:first, first, over:false, win:-1, dice:null, log:[`${first ? '컴퓨터' : '나'}부터 시작`]}; },
+  roll(g, rnd){
+    const i = g.turn, ev = [], d = 1 + Math.floor(rnd() * 6), from = g.pos[i];
+    g.dice = d; ev.push({t:'dice', i, d});
+    let to = from + d, path = [];
+    for (let k = from + 1; k <= Math.min(to, 100); k++) path.push(k);
+    if (to > 100){ const back = to - 100; for (let k = 99; k >= 100 - back; k--) path.push(k); to = 100 - back; }
+    ev.push({t:'move', i, path});
+    const nm = i ? '컴퓨터' : '나';
+    if (SL_LAD[to]){ ev.push({t:'ladder', i, from:to, to:SL_LAD[to]}); g.log.push(`${nm} ${d} → ${to}칸 사다리 타고 ${SL_LAD[to]}칸`); to = SL_LAD[to]; }
+    else if (SL_SNK[to]){ ev.push({t:'snake', i, from:to, to:SL_SNK[to]}); g.log.push(`${nm} ${d} → ${to}칸 뱀에게 물려 ${SL_SNK[to]}칸`); to = SL_SNK[to]; }
+    else g.log.push(`${nm} ${d} → ${to}칸`);
+    if (g.log.length > 30) g.log.splice(0, g.log.length - 30);
+    g.pos[i] = to;
+    if (to === 100){ g.over = true; g.win = i; ev.push({t:'win', i}); }
+    else g.turn = 1 - i;
+    return ev;
+  }
+};
+function slS(){ if (!S.sl || typeof S.sl !== 'object') S.sl = {cur:null, hist:[]}; return S.sl; }
+function slCardHTML(){
+  const s = slS(), g = s.cur;
+  const h = s.hist.slice(0, 3).map(x => `<span class="${cls(x.pay - x.stake)}">${x.win ? '승' : '패'} ${signUSD(x.pay - x.stake)}</span>`).join(' · ');
+  INFO.sl = {t:'뱀사다리', h:`<div class="prose"><ul><li>1~100칸 보드에서 컴퓨터와 번갈아 주사위 1개를 굴립니다. 누가 먼저 굴릴지는 무작위입니다.</li>
+    <li>사다리 아래 칸에 서면 사다리 위로 올라가고, 뱀 머리 칸에 서면 꼬리로 떨어집니다. 사다리 ${Object.keys(SL_LAD).length}개, 뱀 ${Object.keys(SL_SNK).length}마리 (널리 쓰이는 보드 배치).</li>
+    <li>정확히 100칸에 서야 합니다. 넘치는 눈이 나오면 넘친 만큼 뒤로 물러납니다.</li>
+    <li>먼저 100칸에 도착하면 판돈의 2배를 받고, 지면 판돈을 잃습니다. 판돈 한도: ${fmtUSDn(GAM.sl.off, 0)} (불법 모드 ${fmtUSDn(GAM.sl.on, 0)}).</li></ul></div>`};
+  return `<div class="card-h"><h2>🐍 뱀사다리 ${infoBtn('sl')}</h2><small>이기면 2배</small></div>
+    <p class="mg-desc">${g ? `진행 중: 나 ${g.pos[0]}칸 · 컴퓨터 ${g.pos[1]}칸, 판돈 ${fmtUSD(g.stake)}` : h ? `최근 ${h}` : '컴퓨터와 1~100칸 경주. 사다리는 올라가고 뱀은 떨어진다'}</p>
+    <div class="mg-foot"><span class="muted">${g ? '' : `한도 ${fmtUSDn(gamMax('sl'), 0)}`}</span><button class="btn solid" id="slGo" ${!g && S.over ? 'disabled' : ''}>${g ? '이어 하기' : '새 게임'}</button></div>`;
+}
+function slStart(){
+  const s = slS();
+  if (s.cur) return slOpen();
+  if (S.over) return toast('파산해서 할 수 없습니다', true);
+  betDialog('sl', '🐍 뱀사다리', '<p class="muted" style="margin:0 0 8px">먼저 100칸에 도착하면 판돈의 2배</p>', bet => {
+    s.cur = SLE.newGame(bet, gamIl(), Math.random); commit(); slOpen();
+  });
+}
+const SLV = {busy:false, gen:0, tok:null};
+// 칸 번호(1~100) → 10×10 격자 [행, 열] (1행이 맨 위. 1칸은 왼쪽 아래, 줄마다 방향이 바뀐다)
+function slRC(n){ const r = Math.floor((n - 1) / 10), c = (n - 1) % 10; return [10 - r, r % 2 ? 10 - c : c + 1]; }
+function slXY(n, w){ if (n <= 0) return [-0.5 * w / 10, w - 0.5 * w / 10]; const [r, c] = slRC(n), s = w / 10; return [(c - 0.5) * s, (r - 0.5) * s]; }
+function slOpen(){
+  const g = slS().cur; if (!g) return;
+  let ov = $('#slOv');
+  if (!ov){ ov = document.createElement('div'); ov.id = 'slOv'; ov.className = 'bm-ov'; ov.setAttribute('role', 'dialog'); document.body.appendChild(ov); }
+  ov.hidden = false; document.documentElement.classList.add('bm-open');
+  SLV.gen++; SLV.busy = false; SLV.tok = null;
+  const cells = Array.from({length:100}, (_, k) => { const n = k + 1, [r, c] = slRC(n); return `<div class="sl-c ${(r + c) % 2 ? 'a' : 'b'}" style="grid-row:${r};grid-column:${c}"><span>${n}</span></div>`; }).join('');
+  ov.innerHTML = `<div class="bm-top"><button class="btn" id="slClose">닫기</button><div class="bm-ttl"><b>🐍 뱀사다리</b><small>판돈 ${fmtUSD(g.stake)}${g.il ? ' · 🚨 불법' : ''}</small></div><button class="btn" id="slQuit">기권</button></div>
+    <div class="sl-board" id="slBoard">${cells}<svg class="sl-svg" id="slSvg"></svg><div class="sl-tok" data-sltok="0" style="--pc:${BM.cols[0]}"><span>나</span></div><div class="sl-tok" data-sltok="1" style="--pc:${BM.cols[1]}"><span>컴</span></div><div class="bm-fx" id="slFx"></div></div>
+    <div class="sl-panel"><div class="bm-row"><div class="bm-dice" id="slDice">${bmDieHTML()}</div><div class="bm-msg" id="slMsg"></div></div><div class="bm-act" id="slAct"></div><ul class="bm-log" id="slLog"></ul></div>`;
+  slDraw(); slUpdate(); slTick();
+}
+// 뱀(곡선)·사다리(가로대) 그리기
+function slDraw(){
+  const b = $('#slBoard'), svg = $('#slSvg'); if (!b || !svg) return;
+  const w = b.clientWidth; svg.setAttribute('viewBox', `0 0 ${w} ${w}`);
+  const s = w / 10;
+  let h = '';
+  for (const [a, z] of Object.entries(SL_LAD)){
+    const [x1, y1] = slXY(+a, w), [x2, y2] = slXY(z, w), dx = x2 - x1, dy = y2 - y1, L = Math.hypot(dx, dy), nx = -dy / L * s * 0.16, ny = dx / L * s * 0.16;
+    h += `<g class="sl-lad"><line x1="${x1 + nx}" y1="${y1 + ny}" x2="${x2 + nx}" y2="${y2 + ny}"/><line x1="${x1 - nx}" y1="${y1 - ny}" x2="${x2 - nx}" y2="${y2 - ny}"/>`;
+    const n = Math.max(2, Math.round(L / (s * 0.4)));
+    for (let k = 1; k < n; k++){ const t = k / n, cx = x1 + dx * t, cy = y1 + dy * t; h += `<line class="rung" x1="${cx + nx}" y1="${cy + ny}" x2="${cx - nx}" y2="${cy - ny}"/>`; }
+    h += '</g>';
+  }
+  const cols = ['#3FB96B', '#E0484E', '#9C7BD9', '#E2B94B', '#4C9AFF'];
+  Object.entries(SL_SNK).forEach(([a, z], i) => {
+    const [x1, y1] = slXY(+a, w), [x2, y2] = slXY(z, w), dx = x2 - x1, dy = y2 - y1, L = Math.hypot(dx, dy), nx = -dy / L, ny = dx / L, A = Math.min(s * 0.5, L * 0.18);
+    const p1 = [x1 + dx * 0.33 + nx * A, y1 + dy * 0.33 + ny * A], p2 = [x1 + dx * 0.66 - nx * A, y1 + dy * 0.66 - ny * A];
+    const c = cols[i % cols.length];
+    h += `<path class="sl-snk" stroke="${c}" d="M${x1} ${y1} C ${p1[0]} ${p1[1]}, ${p2[0]} ${p2[1]}, ${x2} ${y2}"/><circle cx="${x1}" cy="${y1}" r="${s * 0.2}" fill="${c}"/><circle cx="${x1 - s * 0.07}" cy="${y1 - s * 0.05}" r="${s * 0.045}" fill="#fff"/><circle cx="${x1 + s * 0.07}" cy="${y1 - s * 0.05}" r="${s * 0.045}" fill="#fff"/>`;
+  });
+  svg.innerHTML = h;
+  slPlace(true);
+}
+function slPlace(instant){
+  const g = slS().cur, b = $('#slBoard'); if (!g || !b) return;
+  const w = b.clientWidth, pos = SLV.tok || g.pos, sz = w / 10 * 0.5;
+  [0, 1].forEach(i => {
+    const t = document.querySelector(`[data-sltok="${i}"]`); if (!t) return;
+    const [x, y] = slXY(pos[i], w), off = (i ? 1 : -1) * sz * 0.32;
+    if (instant) t.style.transition = 'none';
+    t.style.width = t.style.height = sz + 'px';
+    t.style.transform = `translate(${x - sz / 2 + off}px, ${y - sz / 2}px)`;
+    if (instant){ t.offsetWidth; t.style.transition = ''; }
+  });
+}
+function slUpdate(){
+  const g = slS().cur; if (!g || !$('#slOv')) return;
+  const act = $('#slAct');
+  $('#slQuit').hidden = g.over;
+  if (g.over && !SLV.busy) act.innerHTML = `<button class="btn solid bm-roll" id="slEnd">결과 보기</button>`;
+  else if (SLV.busy || g.turn !== 0) act.innerHTML = `<p class="bm-wait">${g.turn ? '컴퓨터' : '내'} 차례…</p>`;
+  else act.innerHTML = `<button class="btn solid bm-roll" id="slRoll">🎲 주사위 굴리기</button>`;
+  $('#slLog').innerHTML = SLV.busy ? $('#slLog').innerHTML : g.log.slice(-4).reverse().map(s => `<li>${esc(s)}</li>`).join('');
+  slPlace(false);
+}
+function slWait(ms){ const gen = SLV.gen; return new Promise((res, rej) => setTimeout(() => (gen === SLV.gen && $('#slOv') && !$('#slOv').hidden) ? res() : rej('stop'), bmMs(ms))); }
+async function slPlay(ev, pos0){
+  const g = slS().cur; SLV.busy = true; SLV.tok = pos0.slice(); slUpdate();
+  const fx = $('#slFx'), w = $('#slBoard').clientWidth;
+  const tokEl = i => document.querySelector(`[data-sltok="${i}"]`);
+  try {
+    for (const e of ev){
+      if (e.t === 'dice'){
+        $('#slMsg').textContent = `${e.i ? '컴퓨터' : '나'} 굴리는 중…`;
+        const c = $('#slDice .bm-cube'), box = $('#slDice');
+        box.classList.add('rolling'); c.style.transition = 'none'; c.style.transform = `rotateX(${Math.random() * 360}deg) rotateY(${Math.random() * 360}deg)`; c.offsetWidth;
+        c.style.transition = `transform ${bmMs(700)}ms cubic-bezier(.2,.75,.25,1)`; c.style.transform = `rotateX(720deg) rotateY(720deg) ` + BM_FACE[e.d];
+        await slWait(720); box.classList.remove('rolling');
+        $('#slMsg').textContent = `${e.i ? '컴퓨터' : '나'}: ${e.d}`;
+        await slWait(180);
+      } else if (e.t === 'move'){
+        for (const k of e.path){
+          SLV.tok[e.i] = k; const t = tokEl(e.i), inner = t.querySelector('span');
+          t.style.transition = `transform ${bmMs(140)}ms ease-out`; inner.classList.remove('hop'); inner.offsetWidth; inner.classList.add('hop');
+          slPlace(false); await slWait(150);
+        }
+      } else if (e.t === 'ladder' || e.t === 'snake'){
+        bmBannerIn(fx, e.t === 'ladder' ? `🪜 사다리! ${e.from} → ${e.to}` : `🐍 뱀! ${e.from} → ${e.to}`, e.t === 'ladder' ? (e.i ? '' : 'green') : (e.i ? '' : 'red'), 900);
+        await slWait(380);
+        SLV.tok[e.i] = e.to; const t = tokEl(e.i);
+        t.style.transition = `transform ${bmMs(e.t === 'ladder' ? 650 : 800)}ms ${e.t === 'ladder' ? 'ease-in-out' : 'cubic-bezier(.5,0,.7,1)'}`;
+        slPlace(false); await slWait(e.t === 'ladder' ? 700 : 850);
+      } else if (e.t === 'win'){
+        bmBannerIn(fx, e.i ? '😵 컴퓨터 승리' : '🏆 내가 이겼다!', e.i ? 'red' : 'gold', 1600);
+        if (!e.i) bmConfettiIn(fx);
+        await slWait(600);
+      }
+    }
+  } catch(err){ if (err !== 'stop') console.error(err); SLV.busy = false; SLV.tok = null; return; }
+  SLV.busy = false; SLV.tok = null; slUpdate();
+  if (!g.over && g.turn === 1){ const gen = SLV.gen; setTimeout(() => { if (gen === SLV.gen) slTick(); }, bmMs(400)); }
+}
+function slTick(){
+  const g = slS().cur; if (!g || SLV.busy || !$('#slOv') || $('#slOv').hidden) return;
+  slUpdate();
+  if (g.over || g.turn === 0) return;
+  const pos0 = g.pos.slice(), ev = SLE.roll(g, Math.random); save(); slPlay(ev, pos0);
+}
+function slHide(){ SLV.gen++; SLV.busy = false; const ov = $('#slOv'); if (ov && !ov.hidden){ ov.hidden = true; document.documentElement.classList.remove('bm-open'); if (UI.tab === 'market') renderInvest(); } }
+function slFinish(forfeit){
+  const s = slS(), g = s.cur; if (!g) return;
+  const win = !forfeit && g.win === 0, pay = win ? Math.round(g.stake * 2 * 100) / 100 : 0;
+  if (pay > 0) receiveUSD(pay);
+  s.hist.unshift({at:Date.now(), stake:g.stake, pay, win, ...(forfeit ? {ff:1} : {})}); s.hist = s.hist.slice(0, 10);
+  altLog('gamble', `뱀사다리 ${win ? '승리' : forfeit ? '기권' : '패배'}${g.il ? ' (불법)' : ''}`, pay - g.stake, 'USD');
+  s.cur = null; commit(); slHide();
+  police('sl', g.il);
+  showModal(`<h2 class="${win ? 'up' : ''}">${win ? '🏆 이겼습니다' : forfeit ? '기권했습니다' : '졌습니다'}</h2><div class="bd"><div><span>판돈</span><b class="num">${fmtUSD(g.stake)}</b></div><div><span>받은 돈</span><b class="num">${fmtUSD(pay)}</b></div><div class="tot"><span>손익</span><b class="num ${cls(pay - g.stake)}">${signUSD(pay - g.stake)}</b></div></div><div class="acts"><button class="btn solid" data-close>확인</button></div>`);
+}
+document.addEventListener('click', e => {
+  const t = e.target.closest('#slOv button'); if (!t) return;
+  const g = slS().cur; if (!g) return;
+  if (t.id === 'slClose'){ slHide(); return; }
+  if (t.id === 'slEnd'){ slFinish(false); return; }
+  if (t.id === 'slQuit'){ const c = showModal(`<h2>기권할까요?</h2><p>판돈 ${fmtUSD(g.stake)}을 잃습니다.</p><div class="acts"><button class="btn" data-close>계속하기</button><button class="btn solid" id="slQuitYes">기권</button></div>`); $('#slQuitYes').onclick = () => { c(); setTimeout(() => slFinish(true), 200); }; return; }
+  if (t.id === 'slRoll' && !SLV.busy && g.turn === 0 && !g.over){ const pos0 = g.pos.slice(), ev = SLE.roll(g, Math.random); save(); slPlay(ev, pos0); }
+});
+window.addEventListener('resize', () => { if ($('#slOv') && !$('#slOv').hidden) slDraw(); });
+// bm.js의 배너·색종이를 다른 효과 층에도 쓴다
+function bmBannerIn(fx, text, cls, ms){
+  if (!fx) return;
+  const b = document.createElement('div'); b.className = 'bm-banner ' + (cls || ''); b.textContent = text; fx.appendChild(b);
+  b.animate([{transform:'translate(-50%,-50%) scale(.3)', opacity:0}, {transform:'translate(-50%,-50%) scale(1.1)', opacity:1, offset:.18}, {transform:'translate(-50%,-50%) scale(1)', opacity:1, offset:.8}, {transform:'translate(-50%,-62%)', opacity:0}], {duration:bmMs(ms), easing:'ease-out'}).onfinish = () => b.remove();
+}
+function bmConfettiIn(fx){
+  if (!fx) return;
+  const cols = ['#E2B45E', '#4C9AFF', '#FF6B6B', '#36C38A', '#C58CFF'];
+  for (let k = 0; k < 50; k++){
+    const c = document.createElement('i'); c.className = 'bm-conf'; c.style.background = cols[k % 5]; c.style.left = (10 + Math.random() * 80) + '%'; fx.appendChild(c);
+    c.animate([{transform:'translate(0,-20px) rotate(0)', opacity:1}, {transform:`translate(${(Math.random() - .5) * 160}px, ${300 + Math.random() * 200}px) rotate(${Math.random() * 720}deg)`, opacity:0}], {duration:1400 + Math.random() * 900, delay:Math.random() * 300}).onfinish = () => c.remove();
+  }
+}
+
+/* ── 홀짝: 5판 3선승 ──
+   컴퓨터가 구슬을 1~20개 쥔다(개수는 고를 때 정해 저장). 홀·짝을 맞히면 내가 1점, 틀리면 컴퓨터가 1점. 먼저 3점이면 이긴다.
+   1~20에는 홀수와 짝수가 10개씩이라 한 판에 맞힐 확률은 1/2. 이기면 판돈의 2배 */
+function oeS(){ if (!S.oe || typeof S.oe !== 'object') S.oe = {cur:null, hist:[]}; return S.oe; }
+function oeCardHTML(){
+  const s = oeS(), g = s.cur;
+  INFO.oe = {t:'홀짝', h:`<div class="prose"><ul><li>컴퓨터가 구슬을 1~20개 쥡니다. 개수가 홀수인지 짝수인지 맞히면 내가 1점, 틀리면 컴퓨터가 1점입니다.</li>
+    <li>5판 3선승제: 먼저 3점을 내면 이깁니다. 이기면 판돈의 2배, 지면 판돈을 잃습니다.</li><li>1~20에는 홀수 10개, 짝수 10개라 한 판에 맞힐 확률은 1/2입니다. 판돈 한도: ${fmtUSDn(GAM.oe.off, 0)} (불법 모드 ${fmtUSDn(GAM.oe.on, 0)}).</li></ul></div>`};
+  if (!g){
+    const h = s.hist.slice(0, 3).map(x => `<span class="${cls(x.pay - x.stake)}">${x.win ? '승' : '패'} ${signUSD(x.pay - x.stake)}</span>`).join(' · ');
+    return `<div class="card-h"><h2>✊ 홀짝 ${infoBtn('oe')}</h2><small>5판 3선승 · 이기면 2배</small></div>
+      <p class="mg-desc">${h ? `최근 ${h}` : '컴퓨터가 쥔 구슬이 홀수일까 짝수일까'}</p>
+      <div class="mg-foot"><span class="muted">한도 ${fmtUSDn(gamMax('oe'), 0)}</span><button class="btn solid" id="oeGo" ${S.over ? 'disabled' : ''}>새 게임</button></div>`;
+  }
+  const L = g.last;
+  return `<div class="card-h"><h2>✊ 홀짝</h2><small>판돈 ${fmtUSD(g.stake)}${g.il ? ' · 🚨 불법' : ''}</small></div>
+    <div class="oe-score"><span>나 <b class="num">${g.me}</b></span><span class="muted">${g.rd}판째 · 3점 먼저</span><span>컴퓨터 <b class="num">${g.cpu}</b></span></div>
+    <div class="oe-hand ${L && OEV.reveal ? 'open' : ''}" id="oeHand">${L && OEV.reveal ? `<div class="oe-marbles">${Array.from({length:L.n}, (_, k) => `<i style="--d:${k * 25}ms"></i>`).join('')}</div><b class="num">${L.n}개 · ${L.n % 2 ? '홀' : '짝'}</b>` : '<span class="fist">✊</span>'}</div>
+    ${L && OEV.reveal ? `<p class="oe-res ${L.ok ? 'up' : 'down'}">${L.ok ? '맞혔다!' : '틀렸다'} (내 선택: ${L.pick === 'odd' ? '홀' : '짝'})</p>` : '<p class="oe-res muted">홀일까 짝일까?</p>'}
+    <div class="bm-acts">${g.over ? `<button class="btn solid" id="oeEnd">결과 보기</button>` : `<button class="btn" data-oe="odd" ${OEV.busy ? 'disabled' : ''}>홀</button><button class="btn" data-oe="even" ${OEV.busy ? 'disabled' : ''}>짝</button>`}</div>`;
+}
+const OEV = {busy:false, reveal:false};
+function oeRender(){ const c = $('#oeCard'); if (c) c.innerHTML = oeCardHTML(); }
+function oeStart(){
+  const s = oeS(); if (s.cur) return;
+  if (S.over) return toast('파산해서 할 수 없습니다', true);
+  betDialog('oe', '✊ 홀짝', '<p class="muted" style="margin:0 0 8px">5판 3선승, 이기면 판돈의 2배</p>', bet => {
+    s.cur = {v:1, stake:bet, il:gamIl(), me:0, cpu:0, rd:1, last:null, over:false}; OEV.reveal = false; commit(); oeRender();
+  });
+}
+function oePick(pick){
+  const g = oeS().cur; if (!g || g.over || OEV.busy) return;
+  const n = 1 + Math.floor(Math.random() * 20), ok = (n % 2 === 1) === (pick === 'odd');
+  g.last = {n, pick, ok};
+  if (ok) g.me++; else g.cpu++;
+  if (g.me >= 3 || g.cpu >= 3) g.over = true; else g.rd++;
+  save();
+  OEV.busy = true; OEV.reveal = false; oeRender();
+  const h = $('#oeHand'); if (h) h.classList.add('shake');
+  setTimeout(() => { OEV.reveal = true; OEV.busy = false; oeRender(); }, bmMs(900));
+}
+function oeFinish(){
+  const s = oeS(), g = s.cur; if (!g) return;
+  const win = g.me >= 3, pay = win ? Math.round(g.stake * 2 * 100) / 100 : 0;
+  if (pay > 0) receiveUSD(pay);
+  s.hist.unshift({at:Date.now(), stake:g.stake, pay, win}); s.hist = s.hist.slice(0, 10);
+  altLog('gamble', `홀짝 ${win ? '승리' : '패배'} (${g.me}:${g.cpu})${g.il ? ' (불법)' : ''}`, pay - g.stake, 'USD');
+  s.cur = null; OEV.reveal = false; commit();
+  police('oe', g.il);
+  showModal(`<h2 class="${win ? 'up' : ''}">${win ? '🏆 이겼습니다' : '졌습니다'} (${g.me}:${g.cpu})</h2><div class="bd"><div><span>판돈</span><b class="num">${fmtUSD(g.stake)}</b></div><div><span>받은 돈</span><b class="num">${fmtUSD(pay)}</b></div><div class="tot"><span>손익</span><b class="num ${cls(pay - g.stake)}">${signUSD(pay - g.stake)}</b></div></div><div class="acts"><button class="btn solid" data-close>확인</button></div>`);
+}
+document.addEventListener('click', e => { const t = e.target.closest('#oeEnd'); if (t) oeFinish(); });
+
+/* ───────── 복권 탭: 로또6/45 (실제 추첨 결과로 정산) · 스피또2000 (긁는 즉석복권) ─────────
+   로또 규칙 출처: 동행복권 '로또6/45 소개' (1게임 1,000원, 1~45 중 6개, 판매 일~금 06:00~24:00·토 06:00~20:00, 토 20:35경 추첨,
+   판매점 1인 1회 최대 10만 원, 슬립 1장 5게임, 4등 5만·5등 5천 원 고정, 1~3등은 당첨자 수로 나눔).
+   세금: 동행복권 '당첨자 안내' — 200만 원 초과 3억 이하 22%, 3억 초과 33% / 토스뱅크 — 200만 원 이하 비과세. 3억을 넘는 부분만 33%로 본다.
+   지급기한: 지급개시일로부터 1년 (여기서는 추첨 다음 날을 지급개시일로 본다).
+   당첨번호와 등수별 1게임당 당첨금은 GitHub Actions가 동행복권에서 받아 둔 data/lotto.json을 쓴다 */
+const LOT = {price:1000, perRound:100000, perSlip:5, base:1249, baseAt:Date.parse('2026-11-07T20:35:00+09:00'), week:7 * 864e5};
+const lotDrawAt = r => LOT.baseAt + (r - LOT.base) * LOT.week;
+function lotTax(p){   // 원천징수 세금 (원)
+  if (p <= 2e6) return 0;
+  return Math.round(Math.min(p, 3e8) * 0.22 + Math.max(0, p - 3e8) * 0.33);
+}
+// 지금 파는 회차와 판매 중인지
+function lotNow(now = Date.now()){
+  const k = zoneParts('Asia/Seoul', new Date(now)), dow = new Date(Date.UTC(+k.date.slice(0, 4), +k.date.slice(5, 7) - 1, +k.date.slice(8, 10))).getUTCDay();
+  let r = LOT.base; while (lotDrawAt(r) - 35 * 60e3 <= now) r++;      // 그 회차의 판매 마감(추첨 35분 전, 토 20:00)이 지나면 다음 회차
+  const hm = k.h * 60 + k.mi;
+  const open = dow === 6 ? hm >= 360 && hm < 1200 : hm >= 360;          // 토 06:00~20:00, 일~금 06:00~24:00
+  return {r, open, dow, hm};
+}
+function lotS(){ if (!S.lotto || typeof S.lotto !== 'object') S.lotto = {tix:[]}; return S.lotto; }
+const lotResult = r => XD.lotto && Array.isArray(XD.lotto.d) ? XD.lotto.d.find(d => d.r === r) : null;
+function lotRank(nums, d){
+  const m = nums.filter(n => d.n.includes(n)).length;
+  return m === 6 ? 1 : m === 5 && nums.includes(d.b) ? 2 : m === 5 ? 3 : m === 4 ? 4 : m === 3 ? 5 : 0;
+}
+function lotAuto(fixed){ const s = new Set(fixed); while (s.size < 6) s.add(1 + Math.floor(Math.random() * 45)); return [...s].sort((a, b) => a - b); }
+const lotBall = (n, cls2) => `<i class="lb ${cls2 || ''} c${n <= 10 ? 1 : n <= 20 ? 2 : n <= 30 ? 3 : n <= 40 ? 4 : 5}">${n}</i>`;
+const lotSpent = r => lotS().tix.filter(t => t.r === r).reduce((a, t) => a + t.g.length * LOT.price, 0);
+// 받을 수 있는 당첨금 (세후)과 기한
+function lotPrize(t){
+  const d = lotResult(t.r); if (!d) return null;
+  let gross = 0, tax = 0; const ranks = t.g.map(x => lotRank(x.n, d));
+  ranks.forEach(rk => { if (rk){ const a = d.amt[rk - 1] || 0; gross += a; tax += lotTax(a); } });   // 게임마다 따로 과세
+  const due = Date.parse(d.date + 'T00:00:00+09:00') + 864e5 + 365 * 864e5;
+  return {d, ranks, gross, tax, net:gross - tax, due};
+}
+
+/* ── 화면 ── */
+const LV = {edit:0, slip:[[], [], [], [], []], tab:'lotto'};
+function renderLottoPane(p){
+  loadExtra('lotto');
+  p.innerHTML = `<div class="seg" style="margin:0 0 12px"><button data-lvt="lotto" aria-pressed="${LV.tab === 'lotto'}">로또6/45</button><button data-lvt="sp" aria-pressed="${LV.tab === 'sp'}">스피또2000</button></div>
+    <div id="lotBody">${LV.tab === 'lotto' ? lottoHTML() : spHTML()}</div>`;
+}
+function lotRender(){ const b = $('#lotBody'); if (b) b.innerHTML = LV.tab === 'lotto' ? lottoHTML() : spHTML(); }
+function lottoHTML(){
+  if (!isLive()) return `<p class="empty">로또는 실제 추첨 결과로 정산하므로 실제 시세 모드에서만 살 수 있습니다.</p>`;
+  const N = lotNow(), spent = lotSpent(N.r), d = new Date(lotDrawAt(N.r));
+  const last = XD.lotto && XD.lotto.d && XD.lotto.d.length ? XD.lotto.d[XD.lotto.d.length - 1] : null;
+  INFO.lotto = {t:'로또6/45 규칙', h:`<div class="prose"><ul>
+    <li>1게임 1,000원. 1~45 중 6개를 고릅니다. 자동(모두 무작위), 반자동(몇 개만 고르고 나머지 무작위), 수동(6개 모두 고름). 슬립 1장에 5게임까지.</li>
+    <li>판매: 일~금 06:00~24:00, 토요일 06:00~20:00 (한국 시각). 토요일 20시에 그 회차 판매가 끝나고, 20:35경 추첨, 일요일 06시부터 다음 회차를 팝니다.</li>
+    <li>1인 1회차 최대 10만 원(100게임, 판매점 기준).</li>
+    <li>당첨: 1등 6개 일치, 2등 5개 + 보너스, 3등 5개, 4등 4개(5만 원 고정), 5등 3개(5천 원 고정). 1~3등은 그 회차 실제 1게임당 당첨금을 그대로 받습니다.</li>
+    <li>세금(게임마다): 200만 원 이하 0, 200만 원 초과는 3억까지 22%, 3억을 넘는 부분 33%.</li>
+    <li>당첨금은 추첨 다음 날부터 1년 안에 '당첨금 받기'를 눌러야 원화 통장으로 들어옵니다. 지나면 사라집니다.</li>
+    <li>당첨번호와 당첨금은 매주 토요일 밤 동행복권 발표를 가져옵니다(한국 시각 21시~다음 날 사이에 반영).</li></ul></div>`};
+  const slip = LV.slip.map((g, i) => {
+    const m = g.length === 6 ? '수동' : g.length ? '반자동' : '자동';
+    return `<button class="ls-row ${LV.edit === i ? 'on' : ''}" data-lsedit="${i}"><b>${'ABCDE'[i]}</b><span class="ls-m">${m}</span><span class="ls-n">${g.length ? g.slice().sort((a, b) => a - b).map(n => lotBall(n)).join('') : '<span class="muted">번호를 고르지 않으면 자동</span>'}</span></button>`;
+  }).join('');
+  const cur = LV.slip[LV.edit];
+  const grid = Array.from({length:45}, (_, k) => k + 1).map(n => `<button class="lg ${cur.includes(n) ? 'on' : ''}" data-lgn="${n}">${n}</button>`).join('');
+  const games = +UI.lotGames || 5;
+  const tix = lotS().tix.slice().sort((a, b) => b.at - a.at);
+  const tixHTML = tix.slice(0, 30).map(t => {
+    const pz = lotPrize(t), when = new Date(lotDrawAt(t.r));
+    const head = pz ? (pz.gross ? (t.claimed ? `<span class="up">받음 ${fmtKRWn(pz.net)}</span>` : Date.now() > pz.due ? `<span class="down">기한 지남</span>` : `<button class="btn solid" data-lclaim="${t.id}">당첨금 받기 ${fmtKRWn(pz.net)}</button>`) : '<span class="muted">낙첨</span>') : `<span class="muted">${when.getMonth() + 1}/${when.getDate()} 추첨 대기</span>`;
+    return `<div class="lt-tix"><div class="lt-h"><b>${t.r}회</b><small class="muted">${t.g.length}게임 · ${fmtKRWn(t.g.length * LOT.price)}</small>${head}</div>
+      ${t.g.map((x, i) => { const rk = pz ? pz.ranks[i] : null; return `<div class="lt-g"><b>${'ABCDE'[i % 5]}</b><span class="ls-m">${x.m}</span><span class="ls-n">${x.n.map(n => lotBall(n, pz ? (pz.d.n.includes(n) ? 'hit' : n === pz.d.b ? 'bon' : 'miss') : '')).join('')}</span>${rk === null ? '' : `<span class="lt-rk ${rk ? 'up' : 'muted'}">${rk ? rk + '등' : '낙첨'}</span>`}</div>`; }).join('')}</div>`;
+  }).join('');
+  return `<section class="card"><div class="card-h"><h2>로또6/45 ${N.r}회 ${infoBtn('lotto')}</h2><small>${d.getMonth() + 1}/${d.getDate()}(토) 20:35 추첨</small></div>
+      <p class="mg-desc">${N.open ? `판매 중 · 이번 회차 산 금액 ${fmtKRWn(spent)} / ${fmtKRWn(LOT.perRound)}` : `<b class="down">지금은 판매 시간이 아닙니다</b> (일~금 06~24시, 토 06~20시)`}</p>
+      <div class="ls">${slip}</div>
+      <div class="lgrid">${grid}</div>
+      <div class="bm-acts" style="margin-top:8px"><button class="btn" data-lsauto>${'ABCDE'[LV.edit]} 자동으로 채우기</button><button class="btn" data-lsclr>${'ABCDE'[LV.edit]} 지우기</button></div>
+      <div class="bm-acts" style="margin-top:8px"><button class="btn" data-lgames="1" aria-pressed="${games === 1}">A만</button><button class="btn" data-lgames="5" aria-pressed="${games === 5}">A~E 5게임</button><button class="btn solid" id="lotBuy" ${N.open ? '' : 'disabled'}>${games}게임 사기 ${fmtKRWn(games * LOT.price)}</button></div>
+    </section>
+    ${last ? `<section class="card"><div class="card-h"><h2>${last.r}회 당첨번호</h2><small>${last.date}</small></div><div class="lt-win">${last.n.map(n => lotBall(n)).join('')}<span class="muted">+</span>${lotBall(last.b)}</div>
+      <div class="bd" style="margin-top:8px">${last.amt.map((a, i) => `<div><span>${i + 1}등 (${last.cnt[i].toLocaleString()}게임)</span><b class="num">${fmtKRWn(a)}</b></div>`).join('')}</div></section>` : ''}
+    <section class="card"><div class="card-h"><h2>내 로또</h2><small>${tix.length}장</small></div>${tixHTML || '<p class="empty">산 로또가 없습니다.</p>'}</section>
+    <p class="muted" style="margin:4px 2px">당첨 결과 출처: 동행복권 (매주 토요일 밤 갱신)</p>`;
+}
+function lotBuy(){
+  if (!isLive()) return;
+  const N = lotNow(); if (!N.open) return toast('지금은 판매 시간이 아닙니다', true);
+  const games = +UI.lotGames || 5, cost = games * LOT.price;
+  if (lotSpent(N.r) + cost > LOT.perRound) return toast(`1인 1회차 ${fmtKRWn(LOT.perRound)}까지 살 수 있습니다`, true);
+  if (!canPayKRW(cost) || !payKRW(cost)) return toast('돈이 모자랍니다', true);
+  const g = LV.slip.slice(0, games).map(x => ({n:lotAuto(x), m:x.length === 6 ? '수동' : x.length ? '반자동' : '자동'}));
+  lotS().tix.push({id:Math.random().toString(36).slice(2, 9), r:N.r, at:Date.now(), g});
+  altLog('lotto', `로또 ${N.r}회 ${games}게임`, -cost, 'KRW');
+  LV.slip = [[], [], [], [], []]; LV.edit = 0;
+  commit(); toast(`로또 ${N.r}회 ${games}게임을 샀습니다`);
+}
+function lotClaim(id){
+  const t = lotS().tix.find(x => x.id === id); if (!t || t.claimed) return;
+  const pz = lotPrize(t); if (!pz || !pz.gross) return;
+  if (Date.now() > pz.due) return toast('지급 기한이 지났습니다', true);
+  S.krw += pz.net; t.claimed = Date.now();
+  altLog('lotto', `로또 ${t.r}회 당첨금 (${pz.ranks.filter(x => x).map(x => x + '등').join(', ')}${pz.tax ? `, 세금 ${fmtKRWn(pz.tax)}` : ''})`, pz.net, 'KRW');
+  commit();
+  showModal(`<h2 class="up">🎉 당첨금을 받았습니다</h2><div class="bd"><div><span>당첨금</span><b class="num">${fmtKRWn(pz.gross)}</b></div><div><span>세금</span><b class="num">${fmtKRWn(pz.tax)}</b></div><div class="tot"><span>받은 돈</span><b class="num up">${fmtKRWn(pz.net)}</b></div></div><div class="acts"><button class="btn solid" data-close>확인</button></div>`);
+}
+
+/* ── 스피또2000 ──
+   등위·당첨금·당첨매수(회차 3,000만 매 기준): 1등 10억 6매, 2등 1억 18매, 3등 1천만 150매, 4등 2만 82,500매, 5등 4천 2,100,000매, 6등 2천 8,400,000매.
+   (출처: 개꿀로또 2023-08-29, 메모리유 2024-09-03 — 동행복권 공식 안내는 접속이 막혀 확인하지 못했다.) 1등은 연속번호 2매가 함께 1등이다.
+   한 장을 살 때마다 위 매수 ÷ 3,000만의 확률로 등수를 정한다(남은 매수·출고율은 따지지 않는다). 등수는 사는 순간 정해 저장하고, 긁으면 보여 준다 */
+const SP = {price:2000, total:3e7, tiers:[[1e9, 6], [1e8, 18], [1e7, 150], [2e4, 82500], [4e3, 2100000], [2e3, 8400000]],
+  pics:['🍀', '⭐', '💎', '🍒', '🔔', '🐷', '🎁', '🌙', '🦄', '🍋']};
+function spS(){ if (!S.sp || typeof S.sp !== 'object') S.sp = {tix:[]}; return S.sp; }
+function spDraw(){
+  let u = Math.random() * SP.total;
+  for (let i = 0; i < SP.tiers.length; i++){ u -= SP.tiers[i][1]; if (u < 0) return i + 1; }
+  return 0;
+}
+// 표면: 5게임, 게임마다 그림 2개 + 당첨금. 당첨이면 한 게임만 두 그림이 같다
+function spFace(rank){
+  const amts = SP.tiers.map(t => t[0]);
+  const win = rank ? Math.floor(Math.random() * 5) : -1;
+  return Array.from({length:5}, (_, k) => {
+    const a = SP.pics[Math.floor(Math.random() * SP.pics.length)];
+    let b = a; if (k !== win) while (b === a) b = SP.pics[Math.floor(Math.random() * SP.pics.length)];
+    return {a, b, amt:k === win ? amts[rank - 1] : amts[Math.floor(Math.random() * amts.length)]};
+  });
+}
+function spBuy(n){
+  if (S.over) return toast('파산해서 살 수 없습니다', true);
+  const cost = n * SP.price;
+  if (!canPayKRW(cost) || !payKRW(cost)) return toast('돈이 모자랍니다', true);
+  const s = spS(), now = Date.now();
+  let prevFirst = false;
+  for (let k = 0; k < n; k++){
+    // 연속 2매 세트의 두 번째 장은 첫 장이 1등이면 같이 1등
+    const rank = (k % 2 === 1 && prevFirst) ? 1 : spDraw();
+    prevFirst = k % 2 === 0 && rank === 1;
+    s.tix.push({id:Math.random().toString(36).slice(2, 9), at:now, rank, face:spFace(rank), done:false});
+  }
+  if (s.tix.length > 60) s.tix = s.tix.filter(t => !t.done).concat(s.tix.filter(t => t.done).slice(-20)).slice(-60);
+  altLog('sp', `스피또2000 ${n}장`, -cost, 'KRW');
+  commit(); toast(`스피또2000 ${n}장을 샀습니다. 눌러서 긁어 보세요`);
+  const first = s.tix.find(t => !t.done); if (first) spOpen(first.id);
+}
+function spSettle(t){
+  if (t.done) return;
+  t.done = Date.now();
+  if (t.rank){
+    const g = SP.tiers[t.rank - 1][0], tax = lotTax(g), net = g - tax;
+    S.krw += net; t.net = net;
+    altLog('sp', `스피또2000 ${t.rank}등${tax ? ` (세금 ${fmtKRWn(tax)})` : ''}`, net, 'KRW');
+  }
+  commit();
+}
+function spHTML(){
+  const s = spS(), open = s.tix.filter(t => !t.done), done = s.tix.filter(t => t.done).slice(-12).reverse();
+  INFO.sp = {t:'스피또2000', h:`<div class="prose"><p>1장 2,000원인 긁는 즉석복권입니다. 게임 5개 중 한 게임의 그림 2개가 모양까지 똑같으면 그 게임에 적힌 금액에 당첨됩니다.</p>
+    <table class="mini"><tr><th>등위</th><th>당첨금</th><th>확률</th></tr>${SP.tiers.map((t, i) => `<tr><td>${i + 1}등</td><td>${fmtKRWn(t[0])}</td><td>1/${(SP.total / t[1]).toLocaleString(undefined, {maximumFractionDigits:1})}</td></tr>`).join('')}</table>
+    <p>회차마다 3,000만 장을 찍는다고 보고 위 당첨 매수로 확률을 정합니다(남은 매수는 따지지 않음). 1등은 연속번호 2장이 함께 1등이라, 2장 세트로 사면 1등일 때 20억입니다. 세금은 로또와 같습니다. 당첨 구조 출처: 개꿀로또(2023), 메모리유(2024). 그림과 게임 배치는 이 게임에서 정한 것으로 실제 복권 그림과 다릅니다.</p></div>`};
+  return `<section class="card"><div class="card-h"><h2>🎫 스피또2000 ${infoBtn('sp')}</h2><small>1장 2,000원 · 1등 10억</small></div>
+      <p class="mg-desc">원화 통장 ${fmtKRWn(S.krw)} (모자라면 달러에서 자동 환전)</p>
+      <div class="bm-acts"><button class="btn" data-spbuy="1">1장</button><button class="btn" data-spbuy="2">2장 세트</button><button class="btn" data-spbuy="10">10장</button></div></section>
+    ${open.length ? `<section class="card"><div class="card-h"><h2>안 긁은 복권</h2><small>${open.length}장</small></div><div class="sp-list">${open.map(t => `<button class="sp-mini" data-spopen="${t.id}">🎫<small>긁기</small></button>`).join('')}</div></section>` : ''}
+    <section class="card"><div class="card-h"><h2>긁은 복권</h2><small>최근 12장</small></div>${done.length ? done.map(t => `<div class="bd-hold"><span class="bd-n"><b>${t.rank ? `${t.rank}등` : '낙첨'}</b><small>${new Date(t.at).toLocaleDateString()}</small></span><span class="bd-v"><b class="num ${t.rank ? 'up' : ''}">${t.rank ? '+' + fmtKRWn(t.net) : '0원'}</b></span></div>`).join('') : '<p class="empty">아직 없습니다.</p>'}</section>`;
+}
+// 긁기 화면: 게임 칸 위에 은박 캔버스를 깔고, 손가락·마우스가 지나간 곳을 지운다. 60% 넘게 지우면 다 보여 주고 정산
+function spOpen(id){
+  const t = spS().tix.find(x => x.id === id); if (!t) return;
+  const close = showModal(`<h2>🎫 스피또2000</h2><div class="sp-ticket"><div class="sp-head"><b>SPEETTO 2000</b><small>같은 그림 2개면 당첨</small></div>
+      <div class="sp-area" id="spArea">${t.face.map(f => `<div class="sp-g"><span>${f.a}</span><span>${f.b}</span><b>${fmtKRWn(f.amt)}</b></div>`).join('')}<canvas id="spCv"></canvas></div>
+      <div class="sp-res" id="spRes"></div></div>
+    <div class="acts"><button class="btn" id="spAll">전부 긁기</button><button class="btn solid" data-close>닫기</button></div>`, () => { if (t.done) lotRender(); });
+  const area = $('#spArea'), cv = $('#spCv'), r = area.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+  cv.width = r.width * dpr; cv.height = r.height * dpr;
+  const ctx = cv.getContext('2d'); ctx.scale(dpr, dpr);
+  const gr = ctx.createLinearGradient(0, 0, r.width, r.height); gr.addColorStop(0, '#C9CED8'); gr.addColorStop(.5, '#EEF1F6'); gr.addColorStop(1, '#AEB4C0');
+  ctx.fillStyle = gr; ctx.fillRect(0, 0, r.width, r.height);
+  ctx.fillStyle = 'rgba(80,88,104,.55)'; ctx.font = '700 15px system-ui'; ctx.textAlign = 'center'; ctx.fillText('여기를 긁으세요', r.width / 2, r.height / 2 + 5);
+  if (t.done){ cv.remove(); spShow(t); return; }
+  ctx.globalCompositeOperation = 'destination-out'; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.lineWidth = 28;
+  let down = false, last = null, n = 0;
+  const pt = e => { const b = cv.getBoundingClientRect(); return [e.clientX - b.left, e.clientY - b.top]; };
+  const reveal = () => { if (t.done && !cv.isConnected) return; cv.style.transition = 'opacity .35s'; cv.style.opacity = 0; setTimeout(() => cv.remove(), 360); spSettle(t); spShow(t); };
+  const check = () => {
+    const d = ctx.getImageData(0, 0, cv.width, cv.height).data; let clear = 0;
+    for (let i = 3; i < d.length; i += 4 * 16) if (d[i] === 0) clear++;
+    if (clear / (d.length / 64) > 0.6) reveal();
+  };
+  cv.addEventListener('pointerdown', e => { down = true; last = pt(e); cv.setPointerCapture(e.pointerId); e.preventDefault(); });
+  cv.addEventListener('pointermove', e => { if (!down) return; const p = pt(e); ctx.beginPath(); ctx.moveTo(last[0], last[1]); ctx.lineTo(p[0], p[1]); ctx.stroke(); last = p; if (++n % 8 === 0) check(); e.preventDefault(); });
+  const up = () => { if (down){ down = false; check(); } };
+  cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+  cv.style.touchAction = 'none';
+  $('#spAll').onclick = reveal;
+}
+function spShow(t){
+  const r = $('#spRes'); if (!r) return;
+  $$('#spArea .sp-g').forEach((g, i) => { const f = t.face[i]; if (f.a === f.b) g.classList.add('win'); });
+  r.innerHTML = t.rank ? `<b class="up">🎉 ${t.rank}등 당첨! ${fmtKRWn(SP.tiers[t.rank - 1][0])}</b>${t.net !== undefined && t.net !== SP.tiers[t.rank - 1][0] ? `<small>세후 ${fmtKRWn(t.net)}</small>` : ''}` : '<span class="muted">꽝! 다음 기회에</span>';
+}
+document.addEventListener('click', e => {
+  const t = e.target.closest('button'); if (!t) return;
+  if (t.dataset.lvt){ LV.tab = t.dataset.lvt; renderInvest(); return; }
+  if (t.dataset.lsedit !== undefined){ LV.edit = +t.dataset.lsedit; lotRender(); return; }
+  if (t.dataset.lgn){ const n = +t.dataset.lgn, g = LV.slip[LV.edit]; const i = g.indexOf(n); if (i >= 0) g.splice(i, 1); else if (g.length < 6) g.push(n); else toast('한 게임에 6개까지 고릅니다', true); lotRender(); return; }
+  if (t.dataset.lsauto !== undefined){ LV.slip[LV.edit] = lotAuto(LV.slip[LV.edit]); lotRender(); return; }
+  if (t.dataset.lsclr !== undefined){ LV.slip[LV.edit] = []; lotRender(); return; }
+  if (t.dataset.lgames){ UI.lotGames = +t.dataset.lgames; lotRender(); return; }
+  if (t.id === 'lotBuy'){ lotBuy(); return; }
+  if (t.dataset.lclaim){ lotClaim(t.dataset.lclaim); return; }
+  if (t.dataset.spbuy){ spBuy(+t.dataset.spbuy); return; }
+  if (t.dataset.spopen){ spOpen(t.dataset.spopen); return; }
+});
+
+/* ───────── 투자 탭: 하위 탭 · 추가 자료(금리·로또·아파트) · 채권 · 주택 ───────── */
+const SUBS = [['stock', '주식'], ['bond', '채권'], ['house', '주택'], ['gamble', '도박'], ['lotto', '복권']];
+const XD = {rates:null, lotto:null, housing:null, at:{}, err:{}};
+const XD_TTL = {rates:5 * 60e3, lotto:10 * 60e3, housing:6 * 3600e3};
+const YEAR_MS = 365.25 * 864e5;
+async function loadExtra(name, force){
+  if (!force && XD.at[name] && Date.now() - XD.at[name] < XD_TTL[name]) return XD[name];
+  XD.at[name] = Date.now();
+  try {
+    const r = await fetch(`data/${name}.json?t=${Math.floor(Date.now() / 60000)}`, {cache:'no-store'});
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    XD[name] = await r.json(); XD.err[name] = null;
+  } catch(e){ XD.err[name] = String(e.message || e); }
+  return XD[name];
+}
+async function loadExtras(force){
+  await Promise.all(['rates', 'lotto', 'housing'].map(n => loadExtra(n, force)));
+  if (S && !S._ph && altTick()){ commit(); }
+  else if (UI.tab === 'market' && UI.sub && UI.sub !== 'stock') renderMarket();
+  else if (UI.tab === 'assets') renderAssets();
+}
+setTimeout(() => loadExtras(false), 2500);
+setInterval(() => { if (!document.hidden) loadExtras(false); }, 5 * 60e3);
+
+/* 돈 내기·받기 (원화·달러 통장). 모자라면 다른 통화에서 자동 환전한다. 마이너스통장은 쓰지 않는다 */
+function canPayKRW(a){ return S.krw + Math.max(0, S.usd) * fxRates().sell >= a - 1e-6; }
+function payKRW(a){
+  if (S.krw < a){ const need = usdForKRW(a - S.krw); if (need > S.usd + 1e-9) return false; if (!exchange('u2k', need, true)) return false; }
+  S.krw -= a; return true;
+}
+function canPayUSD(a){ return S.usd + S.krw / fxRates().buy >= a - 1e-6; }
+function payUSD(a){
+  if (S.usd < a){ const need = fxFromForTarget('k2u', a - S.usd); if (need > S.krw + 1e-9) return false; if (!exchange('k2u', need, true, true)) return false; }
+  S.usd -= a; return true;
+}
+function altLog(k, s, amt, cur){
+  (S.altLog = S.altLog || []).unshift({at:Date.now(), dt:tradeDateLabel(), k, s, amt, cur});
+  if (S.altLog.length > 300) S.altLog.length = 300;
+}
+
+/* ── 채권 ──
+   만기별 국채 금리(연 %, 네이버 증권)를 선형으로 이어 금리 곡선 y(t)를 만들고, 남은 현금흐름을 그 만기의 금리로 할인한다.
+   가격 P = Σ CFₖ / (1 + y(tₖ)/2)^(2tₖ)   (tₖ: 지금부터 k번째 현금흐름까지의 햇수, 반기 복리)
+   새로 살 때도 같은 식으로 값을 매기므로 사자마자 이익이나 손해가 생기지 않는다. 표면금리는 산 날 그 만기의 금리 */
+const BOND_T = {US:[0.25, 1, 2, 5, 10, 30], KR:[1, 3, 5, 10, 20, 30]};
+const bondName = (c, T) => `${c === 'US' ? '미국' : '한국'} 국채 ${T < 1 ? Math.round(T * 12) + '개월' : T + '년'}`;
+function curve(c){
+  const cur = XD.rates && XD.rates.cur; if (!cur) return null;
+  const pts = BOND_T[c].map(T => [T, cur[c + T] ? +cur[c + T][0] : NaN]).filter(p => isFinite(p[1]));
+  return pts.length >= 2 ? pts : null;
+}
+function yAt(c, t){
+  const p = curve(c); if (!p) return null;
+  if (t <= p[0][0]) return p[0][1];
+  for (let i = 1; i < p.length; i++) if (t <= p[i][0]){ const [a, ya] = p[i - 1], [b, yb] = p[i]; return ya + (yb - ya) * (t - a) / (b - a); }
+  return p[p.length - 1][1];
+}
+function bondFlows(b, now){
+  if (!b.cpn) return [[(b.mat - now) / YEAR_MS, b.face, b.mat]];
+  const n = Math.round(b.T * 2), out = [];
+  for (let k = b.paid + 1; k <= n; k++){ const at = b.t0 + k * YEAR_MS / 2; out.push([(at - now) / YEAR_MS, b.face * b.cpn / 100 / 2 + (k === n ? b.face : 0), at]); }
+  return out;
+}
+function bondPV(b, now = Date.now()){
+  let pv = 0;
+  for (const [t, a] of bondFlows(b, now)){
+    if (t <= 0){ pv += a; continue; }
+    const y = yAt(b.c, t); if (y === null) return null;
+    pv += a / Math.pow(1 + y / 100 / 2, 2 * t);
+  }
+  return pv;
+}
+const bondVal = b => { const v = bondPV(b); if (v !== null) b.v = v; return b.v !== undefined ? b.v : b.cost; };
+// 이자·만기 처리. 바뀐 것이 있으면 true
+function bondTick(){
+  if (!Array.isArray(S.bonds) || !S.bonds.length) return false;
+  const now = Date.now(); let ch = false;
+  S.bonds = S.bonds.filter(b => {
+    const credit = a => { if (b.c === 'US') receiveUSD(a); else S.krw += a; };
+    if (b.cpn){
+      const n = Math.round(b.T * 2);
+      while (b.paid < n && b.t0 + (b.paid + 1) * YEAR_MS / 2 <= now){
+        b.paid++; const c = b.face * b.cpn / 100 / 2; credit(c); ch = true;
+        altLog('bond', `${bondName(b.c, b.T)} 이자 (${b.paid}/${n}회)`, c, b.c === 'US' ? 'USD' : 'KRW');
+      }
+      if (b.paid >= n){ credit(b.face); altLog('bond', `${bondName(b.c, b.T)} 만기 원금`, b.face, b.c === 'US' ? 'USD' : 'KRW'); toast(`${bondName(b.c, b.T)}이 만기되어 원금이 들어왔습니다`); return false; }
+      return true;
+    }
+    if (b.mat <= now){ credit(b.face); ch = true; altLog('bond', `${bondName(b.c, b.T)} 만기 (액면)`, b.face, b.c === 'US' ? 'USD' : 'KRW'); toast(`${bondName(b.c, b.T)}이 만기되었습니다`); return false; }
+    return true;
+  });
+  return ch;
+}
+function bondBuy(c, T, amt){
+  if (!isLive()) return toast('채권은 실제 시세 모드에서만 살 수 있습니다', true);
+  if (S.over) return toast('파산해서 거래할 수 없습니다', true);
+  const y = yAt(c, T); if (y === null) return toast('금리를 아직 받지 못했습니다', true);
+  const now = Date.now(), cpn = T < 1 ? 0 : Math.round(y * 1000) / 1000;
+  const unit = {c, T, face:1, cpn, t0:now, mat:now + T * YEAR_MS, paid:0};
+  const pu = bondPV(unit, now); if (!(pu > 0)) return toast('가격을 계산하지 못했습니다', true);
+  const face = amt / pu;
+  if (c === 'US' ? !payUSD(amt) : !payKRW(amt)) return toast('돈이 모자랍니다', true);
+  (S.bonds = S.bonds || []).push({id:Math.random().toString(36).slice(2, 9), ...unit, face, cost:amt, y0:y, v:amt});
+  altLog('bond', `${bondName(c, T)} 매수 (표면금리 ${cpn ? cpn.toFixed(3) + '%' : '할인채'})`, -amt, c === 'US' ? 'USD' : 'KRW');
+  commit(); toast(`${bondName(c, T)}을 ${c === 'US' ? fmtUSD(amt) : fmtKRW(amt)}어치 샀습니다`);
+}
+function bondSell(id){
+  const b = (S.bonds || []).find(x => x.id === id); if (!b) return;
+  const v = bondPV(b); if (v === null) return toast('금리를 아직 받지 못했습니다', true);
+  if (b.c === 'US') receiveUSD(v); else S.krw += v;
+  S.bonds = S.bonds.filter(x => x !== b);
+  altLog('bond', `${bondName(b.c, b.T)} 매도 (손익 ${b.c === 'US' ? signUSD(v - b.cost) : fmtKRW(v - b.cost)})`, v, b.c === 'US' ? 'USD' : 'KRW');
+  commit(); toast(`${bondName(b.c, b.T)}을 팔았습니다`);
+}
+const bpChg = (c, T) => {   // 전 거래일 대비 (bp = 0.01%p)
+  const h = XD.rates && XD.rates.hist && XD.rates.hist[c + T]; if (!h) return null;
+  const ks = Object.keys(h).sort(); if (ks.length < 2) return null;
+  return (h[ks[ks.length - 1]] - h[ks[ks.length - 2]]) * 100;
+};
+function bondPaneHTML(){
+  if (!isLive()) return `<p class="empty">채권은 실제 시세 모드에서만 거래합니다. 규칙·설정에서 실제 시세 모드로 바꾸세요.</p>`;
+  if (!XD.rates) return `<p class="empty">${XD.err.rates ? `금리 자료를 받지 못했습니다 (${esc(XD.err.rates)})` : '금리를 불러오는 중…'}</p>`;
+  INFO.bond = {t:'채권 계산 방식', h:`<div class="prose"><p>금리는 네이버 증권의 국채 금리(연 %)입니다. 만기 사이의 금리는 이웃한 두 만기의 금리를 직선으로 이어 정합니다.</p>
+    <div class="eq">P = Σ CF<sub>k</sub> / (1 + y(t<sub>k</sub>)/2)<sup>2t<sub>k</sub></sup></div>
+    <ul class="defs"><li><span class="sym">P</span><span>채권 가격 (경과이자 포함)</span></li><li><span class="sym">CF<sub>k</sub></span><span>k번째로 받을 돈: 6개월마다 이자 = 액면 × 표면금리 ÷ 2, 마지막에는 액면도 함께</span></li><li><span class="sym">t<sub>k</sub></span><span>지금부터 그 돈을 받을 때까지의 햇수</span></li><li><span class="sym">y(t)</span><span>만기 t의 지금 국채 금리 (연 %, 반기 복리로 씀)</span></li></ul>
+    <p>새로 살 때 표면금리는 그날 그 만기의 금리이고, 가격도 같은 식으로 매기므로 사자마자 손익이 생기지 않습니다. 금리가 오르면 가격이 내리고, 내리면 오릅니다. 1년보다 짧은 미국 국채(3개월)는 이자 없이 액면보다 싸게 사서 만기에 액면을 받는 할인채입니다.</p>
+    <p>이자는 6개월마다, 원금은 만기에 통장으로 들어옵니다(미국 국채는 달러, 한국 국채는 원화). 수수료와 세금은 없습니다. 실제 국채의 발행일·표면금리와는 다르고, 산 날을 발행일로 보는 가상의 채권입니다.</p></div>`};
+  const row = (c, T) => {
+    const cur = XD.rates.cur[c + T]; if (!cur) return '';
+    const ch = bpChg(c, T);
+    return `<button class="bd-row" data-bondbuy="${c}|${T}"><span class="bd-n"><b>${bondName(c, T)}</b><small>${T < 1 ? '할인채' : '6개월마다 이자'}</small></span><span class="bd-y num">${(+cur[0]).toFixed(3)}%</span><span class="bd-c num ${ch === null ? 'flat' : ch > 0 ? 'up' : ch < 0 ? 'down' : 'flat'}">${ch === null ? '' : `${ch > 0 ? '+' : ch < 0 ? MINUS : ''}${Math.abs(ch).toFixed(1)}bp`}</span></button>`;
+  };
+  const mine = (S.bonds || []).map(b => {
+    const v = bondVal(b), pl = v - b.cost, f = b.c === 'US' ? fmtUSD : fmtKRW;
+    const d = new Date(b.mat);
+    return `<div class="bd-hold"><span class="bd-n"><b>${bondName(b.c, b.T)}</b><small>${b.cpn ? `표면 ${b.cpn.toFixed(3)}%` : '할인채'} · 액면 ${f(b.face)} · ${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')} 만기</small></span><span class="bd-v"><b class="num">${f(v)}</b><small class="num ${cls(pl)}">${pl >= 0 ? '+' : ''}${f(pl)}</small></span><button class="btn" data-bondsell="${b.id}">팔기</button></div>`;
+  }).join('');
+  const t = XD.rates.at ? new Date(XD.rates.at * 1000) : null;
+  return `<section class="card"><div class="card-h"><h2>내 채권 ${infoBtn('bond')}</h2><small>${(S.bonds || []).length}개</small></div>${mine || '<p class="empty">가진 채권이 없습니다. 아래에서 만기를 골라 사세요.</p>'}</section>
+    <section class="card"><div class="card-h"><h2>미국 국채</h2><small>달러로 삽니다</small></div>${BOND_T.US.map(T => row('US', T)).join('')}</section>
+    <section class="card"><div class="card-h"><h2>한국 국채</h2><small>원화로 삽니다</small></div>${BOND_T.KR.map(T => row('KR', T)).join('')}</section>
+    <p class="muted" style="margin:4px 2px">금리 출처: 네이버 증권${t ? `, ${t.getMonth() + 1}/${t.getDate()} ${kstTime(t)} 받음` : ''}. 전일 대비는 전 거래일 종가 금리와의 차이(1bp = 0.01%p)입니다.</p>`;
+}
+function bondBuyDialog(c, T){
+  const y = yAt(c, T); if (y === null) return toast('금리를 아직 받지 못했습니다', true);
+  const usd = c === 'US', cur = usd ? '$' : '원';
+  const close = showModal(`<h2>${bondName(c, T)} 사기</h2><p class="muted" style="margin:0 0 8px">지금 금리 ${y.toFixed(3)}% · ${T < 1 ? '할인채 (만기에 액면)' : `표면금리 ${y.toFixed(3)}%, 6개월마다 이자`} · ${T}년 뒤 만기</p>
+    <label class="amt"><input id="bdAmt" type="text" inputmode="decimal" placeholder="${usd ? '살 금액 (달러)' : '살 금액 (원)'}"><span>${cur}</span></label>
+    <div class="quick" style="margin:8px 0">${(usd ? [100, 500, 1000, 5000] : [100000, 1000000, 5000000]).map(v => `<button data-bdq="${v}">${usd ? '$' + v.toLocaleString() : (v / 10000).toLocaleString() + '만'}</button>`).join('')}</div>
+    <div class="bd" id="bdInfo"></div>
+    <div class="acts"><button class="btn" data-close>닫기</button><button class="btn solid" id="bdGo" disabled>사기</button></div>`);
+  const inp = $('#bdAmt');
+  const upd = () => {
+    const a = parseFloat(inp.value.replace(/,/g, '')) || 0;
+    const now = Date.now(), unit = {c, T, face:1, cpn:T < 1 ? 0 : Math.round(y * 1000) / 1000, t0:now, mat:now + T * YEAR_MS, paid:0};
+    const pu = bondPV(unit, now), face = a / pu, f = usd ? fmtUSD : fmtKRW;
+    const ok = a > 0 && (usd ? canPayUSD(a) : canPayKRW(a));
+    $('#bdInfo').innerHTML = a > 0 ? `<div><span>액면</span><b class="num">${f(face)}</b></div><div><span>가격 (액면 100당)</span><b class="num">${(pu * 100).toFixed(3)}</b></div>${T >= 1 ? `<div><span>6개월마다 받을 이자</span><b class="num">${f(face * unit.cpn / 100 / 2)}</b></div>` : ''}<div><span>만기에 받을 원금</span><b class="num">${f(face)}</b></div>${ok ? '' : `<div class="tot"><span>돈이 모자랍니다</span><b></b></div>`}` : '';
+    $('#bdGo').disabled = !ok;
+  };
+  inp.addEventListener('input', upd);
+  $$('[data-bdq]').forEach(b => b.onclick = () => { inp.value = b.dataset.bdq; upd(); });
+  $('#bdGo').onclick = () => { const a = parseFloat(inp.value.replace(/,/g, '')) || 0; close(); bondBuy(c, T, a); };
+}
+
+/* ── 주택 (한국부동산원 (월) 평균단위매매가격_아파트, 천원/㎡) ── */
+const HOUSE_SEOUL = ['530011', '530012', '530013', '530015', '530016', '530017', '530018', '530019', '530020', '530021', '530022', '530024', '530025', '530026', '530029', '530030', '530031', '530032', '530033', '530034', '530035', '530037', '530038', '530039', '530040'];
+const HOUSE_PROV = ['500009', '500010', '500011', '500012', '500013', '500014', '500015', '500016', '500017', '500018', '500019', '500020', '500021', '500022', '500023', '500024'];
+const HOUSE_AREAS = [59, 84, 114];
+function hReg(cls){ return XD.housing && XD.housing.r && XD.housing.r[cls]; }
+function hPx(cls){   // 최신 달의 ㎡당 가격(원)
+  const r = hReg(cls); if (!r) return null;
+  const ks = Object.keys(r.h).sort(); return ks.length ? r.h[ks[ks.length - 1]] * 1000 : null;
+}
+function hChg(cls){ const r = hReg(cls); if (!r) return null; const ks = Object.keys(r.h).sort(); return ks.length >= 2 ? r.h[ks[ks.length - 1]] / r.h[ks[0]] - 1 : null; }
+const hName = cls => { const r = hReg(cls); const n = r ? r.n : cls; return HOUSE_SEOUL.includes(cls) ? `서울 ${n}` : n; };
+const ymText = ym => ym ? `${ym.slice(0, 4)}년 ${+ym.slice(4)}월` : '';
+const houseVal = h => { const p = hPx(h.cls); if (p !== null) h.v = p * h.m2; return h.v !== undefined ? h.v : h.cost; };
+function houseBuy(cls, m2){
+  if (!isLive()) return toast('주택은 실제 시세 모드에서만 살 수 있습니다', true);
+  if (S.over) return toast('파산해서 거래할 수 없습니다', true);
+  const p = hPx(cls); if (p === null) return toast('시세를 아직 받지 못했습니다', true);
+  const cost = Math.round(p * m2);
+  if (!payKRW(cost)) return toast('돈이 모자랍니다', true);
+  (S.houses = S.houses || []).push({id:Math.random().toString(36).slice(2, 9), cls, m2, p0:p, cost, t0:Date.now(), v:cost});
+  altLog('house', `${hName(cls)} 아파트 ${m2}㎡ 매수`, -cost, 'KRW');
+  commit(); toast(`${hName(cls)} 아파트 ${m2}㎡를 ${fmtKRW(cost)}에 샀습니다`);
+}
+function houseSell(id){
+  const h = (S.houses || []).find(x => x.id === id); if (!h) return;
+  const v = houseVal(h);
+  S.krw += v; S.houses = S.houses.filter(x => x !== h);
+  altLog('house', `${hName(h.cls)} 아파트 ${h.m2}㎡ 매도 (손익 ${fmtKRW(v - h.cost)})`, v, 'KRW');
+  commit(); toast(`${hName(h.cls)} 아파트를 ${fmtKRW(v)}에 팔았습니다`);
+}
+const eok = w => w >= 1e8 ? `${(w / 1e8).toFixed(w >= 1e9 ? 1 : 2)}억` : `${Math.round(w / 1e4).toLocaleString()}만`;
+function housePaneHTML(){
+  if (!isLive()) return `<p class="empty">주택은 실제 시세 모드에서만 거래합니다. 규칙·설정에서 실제 시세 모드로 바꾸세요.</p>`;
+  if (!XD.housing) return `<p class="empty">${XD.err.housing ? `시세 자료를 받지 못했습니다 (${esc(XD.err.housing)})` : '시세를 불러오는 중…'}</p>`;
+  const ym = XD.housing.ym, ks = Object.keys((hReg('500001') || {h:{}}).h).sort();
+  INFO.house = {t:'주택 시세', h:`<div class="prose"><p>한국부동산원 전국주택가격동향조사의 <b>(월) 평균단위매매가격_아파트</b>(㎡당 평균 매매가격, 통계표 ${XD.housing.tbl || 'A_2024_00061'})를 씁니다. 지금은 ${ymText(ym)} 값이고, 다음 달 통계가 나오면 바뀝니다(보통 다음 달 중순).</p>
+    <div class="eq">가격 = ㎡당 평균 매매가격 × 전용면적(㎡)</div>
+    <p>서울은 25개 구별, 나머지는 시·도별입니다. 실제 아파트 한 채의 값이 아니라 그 지역 아파트 표본의 평균이므로, 사고판 뒤의 손익은 그 지역 평균 시세가 오르내린 만큼입니다. 세금(취득세·양도세), 중개 수수료, 대출 규제는 넣지 않았습니다. 변동률은 ${ks.length ? ymText(ks[0]) : ''}부터 ${ymText(ym)}까지입니다.</p></div>`};
+  const row = cls => {
+    const p = hPx(cls); if (p === null) return '';
+    const c = hChg(cls), nm = (hReg(cls) || {}).n || cls;
+    return `<button class="bd-row" data-housebuy="${cls}"><span class="bd-n"><b>${esc(nm)}</b><small>84㎡ 약 ${eok(p * 84)}</small></span><span class="bd-y num">${Math.round(p / 1e4).toLocaleString()}만/㎡</span><span class="bd-c num ${c === null ? 'flat' : cls2(c)}">${c === null ? '' : fmtPct(c)}</span></button>`;
+  };
+  const mine = (S.houses || []).map(h => {
+    const v = houseVal(h), pl = v - h.cost;
+    return `<div class="bd-hold"><span class="bd-n"><b>${esc(hName(h.cls))} 아파트</b><small>${h.m2}㎡ · 산 값 ${eok(h.cost)}</small></span><span class="bd-v"><b class="num">${fmtKRW(v)}</b><small class="num ${cls(pl)}">${pl >= 0 ? '+' : ''}${fmtKRW(pl)} (${fmtPct(h.cost ? pl / h.cost : 0)})</small></span><button class="btn" data-housesell="${h.id}">팔기</button></div>`;
+  }).join('');
+  return `<section class="card"><div class="card-h"><h2>내 주택 ${infoBtn('house')}</h2><small>${(S.houses || []).length}채</small></div>${mine || '<p class="empty">가진 주택이 없습니다. 아래에서 지역을 골라 사세요.</p>'}</section>
+    <section class="card"><div class="card-h"><h2>서울 (구별)</h2><small>${ymText(ym)} ㎡당 평균</small></div>${HOUSE_SEOUL.map(row).join('')}</section>
+    <section class="card"><div class="card-h"><h2>시·도</h2><small>${ymText(ym)} ㎡당 평균</small></div>${HOUSE_PROV.map(row).join('')}</section>
+    <p class="muted" style="margin:4px 2px">출처: 한국부동산원 부동산통계정보(R-ONE). 변동률은 최근 ${Math.max(0, ks.length - 1)}개월.</p>`;
+}
+const cls2 = c => c > 0.000005 ? 'up' : c < -0.000005 ? 'down' : 'flat';
+function houseBuyDialog(cls){
+  const p = hPx(cls); if (p === null) return toast('시세를 아직 받지 못했습니다', true);
+  UI.hArea = UI.hArea || 84;
+  const close = showModal(`<h2>${esc(hName(cls))} 아파트 사기</h2><p class="muted" style="margin:0 0 8px">${ymText(XD.housing.ym)} ㎡당 평균 ${Math.round(p / 1e4).toLocaleString()}만 원</p>
+    <p style="margin:0 0 6px">전용면적</p>
+    <div class="seg" style="margin-bottom:8px">${HOUSE_AREAS.map(a => `<button data-harea="${a}">${a}㎡</button>`).join('')}</div>
+    <label class="amt"><input id="hAreaIn" type="text" inputmode="numeric" value="${UI.hArea}"><span>㎡</span></label>
+    <div class="bd" id="hInfo" style="margin-top:8px"></div>
+    <div class="acts"><button class="btn" data-close>닫기</button><button class="btn solid" id="hGo">사기</button></div>`);
+  const inp = $('#hAreaIn');
+  const upd = () => {
+    const a = clamp(parseFloat(inp.value) || 0, 0, 300);
+    UI.hArea = a;
+    $$('[data-harea]').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.harea === a)));
+    const cost = Math.round(p * a), ok = a >= 10 && canPayKRW(cost);
+    $('#hInfo').innerHTML = `<div><span>가격</span><b class="num">${fmtKRW(cost)}</b></div><div><span>쓸 수 있는 돈 (원화 + 달러 환전)</span><b class="num">${fmtKRW(S.krw + S.usd * fxRates().sell)}</b></div>${a < 10 ? '<div class="tot"><span>면적은 10㎡ 이상</span><b></b></div>' : ok ? '' : '<div class="tot"><span>돈이 모자랍니다</span><b></b></div>'}`;
+    $('#hGo').disabled = !ok;
+  };
+  inp.addEventListener('input', upd);
+  $$('[data-harea]').forEach(b => b.onclick = () => { inp.value = b.dataset.harea; upd(); });
+  upd();
+  $('#hGo').onclick = () => { const a = clamp(parseFloat(inp.value) || 0, 10, 300); close(); houseBuy(cls, a); };
+}
+
+/* ── 순자산에 더하는 채권·주택 평가액 (달러) ── */
+function altUSD(){
+  let v = 0;
+  for (const b of S.bonds || []){ const x = bondVal(b); v += b.c === 'US' ? x : x / FX(); }
+  for (const h of S.houses || []) v += houseVal(h) / FX();
+  return v;
+}
+function altTick(){ return isLive() ? bondTick() : false; }
+
+/* ── 투자 탭 화면 ── */
+function renderInvest(){
+  const v = $('#v-market');
+  UI.sub = UI.sub || 'stock';
+  if (!v.dataset.built){
+    v.dataset.built = 1;
+    v.innerHTML = `<div class="subtabs" role="tablist">${SUBS.map(([k, n]) => `<button role="tab" data-sub="${k}">${n}</button>`).join('')}</div>
+      ${SUBS.map(([k]) => `<div class="subpane" id="mk-${k}"${k === 'stock' ? '' : ' hidden'}></div>`).join('')}`;
+  }
+  const top = document.querySelector('.top'); if (top) document.documentElement.style.setProperty('--top-h', top.offsetHeight + 'px');   // 하위 탭이 머리글 바로 아래에 붙게
+  $$('#v-market [data-sub]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.sub === UI.sub)));
+  SUBS.forEach(([k]) => { const p = $('#mk-' + k); if (p) p.hidden = k !== UI.sub; });
+  if (UI.sub === 'stock') return renderStockPane();
+  const p = $('#mk-' + UI.sub);
+  if (UI.sub === 'bond'){ p.innerHTML = bondPaneHTML(); loadExtra('rates'); }
+  else if (UI.sub === 'house'){ p.innerHTML = housePaneHTML(); loadExtra('housing'); }
+  else if (UI.sub === 'gamble') renderGamblePane(p);
+  else if (UI.sub === 'lotto') renderLottoPane(p);
+}
+document.addEventListener('click', e => {
+  const t = e.target.closest('button'); if (!t) return;
+  if (t.dataset.sub){ UI.sub = t.dataset.sub; renderInvest(); window.scrollTo(0, 0); if (t.dataset.sub !== 'stock') loadExtras(false); return; }
+  if (t.dataset.bondbuy){ const [c, T] = t.dataset.bondbuy.split('|'); bondBuyDialog(c, +T); return; }
+  if (t.dataset.bondsell){ const id = t.dataset.bondsell, b = (S.bonds || []).find(x => x.id === id); if (!b) return;
+    const v = bondPV(b), f = b.c === 'US' ? fmtUSD : fmtKRW;
+    const c = showModal(`<h2>${bondName(b.c, b.T)} 팔기</h2><div class="bd"><div><span>지금 가격</span><b class="num">${v === null ? '-' : f(v)}</b></div><div><span>산 값</span><b class="num">${f(b.cost)}</b></div></div><div class="acts"><button class="btn" data-close>닫기</button><button class="btn solid" id="bsGo">팔기</button></div>`);
+    $('#bsGo').onclick = () => { c(); bondSell(id); }; return; }
+  if (t.dataset.housebuy){ houseBuyDialog(t.dataset.housebuy); return; }
+  if (t.dataset.housesell){ const id = t.dataset.housesell, h = (S.houses || []).find(x => x.id === id); if (!h) return;
+    const v = houseVal(h);
+    const c = showModal(`<h2>${esc(hName(h.cls))} 아파트 팔기</h2><div class="bd"><div><span>지금 시세 (${h.m2}㎡)</span><b class="num">${fmtKRW(v)}</b></div><div><span>산 값</span><b class="num">${fmtKRW(h.cost)}</b></div></div><div class="acts"><button class="btn" data-close>닫기</button><button class="btn solid" id="hsGo">팔기</button></div>`);
+    $('#hsGo').onclick = () => { c(); houseSell(id); }; return; }
+  if (t.dataset.gosub){ UI.sub = t.dataset.gosub; go('market'); return; }
+});
+
+/* 내 자산 탭: 채권·주택 보유와 기타 내역 */
+function altAssetsHTML(){
+  const bs = S.bonds || [], hs = S.houses || [];
+  const rows = [
+    ...bs.map(b => { const v = bondVal(b), f = b.c === 'US' ? fmtUSD : fmtKRW, pl = v - b.cost; return `<button class="hold" data-gosub="bond"><span class="mono" style="--h:200">채권</span><span class="nmb"><div class="n">${bondName(b.c, b.T)}</div><div class="s">${b.cpn ? `표면 ${b.cpn.toFixed(3)}%` : '할인채'}</div></span><span class="px"><div class="p num">${f(v)}</div><div class="c num ${cls(pl)}">${pl >= 0 ? '+' : ''}${f(pl)}</div></span></button>`; }),
+    ...hs.map(h => { const v = houseVal(h), pl = v - h.cost; return `<button class="hold" data-gosub="house"><span class="mono" style="--h:30">주택</span><span class="nmb"><div class="n">${esc(hName(h.cls))} 아파트</div><div class="s">${h.m2}㎡</div></span><span class="px"><div class="p num">${fmtKRW(v)}</div><div class="c num ${cls(pl)}">${pl >= 0 ? '+' : ''}${fmtKRW(pl)} (${fmtPct(h.cost ? pl / h.cost : 0)})</div></span></button>`; })
+  ].join('');
+  const log = (S.altLog || []).slice(0, 40).map(x => `<tr><td>${esc(x.dt || '')}<br><span class="muted">${kstTime(new Date(x.at))}</span></td><td>${esc(x.s)}</td><td class="r num ${x.amt > 0 ? 'up' : ''}">${x.amt > 0 ? '+' : x.amt < 0 ? MINUS : ''}${x.cur === 'USD' ? fmtUSD(Math.abs(x.amt)) : fmtKRW(Math.abs(x.amt))}</td></tr>`).join('');
+  return (rows ? `<section class="card"><div class="card-h"><h2>채권·주택</h2><small>${bs.length + hs.length}개 · ${fmtUSD(altUSD())}</small></div>${rows}</section>` : '')
+    + (log ? `<section class="card"><div class="card-h"><h2>채권·주택·복권·도박 내역</h2><small>최근 40건</small></div><div class="tbl-wrap"><table class="trades"><thead><tr><th>날짜</th><th>내용</th><th class="r">금액</th></tr></thead><tbody>${log}</tbody></table></div></section>` : '');
+}
 
 
 /* ───────── 상세 차트 (애플 주식 앱 방식) ───────── */
@@ -4408,7 +5332,7 @@ function renderTab(){
   const a = document.activeElement;
   const av = a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) ? a.closest('.view') : null;
   if (av && av.id === 'v-' + UI.tab) return;
-  ({home:renderHome, market:renderMarket, assets:renderAssets, loans:renderLoans, info:renderInfo})[UI.tab]();
+  ({home:renderHome, market:renderInvest, assets:renderAssets, loans:renderLoans, info:renderInfo})[UI.tab]();
   if (UI.tab === 'assets') refreshRanks(false);
 }
 function commit(){
@@ -4427,7 +5351,7 @@ function resetGame(){
   toast('새 게임을 시작했습니다. 시드 $10,000');
 }
 async function setMode(mode){
-  stopAuto(); bmHide();
+  stopAuto(); bmHide(); slHide();
   if (S && !S._ph){ save(); if (ACC.user){ clearTimeout(ACC.cloudT); await pushCloud(); } }   // 떠나는 모드의 기록을 먼저 올린다
   SET.mode = mode; saveSet();
   if (ACC.user){ S = await loadAccountMode(mode); writeLocal(); if (S.dirty) scheduleCloud(); }
@@ -4589,7 +5513,7 @@ async function handleSession(session){
   ACC.ranks = {}; ACC.ranksAt = {}; ACC.myRank = {};
   stopAuto();
   if (UI.sheet) closeSheet();
-  bmHide();
+  bmHide(); slHide();
   // 검색어는 계정마다 따로 — 바뀐 계정에서는 비운다 (입력칸과 필터가 어긋나지 않게 둘 다)
   UI.q = ''; UI.qRaw = ''; { const q = $('#q'); if (q){ q.value = ''; const c = $('#qClear'); if (c) c.hidden = true; } }
   if (u){
@@ -4781,6 +5705,10 @@ async function refreshRanks(force){
     const {data, error} = await ACC.sb.from('seed10k_ranks').select('user_id,nickname,return_pct,net_worth,days').eq('mode', mode).order('return_pct', {ascending:false}).limit(20);
     if (error) throw error;
     ACC.ranks[mode] = data || [];
+    try {   // 경찰 단속 기록 (seed10k_busted 표가 없으면 조용히 넘긴다)
+      const ids = (data || []).map(r => r.user_id);
+      if (ids.length){ const {data:bz} = await ACC.sb.from('seed10k_busted').select('user_id').in('user_id', ids); ACC.busted = ACC.busted || new Set(); (bz || []).forEach(x => ACC.busted.add(x.user_id)); }
+    } catch(e){}
     ACC.myRank[mode] = null;
     if (ACC.user){
       const mine = (data || []).findIndex(r => r.user_id === ACC.user.id);
@@ -4820,7 +5748,7 @@ function rankCardHTML(){
   else if (!rows.length) body = `<p class="empty">아직 랭킹에 오른 사람이 없습니다. 로그인하고 닉네임을 정하면 첫 번째로 오릅니다.</p>`;
   else body = `<ol class="ranks">${rows.map((r, i) => {
       const me = ACC.user && r.user_id === ACC.user.id;
-      return `<li class="${me ? 'me' : ''}"><span class="rn num">${i + 1}</span><span class="rk-n">${esc(r.nickname)}${me ? ' <small>나</small>' : ''}<span class="rk-d">${r.days}${mode === 'live' ? '일째' : '거래일째'} · ${fmtUSD(+r.net_worth, 0)}</span></span><b class="num ${cls(+r.return_pct)}">${fmtPct(+r.return_pct / 100)}</b></li>`;
+      return `<li class="${me ? 'me' : ''}"><span class="rn num">${i + 1}</span><span class="rk-n"><span class="${ACC.busted && ACC.busted.has(r.user_id) ? 'busted' : ''}" ${ACC.busted && ACC.busted.has(r.user_id) ? 'title="불법 도박 단속 기록"' : ''}>${esc(r.nickname)}</span>${me ? ' <small>나</small>' : ''}<span class="rk-d">${r.days}${mode === 'live' ? '일째' : '거래일째'} · ${fmtUSD(+r.net_worth, 0)}</span></span><b class="num ${cls(+r.return_pct)}">${fmtPct(+r.return_pct / 100)}</b></li>`;
     }).join('')}</ol>`;
   let foot = '';
   if (!ACC.user) foot = `<div class="rank-foot"><span>로그인하면 랭킹에 참여할 수 있습니다.</span><button class="btn" id="btnLoginOpen">로그인</button></div>`;
@@ -4951,8 +5879,8 @@ document.addEventListener('click', e => {
   if (t.dataset.fxclose !== undefined){ UI.fxClose && UI.fxClose(); return; }
   if (t.id === 'fxGo'){ const q = exchange(UI.fxDir, UI.fxFrom); if (q){ UI.fxAmt = ''; UI.fxClose && UI.fxClose(); commit(); } return; }
   if (t.dataset.tab){ go(t.dataset.tab); return; }
-  if (t.dataset.open){ openSheet(t.dataset.open); return; }
-  if (t.dataset.mkt){ UI.mkt = t.dataset.mkt; renderMarket(); return; }
+  if (t.dataset.open){ if (t.dataset.from === 'assets'){ UI.sub = 'stock'; go('market'); } openSheet(t.dataset.open); return; }
+  if (t.dataset.mkt){ UI.mkt = t.dataset.mkt; renderStockPane(); return; }
   if (t.classList.contains('close')){ closeSheet(); return; }
   if (t.dataset.crange){ UI.crange = t.dataset.crange; UI.scrub = null; $$('[data-crange]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.crange === UI.crange))); renderChartBox(); return; }
   if (t.dataset.side){ UI.side = t.dataset.side; UI.qty = 1; UI.rpx = null; renderOrder(); return; }
