@@ -15,6 +15,6 @@ def cls(x):
     m = re.search(r'<CLS_NM>(.*?)</CLS_NM>.*?<DTA_VAL>(.*?)</DTA_VAL>.*?<CLS_FULLNM>(.*?)</CLS_FULLNM>', t, re.S)
     return (x, m.groups() if m else None)
 ids = list(range(510200, 511600))
-with ThreadPoolExecutor(8) as ex: res = list(ex.map(cls, ids))
+with ThreadPoolExecutor(16) as ex: res = list(ex.map(cls, ids))
 P('rone cls', '\n'.join(f"{x}\t{g[0]}\t{g[2]}\t{g[1]}" for x, g in res if g))
 open('probe/p5.txt', 'w').write('\n'.join(out))
