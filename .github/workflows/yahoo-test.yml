@@ -13,4 +13,4 @@ jobs:
       - run: |
           python3 probe/p5.py
           git config user.name gha; git config user.email gha@users.noreply.github.com
-          git add probe/p5.txt && git commit -m "자료 확인 결과" && git push origin HEAD:tmp-yahoo-test
+          git add probe/p6.txt && git commit -m "자료 확인 결과" && git push origin HEAD:tmp-yahoo-test
