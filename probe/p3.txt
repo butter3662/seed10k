@@ -1,0 +1,713 @@
+===== lotto range
+200 application/json;charset=UTF-8 len=1302
+{"resultCode":null,"resultMessage":null,"data":{"list":[{"winType0":0,"winType1":7,"winType2":7,"winType3":0,"gmSqNo":5133,"ltEpsd":1249,"tm1WnNo":2,"tm2WnNo":11,"tm3WnNo":16,"tm4WnNo":25,"tm5WnNo":34,"tm6WnNo":35,"bnsWnNo":14,"ltRflYmd":"20261107","rnk1WnNope":14,"rnk1WnAmt":2025045509,"rnk1SumWnAmt":28350637126,"rnk2WnNope":93,"rnk2WnAmt":50807594,"rnk2SumWnAmt":4725106242,"rnk3WnNope":3550,"rnk3WnAmt":1331016,"rnk3SumWnAmt":4725106800,"rnk4WnNope":162101,"rnk4WnAmt":50000,"rnk4SumWnAmt":8105050000,"rnk5WnNope":2634961,"rnk5WnAmt":5000,"rnk5SumWnAmt":13174805000,"sumWnNope":2800719,"rlvtEpsdSumNtslAmt":59080705168,"wholEpsdSumNtslAmt":118161409000,"excelRnk":"1등"},{"winType0":0,"winType1":13,"winType2":2,"winType3":0,"gmSqNo":5133,"ltEpsd":1248,"tm1WnNo":16,"tm2WnNo":18,"tm3WnNo":27,"tm4WnNo":36,"tm5WnNo":38,"tm6WnNo":42,"bnsWnNo":22,"ltRflYmd":"20261031","rnk1WnNope":15,"rnk1WnAmt":1933658450,"rnk1SumWnAmt":29004876750,"rnk2WnNope":91,"rnk2WnAmt":53122485,"rnk2SumWnAmt":4834146135,"rnk3WnNope":3265,"rnk3WnAmt":1480597,"rnk3SumWnAmt":4834149205,"rnk4WnNope":167745,"rnk4WnAmt":50000,"rnk4SumWnAmt":8387250000,"rnk5WnNope":2723467,"rnk5WnAmt":5000,"rnk5SumWnAmt":13617335000,"sumWnNope":2894583,"rlvtEpsdSumNtslAmt":60677757090,"wholEpsdSumNtslAmt":121355508000,"excelRnk":"1등"}]}}
+
+===== https://www.dhlottery.co.kr/st2000/intro
+200 text/html; charset=UTF-8 len=104520
+
+
+
+
+
+
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="ko" xml:lang="ko">
+
+<script type="text/javascript">
+	var rsaModulus = 'b16a002ef0897710ae6584cd0036c81c36e3b00bbb8c6e11
+
+===== https://www.dhlottery.co.kr/speetto/intro
+200 text/html; charset=UTF-8 len=104520
+
+
+
+
+
+
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="ko" xml:lang="ko">
+
+<script type="text/javascript">
+	var rsaModulus = '92032a6de3737030e53d901433d30bb76e7ff4d621019950
+
+===== https://www.dhlottery.co.kr/sp2000/intro
+200 text/html; charset=UTF-8 len=104520
+
+
+
+
+
+
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="ko" xml:lang="ko">
+
+<script type="text/javascript">
+	var rsaModulus = '9384d698772075afe28def59fbef439fce0730c95fbfad5b
+
+===== main links
+/st/pblcnDsctn?stGmTypeCd=st1000
+/st/pblcnDsctn?stGmTypeCd=st2000
+/st/pblcnDsctn?stGmTypeCd=st500
+/st/st10Intro
+/st/st20Intro
+/st/st5Intro
+/st/wnrStry?stGmTypeCd=st1000
+/st/wnrStry?stGmTypeCd=st2000
+/st/wnrStry?stGmTypeCd=st500
+/st20WnInfo/home
+
+===== rone tbl A_2024_00060
+200 application/xml;charset=UTF-8 len=2627
+<?xml version="1.0" encoding="UTF-8"?>
+
+<SttsApiTbl>
+  <head>
+    <list_total_count>1</list_total_count>
+    <RESULT>
+      <CODE>INFO-000</CODE>
+      <MESSAGE>정상 처리되었습니다.</MESSAGE>
+    </RESULT>
+  </head>
+  <row>
+    <STATBL_ID>A_2024_00060</STATBL_ID>
+    <STATBL_NM>(월) 평균매매가격_아파트</STATBL_NM>
+    <DTACYCLE_CD>MM</DTACYCLE_CD>
+    <DTACYCLE_NM>월</DTACYCLE_NM>
+    <STAT_ID>S234820263</STAT_ID>
+    <TOP_ORG_NM>한국부동산원</TOP_ORG_NM>
+    <OPEN_STATE>Y</OPEN_STATE>
+    <DATA_START_YY>2012</DATA_START_YY>
+    <DATA_END_YY>2024</DATA_END_YY>
+    <STATBL_IDTFR></STATBL_IDTFR>
+    <STATBL_CMMT>※ 조사·통계 문의: 부동산통계처 주택통계부(053-663-8505, 8515) ※ 평균(중위)가격 이용시 유의사항 · 주택가격동향조사의 보조지표인 평균가격은 표본의 가격분포에 민감하게 반응하므로 지수의 변동률과 다를 수 있으며, 정기표본보정, 표본확대(‘15.1월, ’15.7월, ‘16.9월, ’19.1월, ‘20.1월, '23.1월, '24.1월, '25.4월) 및 표본 전면 재설계(’17.2월, ‘21.7월)에 의한 표본구성 및 재고량 변화에 따른 가중치 조정, 평균·중위가격 상위단위 산정 방식 변경 등으로 변동이 발생되어 시계열 해석 시 유의하여야 함 · 그러므로 평균가격은 지역 내 가격 변동률을 산정하는데 활용하는 것은 적절하지 않으며, 당월의 지역 간 가격 수준 비교를 위해 활용하는 것이 적절함 -(표본 구성 변화로 변동하는 경우) 해당지역에 고가(저가) 신규주택 증가로 인한 표본 선정으로 전월 평균가격과 불연속이 나타나는 경우 ex) 경기 하남 미사지구 표본증가로 기존 평균가격 보다 높게 산정 -(가중치 변경으로 변동하는 경우(’21년6월까지 적용)) 지역 내 대규모 주택 멸실 혹은 신축으로 인해 가중치가 과도하게 변경되어 불연속이 나타나는 경우 ex) 서울 동남권 재건축에 따른 멸실 증가로 가중치 비율 감소하며 서울 전체 평균가격에 영향 -(평균·중위가격 상위단위 선정 방식 변경(‘21년7월부터 적용)) 상위 단위 내 표본을 기준으로 시군구 재고량 가중 없이 산정 ex) 서울 내 시군구(하위단위) 평균·중위가격에 재고량 가중을 하여 서울(상위단위)을 생산하는 것이 아닌, 서울 내 표본을 기준으로 재고량 가중 없이 단순 서울 평균·중위가격 생산</STATBL_CMMT>
+    <V_ORDER>515045</V_ORDER>
+    <RPSTUI_NM></RPSTUI_NM>
+  </row>
+
+===== rone itm A_2024_00060
+200 application/xml;charset=UTF-8 len=1933
+<?xml version="1.0" encoding="UTF-8"?>
+
+<SttsApiTblItm>
+  <head>
+    <list_total_count>246</list_total_count>
+    <RESULT>
+      <CODE>INFO-000</CODE>
+      <MESSAGE>정상 처리되었습니다.</MESSAGE>
+    </RESULT>
+  </head>
+  <row>
+    <STATBL_ID>A_2024_00060</STATBL_ID>
+    <ITM_TAG>분류</ITM_TAG>
+    <ITM_ID>500001</ITM_ID>
+    <PAR_ITM_ID>0</PAR_ITM_ID>
+    <ITM_NM>전국</ITM_NM>
+    <ITM_FULLNM>전국</ITM_FULLNM>
+    <UI_NM></UI_NM>
+    <ITM_CMMT_IDTFR></ITM_CMMT_IDTFR>
+    <ITM_CMMT_CONT></ITM_CMMT_CONT>
+    <V_ORDER>1</V_ORDER>
+  </row>
+  <row>
+    <STATBL_ID>A_2024_00060</STATBL_ID>
+    <ITM_TAG>분류</ITM_TAG>
+    <ITM_ID>500002</ITM_ID>
+    <PAR_ITM_ID>0</PAR_ITM_ID>
+    <ITM_NM>수도권</ITM_NM>
+    <ITM_FULLNM>수도권</ITM_FULLNM>
+    <UI_NM></UI_NM>
+    <ITM_CMMT_IDTFR></ITM_CMMT_IDTFR>
+    <ITM_CMMT_CONT></ITM_CMMT_CONT>
+    <V_ORDER>2</V_ORDER>
+  </row>
+  <row>
+    <STATBL_ID>A_2024_00060</STATBL_ID>
+    <ITM_TAG>분류</ITM_TAG>
+    <ITM_ID>500003</ITM_ID>
+    <PAR_ITM_ID>0</PAR_ITM_ID>
+    <ITM_NM>지방권</ITM_NM>
+    <ITM_FULLNM>지방권</ITM_FULLNM>
+    <UI_NM></UI_NM>
+    <ITM_CMMT_IDTFR></ITM_CMMT_IDTFR>
+    <ITM_CMMT_CONT></ITM_CMMT_CONT>
+    <V_ORDER>3</V_ORDER>
+  </row>
+  <row>
+    <STATBL_ID>A_2024_00060</STATBL_ID>
+    <ITM_TAG>분류</ITM_TAG>
+    <ITM_ID>500004</ITM_ID>
+    <PAR_ITM_ID>0</PAR_ITM_ID>
+    <ITM_NM>5대광역시</ITM_NM>
+    <ITM_FULLNM>5대광역시</ITM_FULLNM>
+    <UI_NM></UI_NM>
+    <ITM_CMMT_IDTFR></ITM_CMMT_IDTFR>
+    <ITM_CMMT_CONT></ITM_CMMT_CONT>
+    <V_ORDER>4</V_ORDER>
+  </row>
+  <row>
+    <STATBL_ID>A_2024_00060</STATBL_ID>
+    <ITM_TAG>분류</ITM_TAG>
+    <ITM_ID>500005</ITM_ID>
+    <PAR_ITM_ID>0</PAR_ITM_ID>
+    <ITM_NM>4대광역시</ITM_NM>
+    <ITM_FULLNM>4대광역시</ITM_FULLNM>
+    <UI_NM></UI_NM>
+    <ITM_CMMT_IDTFR></ITM_CMMT_IDTFR>
+    <ITM_CMMT_CONT></ITM_CMMT_CONT>
+    <V_ORDER>5</V_ORDER>
+  </row>
+</SttsApiTblItm>
+
+
+
+===== rone data A_2024_00060
+200 application/xml;charset=UTF-8 len=2873
+<?xml version="1.0" encoding="UTF-8"?>
+
+<SttsApiTblData>
+  <head>
+    <list_total_count>236</list_total_count>
+    <RESULT>
+      <CODE>INFO-000</CODE>
+      <MESSAGE>정상 처리되었습니다.</MESSAGE>
+    </RESULT>
+  </head>
+  <row>
+    <STATBL_ID>A_2024_00060</STATBL_ID>
+    <DTACYCLE_CD>MM</DTACYCLE_CD>
+    <WRTTIME_IDTFR_ID>202609</WRTTIME_IDTFR_ID>
+    <GRP_ID></GRP_ID>
+    <GRP_NM></GRP_NM>
+    <CLS_ID>500001</CLS_ID>
+    <CLS_NM>전국</CLS_NM>
+    <ITM_ID>100001</ITM_ID>
+    <ITM_NM>가격</ITM_NM>
+    <DTA_VAL>523246.362210585</DTA_VAL>
+    <UI_NM>천원</UI_NM>
+    <GRP_FULLNM></GRP_FULLNM>
+    <CLS_FULLNM>전국</CLS_FULLNM>
+    <ITM_FULLNM>가격</ITM_FULLNM>
+    <WRTTIME_DESC>2026년 9월</WRTTIME_DESC>
+  </row>
+  <row>
+    <STATBL_ID>A_2024_00060</STATBL_ID>
+    <DTACYCLE_CD>MM</DTACYCLE_CD>
+    <WRTTIME_IDTFR_ID>202609</WRTTIME_IDTFR_ID>
+    <GRP_ID></GRP_ID>
+    <GRP_NM></GRP_NM>
+    <CLS_ID>500021</CLS_ID>
+    <CLS_NM>전남</CLS_NM>
+    <ITM_ID>100001</ITM_ID>
+    <ITM_NM>가격</ITM_NM>
+    <DTA_VAL>178329.871323529</DTA_VAL>
+    <UI_NM>천원</UI_NM>
+    <GRP_FULLNM></GRP_FULLNM>
+    <CLS_FULLNM>전남광주&gt;전남</CLS_FULLNM>
+    <ITM_FULLNM>가격</ITM_FULLNM>
+    <WRTTIME_DESC>2026년 9월</WRTTIME_DESC>
+  </row>
+  <row>
+    <STATBL_ID>A_2024_00060</STATBL_ID>
+    <DTACYCLE_CD>MM</DTACYCLE_CD>
+    <WRTTIME_IDTFR_ID>202609</WRTTIME_IDTFR_ID>
+    <GRP_ID></GRP_ID>
+    <GRP_NM></GRP_NM>
+    <CLS_ID>510009</CLS_ID>
+    <CLS_NM>강북지역</CLS_NM>
+    <ITM_ID>100001</ITM_ID>
+    <ITM_NM>가격</ITM_NM>
+    <DTA_VAL>1089950.51622419</DTA_VAL>
+    <UI_NM>천원</UI_NM>
+    <GRP_FULLNM></GRP_FULLNM>
+    <CLS_FULLNM>서울&gt;강북지역</CLS_FULLNM>
+    <ITM_FULLNM>가격</ITM_FULLNM>
+    <WRTTIME_DESC>2026년 9월</WRTTIME_DESC>
+  </row>
+  <row>
+    <STATBL_ID>A_2024_00060</STATBL_ID>
+    <DTACYCLE_CD>MM</DTACYCLE_CD>
+    <WRTTIME_IDTFR_ID>202609</WRTTIME_IDTFR_ID>
+    <GRP_ID></GRP_ID>
+    <GRP_NM></GRP_NM>
+    <CLS_ID>510012</CLS_ID>
+    <CLS_NM>경부1권</CLS_NM>
+    <ITM_ID>100001</ITM_ID>
+    <ITM_NM>가격</ITM_NM>
+    <DTA_VAL>1044607.73514851</DTA_VAL>
+    <UI_NM>천원</UI_NM>
+    <GRP_FULLNM></GRP_FULLNM>
+    <CLS_FULLNM>경기&gt;경부1권</CLS_FULLNM>
+    <ITM_FULLNM>가격</ITM_FULLNM>
+    <WRTTIME_DESC>2026년 9월</WRTTIME_DESC>
+  </row>
+  <row>
+    <STATBL_ID>A_2024_00060</STATBL_ID>
+    <DTACYCLE_CD>MM</DTACYCLE_CD>
+    <WRTTIME_IDTFR_ID>202609</WRTTIME_IDTFR_ID>
+    <GRP_ID></GRP_ID>
+    <GRP_NM></GRP_NM>
+    <CLS_ID>510030</CLS_ID>
+    <CLS_NM>중부산권</CLS_NM>
+    <ITM_ID>100001</ITM_ID>
+    <ITM_NM>가격</ITM_NM>
+    <DTA_VAL>369608.389830509</DTA_VAL>
+
+===== rone tbl A_2024_00061
+200 application/xml;charset=UTF-8 len=2633
+<?xml version="1.0" encoding="UTF-8"?>
+
+<SttsApiTbl>
+  <head>
+    <list_total_count>1</list_total_count>
+    <RESULT>
+      <CODE>INFO-000</CODE>
+      <MESSAGE>정상 처리되었습니다.</MESSAGE>
+    </RESULT>
+  </head>
+  <row>
+    <STATBL_ID>A_2024_00061</STATBL_ID>
+    <STATBL_NM>(월) 평균단위매매가격_아파트</STATBL_NM>
+    <DTACYCLE_CD>MM</DTACYCLE_CD>
+    <DTACYCLE_NM>월</DTACYCLE_NM>
+    <STAT_ID>S234820263</STAT_ID>
+    <TOP_ORG_NM>한국부동산원</TOP_ORG_NM>
+    <OPEN_STATE>Y</OPEN_STATE>
+    <DATA_START_YY>2012</DATA_START_YY>
+    <DATA_END_YY>2024</DATA_END_YY>
+    <STATBL_IDTFR></STATBL_IDTFR>
+    <STATBL_CMMT>※ 조사·통계 문의: 부동산통계처 주택통계부(053-663-8505, 8515) ※ 평균(중위)가격 이용시 유의사항 · 주택가격동향조사의 보조지표인 평균가격은 표본의 가격분포에 민감하게 반응하므로 지수의 변동률과 다를 수 있으며, 정기표본보정, 표본확대(‘15.1월, ’15.7월, ‘16.9월, ’19.1월, ‘20.1월, '23.1월, '24.1월, '25.4월) 및 표본 전면 재설계(’17.2월, ‘21.7월)에 의한 표본구성 및 재고량 변화에 따른 가중치 조정, 평균·중위가격 상위단위 산정 방식 변경 등으로 변동이 발생되어 시계열 해석 시 유의하여야 함 · 그러므로 평균가격은 지역 내 가격 변동률을 산정하는데 활용하는 것은 적절하지 않으며, 당월의 지역 간 가격 수준 비교를 위해 활용하는 것이 적절함 -(표본 구성 변화로 변동하는 경우) 해당지역에 고가(저가) 신규주택 증가로 인한 표본 선정으로 전월 평균가격과 불연속이 나타나는 경우 ex) 경기 하남 미사지구 표본증가로 기존 평균가격 보다 높게 산정 -(가중치 변경으로 변동하는 경우(’21년6월까지 적용)) 지역 내 대규모 주택 멸실 혹은 신축으로 인해 가중치가 과도하게 변경되어 불연속이 나타나는 경우 ex) 서울 동남권 재건축에 따른 멸실 증가로 가중치 비율 감소하며 서울 전체 평균가격에 영향 -(평균·중위가격 상위단위 선정 방식 변경(‘21년7월부터 적용)) 상위 단위 내 표본을 기준으로 시군구 재고량 가중 없이 산정 ex) 서울 내 시군구(하위단위) 평균·중위가격에 재고량 가중을 하여 서울(상위단위)을 생산하는 것이 아닌, 서울 내 표본을 기준으로 재고량 가중 없이 단순 서울 평균·중위가격 생산</STATBL_CMMT>
+    <V_ORDER>515046</V_ORDER>
+    <RPSTUI_NM></RPSTUI_NM>
+  </ro
+
+===== rone itm A_2024_00061
+200 application/xml;charset=UTF-8 len=1933
+<?xml version="1.0" encoding="UTF-8"?>
+
+<SttsApiTblItm>
+  <head>
+    <list_total_count>246</list_total_count>
+    <RESULT>
+      <CODE>INFO-000</CODE>
+      <MESSAGE>정상 처리되었습니다.</MESSAGE>
+    </RESULT>
+  </head>
+  <row>
+    <STATBL_ID>A_2024_00061</STATBL_ID>
+    <ITM_TAG>분류</ITM_TAG>
+    <ITM_ID>500001</ITM_ID>
+    <PAR_ITM_ID>0</PAR_ITM_ID>
+    <ITM_NM>전국</ITM_NM>
+    <ITM_FULLNM>전국</ITM_FULLNM>
+    <UI_NM></UI_NM>
+    <ITM_CMMT_IDTFR></ITM_CMMT_IDTFR>
+    <ITM_CMMT_CONT></ITM_CMMT_CONT>
+    <V_ORDER>1</V_ORDER>
+  </row>
+  <row>
+    <STATBL_ID>A_2024_00061</STATBL_ID>
+    <ITM_TAG>분류</ITM_TAG>
+    <ITM_ID>500002</ITM_ID>
+    <PAR_ITM_ID>0</PAR_ITM_ID>
+    <ITM_NM>수도권</ITM_NM>
+    <ITM_FULLNM>수도권</ITM_FULLNM>
+    <UI_NM></UI_NM>
+    <ITM_CMMT_IDTFR></ITM_CMMT_IDTFR>
+    <ITM_CMMT_CONT></ITM_CMMT_CONT>
+    <V_ORDER>2</V_ORDER>
+  </row>
+  <row>
+    <STATBL_ID>A_2024_00061</STATBL_ID>
+    <ITM_TAG>분류</ITM_TAG>
+    <ITM_ID>500003</ITM_ID>
+    <PAR_ITM_ID>0</PAR_ITM_ID>
+    <ITM_NM>지방권</ITM_NM>
+    <ITM_FULLNM>지방권</ITM_FULLNM>
+    <UI_NM></UI_NM>
+    <ITM_CMMT_IDTFR></ITM_CMMT_IDTFR>
+    <ITM_CMMT_CONT></ITM_CMMT_CONT>
+    <V_ORDER>3</V_ORDER>
+  </row>
+  <row>
+    <STATBL_ID>A_2024_00061</STATBL_ID>
+    <ITM_TAG>분류</ITM_TAG>
+    <ITM_ID>500004</ITM_ID>
+    <PAR_ITM_ID>0</PAR_ITM_ID>
+    <ITM_NM>5대광역시</ITM_NM>
+    <ITM_FULLNM>5대광역시</ITM_FULLNM>
+    <UI_NM></UI_NM>
+    <ITM_CMMT_IDTFR></ITM_CMMT_IDTFR>
+    <ITM_CMMT_CONT></ITM_CMMT_CONT>
+    <V_ORDER>4</V_ORDER>
+  </row>
+  <row>
+    <STATBL_ID>A_2024_00061</STATBL_ID>
+    <ITM_TAG>분류</ITM_TAG>
+    <ITM_ID>500005</ITM_ID>
+    <PAR_ITM_ID>0</PAR_ITM_ID>
+    <ITM_NM>4대광역시</ITM_NM>
+    <ITM_FULLNM>4대광역시</ITM_FULLNM>
+    <UI_NM></UI_NM>
+    <ITM_CMMT_IDTFR></ITM_CMMT_IDTFR>
+    <ITM_CMMT_CONT></ITM_CMMT_CONT>
+    <V_ORDER>5</V_ORDER>
+  </row>
+</SttsApiTblItm>
+
+
+
+===== rone data A_2024_00061
+200 application/xml;charset=UTF-8 len=2893
+<?xml version="1.0" encoding="UTF-8"?>
+
+<SttsApiTblData>
+  <head>
+    <list_total_count>236</list_total_count>
+    <RESULT>
+      <CODE>INFO-000</CODE>
+      <MESSAGE>정상 처리되었습니다.</MESSAGE>
+    </RESULT>
+  </head>
+  <row>
+    <STATBL_ID>A_2024_00061</STATBL_ID>
+    <DTACYCLE_CD>MM</DTACYCLE_CD>
+    <WRTTIME_IDTFR_ID>202609</WRTTIME_IDTFR_ID>
+    <GRP_ID></GRP_ID>
+    <GRP_NM></GRP_NM>
+    <CLS_ID>500001</CLS_ID>
+    <CLS_NM>전국</CLS_NM>
+    <ITM_ID>100001</ITM_ID>
+    <ITM_NM>가격</ITM_NM>
+    <DTA_VAL>6454.13203163908</DTA_VAL>
+    <UI_NM>천원/㎡</UI_NM>
+    <GRP_FULLNM></GRP_FULLNM>
+    <CLS_FULLNM>전국</CLS_FULLNM>
+    <ITM_FULLNM>가격</ITM_FULLNM>
+    <WRTTIME_DESC>2026년 9월</WRTTIME_DESC>
+  </row>
+  <row>
+    <STATBL_ID>A_2024_00061</STATBL_ID>
+    <DTACYCLE_CD>MM</DTACYCLE_CD>
+    <WRTTIME_IDTFR_ID>202609</WRTTIME_IDTFR_ID>
+    <GRP_ID></GRP_ID>
+    <GRP_NM></GRP_NM>
+    <CLS_ID>500021</CLS_ID>
+    <CLS_NM>전남</CLS_NM>
+    <ITM_ID>100001</ITM_ID>
+    <ITM_NM>가격</ITM_NM>
+    <DTA_VAL>2287.44450954745</DTA_VAL>
+    <UI_NM>천원/㎡</UI_NM>
+    <GRP_FULLNM></GRP_FULLNM>
+    <CLS_FULLNM>전남광주&gt;전남</CLS_FULLNM>
+    <ITM_FULLNM>가격</ITM_FULLNM>
+    <WRTTIME_DESC>2026년 9월</WRTTIME_DESC>
+  </row>
+  <row>
+    <STATBL_ID>A_2024_00061</STATBL_ID>
+    <DTACYCLE_CD>MM</DTACYCLE_CD>
+    <WRTTIME_IDTFR_ID>202609</WRTTIME_IDTFR_ID>
+    <GRP_ID></GRP_ID>
+    <GRP_NM></GRP_NM>
+    <CLS_ID>510009</CLS_ID>
+    <CLS_NM>강북지역</CLS_NM>
+    <ITM_ID>100001</ITM_ID>
+    <ITM_NM>가격</ITM_NM>
+    <DTA_VAL>13863.2568259444</DTA_VAL>
+    <UI_NM>천원/㎡</UI_NM>
+    <GRP_FULLNM></GRP_FULLNM>
+    <CLS_FULLNM>서울&gt;강북지역</CLS_FULLNM>
+    <ITM_FULLNM>가격</ITM_FULLNM>
+    <WRTTIME_DESC>2026년 9월</WRTTIME_DESC>
+  </row>
+  <row>
+    <STATBL_ID>A_2024_00061</STATBL_ID>
+    <DTACYCLE_CD>MM</DTACYCLE_CD>
+    <WRTTIME_IDTFR_ID>202609</WRTTIME_IDTFR_ID>
+    <GRP_ID></GRP_ID>
+    <GRP_NM></GRP_NM>
+    <CLS_ID>510012</CLS_ID>
+    <CLS_NM>경부1권</CLS_NM>
+    <ITM_ID>100001</ITM_ID>
+    <ITM_NM>가격</ITM_NM>
+    <DTA_VAL>13193.1028665019</DTA_VAL>
+    <UI_NM>천원/㎡</UI_NM>
+    <GRP_FULLNM></GRP_FULLNM>
+    <CLS_FULLNM>경기&gt;경부1권</CLS_FULLNM>
+    <ITM_FULLNM>가격</ITM_FULLNM>
+    <WRTTIME_DESC>2026년 9월</WRTTIME_DESC>
+  </row>
+  <row>
+    <STATBL_ID>A_2024_00061</STATBL_ID>
+    <DTACYCLE_CD>MM</DTACYCLE_CD>
+    <WRTTIME_IDTFR_ID>202609</WRTTIME_IDTFR_ID>
+    <GRP_ID></GRP_ID>
+    <GRP_NM></GRP_NM>
+    <CLS_ID>510030</CLS_ID>
+    <CLS_NM>중부산권</CLS_NM>
+    <ITM_ID>100001</ITM_ID>
+    <ITM_NM>가격</ITM_NM>
+    <DTA_VAL>4551.33225280452</
+
+===== rone tbl A_2024_00062
+200 application/xml;charset=UTF-8 len=2627
+<?xml version="1.0" encoding="UTF-8"?>
+
+<SttsApiTbl>
+  <head>
+    <list_total_count>1</list_total_count>
+    <RESULT>
+      <CODE>INFO-000</CODE>
+      <MESSAGE>정상 처리되었습니다.</MESSAGE>
+    </RESULT>
+  </head>
+  <row>
+    <STATBL_ID>A_2024_00062</STATBL_ID>
+    <STATBL_NM>(월) 중위매매가격_아파트</STATBL_NM>
+    <DTACYCLE_CD>MM</DTACYCLE_CD>
+    <DTACYCLE_NM>월</DTACYCLE_NM>
+    <STAT_ID>S234820263</STAT_ID>
+    <TOP_ORG_NM>한국부동산원</TOP_ORG_NM>
+    <OPEN_STATE>Y</OPEN_STATE>
+    <DATA_START_YY>2012</DATA_START_YY>
+    <DATA_END_YY>2024</DATA_END_YY>
+    <STATBL_IDTFR></STATBL_IDTFR>
+    <STATBL_CMMT>※ 조사·통계 문의: 부동산통계처 주택통계부(053-663-8505, 8515) ※ 평균(중위)가격 이용시 유의사항 · 주택가격동향조사의 보조지표인 평균가격은 표본의 가격분포에 민감하게 반응하므로 지수의 변동률과 다를 수 있으며, 정기표본보정, 표본확대(‘15.1월, ’15.7월, ‘16.9월, ’19.1월, ‘20.1월, '23.1월, '24.1월, '25.4월) 및 표본 전면 재설계(’17.2월, ‘21.7월)에 의한 표본구성 및 재고량 변화에 따른 가중치 조정, 평균·중위가격 상위단위 산정 방식 변경 등으로 변동이 발생되어 시계열 해석 시 유의하여야 함 · 그러므로 평균가격은 지역 내 가격 변동률을 산정하는데 활용하는 것은 적절하지 않으며, 당월의 지역 간 가격 수준 비교를 위해 활용하는 것이 적절함 -(표본 구성 변화로 변동하는 경우) 해당지역에 고가(저가) 신규주택 증가로 인한 표본 선정으로 전월 평균가격과 불연속이 나타나는 경우 ex) 경기 하남 미사지구 표본증가로 기존 평균가격 보다 높게 산정 -(가중치 변경으로 변동하는 경우(’21년6월까지 적용)) 지역 내 대규모 주택 멸실 혹은 신축으로 인해 가중치가 과도하게 변경되어 불연속이 나타나는 경우 ex) 서울 동남권 재건축에 따른 멸실 증가로 가중치 비율 감소하며 서울 전체 평균가격에 영향 -(평균·중위가격 상위단위 선정 방식 변경(‘21년7월부터 적용)) 상위 단위 내 표본을 기준으로 시군구 재고량 가중 없이 산정 ex) 서울 내 시군구(하위단위) 평균·중위가격에 재고량 가중을 하여 서울(상위단위)을 생산하는 것이 아닌, 서울 내 표본을 기준으로 재고량 가중 없이 단순 서울 평균·중위가격 생산</STATBL_CMMT>
+    <V_ORDER>515047</V_ORDER>
+    <RPSTUI_NM></RPSTUI_NM>
+  </row>
+
+===== rone itm A_2024_00062
+200 application/xml;charset=UTF-8 len=1933
+<?xml version="1.0" encoding="UTF-8"?>
+
+<SttsApiTblItm>
+  <head>
+    <list_total_count>246</list_total_count>
+    <RESULT>
+      <CODE>INFO-000</CODE>
+      <MESSAGE>정상 처리되었습니다.</MESSAGE>
+    </RESULT>
+  </head>
+  <row>
+    <STATBL_ID>A_2024_00062</STATBL_ID>
+    <ITM_TAG>분류</ITM_TAG>
+    <ITM_ID>500001</ITM_ID>
+    <PAR_ITM_ID>0</PAR_ITM_ID>
+    <ITM_NM>전국</ITM_NM>
+    <ITM_FULLNM>전국</ITM_FULLNM>
+    <UI_NM></UI_NM>
+    <ITM_CMMT_IDTFR></ITM_CMMT_IDTFR>
+    <ITM_CMMT_CONT></ITM_CMMT_CONT>
+    <V_ORDER>1</V_ORDER>
+  </row>
+  <row>
+    <STATBL_ID>A_2024_00062</STATBL_ID>
+    <ITM_TAG>분류</ITM_TAG>
+    <ITM_ID>500002</ITM_ID>
+    <PAR_ITM_ID>0</PAR_ITM_ID>
+    <ITM_NM>수도권</ITM_NM>
+    <ITM_FULLNM>수도권</ITM_FULLNM>
+    <UI_NM></UI_NM>
+    <ITM_CMMT_IDTFR></ITM_CMMT_IDTFR>
+    <ITM_CMMT_CONT></ITM_CMMT_CONT>
+    <V_ORDER>2</V_ORDER>
+  </row>
+  <row>
+    <STATBL_ID>A_2024_00062</STATBL_ID>
+    <ITM_TAG>분류</ITM_TAG>
+    <ITM_ID>500003</ITM_ID>
+    <PAR_ITM_ID>0</PAR_ITM_ID>
+    <ITM_NM>지방권</ITM_NM>
+    <ITM_FULLNM>지방권</ITM_FULLNM>
+    <UI_NM></UI_NM>
+    <ITM_CMMT_IDTFR></ITM_CMMT_IDTFR>
+    <ITM_CMMT_CONT></ITM_CMMT_CONT>
+    <V_ORDER>3</V_ORDER>
+  </row>
+  <row>
+    <STATBL_ID>A_2024_00062</STATBL_ID>
+    <ITM_TAG>분류</ITM_TAG>
+    <ITM_ID>500004</ITM_ID>
+    <PAR_ITM_ID>0</PAR_ITM_ID>
+    <ITM_NM>5대광역시</ITM_NM>
+    <ITM_FULLNM>5대광역시</ITM_FULLNM>
+    <UI_NM></UI_NM>
+    <ITM_CMMT_IDTFR></ITM_CMMT_IDTFR>
+    <ITM_CMMT_CONT></ITM_CMMT_CONT>
+    <V_ORDER>4</V_ORDER>
+  </row>
+  <row>
+    <STATBL_ID>A_2024_00062</STATBL_ID>
+    <ITM_TAG>분류</ITM_TAG>
+    <ITM_ID>500005</ITM_ID>
+    <PAR_ITM_ID>0</PAR_ITM_ID>
+    <ITM_NM>4대광역시</ITM_NM>
+    <ITM_FULLNM>4대광역시</ITM_FULLNM>
+    <UI_NM></UI_NM>
+    <ITM_CMMT_IDTFR></ITM_CMMT_IDTFR>
+    <ITM_CMMT_CONT></ITM_CMMT_CONT>
+    <V_ORDER>5</V_ORDER>
+  </row>
+</SttsApiTblItm>
+
+
+
+===== rone data A_2024_00062
+200 application/xml;charset=UTF-8 len=2823
+<?xml version="1.0" encoding="UTF-8"?>
+
+<SttsApiTblData>
+  <head>
+    <list_total_count>236</list_total_count>
+    <RESULT>
+      <CODE>INFO-000</CODE>
+      <MESSAGE>정상 처리되었습니다.</MESSAGE>
+    </RESULT>
+  </head>
+  <row>
+    <STATBL_ID>A_2024_00062</STATBL_ID>
+    <DTACYCLE_CD>MM</DTACYCLE_CD>
+    <WRTTIME_IDTFR_ID>202609</WRTTIME_IDTFR_ID>
+    <GRP_ID></GRP_ID>
+    <GRP_NM></GRP_NM>
+    <CLS_ID>500001</CLS_ID>
+    <CLS_NM>전국</CLS_NM>
+    <ITM_ID>100001</ITM_ID>
+    <ITM_NM>가격</ITM_NM>
+    <DTA_VAL>329000</DTA_VAL>
+    <UI_NM>천원</UI_NM>
+    <GRP_FULLNM></GRP_FULLNM>
+    <CLS_FULLNM>전국</CLS_FULLNM>
+    <ITM_FULLNM>가격</ITM_FULLNM>
+    <WRTTIME_DESC>2026년 9월</WRTTIME_DESC>
+  </row>
+  <row>
+    <STATBL_ID>A_2024_00062</STATBL_ID>
+    <DTACYCLE_CD>MM</DTACYCLE_CD>
+    <WRTTIME_IDTFR_ID>202609</WRTTIME_IDTFR_ID>
+    <GRP_ID></GRP_ID>
+    <GRP_NM></GRP_NM>
+    <CLS_ID>500021</CLS_ID>
+    <CLS_NM>전남</CLS_NM>
+    <ITM_ID>100001</ITM_ID>
+    <ITM_NM>가격</ITM_NM>
+    <DTA_VAL>148000</DTA_VAL>
+    <UI_NM>천원</UI_NM>
+    <GRP_FULLNM></GRP_FULLNM>
+    <CLS_FULLNM>전남광주&gt;전남</CLS_FULLNM>
+    <ITM_FULLNM>가격</ITM_FULLNM>
+    <WRTTIME_DESC>2026년 9월</WRTTIME_DESC>
+  </row>
+  <row>
+    <STATBL_ID>A_2024_00062</STATBL_ID>
+    <DTACYCLE_CD>MM</DTACYCLE_CD>
+    <WRTTIME_IDTFR_ID>202609</WRTTIME_IDTFR_ID>
+    <GRP_ID></GRP_ID>
+    <GRP_NM></GRP_NM>
+    <CLS_ID>510009</CLS_ID>
+    <CLS_NM>강북지역</CLS_NM>
+    <ITM_ID>100001</ITM_ID>
+    <ITM_NM>가격</ITM_NM>
+    <DTA_VAL>931000</DTA_VAL>
+    <UI_NM>천원</UI_NM>
+    <GRP_FULLNM></GRP_FULLNM>
+    <CLS_FULLNM>서울&gt;강북지역</CLS_FULLNM>
+    <ITM_FULLNM>가격</ITM_FULLNM>
+    <WRTTIME_DESC>2026년 9월</WRTTIME_DESC>
+  </row>
+  <row>
+    <STATBL_ID>A_2024_00062</STATBL_ID>
+    <DTACYCLE_CD>MM</DTACYCLE_CD>
+    <WRTTIME_IDTFR_ID>202609</WRTTIME_IDTFR_ID>
+    <GRP_ID></GRP_ID>
+    <GRP_NM></GRP_NM>
+    <CLS_ID>510012</CLS_ID>
+    <CLS_NM>경부1권</CLS_NM>
+    <ITM_ID>100001</ITM_ID>
+    <ITM_NM>가격</ITM_NM>
+    <DTA_VAL>847500</DTA_VAL>
+    <UI_NM>천원</UI_NM>
+    <GRP_FULLNM></GRP_FULLNM>
+    <CLS_FULLNM>경기&gt;경부1권</CLS_FULLNM>
+    <ITM_FULLNM>가격</ITM_FULLNM>
+    <WRTTIME_DESC>2026년 9월</WRTTIME_DESC>
+  </row>
+  <row>
+    <STATBL_ID>A_2024_00062</STATBL_ID>
+    <DTACYCLE_CD>MM</DTACYCLE_CD>
+    <WRTTIME_IDTFR_ID>202609</WRTTIME_IDTFR_ID>
+    <GRP_ID></GRP_ID>
+    <GRP_NM></GRP_NM>
+    <CLS_ID>510030</CLS_ID>
+    <CLS_NM>중부산권</CLS_NM>
+    <ITM_ID>100001</ITM_ID>
+    <ITM_NM>가격</ITM_NM>
+    <DTA_VAL>277000</DTA_VAL>
+    <UI_NM>천원</UI_NM>
+    <GRP_FULLNM></GRP_FULLN
+
+===== rone tbl A_2024_00063
+200 application/xml;charset=UTF-8 len=2633
+<?xml version="1.0" encoding="UTF-8"?>
+
+<SttsApiTbl>
+  <head>
+    <list_total_count>1</list_total_count>
+    <RESULT>
+      <CODE>INFO-000</CODE>
+      <MESSAGE>정상 처리되었습니다.</MESSAGE>
+    </RESULT>
+  </head>
+  <row>
+    <STATBL_ID>A_2024_00063</STATBL_ID>
+    <STATBL_NM>(월) 중위단위매매가격_아파트</STATBL_NM>
+    <DTACYCLE_CD>MM</DTACYCLE_CD>
+    <DTACYCLE_NM>월</DTACYCLE_NM>
+    <STAT_ID>S234820263</STAT_ID>
+    <TOP_ORG_NM>한국부동산원</TOP_ORG_NM>
+    <OPEN_STATE>Y</OPEN_STATE>
+    <DATA_START_YY>2012</DATA_START_YY>
+    <DATA_END_YY>2024</DATA_END_YY>
+    <STATBL_IDTFR></STATBL_IDTFR>
+    <STATBL_CMMT>※ 조사·통계 문의: 부동산통계처 주택통계부(053-663-8505, 8515) ※ 평균(중위)가격 이용시 유의사항 · 주택가격동향조사의 보조지표인 평균가격은 표본의 가격분포에 민감하게 반응하므로 지수의 변동률과 다를 수 있으며, 정기표본보정, 표본확대(‘15.1월, ’15.7월, ‘16.9월, ’19.1월, ‘20.1월, '23.1월, '24.1월, '25.4월) 및 표본 전면 재설계(’17.2월, ‘21.7월)에 의한 표본구성 및 재고량 변화에 따른 가중치 조정, 평균·중위가격 상위단위 산정 방식 변경 등으로 변동이 발생되어 시계열 해석 시 유의하여야 함 · 그러므로 평균가격은 지역 내 가격 변동률을 산정하는데 활용하는 것은 적절하지 않으며, 당월의 지역 간 가격 수준 비교를 위해 활용하는 것이 적절함 -(표본 구성 변화로 변동하는 경우) 해당지역에 고가(저가) 신규주택 증가로 인한 표본 선정으로 전월 평균가격과 불연속이 나타나는 경우 ex) 경기 하남 미사지구 표본증가로 기존 평균가격 보다 높게 산정 -(가중치 변경으로 변동하는 경우(’21년6월까지 적용)) 지역 내 대규모 주택 멸실 혹은 신축으로 인해 가중치가 과도하게 변경되어 불연속이 나타나는 경우 ex) 서울 동남권 재건축에 따른 멸실 증가로 가중치 비율 감소하며 서울 전체 평균가격에 영향 -(평균·중위가격 상위단위 선정 방식 변경(‘21년7월부터 적용)) 상위 단위 내 표본을 기준으로 시군구 재고량 가중 없이 산정 ex) 서울 내 시군구(하위단위) 평균·중위가격에 재고량 가중을 하여 서울(상위단위)을 생산하는 것이 아닌, 서울 내 표본을 기준으로 재고량 가중 없이 단순 서울 평균·중위가격 생산</STATBL_CMMT>
+    <V_ORDER>515048</V_ORDER>
+    <RPSTUI_NM></RPSTUI_NM>
+  </ro
+
+===== rone itm A_2024_00063
+ERR Remote end closed connection without response
+
+===== rone data A_2024_00063
+ERR Remote end closed connection without response
+
+===== https://m.stock.naver.com/front-api/marketIndex/productDetail?category=bond&reutersCode=KR3YT%3DRR
+200 application/json; charset=utf-8 len=2824
+{"isSuccess":true,"detailCode":"","message":"","result":{"categoryType":"bond","stockExchangeType":null,"reutersCode":"KR3YT=RR","symbolCode":null,"name":"한국 국채 3년","fullName":null,"nameEng":null,"itemLogoUrl":"https://ssl.pstatic.net/imgstock/fn/real/logo/index/MarketIndexBondAndInterest.svg","itemLogoPngUrl":"https://ssl.pstatic.net/imgstock/fn/real/logo/png/index/MarketIndexBondAndInterest.png","delayTime":0,"delayTimeName":"실시간","description":null,"localTradedAt":"2026-11-10T16:18:00+09:00","closePrice":"3.6260","fluctuations":"-0.0080","fluctuationsRatio":"-0.22","fluctuationsType":{"code":"5","text":"하락","name":"FALLING"},"marketStatus":"OPEN","priceDataType":"REALTIME","endUrl":"https://m.stock.naver.com/marketindex/bond/KR3YT=RR","chartIqEndUrl":null,"unit":null,"degreeCount":null,"imageCharts":{"areaYearThree":"https://financial-vn.pstatic.net/chart/mobile/world/area/year3/KR3YT=RR_end.png","areaYearTen":"https://financial-vn.pstatic.net/chart/mobile/world/area/year10/KR3YT=RR_end.png","areaYear":"https://financial-vn.pstatic.net/chart/mobile/world/area/year/KR3YT=RR_end.png","areaMonthThree":"https://financial-vn.pstatic.net/chart/mobile/world/area/month3/KR3YT=RR_end.png"},"imageChartUrlInfo":{"line":{"month":"https://financial-vn.pstatic.net/chart/mobile/world/area/month/KR3YT=RR_end.png","month3":"https://financial-vn.pstatic.net/chart/mobile/world/area/month3/KR3YT=RR_end.png","year":"https://financial-vn.pstatic.net/chart/mobile/world/area/year/KR3YT=RR_end.png
+
+===== https://m.stock.naver.com/front-api/marketIndex/prices?category=bond&reutersCode=KR10YT%3DRR&page=1&pageSize=5
+ERR HTTP Error 400: Bad Request
+
+===== https://api.stock.naver.com/marketindex/bond/KR10YT=RR
+200 application/json;charset=UTF-8 len=2784
+{"categoryType":"bond","stockExchangeType":null,"reutersCode":"KR10YT=RR","symbolCode":null,"name":"한국 국채 10년","fullName":null,"nameEng":null,"itemLogoUrl":"https://ssl.pstatic.net/imgstock/fn/real/logo/index/MarketIndexBondAndInterest.svg","itemLogoPngUrl":"https://ssl.pstatic.net/imgstock/fn/real/logo/png/index/MarketIndexBondAndInterest.png","delayTime":0,"delayTimeName":"실시간","description":null,"localTradedAt":"2026-11-10T15:49:14+09:00","closePrice":"3.8510","fluctuations":"-0.0070","fluctuationsRatio":"-0.18","fluctuationsType":{"code":"5","text":"하락","name":"FALLING"},"marketStatus":"OPEN","priceDataType":"REALTIME","endUrl":"https://m.stock.naver.com/marketindex/bond/KR10YT=RR","chartIqEndUrl":null,"unit":null,"degreeCount":null,"imageCharts":{"areaYear":"https://financial-vn.pstatic.net/chart/mobile/world/area/year/KR10YT=RR_end.png","areaMonthThree":"https://financial-vn.pstatic.net/chart/mobile/world/area/month3/KR10YT=RR_end.png","areaYearTen":"https://financial-vn.pstatic.net/chart/mobile/world/area/year10/KR10YT=RR_end.png","areaYearThree":"https://financial-vn.pstatic.net/chart/mobile/world/area/year3/KR10YT=RR_end.png"},"imageChartUrlInfo":{"line":{"month":"https://financial-vn.pstatic.net/chart/mobile/world/area/month/KR10YT=RR_end.png","month3":"https://financial-vn.pstatic.net/chart/mobile/world/area/month3/KR10YT=RR_end.png","year":"https://financial-vn.pstatic.net/chart/mobile/world/area/year/KR10YT=RR_end.png","year3":"https://financial-vn.pstatic.net/ch
+
+===== https://finance.naver.com/marketindex/interestDailyQuote.naver?marketindexCd=IRR_GOVT03Y&page=1
+ERR HTTP Error 410: 410
+
+===== https://m.stock.naver.com/front-api/marketIndex/bondList?category=bond
+ERR HTTP Error 400: Bad Request
+
+===== https://m.stock.naver.com/api/index/bond/KR10YT=RR/price?pageSize=5&page=1
+ERR HTTP Error 404: 404
