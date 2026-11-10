@@ -250,7 +250,7 @@ html[data-mode=dark] .mono{background:hsl(var(--h) 32% 22%);color:hsl(var(--h) 7
 .hist-body td:first-child{white-space:nowrap}
 .hist-seg{max-width:100%;overflow-x:auto;scrollbar-width:none}
 .hist-seg button{padding:8px 11px}
-.ao1{order:1}.ao2{order:2}.ao3{order:3}.ao4{order:4}.ao5{order:5}.ao6{order:6}.ao7{order:7}
+.ao1{order:1}.ao2{order:2}.ao3{order:3}.ao4{order:4}.ao5{order:5}.ao6{order:6}.ao7{order:7}.ao8{order:8}
 .sum-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:var(--r-md);overflow:hidden}
 .sum-grid div{background:var(--surface);padding:12px 14px}
 .sum-grid dt{font-size:12px;color:var(--ink-2);font-weight:600}
@@ -843,6 +843,7 @@ html[data-game=live] .c-news{order:3}
   .tile svg{grid-column:2;grid-row:1 / span 3;height:44px;margin:0}
   .assets-grid{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:12px;align-items:start}
   .as-a,.as-b{display:grid;gap:12px;min-width:0;align-content:start}
+  .as-a > *,.as-b > *{order:0}
   .loans-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-items:start}
   .loans-grid .wide{grid-column:1/-1}
   .sheet{left:50%;right:auto;bottom:auto;top:50%;width:min(560px,calc(100vw - 40px));border-radius:24px;transform:translate(-50%,-46%);opacity:0;pointer-events:none;transition:transform .22s,opacity .22s;padding:12px 22px 22px}
@@ -950,7 +951,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '2.1.2';
+const VERSION = '2.1.3';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -2715,15 +2716,15 @@ function renderAssets(){
         <section class="card ao7"><div class="card-h"><h2>예약 주문</h2><small>대기 ${ordersOf().length}건</small></div>
           ${(S.orders || []).length ? `<div class="olist">${(S.orders || []).slice(0, 20).map(o => orderRowHTML(o, true)).join('')}</div>` : '<p class="empty">걸어 둔 예약 주문이 없습니다. 종목을 열고 "예약 주문"을 고르면 걸 수 있습니다.</p>'}
         </section>
-      </div>
-      <div class="as-b">
-        <section class="card ao2" id="rankCard">${rankCardHTML()}</section>
         <section class="card ao3"><div class="card-h"><h2>지수와 비교</h2><small>10월 23일 종가 대비</small></div>
           <div class="bench">${benchRow('내 순자산', ret, 'var(--brass)')}${benchRow('한국 300', kRet, '#6E8BFF')}${benchRow('미국 300', uRet, '#8A93A6')}</div>
         </section>
+        <button class="card hist-open ao8" id="histOpen"><span><b>거래 내역</b><small>주식 ${S.trades.length.toLocaleString()}건 · 채권·주택·복권·도박 ${(S.altLog || []).length.toLocaleString()}건 · 환전 ${(S.fxLog || []).length.toLocaleString()}건</small></span><span class="go" aria-hidden="true">›</span></button>
+      </div>
+      <div class="as-b">
+        <section class="card ao2" id="rankCard">${rankCardHTML()}</section>
       </div>
     </div>
-    <button class="card hist-open" id="histOpen"><span><b>거래 내역</b><small>주식 ${S.trades.length.toLocaleString()}건 · 채권·주택·복권·도박 ${(S.altLog || []).length.toLocaleString()}건 · 환전 ${(S.fxLog || []).length.toLocaleString()}건</small></span><span class="go" aria-hidden="true">›</span></button>
   </div>`;
   $('#histOpen').onclick = openHistory;
 }
@@ -5065,7 +5066,7 @@ function altAssetsHTML(){
     ...bs.map(b => { const v = bondVal(b), f = b.c === 'US' ? fmtUSD : fmtKRW, pl = v - b.cost; return `<button class="hold" data-gosub="bond"><span class="mono" style="--h:200">채권</span><span class="nmb"><div class="n">${bondName(b.c, b.T)}</div><div class="s">${b.cpn ? `표면 ${b.cpn.toFixed(3)}%` : '할인채'}</div></span><span class="px"><div class="p num">${f(v)}</div><div class="c num ${cls(pl)}">${pl >= 0 ? '+' : ''}${f(pl)}</div></span></button>`; }),
     ...hs.map(h => { const v = houseVal(h), pl = v - h.cost; return `<button class="hold" data-gosub="house"><span class="mono" style="--h:30">주택</span><span class="nmb"><div class="n">${esc(hName(h.cls))} 아파트</div><div class="s">${h.m2}㎡</div></span><span class="px"><div class="p num">${fmtKRW(v)}</div><div class="c num ${cls(pl)}">${pl >= 0 ? '+' : ''}${fmtKRW(pl)} (${fmtPct(h.cost ? pl / h.cost : 0)})</div></span></button>`; })
   ].join('');
-  return (rows ? `<section class="card"><div class="card-h"><h2>채권·주택</h2><small>${bs.length + hs.length}개 · ${fmtUSD(altUSD())}</small></div>${rows}</section>` : '');
+  return (rows ? `<section class="card ao1"><div class="card-h"><h2>채권·주택</h2><small>${bs.length + hs.length}개 · ${fmtUSD(altUSD())}</small></div>${rows}</section>` : '');
 }
 
 
