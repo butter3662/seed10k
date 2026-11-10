@@ -246,6 +246,8 @@ html[data-mode=dark] .mono{background:hsl(var(--h) 32% 22%);color:hsl(var(--h) 7
 .hist-open:hover{background:var(--surface-2)}
 .hist-body table.trades{width:100%}
 .hist-body td:first-child{white-space:nowrap}
+.hist-seg{max-width:100%;overflow-x:auto;scrollbar-width:none}
+.hist-seg button{padding:8px 11px}
 .ao1{order:1}.ao2{order:2}.ao3{order:3}.ao4{order:4}.ao5{order:5}.ao6{order:6}.ao7{order:7}
 .sum-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:var(--r-md);overflow:hidden}
 .sum-grid div{background:var(--surface);padding:12px 14px}
@@ -927,7 +929,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '2.1.0';
+const VERSION = '2.1.1';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -2698,12 +2700,9 @@ function renderAssets(){
         <section class="card ao3"><div class="card-h"><h2>지수와 비교</h2><small>10월 23일 종가 대비</small></div>
           <div class="bench">${benchRow('내 순자산', ret, 'var(--brass)')}${benchRow('한국 300', kRet, '#6E8BFF')}${benchRow('미국 300', uRet, '#8A93A6')}</div>
         </section>
-        <section class="card ao4"><div class="card-h"><h2>환전 내역</h2><small>최근 20건</small></div>
-          ${(S.fxLog || []).length ? `<div class="tbl-wrap"><table class="trades"><thead><tr><th>날짜</th><th>방향</th><th class="r">낸 금액</th><th class="r">받은 금액</th></tr></thead><tbody>${S.fxLog.slice(0, 20).map(x => `<tr><td>${fmtDate(x.dt, false)}</td><td>${x.dir === 'u2k' ? '달러 → 원화' : '원화 → 달러'}<br><span class="muted">1달러 = ${fmtFX(x.rate)}원</span></td><td class="r num">${x.dir === 'u2k' ? fmtUSDn(x.from) : fmtKRWn(x.from)}</td><td class="r num">${x.dir === 'u2k' ? fmtKRWn(x.to) : fmtUSDn(x.to)}</td></tr>`).join('')}</tbody></table></div>` : '<p class="empty">환전 내역이 없습니다.</p>'}
-        </section>
       </div>
     </div>
-    <button class="card hist-open" id="histOpen"><span><b>거래 내역</b><small>주식 ${S.trades.length.toLocaleString()}건 · 채권·주택·복권·도박 ${(S.altLog || []).length.toLocaleString()}건</small></span><span class="go" aria-hidden="true">›</span></button>
+    <button class="card hist-open" id="histOpen"><span><b>거래 내역</b><small>주식 ${S.trades.length.toLocaleString()}건 · 채권·주택·복권·도박 ${(S.altLog || []).length.toLocaleString()}건 · 환전 ${(S.fxLog || []).length.toLocaleString()}건</small></span><span class="go" aria-hidden="true">›</span></button>
   </div>`;
   $('#histOpen').onclick = openHistory;
 }
@@ -2722,12 +2721,15 @@ function renderHistory(){
   if (k === 'stock'){
     const tr = UI.tradeRows ? UI.tradeRows(200) : '';
     body = tr ? `<table class="trades"><thead><tr><th>날짜</th><th>구분</th><th>종목</th><th class="r">결제 금액</th></tr></thead><tbody>${tr}</tbody></table>` : '<p class="empty">주식 거래 내역이 없습니다.</p>';
+  } else if (k === 'fx'){
+    const fx = (S.fxLog || []).map(x => `<tr><td>${fmtDate(x.dt, false)}</td><td>${x.dir === 'u2k' ? '달러 → 원화' : '원화 → 달러'}<br><span class="muted">1달러 = ${fmtFX(x.rate)}원</span></td><td class="r num">${x.dir === 'u2k' ? fmtUSDn(x.from) : fmtKRWn(x.from)}</td><td class="r num">${x.dir === 'u2k' ? fmtKRWn(x.to) : fmtUSDn(x.to)}</td></tr>`).join('');
+    body = fx ? `<table class="trades"><thead><tr><th>날짜</th><th>방향</th><th class="r">낸 금액</th><th class="r">받은 금액</th></tr></thead><tbody>${fx}</tbody></table>` : '<p class="empty">환전 내역이 없습니다.</p>';
   } else {
     const log = (S.altLog || []).map(x => `<tr><td>${esc(x.dt || '')}<br><span class="muted">${kstTime(new Date(x.at))}</span></td><td>${esc(x.s)}</td><td class="r num ${x.amt > 0 ? 'up' : ''}">${x.amt > 0 ? '+' : x.amt < 0 ? MINUS : ''}${x.cur === 'USD' ? fmtUSD(Math.abs(x.amt)) : fmtKRW(Math.abs(x.amt))}</td></tr>`).join('');
     body = log ? `<table class="trades"><thead><tr><th>날짜</th><th>내용</th><th class="r">금액</th></tr></thead><tbody>${log}</tbody></table>` : '<p class="empty">채권·주택·복권·도박 내역이 없습니다.</p>';
   }
-  box.innerHTML = `<div class="mv-tools"><div class="seg">${seg('stock', '주식')}${seg('alt', '채권·주택·복권·도박')}</div></div>
-    <small class="muted">${k === 'stock' ? `최근 ${Math.min(200, nS).toLocaleString()}건${nS > 200 ? ` (전체 ${nS.toLocaleString()}건)` : ''}` : `최근 ${nA.toLocaleString()}건 (최대 300건까지 남김)`}</small>
+  box.innerHTML = `<div class="mv-tools"><div class="seg hist-seg">${seg('stock', '주식')}${seg('alt', '채권·주택·복권·도박')}${seg('fx', '환전')}</div></div>
+    <small class="muted">${k === 'stock' ? `최근 ${Math.min(200, nS).toLocaleString()}건${nS > 200 ? ` (전체 ${nS.toLocaleString()}건)` : ''}` : k === 'fx' ? `최근 ${(S.fxLog || []).length.toLocaleString()}건` : `최근 ${nA.toLocaleString()}건 (최대 300건까지 남김)`}</small>
     <div class="info-body hist-body">${body}</div>`;
   $$('#histBox [data-histk]').forEach(b => b.onclick = () => { UI.histK = b.dataset.histk; renderHistory(); });
 }
