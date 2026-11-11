@@ -604,6 +604,8 @@ html.gated body{overflow:hidden}
 .oe-steps i{height:6px;border-radius:3px;background:var(--surface-2);border:1px solid var(--rule)}
 .oe-steps i.on{background:var(--brass);border-color:var(--brass)}
 .oe-steps i.bad{background:var(--danger);border-color:var(--danger)}
+.gm-ov .gm-body{width:min(100%,560px);margin:0}
+.gm-ov .gm-sp{width:64px}
 .bj-table{display:grid;gap:10px;background:radial-gradient(120% 140% at 50% 0%,#1F6B45,#0F3D27);border-radius:14px;padding:12px;color:#fff;margin:6px 0 4px}
 .bj-row{display:grid;grid-template-columns:42px 1fr;gap:8px;align-items:start}
 .bj-who{font-size:12px;font-weight:800;opacity:.75;padding-top:22px}
@@ -611,22 +613,22 @@ html.gated body{overflow:hidden}
 .bj-hand{display:flex;flex-direction:column;gap:4px;padding:4px;border-radius:10px;border:2px solid transparent}
 .bj-hand.cur{border-color:var(--brass);background:rgba(255,255,255,.06)}
 .bj-cards{display:flex;min-height:66px}
-.bj-cards .pc + .pc{margin-left:-18px}
-.pc{width:46px;height:66px;border-radius:7px;background:#fff;color:#14161C;box-shadow:0 2px 6px rgba(0,0,0,.35);display:flex;flex-direction:column;align-items:flex-start;padding:4px 5px;line-height:1;position:relative}
-.pc.new{animation:bjIn .32s cubic-bezier(.2,.8,.3,1) both;animation-delay:calc(var(--k,0) * 60ms)}
-.pc.flip{animation:bjFlip .36s ease-out both}
+.bj-cards .bjc + .bjc{margin-left:-18px}
+.bjc{width:46px;height:66px;border-radius:7px;background:#fff;color:#14161C;box-shadow:0 2px 6px rgba(0,0,0,.35);display:flex;flex-direction:column;align-items:flex-start;padding:4px 5px;line-height:1;position:relative}
+.bjc.new{animation:bjIn .32s cubic-bezier(.2,.8,.3,1) both;animation-delay:calc(var(--k,0) * 60ms)}
+.bjc.flip{animation:bjFlip .36s ease-out both}
 @keyframes bjFlip{0%{transform:rotateY(90deg)}100%{transform:none}}
-.pc b{font-size:17px;font-weight:850}.pc i{font-style:normal;font-size:16px;margin-top:2px}
-.pc.red{color:#D4232E}
-.pc em{position:absolute;right:5px;bottom:3px;font-style:normal;font-size:26px;line-height:1;opacity:.9}
-.pc.back{background:repeating-linear-gradient(45deg,#B83A3A 0 6px,#962C2C 6px 12px);border:3px solid #fff}
+.bjc b{font-size:17px;font-weight:850}.bjc i{font-style:normal;font-size:16px;margin-top:2px}
+.bjc.red{color:#D4232E}
+.bjc em{position:absolute;right:5px;bottom:3px;font-style:normal;font-size:26px;line-height:1;opacity:.9}
+.bjc.back{background:repeating-linear-gradient(45deg,#B83A3A 0 6px,#962C2C 6px 12px);border:3px solid #fff}
 @keyframes bjIn{from{opacity:0;transform:translate(30px,-24px) rotate(8deg)}to{opacity:1;transform:none}}
 .bj-meta{display:flex;align-items:baseline;gap:6px;font-size:13px}
 .bj-meta b{font-size:15px}.bj-meta small{opacity:.75}
 .bj-meta em{font-style:normal;font-weight:850;padding:1px 7px;border-radius:999px;background:rgba(255,255,255,.16)}
 .bj-meta em.up{background:#E8B54A;color:#2A1A00}.bj-meta em.down{background:rgba(0,0,0,.35)}
 #bjCard .bm-acts .btn{flex:1 1 0;min-width:72px}
-@media (prefers-reduced-motion:reduce){.pc.new,.pc.flip{animation:none}}
+@media (prefers-reduced-motion:reduce){.bjc.new,.bjc.flip{animation:none}}
 .oe-res{text-align:center;margin:8px 0;font-weight:800}
 .oe-res small{display:block;margin-top:2px;font-size:12px;font-weight:600;color:var(--ink-3)}
 /* 복권 */
@@ -981,7 +983,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '2.1.13';
+const VERSION = '2.1.14';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -4259,14 +4261,50 @@ function renderGamblePane(p){
       ${il || ilAcc() ? `<p class="muted" style="margin:4px 0 0">불법 도박 누적 순이익 <b class="num ${cls(ilAcc())}">${signUSD(ilAcc())}</b> · 단속되면 ${GAM.seize * 100}% 압류</p>` : ''}${G.bust ? `<p style="margin:4px 0 0"><b class="down">단속 ${G.bust}회</b></p>` : ''}</section>
     <section class="card c-mg" id="bmCard">${bmCardHTML()}</section>
     <section class="card c-mg" id="slCard">${slCardHTML()}</section>
-    <section class="card c-mg" id="oeCard">${oeCardHTML()}</section>
-    <section class="card c-mg" id="bjCard">${bjHTML()}</section>`;
+    <section class="card c-mg" id="oePane">${oePaneHTML()}</section>
+    <section class="card c-mg" id="bjPane">${bjPaneHTML()}</section>`;
+}
+/* ── 홀짝·블랙잭은 팝업(전체 화면)에서 한다: 탭 화면을 내리지 않아도 되게 ──
+   팝업 안 카드의 id가 oeCard/bjCard라 기존 그리기 함수(oeRender, bjRender)가 그대로 팝업을 그린다 */
+const GMO = {oe:{t:'✊ 홀짝', id:'oeCard', html:() => oeCardHTML(), start:() => oeStart(), cur:() => oeS().cur},
+             bj:{t:'🃏 블랙잭', id:'bjCard', html:() => bjHTML(), start:() => bjStart(), cur:() => bjS().cur}};
+function gmOpen(k){
+  let ov = $('#gmOv');
+  if (!ov){ ov = document.createElement('div'); ov.id = 'gmOv'; ov.className = 'bm-ov gm-ov'; ov.setAttribute('role', 'dialog'); document.body.appendChild(ov); }
+  ov.dataset.k = k; ov.hidden = false; document.documentElement.classList.add('bm-open');
+  ov.innerHTML = `<div class="bm-top"><button class="btn" id="gmClose">닫기</button><div class="bm-ttl"><b>${GMO[k].t}</b><small>달러 통장 ${fmtUSD(S.usd)}</small></div><span class="gm-sp" aria-hidden="true"></span></div>
+    <section class="card c-mg gm-body" id="${GMO[k].id}">${GMO[k].html()}</section>`;
+  if (!GMO[k].cur() && !S.over) GMO[k].start();   // 진행 중인 판이 없으면 바로 판돈 정하기
+}
+function gmHide(){
+  const ov = $('#gmOv'); if (!ov || ov.hidden) return;
+  ov.hidden = true; ov.innerHTML = ''; document.documentElement.classList.remove('bm-open');
+  if (UI.tab === 'market') renderInvest();
+}
+const gmSync = () => { const ov = $('#gmOv'); if (ov && !ov.hidden){ const sm = ov.querySelector('.bm-ttl small'); if (sm) sm.textContent = `달러 통장 ${fmtUSD(S.usd)}`; } };
+// 도박 탭의 요약 카드 (진행 중이면 '이어하기')
+function oePaneHTML(){
+  const g = oeS().cur;
+  if (!g) return oeCardHTML().replace('id="oeGo"', 'id="oeOpen"');
+  return `<div class="card-h"><h2>✊ 홀짝 ${infoBtn('oe')}</h2><small>판돈 ${fmtUSD(g.stake)}${g.il ? ' · 🚨 불법' : ''}</small></div>
+    <p class="mg-desc">진행 중 · ${g.over ? '끝남, 결과를 확인하세요' : `${g.k}번 맞힘, 지금 상금 ${fmtUSD(oePot(g))}`}</p>
+    <div class="mg-foot"><span class="muted">한도 ${fmtUSDn(gamMax('oe'), 0)}</span><button class="btn solid" id="oeOpen">이어하기</button></div>`;
+}
+function bjPaneHTML(){
+  const g = bjS().cur;
+  if (!g) return bjHTML().replace('id="bjGo"', 'id="bjOpen"');
+  return `<div class="card-h"><h2>🃏 블랙잭 ${infoBtn('bj')}</h2><small>판돈 ${fmtUSD(g.stake)}${g.il ? ' · 🚨 불법' : ''}</small></div>
+    <p class="mg-desc">진행 중 · ${g.phase === 'over' ? '끝남, 정산하세요' : `건 돈 ${fmtUSD(g.cost)}`}</p>
+    <div class="mg-foot"><span class="muted">한도 ${fmtUSDn(gamMax('bj'), 0)}</span><button class="btn solid" id="bjOpen">이어하기</button></div>`;
 }
 document.addEventListener('click', e => {
   const t = e.target.closest('button'); if (!t) return;
   if (t.id === 'ilSw'){ const G = gamS(); G.il = !G.il; save(); renderInvest(); toast(G.il ? '🚨 불법 모드를 켰습니다' : '불법 모드를 껐습니다'); return; }
   if (t.id === 'slGo'){ slStart(); return; }
   if (t.id === 'oeGo'){ oeStart(); return; }
+  if (t.id === 'oeOpen'){ gmOpen('oe'); return; }
+  if (t.id === 'bjOpen'){ gmOpen('bj'); return; }
+  if (t.id === 'gmClose'){ gmHide(); return; }
   if (t.dataset.oe){ oePick(t.dataset.oe); return; }
 });
 
@@ -4500,7 +4538,7 @@ function oeCardHTML(){
       : `<button class="btn" data-oe="odd" ${OEV.busy ? 'disabled' : ''}>홀</button><button class="btn" data-oe="even" ${OEV.busy ? 'disabled' : ''}>짝</button>${k ? `<button class="btn solid" id="oeCash" ${OEV.busy ? 'disabled' : ''}>그만하고 ${fmtUSD(pot)} 받기</button>` : ''}`}</div>`;
 }
 const OEV = {busy:false, reveal:false, t:null};
-function oeRender(){ const c = $('#oeCard'); if (c) c.innerHTML = oeCardHTML(); }
+function oeRender(){ const c = $('#oeCard'); if (c) c.innerHTML = oeCardHTML(); gmSync(); }
 function oeStart(){
   const s = oeS(); if (s.cur) return;
   if (S.over) return toast('파산해서 할 수 없습니다', true);
@@ -4533,7 +4571,7 @@ function oeFinish(){
   if (pay > 0) receiveUSD(pay);
   s.hist.unshift({at:Date.now(), stake:g.stake, pay, win, k:g.k}); s.hist = s.hist.slice(0, 10);
   altLog('gamble', `홀짝 ${g.lost ? `${g.k + 1}번째에서 틀림` : `${g.k}연속 맞히고 받음`}${g.il ? ' (불법)' : ''}`, pay - g.stake, 'USD');
-  s.cur = null; OEV.reveal = false; OEV.busy = false; commit();
+  s.cur = null; OEV.reveal = false; OEV.busy = false; commit(); oeRender();
   police('oe', g.il, pay - g.stake);
   showModal(`<h2 class="${win ? 'up' : ''}">${g.lost ? `${g.k + 1}번째에서 틀렸습니다` : `🏆 ${g.k}연속 맞힘`}</h2><div class="bd"><div><span>판돈</span><b class="num">${fmtUSD(g.stake)}</b></div><div><span>받은 돈</span><b class="num">${fmtUSD(pay)}</b></div><div class="tot"><span>손익</span><b class="num ${cls(pay - g.stake)}">${signUSD(pay - g.stake)}</b></div></div><div class="acts"><button class="btn solid" data-close>확인</button></div>`);
 }
@@ -4659,9 +4697,9 @@ function bjCardHTML(c, back, k, key){
   const id = key + (back ? 'b' : 'f'); BJV.now.add(id);
   const fresh = !BJV.seen.has(id), flip = fresh && !back && BJV.seen.has(key + 'b');   // 엎어 둔 카드를 뒤집을 때는 뒤집기 연출
   const cl = fresh ? (flip ? ' flip' : ' new') : '';
-  if (back) return `<span class="pc back${cl}" style="--k:${k}"></span>`;
+  if (back) return `<span class="bjc back${cl}" style="--k:${k}"></span>`;
   const r = BJE.rank(c), s = Math.floor(c / 13) % 4, red = s === 1 || s === 2;
-  return `<span class="pc${red ? ' red' : ''}${cl}" style="--k:${k}"><b>${r === 1 ? 'A' : r === 11 ? 'J' : r === 12 ? 'Q' : r === 13 ? 'K' : r}</b><i>${BJ_SUIT[s]}</i><em>${BJ_SUIT[s]}</em></span>`;
+  return `<span class="bjc${red ? ' red' : ''}${cl}" style="--k:${k}"><b>${r === 1 ? 'A' : r === 11 ? 'J' : r === 12 ? 'Q' : r === 13 ? 'K' : r}</b><i>${BJ_SUIT[s]}</i><em>${BJ_SUIT[s]}</em></span>`;
 }
 const bjTot = cards => { const {t, soft} = BJE.total(cards); return soft && t < 21 ? `${t - 10}/${t}` : `${t}`; };
 const BJ_ACT = {hit:'히트', stand:'스탠드', double:'더블', split:'스플릿'};
@@ -4705,7 +4743,7 @@ function bjCardInnerHTML(){
         }).join('')}</div>`;
 }
 function bjHTML(){ BJV.now = new Set(); const h = bjCardInnerHTML(); BJV.now.forEach(x => BJV.seen.add(x)); return h; }   // 그린 카드를 기억해 두고 다음엔 새 카드만 날아오게
-function bjRender(){ const c = $('#bjCard'); if (c) c.innerHTML = bjHTML(); }
+function bjRender(){ const c = $('#bjCard'); if (c) c.innerHTML = bjHTML(); gmSync(); }
 function bjStart(){
   const s = bjS(); if (s.cur) return;
   if (S.over) return toast('파산해서 할 수 없습니다', true);
@@ -4744,7 +4782,7 @@ function bjFinish(){
   const res = g.hands.some(h => h.res === 'bj') ? '블랙잭' : net > 0 ? '승' : net === 0 ? '무' : '패';
   s.hist.unshift({at:Date.now(), stake:g.stake, cost:g.cost, pay:g.pay, res}); s.hist = s.hist.slice(0, 10);
   altLog('gamble', `블랙잭: ${res}${g.hands.length > 1 ? ` (${g.hands.length}손)` : ''}${g.il ? ' (불법)' : ''}`, net, 'USD');
-  s.cur = null; BJV.shown = null; commit();
+  s.cur = null; BJV.shown = null; commit(); bjRender();
   police('bj', g.il, net);
 }
 document.addEventListener('click', e => {
@@ -5963,7 +6001,7 @@ function resetGame(){
   toast('새 게임을 시작했습니다. 시드 $10,000');
 }
 async function setMode(mode){
-  stopAuto(); bmHide(); slHide();
+  stopAuto(); bmHide(); slHide(); gmHide();
   if (S && !S._ph){ save(); if (ACC.user){ clearTimeout(ACC.cloudT); await pushCloud(); } }   // 떠나는 모드의 기록을 먼저 올린다
   SET.mode = mode; saveSet();
   if (ACC.user){ S = await loadAccountMode(mode); writeLocal(); if (S.dirty) scheduleCloud(); }
@@ -6140,7 +6178,7 @@ async function handleSession(session){
   ACC.ranks = {}; ACC.ranksAt = {}; ACC.myRank = {};
   stopAuto();
   if (UI.sheet) closeSheet();
-  bmHide(); slHide();
+  bmHide(); slHide(); gmHide();
   // 검색어는 계정마다 따로 — 바뀐 계정에서는 비운다 (입력칸과 필터가 어긋나지 않게 둘 다)
   UI.q = ''; UI.qRaw = ''; { const q = $('#q'); if (q){ q.value = ''; const c = $('#qClear'); if (c) c.hidden = true; } }
   if (u){
