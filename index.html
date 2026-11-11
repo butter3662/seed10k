@@ -579,7 +579,7 @@ html.gated body{overflow:hidden}
 .siren i:last-child{background:#3B7BFF;box-shadow:0 0 18px #3B7BFF;animation-delay:.25s}
 @keyframes siren{to{opacity:.2;transform:scale(.85)}}
 .busted{text-decoration:line-through;text-decoration-color:#FF3B3B;text-decoration-thickness:2.5px;color:var(--ink-2)}
-.sl-board{position:relative;width:min(100%,560px);aspect-ratio:1;display:grid;grid-template-columns:repeat(10,minmax(0,1fr));grid-template-rows:repeat(10,minmax(0,1fr));border-radius:10px;overflow:hidden;border:1px solid var(--rule)}
+.sl-board{isolation:isolate;transform:translateZ(0);-webkit-transform:translateZ(0);position:relative;width:min(100%,560px);aspect-ratio:1;display:grid;grid-template-columns:repeat(10,minmax(0,1fr));grid-template-rows:repeat(10,minmax(0,1fr));border-radius:10px;overflow:hidden;border:1px solid var(--rule)}
 .sl-c{position:relative;display:flex;align-items:flex-start;justify-content:flex-start;padding:2px 3px}
 .sl-c.a{background:color-mix(in srgb,var(--brass) 10%,var(--surface))}.sl-c.b{background:var(--surface)}
 .sl-c span{font-size:clamp(7px,1.8vw,10.5px);color:var(--ink-3);font-weight:700}
@@ -604,6 +604,29 @@ html.gated body{overflow:hidden}
 .oe-steps i{height:6px;border-radius:3px;background:var(--surface-2);border:1px solid var(--rule)}
 .oe-steps i.on{background:var(--brass);border-color:var(--brass)}
 .oe-steps i.bad{background:var(--danger);border-color:var(--danger)}
+.bj-table{display:grid;gap:10px;background:radial-gradient(120% 140% at 50% 0%,#1F6B45,#0F3D27);border-radius:14px;padding:12px;color:#fff;margin:6px 0 4px}
+.bj-row{display:grid;grid-template-columns:42px 1fr;gap:8px;align-items:start}
+.bj-who{font-size:12px;font-weight:800;opacity:.75;padding-top:22px}
+.bj-hands{display:flex;flex-wrap:wrap;gap:10px}
+.bj-hand{display:flex;flex-direction:column;gap:4px;padding:4px;border-radius:10px;border:2px solid transparent}
+.bj-hand.cur{border-color:var(--brass);background:rgba(255,255,255,.06)}
+.bj-cards{display:flex;min-height:66px}
+.bj-cards .pc + .pc{margin-left:-18px}
+.pc{width:46px;height:66px;border-radius:7px;background:#fff;color:#14161C;box-shadow:0 2px 6px rgba(0,0,0,.35);display:flex;flex-direction:column;align-items:flex-start;padding:4px 5px;line-height:1;position:relative}
+.pc.new{animation:bjIn .32s cubic-bezier(.2,.8,.3,1) both;animation-delay:calc(var(--k,0) * 60ms)}
+.pc.flip{animation:bjFlip .36s ease-out both}
+@keyframes bjFlip{0%{transform:rotateY(90deg)}100%{transform:none}}
+.pc b{font-size:17px;font-weight:850}.pc i{font-style:normal;font-size:16px;margin-top:2px}
+.pc.red{color:#D4232E}
+.pc em{position:absolute;right:5px;bottom:3px;font-style:normal;font-size:26px;line-height:1;opacity:.9}
+.pc.back{background:repeating-linear-gradient(45deg,#B83A3A 0 6px,#962C2C 6px 12px);border:3px solid #fff}
+@keyframes bjIn{from{opacity:0;transform:translate(30px,-24px) rotate(8deg)}to{opacity:1;transform:none}}
+.bj-meta{display:flex;align-items:baseline;gap:6px;font-size:13px}
+.bj-meta b{font-size:15px}.bj-meta small{opacity:.75}
+.bj-meta em{font-style:normal;font-weight:850;padding:1px 7px;border-radius:999px;background:rgba(255,255,255,.16)}
+.bj-meta em.up{background:#E8B54A;color:#2A1A00}.bj-meta em.down{background:rgba(0,0,0,.35)}
+#bjCard .bm-acts .btn{flex:1 1 0;min-width:72px}
+@media (prefers-reduced-motion:reduce){.pc.new,.pc.flip{animation:none}}
 .oe-res{text-align:center;margin:8px 0;font-weight:800}
 .oe-res small{display:block;margin-top:2px;font-size:12px;font-weight:600;color:var(--ink-3)}
 /* 복권 */
@@ -725,7 +748,7 @@ html.bm-open .top,html.bm-open .tabbar{visibility:hidden}
 .bm-mid{grid-row:2/11;grid-column:2/11;display:flex;flex-direction:column;gap:6px;padding:6px;min-width:0;min-height:0;overflow:auto}
 .bm-row{display:flex;align-items:center;gap:10px}
 .bm-dice{display:flex;gap:8px;flex:0 0 auto;perspective:400px}
-.bm-die{--s:clamp(26px,7.5vw,40px);width:var(--s);height:var(--s)}
+.bm-die{--s:clamp(26px,7.5vw,40px);width:var(--s);height:var(--s);will-change:transform}   /* 굴릴 때마다 합성 층을 새로 만들지 않게 (Safari에서 주변이 깜빡이는 것 방지) */
 .bm-cube{position:relative;width:100%;height:100%;transform-style:preserve-3d;transition:transform .3s}
 .bm-f{position:absolute;inset:0;border-radius:18%;background:linear-gradient(145deg,#fff,#E6E9F0);border:1px solid #C9CEDA;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);padding:14%;backface-visibility:hidden;-webkit-backface-visibility:hidden}
 .bm-f i{display:block;margin:auto;width:70%;height:70%;border-radius:50%}
@@ -742,7 +765,7 @@ html.bm-open .top,html.bm-open .tabbar{visibility:hidden}
 @keyframes bmtoss{0%{transform:translateY(0)}30%{transform:translateY(-45%)}60%{transform:translateY(0)}78%{transform:translateY(-12%)}100%{transform:none}}
 .bm-dice.dbl .bm-f{box-shadow:0 0 0 2px #E2B45E}
 .bm-msg{font-size:clamp(11px,3vw,13.5px);color:var(--ink-2);line-height:1.35;min-width:0;font-weight:650}
-.bm-act{display:grid;gap:6px}
+.bm-act{display:grid;gap:6px;min-height:clamp(32px,8vw,42px);align-content:center}   /* 버튼 ↔ '차례…' 글자가 바뀌어도 높이가 그대로 (아래가 들썩이지 않게) */
 .bm-act .btn{height:clamp(32px,8vw,42px)}
 .bm-roll{width:100%;font-size:15px;animation:bmbtn 1.4s ease-in-out infinite}
 @keyframes bmbtn{50%{transform:scale(1.03)}}
@@ -958,7 +981,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '2.1.12';
+const VERSION = '2.1.13';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -4144,11 +4167,12 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && bmOpenNow(
 
 /* ───────── 도박 탭: 불법 모드 · 경찰 단속 · 뱀사다리 · 홀짝 (주사위 세계여행은 bm.js) ───────── */
 // 판돈 한도(달러): 불법 모드를 끄면 off, 켜면 on. 불법 모드로 한 판을 끝낼 때마다 p의 확률로 경찰 단속
-// 단속되면 벌금 대신, 불법 모드로 번 돈(세 게임 합산 순이익 누적, 진 판은 빼고 셈)의 seize(50%)를 압류하고 누적을 0으로 되돌린다
+// 단속되면 벌금 대신, 불법 모드로 번 돈(모든 도박 게임 합산 순이익 누적, 진 판은 빼고 셈)의 seize(50%)를 압류하고 누적을 0으로 되돌린다
 const GAM = {
   bm:{nm:'주사위 세계여행', min:10, off:100, on:1000, p:0.05},
   sl:{nm:'뱀사다리', min:5, off:50, on:500, p:0.025},
   oe:{nm:'홀짝', min:1, off:10, on:100, p:0.05},
+  bj:{nm:'블랙잭', min:5, off:100, on:1000, p:0.05},
   seize:0.5
 };
 function gamS(){
@@ -4230,12 +4254,13 @@ async function markBusted(k){
 function renderGamblePane(p){
   const il = gamIl(), G = gamS();
   p.innerHTML = `<section class="card gam-il ${il ? 'on' : ''}"><div class="card-h"><h2>${il ? '🚨' : '🎲'} 불법 모드</h2><button class="sw ${il ? 'on' : ''}" id="ilSw" role="switch" aria-checked="${il}"><i></i></button></div>
-      <p class="mg-desc">${il ? '켜짐' : '꺼짐'}: 판돈 한도 ${['bm', 'sl', 'oe'].map(k => `${GAM[k].nm} ${fmtUSDn(il ? GAM[k].on : GAM[k].off, 0)}`).join(' · ')}</p>
-      <p class="muted" style="margin:4px 0 0">켜면 한도가 10배가 되지만, 한 판이 끝날 때마다 경찰 단속 확률이 있습니다 (${['bm', 'sl', 'oe'].map(k => `${GAM[k].nm} ${(GAM[k].p * 100).toFixed(1)}%`).join(' · ')}). 단속되면 지금까지 불법 도박(세 게임 합산)으로 번 돈의 ${GAM.seize * 100}%를 압류하고, 랭킹 이름에 영구 빨간 줄과 단속 횟수가 표시됩니다.</p>
+      <p class="mg-desc">${il ? '켜짐' : '꺼짐'}: 판돈 한도 ${['bm', 'sl', 'oe', 'bj'].map(k => `${GAM[k].nm} ${fmtUSDn(il ? GAM[k].on : GAM[k].off, 0)}`).join(' · ')}</p>
+      <p class="muted" style="margin:4px 0 0">켜면 한도가 10배가 되지만, 한 판이 끝날 때마다 경찰 단속 확률이 있습니다 (${['bm', 'sl', 'oe', 'bj'].map(k => `${GAM[k].nm} ${(GAM[k].p * 100).toFixed(1)}%`).join(' · ')}). 단속되면 지금까지 불법 도박(모든 게임 합산)으로 번 돈의 ${GAM.seize * 100}%를 압류하고, 랭킹 이름에 영구 빨간 줄과 단속 횟수가 표시됩니다.</p>
       ${il || ilAcc() ? `<p class="muted" style="margin:4px 0 0">불법 도박 누적 순이익 <b class="num ${cls(ilAcc())}">${signUSD(ilAcc())}</b> · 단속되면 ${GAM.seize * 100}% 압류</p>` : ''}${G.bust ? `<p style="margin:4px 0 0"><b class="down">단속 ${G.bust}회</b></p>` : ''}</section>
     <section class="card c-mg" id="bmCard">${bmCardHTML()}</section>
     <section class="card c-mg" id="slCard">${slCardHTML()}</section>
-    <section class="card c-mg" id="oeCard">${oeCardHTML()}</section>`;
+    <section class="card c-mg" id="oeCard">${oeCardHTML()}</section>
+    <section class="card c-mg" id="bjCard">${bjHTML()}</section>`;
 }
 document.addEventListener('click', e => {
   const t = e.target.closest('button'); if (!t) return;
@@ -4454,7 +4479,7 @@ function oeCardHTML(){
     <div class="eq">기대 배수 = (맞힐 확률 × 배수)<sup><i>k</i></sup> = (½ × ${OE_M})<sup><i>k</i></sup> = 1</div>
     <ul class="defs"><li><span class="sym"><i>k</i></span><span>그만두기 전까지 연속으로 맞힌 횟수 (1 ≤ <i>k</i> ≤ ${OE_MAX})</span></li></ul>
     <p>몇 번에서 그만두든 평균적으로는 판돈만큼 돌아옵니다(뱀사다리·주사위 세계여행과 같은 기대 배수 1). 판돈 한도: ${fmtUSDn(GAM.oe.off, 0)} (불법 모드 ${fmtUSDn(GAM.oe.on, 0)}).</p>
-    <p>불법 모드로 한 판이 끝날 때마다 ${(GAM.oe.p * 100).toFixed(0)}% 확률로 경찰이 옵니다. 지금까지 불법 도박(세 게임 합산)으로 번 돈의 ${GAM.seize * 100}%를 압류하고 누적을 0으로 되돌립니다. 랭킹 이름에는 영구 빨간 줄이 그어집니다.</p></div>`};
+    <p>불법 모드로 한 판이 끝날 때마다 ${(GAM.oe.p * 100).toFixed(0)}% 확률로 경찰이 옵니다. 지금까지 불법 도박(모든 게임 합산)으로 번 돈의 ${GAM.seize * 100}%를 압류하고 누적을 0으로 되돌립니다. 랭킹 이름에는 영구 빨간 줄이 그어집니다.</p></div>`};
   if (!g){
     const h = s.hist.slice(0, 3).map(x => `<span class="${cls(x.pay - x.stake)}">${x.k === undefined ? (x.win ? '승' : '패') : x.pay > x.stake ? `${x.k}연속` : '실패'} ${signUSD(x.pay - x.stake)}</span>`).join(' · ');
     return `<div class="card-h"><h2>✊ 홀짝 ${infoBtn('oe')}</h2><small>맞히면 ${OE_M}배 · 틀리면 전부</small></div>
@@ -4514,6 +4539,218 @@ function oeFinish(){
 }
 document.addEventListener('click', e => { if (e.target.closest('#oeCash')) oeFinish(); });
 document.addEventListener('click', e => { const t = e.target.closest('#oeEnd'); if (t) oeFinish(); });
+
+/* ───────── 블랙잭 ─────────
+   규칙: 6벌(312장)을 판마다 새로 섞는다(카드 세기 없음). 딜러는 소프트 17 포함 17 이상이면 선다(S17).
+   딜러 업카드가 A·10이면 먼저 블랙잭인지 확인(피크)하고, 딜러가 블랙잭이면 처음 건 판돈만 잃는다.
+   더블다운: 처음 두 장일 때 언제나(스플릿 뒤에도). 스플릿: 같은 숫자 두 장, 최대 4손. A를 나누면 한 장씩만 받고 다시 못 나눈다.
+   스플릿한 손의 A+10은 블랙잭이 아니라 21. 보험·서렌더 없음.
+   지급(받는 돈, 판돈 포함): 이기면 2배, 비기면 1배, 블랙잭 BJ.bjPay배.
+   BJ.bjPay: 기본 전략으로 400만 판씩 돌려 본 처음 판돈 대비 평균 손익이 2.5배(보통 카지노 3:2)일 때 −0.37% ± 0.11%,
+   2.6배(8:5)일 때 −0.06% ± 0.11%(95%)라, 다른 도박(기대 배수 1)과 맞추려고 2.6배로 한다 */
+const BJ = {decks:6, bjPay:2.6, maxHands:4};
+const BJE = {
+  // 카드: 0~51 → 숫자 r = c % 13 + 1 (1=A, 11~13=J·Q·K), 무늬 s = floor(c / 13) % 4
+  rank: c => c % 13 + 1,
+  val: c => Math.min(10, c % 13 + 1),
+  total(cards){ let t = 0, a = 0; for (const c of cards){ const v = BJE.val(c); t += v; if (v === 1) a++; } const soft = a > 0 && t + 10 <= 21; return {t:soft ? t + 10 : t, soft}; },
+  isBJ: cards => cards.length === 2 && BJE.total(cards).t === 21,
+  shoe(rnd){ const n = 52 * BJ.decks, a = Array.from({length:n}, (_, k) => k); for (let i = n - 1; i > 0; i--){ const j = Math.floor(rnd() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; },
+  draw(g){ return g.shoe[g.ix++]; },
+  newRound(stake, rnd){
+    const g = {v:1, stake, shoe:BJE.shoe(rnd), ix:0, hands:[], dealer:[], hole:true, phase:'play', cur:0, cost:stake, pay:0, log:[]};
+    const p1 = BJE.draw(g), d1 = BJE.draw(g), p2 = BJE.draw(g), d2 = BJE.draw(g);
+    g.hands.push({cards:[p1, p2], bet:stake, done:false, dbl:false, split:false, res:null});
+    g.dealer = [d1, d2];
+    const up = BJE.val(d1), pbj = BJE.isBJ(g.hands[0].cards), dbj = BJE.isBJ(g.dealer);
+    if ((up === 1 || up === 10) && dbj){ g.hole = false; g.hands[0].done = true; BJE.settle(g); }   // 딜러 블랙잭 (피크)
+    else if (pbj){ g.hands[0].done = true; g.hole = false; BJE.settle(g); }
+    return g;
+  },
+  hand: g => g.hands[g.cur],
+  can(g, a){
+    if (g.phase !== 'play') return false;
+    const h = BJE.hand(g); if (!h || h.done) return false;
+    const two = h.cards.length === 2;
+    if (a === 'hit' || a === 'stand') return true;
+    if (a === 'double') return two;
+    if (a === 'split') return two && BJE.rank(h.cards[0]) === BJE.rank(h.cards[1]) && g.hands.length < BJ.maxHands && !(h.split && BJE.rank(h.cards[0]) === 1);
+    return false;
+  },
+  // 사람이 고른 행동. 돈(더블·스플릿 추가 판돈)은 화면 쪽에서 먼저 낸다
+  act(g, a){
+    if (!BJE.can(g, a)) return false;
+    const h = BJE.hand(g);
+    if (a === 'hit'){ h.cards.push(BJE.draw(g)); if (BJE.total(h.cards).t >= 21) h.done = true; }
+    else if (a === 'stand') h.done = true;
+    else if (a === 'double'){ g.cost += h.bet; h.bet *= 2; h.dbl = true; h.cards.push(BJE.draw(g)); h.done = true; }
+    else if (a === 'split'){
+      const c2 = h.cards.pop(), ace = BJE.rank(c2) === 1;
+      const h2 = {cards:[c2], bet:h.bet, done:false, dbl:false, split:true, res:null};
+      h.split = true; g.cost += h.bet;
+      h.cards.push(BJE.draw(g)); h2.cards.push(BJE.draw(g));
+      g.hands.splice(g.cur + 1, 0, h2);
+      if (ace){ h.done = true; h2.done = true; }                         // A 스플릿은 한 장씩만
+      else { if (BJE.total(h.cards).t === 21) h.done = true; if (BJE.total(h2.cards).t === 21) h2.done = true; }
+    }
+    BJE.next(g);
+    return true;
+  },
+  next(g){
+    while (g.cur < g.hands.length && g.hands[g.cur].done) g.cur++;
+    if (g.cur >= g.hands.length) BJE.dealerPlay(g);
+  },
+  dealerPlay(g){
+    g.hole = false;
+    const live = g.hands.some(h => BJE.total(h.cards).t <= 21);
+    if (live) while (BJE.total(g.dealer).t < 17) g.dealer.push(BJE.draw(g));   // S17: 소프트 17에서도 선다
+    BJE.settle(g);
+  },
+  settle(g){
+    const d = BJE.total(g.dealer).t, dbj = BJE.isBJ(g.dealer);
+    let pay = 0;
+    for (const h of g.hands){
+      const p = BJE.total(h.cards).t, pbj = !h.split && g.hands.length === 1 && BJE.isBJ(h.cards);
+      let m;
+      if (dbj) m = pbj ? 1 : 0;                          // 딜러 블랙잭: 내 블랙잭만 비김
+      else if (pbj) m = BJ.bjPay;
+      else if (p > 21) m = 0;
+      else if (d > 21 || p > d) m = 2;
+      else if (p === d) m = 1;
+      else m = 0;
+      h.res = pbj && m === BJ.bjPay ? 'bj' : m === 2 ? 'win' : m === 1 ? 'push' : 'lose';
+      // 블랙잭은 처음 판돈 기준, 나머지는 그 손의 판돈(더블이면 2배) 기준
+      pay += h.bet * m;
+    }
+    g.pay = Math.round(pay * 100) / 100; g.phase = 'over';
+  },
+  // 기본 전략 (6벌, S17, 더블다운 스플릿 뒤 허용, 서렌더 없음). 시뮬레이션과 '추천' 표시에 쓴다
+  basic(g){
+    const h = BJE.hand(g), up = BJE.val(g.dealer[0]), u = up === 1 ? 11 : up;
+    const {t, soft} = BJE.total(h.cards), two = h.cards.length === 2;
+    const D = a => (two ? 'double' : a);
+    if (BJE.can(g, 'split')){
+      const r = BJE.val(h.cards[0]);
+      const sp = r === 1 || r === 8 || (r === 9 && u !== 7 && u !== 10 && u !== 11) || (r === 7 && u <= 7) || (r === 6 && u <= 6) || (r === 4 && (u === 5 || u === 6)) || ((r === 2 || r === 3) && u <= 7);
+      if (sp) return 'split';
+    }
+    if (soft){
+      if (t >= 19) return 'stand';
+      if (t === 18) return u >= 3 && u <= 6 ? D('stand') : u <= 8 ? 'stand' : 'hit';
+      if (t === 17) return u >= 3 && u <= 6 ? D('hit') : 'hit';
+      if (t === 15 || t === 16) return u >= 4 && u <= 6 ? D('hit') : 'hit';
+      return u >= 5 && u <= 6 ? D('hit') : 'hit';         // A2, A3
+    }
+    if (t >= 17) return 'stand';
+    if (t >= 13) return u <= 6 ? 'stand' : 'hit';
+    if (t === 12) return u >= 4 && u <= 6 ? 'stand' : 'hit';
+    if (t === 11) return u <= 10 ? D('hit') : 'hit';
+    if (t === 10) return u <= 9 ? D('hit') : 'hit';
+    if (t === 9) return u >= 3 && u <= 6 ? D('hit') : 'hit';
+    return 'hit';
+  },
+};
+
+/* ── 블랙잭 화면 (도박 탭 카드) ── */
+function bjS(){ if (!S.bj || typeof S.bj !== 'object') S.bj = {cur:null, hist:[]}; return S.bj; }
+const BJV = {shown:null, t:null, anim:false, seen:new Set(), now:new Set()};   // shown: 딜러 카드를 몇 장까지 보였는지. seen: 이미 그린 카드(새 카드만 날아오게)
+const BJ_SUIT = ['♠', '♥', '♦', '♣'];
+function bjCardHTML(c, back, k, key){
+  const id = key + (back ? 'b' : 'f'); BJV.now.add(id);
+  const fresh = !BJV.seen.has(id), flip = fresh && !back && BJV.seen.has(key + 'b');   // 엎어 둔 카드를 뒤집을 때는 뒤집기 연출
+  const cl = fresh ? (flip ? ' flip' : ' new') : '';
+  if (back) return `<span class="pc back${cl}" style="--k:${k}"></span>`;
+  const r = BJE.rank(c), s = Math.floor(c / 13) % 4, red = s === 1 || s === 2;
+  return `<span class="pc${red ? ' red' : ''}${cl}" style="--k:${k}"><b>${r === 1 ? 'A' : r === 11 ? 'J' : r === 12 ? 'Q' : r === 13 ? 'K' : r}</b><i>${BJ_SUIT[s]}</i><em>${BJ_SUIT[s]}</em></span>`;
+}
+const bjTot = cards => { const {t, soft} = BJE.total(cards); return soft && t < 21 ? `${t - 10}/${t}` : `${t}`; };
+const BJ_ACT = {hit:'히트', stand:'스탠드', double:'더블', split:'스플릿'};
+function bjCardInnerHTML(){
+  const s = bjS(), g = s.cur;
+  INFO.bj = {t:'블랙잭', h:`<div class="prose"><ul><li>딜러보다 21에 가깝게 만들면 이깁니다. 21을 넘으면 집니다. A는 1이나 11, J·Q·K는 10.</li>
+    <li>6벌(312장)을 판마다 새로 섞습니다. 딜러는 17 이상이면 섭니다(A를 11로 센 17 포함).</li>
+    <li>딜러가 A나 10을 보이면 먼저 블랙잭인지 확인합니다. 딜러가 블랙잭이면 처음 건 판돈만 잃습니다.</li>
+    <li><b>히트</b> 한 장 더 · <b>스탠드</b> 그만 · <b>더블</b> 처음 두 장일 때 판돈을 두 배로 하고 한 장만 더 · <b>스플릿</b> 같은 숫자 두 장을 두 손으로 나눔(판돈 한 번 더, 최대 4손, A는 한 장씩만).</li>
+    <li>받는 돈(판돈 포함): 이기면 2배, 비기면 1배, 처음 두 장이 블랙잭(A+10)이면 <b>${BJ.bjPay}배</b>. 스플릿한 손의 21은 블랙잭이 아닙니다. 보험·서렌더는 없습니다.</li></ul>
+    <p>보통 카지노는 블랙잭에 2.5배(3:2)를 줘서 기본 전략대로 해도 판돈의 약 0.4%를 잃습니다. 여기서는 기본 전략으로 400만 판을 돌려 다른 게임처럼 평균적으로 판돈만큼 돌아오도록(기대 배수 1) ${BJ.bjPay}배로 정했습니다. 판돈 한도: ${fmtUSDn(GAM.bj.off, 0)} (불법 모드 ${fmtUSDn(GAM.bj.on, 0)}).</p></div>`};
+  if (!g){
+    const h = s.hist.slice(0, 3).map(x => `<span class="${cls(x.pay - x.cost)}">${x.res} ${signUSD(x.pay - x.cost)}</span>`).join(' · ');
+    return `<div class="card-h"><h2>🃏 블랙잭 ${infoBtn('bj')}</h2><small>블랙잭 ${BJ.bjPay}배 · 딜러 17 스탠드</small></div>
+      <p class="mg-desc">${h ? `최근 ${h}` : '딜러와 21 대결. 히트·스탠드·더블·스플릿을 직접 고릅니다'}</p>
+      <div class="mg-foot"><span class="muted">한도 ${fmtUSDn(gamMax('bj'), 0)}</span><button class="btn solid" id="bjGo" ${S.over ? 'disabled' : ''}>새 게임</button></div>`;
+  }
+  const over = g.phase === 'over', dn = over && BJV.shown !== null ? Math.min(BJV.shown, g.dealer.length) : g.dealer.length;
+  const revealing = over && dn < g.dealer.length, showRes = over && !revealing;
+  const dCards = g.dealer.slice(0, Math.max(2, dn)).map((c, k) => bjCardHTML(c, k === 1 && (g.hole || (over && BJV.shown !== null && BJV.shown < 2)), k, `d${k}`)).join('');
+  const dTot = g.hole || (over && BJV.shown !== null && BJV.shown < 2) ? bjTot([g.dealer[0]]) : bjTot(g.dealer.slice(0, Math.max(2, dn)));
+  const RES = {bj:['블랙잭!', 'up'], win:['승', 'up'], push:['무', ''], lose:['패', 'down']};
+  const hands = g.hands.map((h, i) => {
+    const t = BJE.total(h.cards).t, cur = !over && i === g.cur;
+    return `<div class="bj-hand ${cur ? 'cur' : ''}"><div class="bj-cards">${h.cards.map((c, k) => bjCardHTML(c, false, k, `h${i}-${k}-${c}`)).join('')}</div>
+      <div class="bj-meta"><b class="num">${t > 21 ? `${t} 버스트` : h.done || over ? t : bjTot(h.cards)}</b><small>${fmtUSD(h.bet)}${h.dbl ? ' · 더블' : ''}</small>${showRes && h.res ? `<em class="${RES[h.res][1]}">${RES[h.res][0]}</em>` : ''}</div></div>`;
+  }).join('');
+  const h = !over ? BJE.hand(g) : null, more = h ? h.bet : 0, rich = S.usd >= more;
+  const hint = !over ? BJE.basic(g) : null;
+  return `<div class="card-h"><h2>🃏 블랙잭</h2><small>판돈 ${fmtUSD(g.stake)}${g.il ? ' · 🚨 불법' : ''}</small></div>
+    <div class="bj-table">
+      <div class="bj-row"><span class="bj-who">딜러</span><div class="bj-hand"><div class="bj-cards">${dCards}</div><div class="bj-meta"><b class="num">${dTot}${showRes && BJE.total(g.dealer).t > 21 ? ' 버스트' : ''}</b></div></div></div>
+      <div class="bj-row"><span class="bj-who">나</span><div class="bj-hands">${hands}</div></div>
+    </div>
+    ${showRes ? `<p class="oe-res ${cls(g.pay - g.cost)}">${g.pay > g.cost ? '이겼다!' : g.pay === g.cost ? '비겼다' : '졌다'} · 받을 돈 ${fmtUSD(g.pay)} (건 돈 ${fmtUSD(g.cost)})</p>`
+      : revealing ? '<p class="oe-res muted">딜러 차례…</p>' : `<p class="oe-res muted">${g.hands.length > 1 ? `${g.cur + 1}번째 손 · ` : ''}기본 전략 추천: ${BJ_ACT[hint]}</p>`}
+    <div class="bm-acts">${over ? (showRes ? '<button class="btn solid" id="bjEnd">정산하기</button>' : '')
+      : ['hit', 'stand', 'double', 'split'].map(a => {
+          const ok = BJE.can(g, a) && (a === 'hit' || a === 'stand' || rich);
+          return `<button class="btn ${a === 'stand' ? 'solid' : ''}" data-bj="${a}" ${ok && !BJV.anim ? '' : 'disabled'}>${BJ_ACT[a]}${(a === 'double' || a === 'split') && BJE.can(g, a) ? ` +${fmtUSD(more)}` : ''}</button>`;
+        }).join('')}</div>`;
+}
+function bjHTML(){ BJV.now = new Set(); const h = bjCardInnerHTML(); BJV.now.forEach(x => BJV.seen.add(x)); return h; }   // 그린 카드를 기억해 두고 다음엔 새 카드만 날아오게
+function bjRender(){ const c = $('#bjCard'); if (c) c.innerHTML = bjHTML(); }
+function bjStart(){
+  const s = bjS(); if (s.cur) return;
+  if (S.over) return toast('파산해서 할 수 없습니다', true);
+  betDialog('bj', '🃏 블랙잭', `<p class="muted" style="margin:0 0 8px">블랙잭 ${BJ.bjPay}배, 이기면 2배. 더블·스플릿하면 같은 판돈을 한 번 더 냅니다</p>`, bet => {
+    s.cur = BJE.newRound(bet, Math.random); s.cur.il = gamIl();
+    BJV.shown = null; BJV.seen = new Set(); commit();
+    if (s.cur.phase === 'over') bjReveal(); else bjRender();
+  });
+}
+// 판이 끝나면 딜러 카드를 한 장씩 보여 준다 (뒤집기 → 뽑기)
+function bjReveal(){
+  const g = bjS().cur; if (!g) return;
+  clearTimeout(BJV.t); BJV.shown = 1; BJV.anim = true; bjRender();
+  const step = () => {
+    const g2 = bjS().cur; if (!g2 || g2 !== g){ BJV.anim = false; return; }
+    BJV.shown++; bjRender();
+    if (BJV.shown < g.dealer.length) BJV.t = setTimeout(step, bmMs(600));
+    else { BJV.anim = false; bjRender(); }
+  };
+  BJV.t = setTimeout(step, bmMs(450));
+}
+function bjAct(a){
+  const g = bjS().cur; if (!g || g.phase !== 'play' || BJV.anim || !BJE.can(g, a)) return;
+  if (a === 'double' || a === 'split'){
+    const more = BJE.hand(g).bet;
+    if (S.usd < more) return toast(`달러 통장에 ${fmtUSD(more)}이 있어야 합니다`, true);
+    S.usd = Math.round((S.usd - more) * 100) / 100;
+  }
+  BJE.act(g, a); save();
+  if (g.phase === 'over') bjReveal(); else bjRender();
+}
+function bjFinish(){
+  const s = bjS(), g = s.cur; if (!g || g.phase !== 'over' || BJV.anim) return;
+  if (g.pay > 0) receiveUSD(g.pay);
+  const net = Math.round((g.pay - g.cost) * 100) / 100;
+  const res = g.hands.some(h => h.res === 'bj') ? '블랙잭' : net > 0 ? '승' : net === 0 ? '무' : '패';
+  s.hist.unshift({at:Date.now(), stake:g.stake, cost:g.cost, pay:g.pay, res}); s.hist = s.hist.slice(0, 10);
+  altLog('gamble', `블랙잭: ${res}${g.hands.length > 1 ? ` (${g.hands.length}손)` : ''}${g.il ? ' (불법)' : ''}`, net, 'USD');
+  s.cur = null; BJV.shown = null; commit();
+  police('bj', g.il, net);
+}
+document.addEventListener('click', e => {
+  const t = e.target.closest('#bjGo, #bjEnd, [data-bj]'); if (!t) return;
+  if (t.id === 'bjGo') bjStart(); else if (t.id === 'bjEnd') bjFinish(); else bjAct(t.dataset.bj);
+});
 
 /* ───────── 복권 탭: 로또6/45 (실제 추첨 결과로 정산) · 스피또2000 (긁는 즉석복권) ─────────
    로또 규칙 출처: 동행복권 '로또6/45 소개' (1게임 1,000원, 1~45 중 6개, 판매 일~금 06:00~24:00·토 06:00~20:00, 토 20:35경 추첨,
