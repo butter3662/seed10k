@@ -241,6 +241,8 @@ html[data-mode=dark] .mono{background:hsl(var(--h) 32% 22%);color:hsl(var(--h) 7
 .hmap-list{margin-top:10px}
 .hmap-list summary{cursor:pointer;color:var(--ink-2);font-size:13.5px;font-weight:700;padding:6px 0}
 @media (min-width:860px){ .hmap-wrap{grid-template-columns:minmax(0,1.4fr) minmax(240px,1fr);align-items:start} .hmap-side .kv{grid-template-columns:minmax(0,1fr)} }
+.bm-rec{font-size:12.5px;line-height:1.55;font-variant-numeric:tabular-nums;max-height:min(66vh,620px)}
+.bm-rec div{padding:2px 0;border-bottom:1px solid var(--rule)}
 .hist-open{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;text-align:left;color:var(--ink);cursor:pointer;font:inherit}
 .hist-open b{display:block;font-size:16px;font-weight:800}
 .hist-open small{display:block;color:var(--ink-3);font-size:12.5px;margin-top:2px}
@@ -955,7 +957,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '2.1.8';
+const VERSION = '2.1.9';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -3258,6 +3260,7 @@ const BME = {
       pl:Array.from({length:nPl}, (_, i) => ({nm:BM.names[i], me:i === 0, pos:0, cash:BM.start, out:false, outAt:0, jail:0, free:0, coupon:0, space:0})),
       own:BM_SQ.map(() => -1), lv:BM_SQ.map(() => 0), bought:BM_SQ.map(() => 0), deck:[], pending:null, log:[], dice:null};
     // 먼저 굴리는 쪽이 땅을 먼저 사서 유리하므로 첫 차례는 무작위로 정한다
+    g.rec = []; BME.rec(g, `시작: ${nPl}명, 판돈 ${stake}달러, 시작 돈 ${bmW(BM.start)}`);
     g.first = g.turn = Math.floor(rnd() * nPl);
     g.pending = g.turn === 0 ? {k:'roll'} : null;
     BME.log(g, `${g.pl[g.turn].nm}부터 시작`);
@@ -3268,7 +3271,13 @@ const BME = {
   snap(g, ev){ if (ev) ev.push({t:'snap', v:BME.view(g)}); },
   view: g => ({cash:g.pl.map(p => p.cash), out:g.pl.map(p => p.out), own:g.own.slice(), lv:g.lv.slice(), fund:g.fund,
     jail:g.pl.map(p => p.jail), free:g.pl.map(p => p.free), coupon:g.pl.map(p => p.coupon), space:g.pl.map(p => p.space)}),
-  log(g, s){ g.log.push(s); if (g.log.length > 40) g.log.splice(0, g.log.length - 40); },
+  log(g, s){ g.log.push(s); if (g.log.length > 40) g.log.splice(0, g.log.length - 40); BME.rec(g, s); },
+  // 판 전체 기록 (서버 seed10k_bmlog에 남김): "시각 바퀴 내용". 화면 기록과 달리 줄이지 않는다 (안전 상한 6000줄)
+  rec(g, s){
+    const r = g.rec || (g.rec = []);
+    const t = new Date(Date.now() + 9 * 3600e3).toISOString().slice(11, 19);   // 한국 시각 HH:MM:SS
+    r.push(`${t} ${g.round || 1}바퀴 ${s}`); if (r.length > 6000) r.splice(0, r.length - 6000);
+  },
   // 통행료 = 대지료 + 별장(1채 또는 2채 값) + 빌딩 + 호텔. 특수 땅은 정해진 통행료
   rentOf(sq, lv){
     const c = BM_SQ[sq]; if (c.t !== 'city') return 0;
@@ -3344,26 +3353,29 @@ const BME = {
     BME.log(g, `${p.nm} 파산`); ev.push({t:'msg', s:`${p.nm} 파산!`, k:'bankrupt', i}); BME.snap(g, ev);
   },
   liquidate(g, i, amt, ev){
-    const n0 = BME.sellValue(g, i);
-    BME._liq(g, i, amt);
-    if (BME.sellValue(g, i) < n0 && ev){ ev.push({t:'msg', s:`${g.pl[i].nm} 돈이 모자라 땅·건물을 팔았다`, k:'sell', i}); BME.snap(g, ev); }
+    const sold = BME._liq(g, i, amt);
+    if (sold.length && ev){ ev.push({t:'msg', s:`${g.pl[i].nm} 돈이 모자라 매각: ${BME.soldText(sold)}`, k:'sell', i}); BME.snap(g, ev); }
   },
+  // 판 것 목록을 짧게: "서울 땅, 런던 별장 2채"
+  soldText(sold){ const c = {}; sold.forEach(x => c[x] = (c[x] || 0) + 1); return Object.entries(c).map(([x, n]) => n > 1 ? `${x} ${n}채` : x).join(', '); },
   // 지금 통행료가 가장 낮은 땅부터 한 개씩 판다 (같으면 땅값이 싼 곳부터). 팔 때마다 통행료가 바뀌므로 매번 다시 고른다
   _liq(g, i, amt){
-    const p = g.pl[i];
+    const p = g.pl[i], sold = [];
     while (p.cash < amt){
       let k = -1, kr = Infinity;
       g.own.forEach((o, q) => { if (o !== i) return; const r = BME.rent(g, q); if (r < kr || (r === kr && BM_SQ[q].p < BM_SQ[k].p)){ k = q; kr = r; } });
       if (k < 0) break;
       const nm = BME.sellName(g, k), v = BME.sellUnit(g, k);
-      p.cash += v; BME.log(g, `${p.nm} ${BM_SQ[k].n} ${nm} 매각 +${bmW(v)}`);
+      p.cash += v; BME.log(g, `${p.nm} ${BM_SQ[k].n} ${nm} 매각 +${bmW(v)}`); sold.push(`${BM_SQ[k].s} ${nm}`);
     }
+    return sold;
   },
   sell(g, k, ev, rnd){
     const pd = g.pending; ev = ev || []; rnd = rnd || Math.random;
     if (!pd || pd.k !== 'sell') return ev;
     const i = pd.who, p = g.pl[i];
-    if (k === 'auto') BME._liq(g, i, BME.need(g));
+    BME.rec(g, `[선택] ${p.nm} 빚 ${bmW(BME.need(g))} 정리: ${k === 'auto' ? '자동 팔기' : `${BM_SQ[k] ? BM_SQ[k].n : k} 팔기`} (현금 ${bmW(p.cash)})`);
+    if (k === 'auto'){ const sold = BME._liq(g, i, BME.need(g)); if (sold.length){ ev.push({t:'msg', s:`자동 매각: ${BME.soldText(sold)}`, k:'sold', i}); BME.snap(g, ev); } }
     else if (g.own[k] === i){
       const nm = BME.sellName(g, k), v = BME.sellUnit(g, k);
       p.cash += v; BME.log(g, `${p.nm} ${BM_SQ[k].n} ${nm} 매각 +${bmW(v)}`);
@@ -3411,6 +3423,7 @@ const BME = {
       const o = g.own[sq];
       if (o < 0){
         if (p.cash >= c.p){ if (p.me) g.pending = {k:'buy', sq}; else if (BME.botBuy(g, i, sq)) BME.buy(g, i, sq, ev); else BME.log(g, `${p.nm} ${c.n} 안 삼 (현금 ${bmW(Math.round(BME.reserve(g, i) * BME.ai.buyF))}은 남겨 둠)`); }
+        else if (p.me){ BME.log(g, `${p.nm} 현금이 모자라 ${c.n}(${bmW(c.p)})을 못 삼`); ev.push({t:'msg', s:`현금이 모자라 ${c.s}(${bmW(c.p)}) 못 삼 · 현금 ${bmW(p.cash)}`, k:'nobuy', i}); }
       } else if (o === i){
         // 산 그 차례가 아니면 건물을 지을 수 있다
         if (g.bought[sq] !== BME.turnId(g) && BME.canBuild(g, sq).some(x => p.cash >= x.cost)){ if (p.me) g.pending = {k:'build', sq}; else BME.botBuild(g, i, sq, ev); }
@@ -3537,6 +3550,7 @@ const BME = {
     if (p.space){ BME.space(g, i, BME.botSpace(g, i), ev, rnd); BME.afterAction(g); return ev; }
     const a = 1 + Math.floor(rnd() * 6), b = 1 + Math.floor(rnd() * 6);
     g.dice = [a, b];
+    BME.rec(g, `${p.nm} 주사위 ${a}+${b}=${a + b}${a === b ? ' (같은 눈)' : ''} (${BM_SQ[p.pos].n}에서, 현금 ${bmW(p.cash)})`);
     ev.push({t:'dice', a, b, i});
     if (p.jail > 0){
       if (p.free > 0){ p.free--; p.jail = 0; BME.log(g, `${p.nm} 탈출권으로 무인도 탈출`); ev.push({t:'msg', s:'탈출권으로 무인도 탈출', k:'escape', i}); BME.snap(g, ev); }
@@ -3558,6 +3572,8 @@ const BME = {
     const i = g.turn, pd = g.pending, ev = [];
     if (!pd) return ev;
     g.pending = null;
+    { const nm = g.pl[i].nm, q = pd.sq !== undefined ? BM_SQ[pd.sq].n : '';
+      BME.rec(g, `[선택] ${nm} ${pd.k === 'buy' ? `${q} ${yes ? '산다' : '안 산다'}` : pd.k === 'build' ? `${q} ${yes ? `짓기(${arg})` : '그만 짓기'}` : pd.k === 'coupon' ? `우대권 ${yes ? '쓴다' : '안 쓴다'} (${q})` : pd.k === 'space' ? `우주여행 → ${BM_SQ[arg] ? BM_SQ[arg].n : arg}` : pd.k}`); }
     if (pd.k === 'buy' && yes && g.pl[i].cash >= BM_SQ[pd.sq].p) BME.buy(g, i, pd.sq, ev);
     else if (pd.k === 'build' && yes){
       BME.build(g, i, pd.sq, arg, ev);
@@ -3640,7 +3656,7 @@ function bmCardHTML(){
   const h = b.hist.slice(0, 3).map(x => `<span class="${cls(x.pay - x.stake)}">${x.rank}/${x.n}위 ${signUSD(x.pay - x.stake)}</span>`).join(' · ');
   return `<div class="card-h"><h2>주사위 세계여행 ${infoBtn('bm')}</h2><small>${isLive() ? '오늘' : '이번 거래일'} ${b.n}판</small></div>
     ${lock ? `<p class="mg-desc">${ACC.user ? '가입' : '이 기록을 시작'}하고 ${BM.waitDays}일이 지나야 할 수 있습니다.</p>` : g ? `<p class="mg-desc">진행 중: ${g.round}바퀴째, 판돈 ${fmtUSD(g.stake)}</p>` : h ? `<p class="mg-desc">최근 ${h}</p>` : `<p class="mg-desc">판돈을 걸고 컴퓨터와 도시를 사고파는 주사위 보드게임</p>`}
-    <div class="mg-foot"><span class="muted">${g ? '' : `달러 통장 <b class="num">${fmtUSDn(S.usd)}</b>`}</span><button class="btn solid" id="bmGo" ${!g && (S.over || lock) ? 'disabled' : ''}>${label}</button></div>`;
+    <div class="mg-foot"><span class="muted">${g ? '' : `달러 통장 <b class="num">${fmtUSDn(S.usd)}</b>`}</span><span style="display:flex;gap:8px">${b.last ? '<button class="btn" id="bmLastLog">지난 판 기록</button>' : ''}<button class="btn solid" id="bmGo" ${!g && (S.over || lock) ? 'disabled' : ''}>${label}</button></span></div>`;
 }
 function bmSetup(){
   const b = bmToday();
@@ -3966,9 +3982,10 @@ async function bmPlay(ev, v0, done){
         else if (k === 'escape'){ bmBanner('🚤 무인도 탈출!', me ? 'green' : '', 800); await bmWait(450); }
         else if (k === 'fly'){ bmBanner(`🚀 ${e.s}`, '', 800); await bmWait(450); }
         else if (k === 'bankrupt'){ bmBanner(`💥 ${e.s}`, 'red', 1200); bmShake(); await bmWait(800); }
-        else if (k === 'sell'){ bmBanner('🏚️ 매각', 'red', 800); await bmWait(450); }
+        else if (k === 'sell' || (k === 'sold' && e.sq === undefined)){ bmBanner(`🏚️ ${e.s}`, me ? 'red' : '', 1400); await bmWait(800); }   // 무엇이 팔렸는지 보이게
         else if (k === 'short'){ bmBanner('💸 돈이 모자랍니다!', 'red', 1000); bmShake(); await bmWait(600); }
         else if (k === 'sold'){ await bmWait(300); }
+        else if (k === 'nobuy'){ bmBanner(`🚫 ${e.s}`, '', 1400); await bmWait(800); }
         else await bmWait(500);
       }
     }
@@ -4023,6 +4040,24 @@ function bmAct(fn){
 // 기권 = 지금 그 자리에서 파산한 것으로 본다: 아직 남은 컴퓨터 수 + 1위.
 // (계속해도 최악은 지금 파산하는 것이라, 기권을 그보다 나쁘게 매기면 안 된다)
 function bmQuitRank(g){ return 1 + g.pl.filter((p, i) => i !== 0 && !p.out).length; }
+/* 끝난 판의 전체 기록을 서버 표(seed10k_bmlog)에 남긴다. 실패하면 저장에 쌓아 두고(최대 2판) 다음 판이 끝날 때 다시 보낸다 */
+async function bmSaveLog(row){
+  const b = S.bm; b.unsent = (b.unsent || []).concat([row]).slice(-2);
+  if (!ACC.sb || !ACC.user) return;
+  const send = b.unsent.slice();
+  try {
+    const {error} = await ACC.sb.from('seed10k_bmlog').insert(send.map(x => ({user_id:ACC.user.id, ...x})));
+    if (error) throw error;
+    if (S.bm === b){ b.unsent = (b.unsent || []).filter(x => !send.includes(x)); save(); }
+  } catch(e){ console.warn('[seed10k] 주사위 세계여행 기록을 서버에 남기지 못함', e); }
+}
+function bmLastLog(){
+  const L = (S.bm || {}).last; if (!L) return;
+  const m = showModal(`<h2>지난 판 기록</h2><p class="muted" style="margin:0 0 6px">${new Date(L.at).toLocaleString('ko-KR')} · ${L.forfeit ? '기권 · ' : ''}${L.rank}위 (${L.n}명 중) · ${L.log.length.toLocaleString()}줄</p>
+    <div class="info-body bm-rec">${L.log.map(x => `<div>${esc(x)}</div>`).join('')}</div><div class="acts"><button class="btn solid" data-close>닫기</button></div>`);
+  $('#modal').dataset.kind = 'info';
+  const bx = $('#modal .bm-rec'); if (bx) bx.scrollTop = bx.scrollHeight;
+}
 function bmFinish(forfeit){
   const b = bmToday(), g = b.cur; if (!g) return;
   let rank;
@@ -4033,6 +4068,10 @@ function bmFinish(forfeit){
   b.hist.unshift({at:Date.now(), stake:g.stake, pay, rank, n:g.n, ...(forfeit ? {ff:1} : {})});
   b.hist = b.hist.slice(0, 10);
   const r = forfeit ? null : BME.ranking(g);
+  const fin = BME.ranking(g).map(i => ({nm:g.pl[i].nm, out:g.pl[i].out, outAt:g.pl[i].outAt || 0, cash:g.pl[i].cash, assets:g.pl[i].out ? 0 : BME.assets(g, i)}));
+  BME.rec(g, `끝: ${forfeit ? '기권, ' : ''}나 ${rank}위 (${g.n}명 중), ${mult}배 ${pay}달러 받음 · 최종 ${fin.map((x, k) => `${k + 1}.${x.nm}${x.out ? `(파산 ${x.outAt}번째)` : `(자산 ${bmW(x.assets)})`}`).join(' ')}`);
+  bmSaveLog({at:new Date().toISOString(), mode:S.mode, n:g.n, stake:g.stake, pay, rank, forfeit:!!forfeit, il:!!g.il, rounds:g.round || 0, standings:fin, log:g.rec || []});
+  b.last = {at:Date.now(), rank, n:g.n, forfeit:!!forfeit, log:(g.rec || []).slice(-3000)};   // 지난 판 기록 보기용 (이 기기·내 저장에 1판만)
   b.cur = null;
   altLog('gamble', `주사위 세계여행 ${forfeit ? `기권 (${rank}위)` : rank + '위'}${g.il ? ' (불법)' : ''}`, pay - g.stake, 'USD');
   commit();
@@ -4046,6 +4085,7 @@ function bmFinish(forfeit){
     <div class="acts"><button class="btn solid" data-close>확인</button></div>`);
 }
 document.addEventListener('click', e => {
+  if (e.target.closest('#bmLastLog')){ bmLastLog(); return; }
   const t = e.target.closest('#bmOv button, #bmGo'); if (!t) return;
   if (t.id === 'bmGo'){ bmSetup(); return; }
   const g = bmG(); if (!g) return;
