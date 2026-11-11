@@ -983,7 +983,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '2.1.14';
+const VERSION = '2.1.15';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -4584,9 +4584,9 @@ document.addEventListener('click', e => { const t = e.target.closest('#oeEnd'); 
    더블다운: 처음 두 장일 때 언제나(스플릿 뒤에도). 스플릿: 같은 숫자 두 장, 최대 4손. A를 나누면 한 장씩만 받고 다시 못 나눈다.
    스플릿한 손의 A+10은 블랙잭이 아니라 21. 보험·서렌더 없음.
    지급(받는 돈, 판돈 포함): 이기면 2배, 비기면 1배, 블랙잭 BJ.bjPay배.
-   BJ.bjPay: 기본 전략으로 400만 판씩 돌려 본 처음 판돈 대비 평균 손익이 2.5배(보통 카지노 3:2)일 때 −0.37% ± 0.11%,
-   2.6배(8:5)일 때 −0.06% ± 0.11%(95%)라, 다른 도박(기대 배수 1)과 맞추려고 2.6배로 한다 */
-const BJ = {decks:6, bjPay:2.6, maxHands:4};
+   BJ.bjPay: 보통 카지노처럼 2.5배(3:2). 기본 전략으로 150만 판 돌려 본 처음 판돈 대비 평균 손익은 −0.39% ± 0.18%(95%),
+   기본 전략 없이 버스트만 피하면 약 −6%. 가장 잘 해도 조금씩 잃도록 일부러 다른 도박(기대 배수 1)보다 불리하게 둔다 */
+const BJ = {decks:6, bjPay:2.5, maxHands:4};
 const BJE = {
   // 카드: 0~51 → 숫자 r = c % 13 + 1 (1=A, 11~13=J·Q·K), 무늬 s = floor(c / 13) % 4
   rank: c => c % 13 + 1,
@@ -4662,7 +4662,7 @@ const BJE = {
     }
     g.pay = Math.round(pay * 100) / 100; g.phase = 'over';
   },
-  // 기본 전략 (6벌, S17, 더블다운 스플릿 뒤 허용, 서렌더 없음). 시뮬레이션과 '추천' 표시에 쓴다
+  // 기본 전략 (6벌, S17, 더블다운 스플릿 뒤 허용, 서렌더 없음). 지급 배수를 정하는 시뮬레이션에만 쓴다 (화면에 추천을 보여 주지 않는다)
   basic(g){
     const h = BJE.hand(g), up = BJE.val(g.dealer[0]), u = up === 1 ? 11 : up;
     const {t, soft} = BJE.total(h.cards), two = h.cards.length === 2;
@@ -4706,21 +4706,23 @@ const BJ_ACT = {hit:'히트', stand:'스탠드', double:'더블', split:'스플�
 function bjCardInnerHTML(){
   const s = bjS(), g = s.cur;
   INFO.bj = {t:'블랙잭', h:`<div class="prose"><ul><li>딜러보다 21에 가깝게 만들면 이깁니다. 21을 넘으면 집니다. A는 1이나 11, J·Q·K는 10.</li>
-    <li>6벌(312장)을 판마다 새로 섞습니다. 딜러는 17 이상이면 섭니다(A를 11로 센 17 포함).</li>
+    <li>6벌(312장)을 판마다 새로 섞습니다.</li>
     <li>딜러가 A나 10을 보이면 먼저 블랙잭인지 확인합니다. 딜러가 블랙잭이면 처음 건 판돈만 잃습니다.</li>
     <li><b>히트</b> 한 장 더 · <b>스탠드</b> 그만 · <b>더블</b> 처음 두 장일 때 판돈을 두 배로 하고 한 장만 더 · <b>스플릿</b> 같은 숫자 두 장을 두 손으로 나눔(판돈 한 번 더, 최대 4손, A는 한 장씩만).</li>
     <li>받는 돈(판돈 포함): 이기면 2배, 비기면 1배, 처음 두 장이 블랙잭(A+10)이면 <b>${BJ.bjPay}배</b>. 스플릿한 손의 21은 블랙잭이 아닙니다. 보험·서렌더는 없습니다.</li></ul>
-    <p>보통 카지노는 블랙잭에 2.5배(3:2)를 줘서 기본 전략대로 해도 판돈의 약 0.4%를 잃습니다. 여기서는 기본 전략으로 400만 판을 돌려 다른 게임처럼 평균적으로 판돈만큼 돌아오도록(기대 배수 1) ${BJ.bjPay}배로 정했습니다. 판돈 한도: ${fmtUSDn(GAM.bj.off, 0)} (불법 모드 ${fmtUSDn(GAM.bj.on, 0)}).</p></div>`};
+    <p>보통 카지노와 같은 지급(블랙잭 3:2)이라, 매번 가장 유리한 행동을 골라도 평균적으로 판돈의 약 0.4%를 잃습니다. 판돈 한도: ${fmtUSDn(GAM.bj.off, 0)} (불법 모드 ${fmtUSDn(GAM.bj.on, 0)}).</p></div>`};
   if (!g){
     const h = s.hist.slice(0, 3).map(x => `<span class="${cls(x.pay - x.cost)}">${x.res} ${signUSD(x.pay - x.cost)}</span>`).join(' · ');
-    return `<div class="card-h"><h2>🃏 블랙잭 ${infoBtn('bj')}</h2><small>블랙잭 ${BJ.bjPay}배 · 딜러 17 스탠드</small></div>
+    return `<div class="card-h"><h2>🃏 블랙잭 ${infoBtn('bj')}</h2><small>블랙잭 ${BJ.bjPay}배</small></div>
       <p class="mg-desc">${h ? `최근 ${h}` : '딜러와 21 대결. 히트·스탠드·더블·스플릿을 직접 고릅니다'}</p>
       <div class="mg-foot"><span class="muted">한도 ${fmtUSDn(gamMax('bj'), 0)}</span><button class="btn solid" id="bjGo" ${S.over ? 'disabled' : ''}>새 게임</button></div>`;
   }
   const over = g.phase === 'over', dn = over && BJV.shown !== null ? Math.min(BJV.shown, g.dealer.length) : g.dealer.length;
   const revealing = over && dn < g.dealer.length, showRes = over && !revealing;
   const dCards = g.dealer.slice(0, Math.max(2, dn)).map((c, k) => bjCardHTML(c, k === 1 && (g.hole || (over && BJV.shown !== null && BJV.shown < 2)), k, `d${k}`)).join('');
-  const dTot = g.hole || (over && BJV.shown !== null && BJV.shown < 2) ? bjTot([g.dealer[0]]) : bjTot(g.dealer.slice(0, Math.max(2, dn)));
+  const dShown = g.dealer.slice(0, Math.max(2, dn));
+  // 딜러는 고를 것이 없으므로 판이 끝나면 "8/18"이 아니라 최종 합(18)만 보인다
+  const dTot = g.hole || (over && BJV.shown !== null && BJV.shown < 2) ? bjTot([g.dealer[0]]) : over ? `${BJE.total(dShown).t}` : bjTot(dShown);
   const RES = {bj:['블랙잭!', 'up'], win:['승', 'up'], push:['무', ''], lose:['패', 'down']};
   const hands = g.hands.map((h, i) => {
     const t = BJE.total(h.cards).t, cur = !over && i === g.cur;
@@ -4728,14 +4730,13 @@ function bjCardInnerHTML(){
       <div class="bj-meta"><b class="num">${t > 21 ? `${t} 버스트` : h.done || over ? t : bjTot(h.cards)}</b><small>${fmtUSD(h.bet)}${h.dbl ? ' · 더블' : ''}</small>${showRes && h.res ? `<em class="${RES[h.res][1]}">${RES[h.res][0]}</em>` : ''}</div></div>`;
   }).join('');
   const h = !over ? BJE.hand(g) : null, more = h ? h.bet : 0, rich = S.usd >= more;
-  const hint = !over ? BJE.basic(g) : null;
   return `<div class="card-h"><h2>🃏 블랙잭</h2><small>판돈 ${fmtUSD(g.stake)}${g.il ? ' · 🚨 불법' : ''}</small></div>
     <div class="bj-table">
       <div class="bj-row"><span class="bj-who">딜러</span><div class="bj-hand"><div class="bj-cards">${dCards}</div><div class="bj-meta"><b class="num">${dTot}${showRes && BJE.total(g.dealer).t > 21 ? ' 버스트' : ''}</b></div></div></div>
       <div class="bj-row"><span class="bj-who">나</span><div class="bj-hands">${hands}</div></div>
     </div>
     ${showRes ? `<p class="oe-res ${cls(g.pay - g.cost)}">${g.pay > g.cost ? '이겼다!' : g.pay === g.cost ? '비겼다' : '졌다'} · 받을 돈 ${fmtUSD(g.pay)} (건 돈 ${fmtUSD(g.cost)})</p>`
-      : revealing ? '<p class="oe-res muted">딜러 차례…</p>' : `<p class="oe-res muted">${g.hands.length > 1 ? `${g.cur + 1}번째 손 · ` : ''}기본 전략 추천: ${BJ_ACT[hint]}</p>`}
+      : revealing ? '<p class="oe-res muted">딜러 차례…</p>' : `<p class="oe-res muted">${g.hands.length > 1 ? `${g.cur + 1}번째 손 · ` : ''}할 행동을 고르세요</p>`}
     <div class="bm-acts">${over ? (showRes ? '<button class="btn solid" id="bjEnd">정산하기</button>' : '')
       : ['hit', 'stand', 'double', 'split'].map(a => {
           const ok = BJE.can(g, a) && (a === 'hit' || a === 'stand' || rich);
