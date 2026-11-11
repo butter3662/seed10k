@@ -958,7 +958,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '2.1.11';
+const VERSION = '2.1.12';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -5844,15 +5844,29 @@ async function leaveAccount(){   // 지금 계정의 기록을 서버에 올리�
   try { await pushCloud(); await pushRank(); } catch(e){}
   try { const {data} = await ACC.sb.auth.getSession(); acctRemember(data && data.session); } catch(e){}
 }
+const isMidFlight = e => !!e && (e.status === 409 || /mid-flight|discarded/i.test(e.message || ''));
+const isDeadToken = e => !!e && /refresh token|not found|invalid|expired|revoked|session_not_found|already used/i.test(`${e.code || ''} ${e.message || ''}`);
 async function switchAccount(id){
   if (!ACC.sb || ACC.busy || (ACC.user && ACC.user.id === id)) return;
   const t = acctList().find(x => x.id === id); if (!t) return;
   ACC.busy = true;
   try {
     await leaveAccount();
-    const {error} = await ACC.sb.auth.setSession({access_token:t.at, refresh_token:t.rt});
+    let {error} = await ACC.sb.auth.setSession({access_token:t.at, refresh_token:t.rt});
+    // 다른 탭이 같은 때 로그인 정보를 바꾸면 supabase-js가 받은 새 토큰을 버리고 409(mid-flight)를 낸다.
+    // 토큰이 잘못된 게 아니므로 잠깐 뒤 다시 시도한다 (같은 토큰은 10초 안에는 다시 써도 같은 결과를 준다)
+    for (let k = 0; k < 2 && error && isMidFlight(error); k++){
+      await new Promise(r => setTimeout(r, 400 + 400 * k));
+      const {data} = await ACC.sb.auth.getSession();
+      if (data && data.session && data.session.user.id === id){ error = null; break; }
+      ({error} = await ACC.sb.auth.setSession({access_token:t.at, refresh_token:t.rt}));
+    }
     if (error){
       console.warn('[seed10k] 계정 전환 실패', error);
+      if (isMidFlight(error) || !isDeadToken(error)){   // 토큰 문제가 아니면 목록에서 지우지 않는다
+        toast(`${t.nick || t.email} 계정으로 바꾸지 못했습니다. 이 사이트가 열린 다른 탭을 닫고 다시 눌러 보세요 (${errText(error)})`, true);
+        return;
+      }
       acctForget(id);
       toast(`${t.nick || t.email} 계정은 로그인이 만료되어 다시 로그인해야 합니다 (${errText(error)})`, true);
       if (ACC.user) renderTab();
