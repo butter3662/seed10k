@@ -955,7 +955,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '2.1.6';
+const VERSION = '2.1.7';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -3633,7 +3633,7 @@ function bmCardHTML(){
     <li>한 명만 남을 때까지(나머지가 모두 파산할 때까지) 합니다. 순위는 늦게 파산한 순이고, 내가 파산하면 그 자리에서 끝납니다.</li>
     <li>판돈 ${fmtUSD(BM.minBet, 0)}~${fmtUSD(GAM.bm.off, 0)}(불법 모드 ${fmtUSD(GAM.bm.on, 0)})을 달러 통장에서 걸고 시작합니다. 끝나면 순위에 따라 판돈의 배수를 돌려받습니다. 2명: 1위 2배 / 3명: 1위 2.5배, 2위 0.5배 / 4명: 1위 3배, 2위 1배 (나머지 0). 배수의 평균이 1배라서 실력이 같으면 기대 손익은 0입니다.</li>
     ${BM.waitDays ? `<li>가입하고 ${BM.waitDays}일이 지나야 할 수 있습니다(로그인하지 않았으면 이 기록을 시작한 때부터).</li>` : ''}
-    <li>판 수 제한은 없습니다. 도중에 닫아도 이어서 할 수 있고, 기권하면 판돈을 잃습니다.</li>
+    <li>판 수 제한은 없습니다. 도중에 닫아도 이어서 할 수 있습니다. 기권하면 그 자리에서 파산한 것으로 보고 순위를 매깁니다(아직 남은 컴퓨터 수 + 1위).</li>
     <li>딴 돈과 잃은 돈은 투자 손익처럼 순자산·수익률·랭킹에 그대로 반영됩니다.</li></ul></div>`};
   const lock = g ? 0 : bmLockLeft();
   const label = g ? '이어 하기' : S.over ? '파산해서 할 수 없습니다' : lock ? `${bmLockText(lock)} 뒤부터` : '새 게임';
@@ -4020,10 +4020,13 @@ function bmAct(fn){
   save();
   bmPlay(ev, v0, () => setTimeout(() => { if (gen === BMV.gen) bmTick(); }, bmMs(250)));
 }
+// 기권 = 지금 그 자리에서 파산한 것으로 본다: 아직 남은 컴퓨터 수 + 1위.
+// (계속해도 최악은 지금 파산하는 것이라, 기권을 그보다 나쁘게 매기면 안 된다)
+function bmQuitRank(g){ return 1 + g.pl.filter((p, i) => i !== 0 && !p.out).length; }
 function bmFinish(forfeit){
   const b = bmToday(), g = b.cur; if (!g) return;
   let rank;
-  if (forfeit) rank = g.n;
+  if (forfeit) rank = bmQuitRank(g);
   else { const r = BME.ranking(g); rank = r.indexOf(0) + 1; }
   const mult = BM.pay[g.n][rank - 1] || 0, pay = Math.round(g.stake * mult * 100) / 100;
   if (pay > 0) receiveUSD(pay);
@@ -4031,12 +4034,12 @@ function bmFinish(forfeit){
   b.hist = b.hist.slice(0, 10);
   const r = forfeit ? null : BME.ranking(g);
   b.cur = null;
-  altLog('gamble', `주사위 세계여행 ${forfeit ? '기권' : rank + '위'}${g.il ? ' (불법)' : ''}`, pay - g.stake, 'USD');
+  altLog('gamble', `주사위 세계여행 ${forfeit ? `기권 (${rank}위)` : rank + '위'}${g.il ? ' (불법)' : ''}`, pay - g.stake, 'USD');
   commit();
   bmHide();
   police('bm', g.il);
   const rows = r ? r.map((i, k) => `<div><span>${k + 1}위 ${g.pl[i].nm}</span><b class="num">${g.pl[i].out ? '파산' : '자산 ' + bmW(BME.assets(g, i))}</b></div>`).join('') : '';
-  showModal(`<h2 class="${pay > g.stake ? 'up' : ''}">${forfeit ? '기권했습니다' : `${rank}위 (${g.n}명 중)`}</h2>
+  showModal(`<h2 class="${pay > g.stake ? 'up' : ''}">${forfeit ? `기권 · ${rank}위 (${g.n}명 중)` : `${rank}위 (${g.n}명 중)`}</h2>
     ${rows ? `<div class="bd" style="margin-bottom:10px">${rows}</div>` : ''}
     <div class="bd"><div><span>판돈</span><b class="num">${fmtUSD(g.stake)}</b></div><div><span>돌려받은 돈 (${mult}배)</span><b class="num">${fmtUSD(pay)}</b></div>
     <div class="tot"><span>손익</span><b class="num ${cls(pay - g.stake)}">${signUSD(pay - g.stake)}</b></div></div>
@@ -4049,7 +4052,8 @@ document.addEventListener('click', e => {
   if (t.id === 'bmClose'){ bmHide(); return; }
   if (t.id === 'bmSpd'){ SET.bmFast = !SET.bmFast; saveSet(); bmUpdate(); return; }
   if (t.id === 'bmQuit'){
-    const c = showModal(`<h2>기권할까요?</h2><p>판돈 ${fmtUSD(g.stake)}을 잃고 게임이 끝납니다.</p><div class="acts"><button class="btn" data-close>계속하기</button><button class="btn solid" id="bmQuitYes">기권</button></div>`);
+    const qr = bmQuitRank(g), qm = BM.pay[g.n][qr - 1] || 0;
+    const c = showModal(`<h2>기권할까요?</h2><p>지금 파산한 것으로 보고 <b>${qr}위 (${g.n}명 중)</b>로 끝납니다. ${qm ? `판돈의 ${qm}배인 ${fmtUSD(Math.round(g.stake * qm * 100) / 100)}을 돌려받습니다.` : `판돈 ${fmtUSD(g.stake)}을 잃습니다.`}</p><div class="acts"><button class="btn" data-close>계속하기</button><button class="btn solid" id="bmQuitYes">기권</button></div>`);
     $('#bmQuitYes').onclick = () => { c(); setTimeout(() => bmFinish(true), 200); };
     return;
   }
