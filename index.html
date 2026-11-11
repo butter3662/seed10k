@@ -4720,7 +4720,9 @@ function bjCardInnerHTML(){
   const over = g.phase === 'over', dn = over && BJV.shown !== null ? Math.min(BJV.shown, g.dealer.length) : g.dealer.length;
   const revealing = over && dn < g.dealer.length, showRes = over && !revealing;
   const dCards = g.dealer.slice(0, Math.max(2, dn)).map((c, k) => bjCardHTML(c, k === 1 && (g.hole || (over && BJV.shown !== null && BJV.shown < 2)), k, `d${k}`)).join('');
-  const dTot = g.hole || (over && BJV.shown !== null && BJV.shown < 2) ? bjTot([g.dealer[0]]) : bjTot(g.dealer.slice(0, Math.max(2, dn)));
+  const dShown = g.dealer.slice(0, Math.max(2, dn));
+  // 딜러는 고를 것이 없으므로 판이 끝나면 "8/18"이 아니라 최종 합(18)만 보인다
+  const dTot = g.hole || (over && BJV.shown !== null && BJV.shown < 2) ? bjTot([g.dealer[0]]) : over ? `${BJE.total(dShown).t}` : bjTot(dShown);
   const RES = {bj:['블랙잭!', 'up'], win:['승', 'up'], push:['무', ''], lose:['패', 'down']};
   const hands = g.hands.map((h, i) => {
     const t = BJE.total(h.cards).t, cur = !over && i === g.cur;
