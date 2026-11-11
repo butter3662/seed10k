@@ -597,6 +597,10 @@ html.gated body{overflow:hidden}
 .oe-marbles{display:flex;flex-wrap:wrap;gap:4px;justify-content:center;max-width:260px}
 .oe-marbles i{width:14px;height:14px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff,#7FB2FF 45%,#2F5FD0);opacity:0;animation:oem .25s forwards;animation-delay:var(--d)}
 @keyframes oem{from{opacity:0;transform:scale(.2)}to{opacity:1;transform:none}}
+.oe-steps{display:grid;grid-template-columns:repeat(10,1fr);gap:4px;margin:6px 0 2px}
+.oe-steps i{height:6px;border-radius:3px;background:var(--surface-2);border:1px solid var(--rule)}
+.oe-steps i.on{background:var(--brass);border-color:var(--brass)}
+.oe-steps i.bad{background:var(--danger);border-color:var(--danger)}
 .oe-res{text-align:center;margin:8px 0;font-weight:800}
 .oe-res small{display:block;margin-top:2px;font-size:12px;font-weight:600;color:var(--ink-3)}
 /* 복권 */
@@ -951,7 +955,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '2.1.4';
+const VERSION = '2.1.5';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -4333,47 +4337,67 @@ function bmConfettiIn(fx){
   }
 }
 
-/* ── 홀짝: 5판 3선승 ──
-   컴퓨터가 구슬을 1~20개 쥔다(개수는 고를 때 정해 저장). 홀·짝을 맞히면 내가 1점, 틀리면 컴퓨터가 1점. 먼저 3점이면 이긴다.
-   1~20에는 홀수와 짝수가 10개씩이라 한 판에 맞힐 확률은 1/2. 이기면 판돈의 2배 */
-function oeS(){ if (!S.oe || typeof S.oe !== 'object') S.oe = {cur:null, hist:[]}; return S.oe; }
+/* ── 홀짝: 맞히면 2배, 틀리면 전부 잃음 ──
+   컴퓨터가 구슬을 1~20개 쥔다. 1~20에는 홀수 10개, 짝수 10개라 한 번에 맞힐 확률 p = 1/2.
+   맞힐 때마다 상금이 m배(OE_M)가 되고, 틀리면 상금이 0이 된다. 언제든 그만두고 상금을 받을 수 있다(1번 이상 맞힌 뒤).
+   k번 맞히고 그만두면 받는 돈은 판돈 × m^k, 그 확률은 p^k 이므로 기대 배수는 (p·m)^k.
+   다른 게임(뱀사다리 2배·확률 1/2, 주사위 세계여행 순위 배수 평균 1)과 같게 기대 배수를 1로 맞추려면 어떤 k에서도 (p·m)^k = 1 → m = 1/p = 2.
+   한 판에 최대 OE_MAX번까지 (그때 자동으로 받는다). 상한이 있어도 기대 배수는 1 그대로다 */
+const OE_M = 2, OE_MAX = 10;
+function oeS(){
+  if (!S.oe || typeof S.oe !== 'object') S.oe = {cur:null, hist:[]};
+  const g = S.oe.cur;
+  if (g && g.v !== 2){   // 예전 규칙(5판 3선승)으로 하던 판은 판돈을 돌려준다
+    receiveUSD(g.stake); S.oe.cur = null;
+    setTimeout(() => { commit(); toast(`홀짝 규칙이 바뀌어 하던 판의 판돈 ${fmtUSD(g.stake)}을 돌려드렸습니다`); }, 0);
+  }
+  return S.oe;
+}
+const oePot = g => Math.round(g.stake * Math.pow(OE_M, g.k) * 100) / 100;
 function oeCardHTML(){
   const s = oeS(), g = s.cur;
-  INFO.oe = {t:'홀짝', h:`<div class="prose"><ul><li>컴퓨터가 구슬을 1~20개 쥡니다. 개수가 홀수인지 짝수인지 맞히면 내가 1점, 틀리면 컴퓨터가 1점입니다.</li>
-    <li>5판 3선승제: 먼저 3점을 내면 이깁니다. 이기면 판돈의 2배, 지면 판돈을 잃습니다.</li><li>1~20에는 홀수 10개, 짝수 10개라 한 판에 맞힐 확률은 1/2입니다. 판돈 한도: ${fmtUSDn(GAM.oe.off, 0)} (불법 모드 ${fmtUSDn(GAM.oe.on, 0)}).</li></ul></div>`};
+  INFO.oe = {t:'홀짝', h:`<div class="prose"><ul><li>컴퓨터가 구슬을 1~20개 쥡니다. 개수가 홀수인지 짝수인지 맞히면 상금이 ${OE_M}배가 되고, 틀리면 상금을 전부 잃습니다.</li>
+    <li>한 번 이상 맞힌 뒤에는 언제든 "그만하고 받기"로 상금을 받을 수 있습니다. ${OE_MAX}번 연속 맞히면(판돈의 ${Math.pow(OE_M, OE_MAX).toLocaleString()}배) 자동으로 받습니다.</li>
+    <li>1~20에는 홀수 10개, 짝수 10개라 한 번에 맞힐 확률은 1/2입니다.</li></ul>
+    <div class="eq">기대 배수 = (맞힐 확률 × 배수)<sup><i>k</i></sup> = (½ × ${OE_M})<sup><i>k</i></sup> = 1</div>
+    <ul class="defs"><li><span class="sym"><i>k</i></span><span>그만두기 전까지 연속으로 맞힌 횟수 (1 ≤ <i>k</i> ≤ ${OE_MAX})</span></li></ul>
+    <p>몇 번에서 그만두든 평균적으로는 판돈만큼 돌아옵니다(뱀사다리·주사위 세계여행과 같은 기대 배수 1). 판돈 한도: ${fmtUSDn(GAM.oe.off, 0)} (불법 모드 ${fmtUSDn(GAM.oe.on, 0)}).</p></div>`};
   if (!g){
-    const h = s.hist.slice(0, 3).map(x => `<span class="${cls(x.pay - x.stake)}">${x.win ? '승' : '패'} ${signUSD(x.pay - x.stake)}</span>`).join(' · ');
-    return `<div class="card-h"><h2>✊ 홀짝 ${infoBtn('oe')}</h2><small>5판 3선승 · 이기면 2배</small></div>
-      <p class="mg-desc">${h ? `최근 ${h}` : '컴퓨터가 쥔 구슬이 홀수일까 짝수일까'}</p>
+    const h = s.hist.slice(0, 3).map(x => `<span class="${cls(x.pay - x.stake)}">${x.pay > x.stake ? `${x.k}연속` : '실패'} ${signUSD(x.pay - x.stake)}</span>`).join(' · ');
+    return `<div class="card-h"><h2>✊ 홀짝 ${infoBtn('oe')}</h2><small>맞히면 ${OE_M}배 · 틀리면 전부</small></div>
+      <p class="mg-desc">${h ? `최근 ${h}` : '맞힐 때마다 상금 2배, 틀리면 전부 잃습니다. 언제 그만둘지는 내가 정합니다'}</p>
       <div class="mg-foot"><span class="muted">한도 ${fmtUSDn(gamMax('oe'), 0)}</span><button class="btn solid" id="oeGo" ${S.over ? 'disabled' : ''}>새 게임</button></div>`;
   }
-  const L = g.last;
+  const L = g.last, pot = oePot(g), next = Math.round(pot * OE_M * 100) / 100;
+  const steps = Array.from({length:OE_MAX}, (_, i) => `<i class="${i < g.k ? 'on' : ''}${g.lost && i === g.k ? ' bad' : ''}"></i>`).join('');
   return `<div class="card-h"><h2>✊ 홀짝</h2><small>판돈 ${fmtUSD(g.stake)}${g.il ? ' · 🚨 불법' : ''}</small></div>
-    <div class="oe-score"><span>나 <b class="num">${g.me}</b></span><span class="muted">${g.rd}판째 · 3점 먼저</span><span>컴퓨터 <b class="num">${g.cpu}</b></span></div>
+    <div class="oe-score"><span>지금 상금 <b class="num ${g.lost ? 'down' : g.k ? 'up' : ''}">${fmtUSD(g.lost ? 0 : pot)}</b></span><span class="muted">${g.k}/${OE_MAX}</span><span>맞히면 <b class="num">${g.over ? '—' : fmtUSD(next)}</b></span></div>
+    <div class="oe-steps" aria-hidden="true">${steps}</div>
     <div class="oe-hand ${L && OEV.reveal ? 'open' : ''}" id="oeHand">${L && OEV.reveal ? `<div class="oe-marbles">${Array.from({length:L.n}, (_, k) => `<i style="--d:${k * 25}ms"></i>`).join('')}</div><b class="num">${L.n}개 · ${L.n % 2 ? '홀' : '짝'}</b>` : '<span class="fist">✊</span>'}</div>
-    ${L && OEV.reveal ? `<p class="oe-res ${L.ok ? 'up' : 'down'}">${L.ok ? '맞혔다!' : '틀렸다'} (내 선택: ${L.pick === 'odd' ? '홀' : '짝'})</p>` : `<p class="oe-res muted">${OEV.busy ? '…' : '홀일까 짝일까?'}${L && !OEV.busy ? `<small>지난 판: ${L.n}개 ${L.n % 2 ? '홀' : '짝'} · ${L.ok ? '맞힘' : '틀림'}</small>` : ''}</p>`}
-    <div class="bm-acts">${g.over ? `<button class="btn solid" id="oeEnd">결과 보기</button>` : `<button class="btn" data-oe="odd" ${OEV.busy ? 'disabled' : ''}>홀</button><button class="btn" data-oe="even" ${OEV.busy ? 'disabled' : ''}>짝</button>`}</div>`;
+    ${L && OEV.reveal ? `<p class="oe-res ${L.ok ? 'up' : 'down'}">${L.ok ? (g.k >= OE_MAX ? `${OE_MAX}연속! 상금을 받습니다` : `맞혔다! 상금 ${fmtUSD(pot)}`) : '틀렸다… 상금을 전부 잃었습니다'} (내 선택: ${L.pick === 'odd' ? '홀' : '짝'})</p>` : `<p class="oe-res muted">${OEV.busy ? '…' : '홀일까 짝일까?'}${L && !OEV.busy ? `<small>지난 판: ${L.n}개 ${L.n % 2 ? '홀' : '짝'} · 맞힘</small>` : ''}</p>`}
+    <div class="bm-acts">${g.over ? `<button class="btn solid" id="oeEnd">결과 보기</button>`
+      : `<button class="btn" data-oe="odd" ${OEV.busy ? 'disabled' : ''}>홀</button><button class="btn" data-oe="even" ${OEV.busy ? 'disabled' : ''}>짝</button>${g.k ? `<button class="btn solid" id="oeCash" ${OEV.busy ? 'disabled' : ''}>그만하고 ${fmtUSD(pot)} 받기</button>` : ''}`}</div>`;
 }
 const OEV = {busy:false, reveal:false, t:null};
 function oeRender(){ const c = $('#oeCard'); if (c) c.innerHTML = oeCardHTML(); }
 function oeStart(){
   const s = oeS(); if (s.cur) return;
   if (S.over) return toast('파산해서 할 수 없습니다', true);
-  betDialog('oe', '✊ 홀짝', '<p class="muted" style="margin:0 0 8px">5판 3선승, 이기면 판돈의 2배</p>', bet => {
-    s.cur = {v:1, stake:bet, il:gamIl(), me:0, cpu:0, rd:1, last:null, over:false}; OEV.reveal = false; commit(); oeRender();
+  betDialog('oe', '✊ 홀짝', `<p class="muted" style="margin:0 0 8px">맞힐 때마다 상금 ${OE_M}배, 틀리면 전부 잃음. 1번 이상 맞힌 뒤 언제든 그만두고 받을 수 있습니다 (최대 ${OE_MAX}번)</p>`, bet => {
+    s.cur = {v:2, stake:bet, il:gamIl(), k:0, last:null, over:false, lost:false}; OEV.reveal = false; commit(); oeRender();
   });
 }
 function oePick(pick){
   const g = oeS().cur; if (!g || g.over || OEV.busy) return;
   const n = 1 + Math.floor(Math.random() * 20), ok = (n % 2 === 1) === (pick === 'odd');
   g.last = {n, pick, ok};
-  if (ok) g.me++; else g.cpu++;
-  if (g.me >= 3 || g.cpu >= 3) g.over = true; else g.rd++;
+  if (ok){ g.k++; if (g.k >= OE_MAX) g.over = true; }
+  else { g.lost = true; g.over = true; }
   save();
   clearTimeout(OEV.t);
   OEV.busy = true; OEV.reveal = false; oeRender();
   const h = $('#oeHand'); if (h) h.classList.add('shake');
-  // 흔들고 → 손을 펴서 결과를 2초 보여 주고 → 다시 주먹으로 (마지막 판은 결과를 그대로 둔다)
+  // 흔들고 → 손을 펴서 결과를 2초 보여 주고 → 다시 주먹으로 (끝난 판은 결과를 그대로 둔다)
   OEV.t = setTimeout(() => {
     OEV.reveal = true; oeRender();
     if (g.over){ OEV.busy = false; oeRender(); return; }
@@ -4381,15 +4405,18 @@ function oePick(pick){
   }, bmMs(900));
 }
 function oeFinish(){
-  const s = oeS(), g = s.cur; if (!g) return;
-  const win = g.me >= 3, pay = win ? Math.round(g.stake * 2 * 100) / 100 : 0;
+  const s = oeS(), g = s.cur; if (!g || OEV.busy) return;
+  if (!g.over && g.k < 1) return;              // 한 번은 해야 그만둘 수 있다
+  clearTimeout(OEV.t);
+  const pay = g.lost ? 0 : oePot(g), win = pay > g.stake;
   if (pay > 0) receiveUSD(pay);
-  s.hist.unshift({at:Date.now(), stake:g.stake, pay, win}); s.hist = s.hist.slice(0, 10);
-  altLog('gamble', `홀짝 ${win ? '승리' : '패배'} (${g.me}:${g.cpu})${g.il ? ' (불법)' : ''}`, pay - g.stake, 'USD');
-  s.cur = null; OEV.reveal = false; commit();
+  s.hist.unshift({at:Date.now(), stake:g.stake, pay, win, k:g.k}); s.hist = s.hist.slice(0, 10);
+  altLog('gamble', `홀짝 ${g.lost ? `${g.k + 1}번째에서 틀림` : `${g.k}연속 맞히고 받음`}${g.il ? ' (불법)' : ''}`, pay - g.stake, 'USD');
+  s.cur = null; OEV.reveal = false; OEV.busy = false; commit();
   police('oe', g.il);
-  showModal(`<h2 class="${win ? 'up' : ''}">${win ? '🏆 이겼습니다' : '졌습니다'} (${g.me}:${g.cpu})</h2><div class="bd"><div><span>판돈</span><b class="num">${fmtUSD(g.stake)}</b></div><div><span>받은 돈</span><b class="num">${fmtUSD(pay)}</b></div><div class="tot"><span>손익</span><b class="num ${cls(pay - g.stake)}">${signUSD(pay - g.stake)}</b></div></div><div class="acts"><button class="btn solid" data-close>확인</button></div>`);
+  showModal(`<h2 class="${win ? 'up' : ''}">${g.lost ? `${g.k + 1}번째에서 틀렸습니다` : `🏆 ${g.k}연속 맞힘`}</h2><div class="bd"><div><span>판돈</span><b class="num">${fmtUSD(g.stake)}</b></div><div><span>받은 돈</span><b class="num">${fmtUSD(pay)}</b></div><div class="tot"><span>손익</span><b class="num ${cls(pay - g.stake)}">${signUSD(pay - g.stake)}</b></div></div><div class="acts"><button class="btn solid" data-close>확인</button></div>`);
 }
+document.addEventListener('click', e => { if (e.target.closest('#oeCash')) oeFinish(); });
 document.addEventListener('click', e => { const t = e.target.closest('#oeEnd'); if (t) oeFinish(); });
 
 /* ───────── 복권 탭: 로또6/45 (실제 추첨 결과로 정산) · 스피또2000 (긁는 즉석복권) ─────────
