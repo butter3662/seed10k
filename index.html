@@ -955,7 +955,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '2.1.5';
+const VERSION = '2.1.6';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -4073,7 +4073,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && bmOpenNow(
 const GAM = {
   bm:{nm:'주사위 세계여행', min:10, off:100, on:1000, p:0.05},
   sl:{nm:'뱀사다리', min:5, off:50, on:500, p:0.025},
-  oe:{nm:'홀짝', min:1, off:10, on:100, p:0.005},
+  oe:{nm:'홀짝', min:1, off:10, on:100, p:0.05, seize:0.5},   // 홀짝은 벌금 대신 불법 홀짝 누적 순이익의 50% 압류
   fine:300
 };
 function gamS(){ if (!S.gam || typeof S.gam !== 'object') S.gam = {il:false, bust:0}; return S.gam; }
@@ -4093,7 +4093,7 @@ function betDialog(k, title, extraHTML, onStart){
     box.innerHTML = `<p style="margin:0 0 6px">판돈 (한도 ${fmtUSDn(lim, 0)}${gamIl() ? ', 🚨 불법 모드' : ''} · 달러 통장 ${fmtUSDn(S.usd)})</p>
       <label class="amt"><span>$</span><input id="betIn" type="text" inputmode="decimal" placeholder="${G.min}~${max}" value="${esc(UI.betIn[k] || '')}"></label>
       <div class="quick" style="margin:8px 0">${[1, 5, 10, 50, 100, 500].filter(v => v >= G.min && v <= max).map(v => `<button data-betq="${v}">$${v}</button>`).join('')}${max >= G.min ? `<button data-betq="${max}">최대</button>` : ''}</div>
-      ${gamIl() ? `<p class="muted" style="margin:0 0 6px">불법 모드: 이 판이 끝날 때 ${(G.p * 100).toFixed(1)}% 확률로 경찰 단속 (벌금 ${fmtUSDn(GAM.fine, 0)}, 랭킹 이름에 영구 빨간 줄)</p>` : ''}
+      ${gamIl() ? `<p class="muted" style="margin:0 0 6px">불법 모드: 이 판이 끝날 때 ${(G.p * 100).toFixed(1)}% 확률로 경찰 단속 (${G.seize ? `불법 ${G.nm}으로 번 돈(지금 ${fmtUSDn(Math.max(0, gamS().oeAcc || 0))})의 ${G.seize * 100}% 압류` : `벌금 ${fmtUSDn(GAM.fine, 0)}`}, 랭킹 이름에 영구 빨간 줄)</p>` : ''}
       <div class="err" role="status">${esc(err)}</div>`;
     $('#betGo').disabled = !!err || !(bet >= G.min && bet <= max);
     const inp = $('#betIn');
@@ -4115,12 +4115,16 @@ function police(k, il){
   if (!il || Math.random() >= GAM[k].p) return false;
   const G = gamS();
   G.bust = (G.bust || 0) + 1; G.bustAt = Date.now();
-  const od = spendUSD(GAM.fine);
-  altLog('police', `🚨 경찰 단속 (${GAM[k].nm}) 벌금`, -GAM.fine, 'USD');
+  const sz = GAM[k].seize, acc = sz ? Math.max(0, G.oeAcc || 0) : 0;
+  const amt = sz ? Math.round(acc * sz * 100) / 100 : GAM.fine;
+  if (sz) G.oeAcc = 0;   // 압류하고 누적은 처음부터
+  const od = amt > 0 ? spendUSD(amt) : 0;
+  if (amt > 0) altLog('police', `🚨 경찰 단속 (${GAM[k].nm}) ${sz ? '압류' : '벌금'}`, -amt, 'USD');
   commit();
   markBusted();
+  const what = sz ? (acc > 0 ? `불법 ${GAM[k].nm}으로 번 돈 ${fmtUSDn(acc)}의 ${sz * 100}%인 <b>${fmtUSDn(amt)}</b>을 압류당했습니다` : `불법 ${GAM[k].nm}으로 번 돈이 없어 압류할 것은 없었습니다`) : `벌금 <b>${fmtUSDn(GAM.fine, 0)}</b>을 냈습니다`;
   const html = `<div class="police"><div class="siren"><i></i><i></i></div><h2>🚨 경찰 단속!</h2>
-      <p>불법 도박(${GAM[k].nm}) 현장이 적발됐습니다. 벌금 <b>${fmtUSDn(GAM.fine, 0)}</b>을 냈습니다${od > 0 ? ` (달러가 모자라 마이너스통장에서 ${fmtUSDn(od)})` : ''}.</p>
+      <p>불법 도박(${GAM[k].nm}) 현장이 적발됐습니다. ${what}${od > 0 ? ` (달러가 모자라 마이너스통장에서 ${fmtUSDn(od)})` : ''}.</p>
       <p class="muted">랭킹의 이름에 빨간 줄이 영구히 그어집니다.</p></div>
       <div class="acts"><button class="btn solid" data-close>확인</button></div>`;
   // 결과 창이 떠 있으면 닫힌 뒤에 띄운다
@@ -4140,7 +4144,7 @@ function renderGamblePane(p){
   const il = gamIl(), G = gamS();
   p.innerHTML = `<section class="card gam-il ${il ? 'on' : ''}"><div class="card-h"><h2>${il ? '🚨' : '🎲'} 불법 모드</h2><button class="sw ${il ? 'on' : ''}" id="ilSw" role="switch" aria-checked="${il}"><i></i></button></div>
       <p class="mg-desc">${il ? '켜짐' : '꺼짐'}: 판돈 한도 ${['bm', 'sl', 'oe'].map(k => `${GAM[k].nm} ${fmtUSDn(il ? GAM[k].on : GAM[k].off, 0)}`).join(' · ')}</p>
-      <p class="muted" style="margin:4px 0 0">켜면 한도가 10배가 되지만, 한 판이 끝날 때마다 경찰 단속 확률이 있습니다 (${['bm', 'sl', 'oe'].map(k => `${GAM[k].nm} ${(GAM[k].p * 100).toFixed(1)}%`).join(' · ')}). 단속되면 벌금 ${fmtUSDn(GAM.fine, 0)}과 랭킹 이름에 영구 빨간 줄.${G.bust ? ` <b class="down">단속 ${G.bust}회</b>` : ''}</p></section>
+      <p class="muted" style="margin:4px 0 0">켜면 한도가 10배가 되지만, 한 판이 끝날 때마다 경찰 단속 확률이 있습니다 (${['bm', 'sl', 'oe'].map(k => `${GAM[k].nm} ${(GAM[k].p * 100).toFixed(1)}%`).join(' · ')}). 단속되면 벌금 ${fmtUSDn(GAM.fine, 0)}(홀짝은 벌금 대신 불법 홀짝으로 번 돈의 ${GAM.oe.seize * 100}% 압류)과 랭킹 이름에 영구 빨간 줄.${G.bust ? ` <b class="down">단속 ${G.bust}회</b>` : ''}</p></section>
     <section class="card c-mg" id="bmCard">${bmCardHTML()}</section>
     <section class="card c-mg" id="slCard">${slCardHTML()}</section>
     <section class="card c-mg" id="oeCard">${oeCardHTML()}</section>`;
@@ -4361,11 +4365,13 @@ function oeCardHTML(){
     <li>1~20에는 홀수 10개, 짝수 10개라 한 번에 맞힐 확률은 1/2입니다.</li></ul>
     <div class="eq">기대 배수 = (맞힐 확률 × 배수)<sup><i>k</i></sup> = (½ × ${OE_M})<sup><i>k</i></sup> = 1</div>
     <ul class="defs"><li><span class="sym"><i>k</i></span><span>그만두기 전까지 연속으로 맞힌 횟수 (1 ≤ <i>k</i> ≤ ${OE_MAX})</span></li></ul>
-    <p>몇 번에서 그만두든 평균적으로는 판돈만큼 돌아옵니다(뱀사다리·주사위 세계여행과 같은 기대 배수 1). 판돈 한도: ${fmtUSDn(GAM.oe.off, 0)} (불법 모드 ${fmtUSDn(GAM.oe.on, 0)}).</p></div>`};
+    <p>몇 번에서 그만두든 평균적으로는 판돈만큼 돌아옵니다(뱀사다리·주사위 세계여행과 같은 기대 배수 1). 판돈 한도: ${fmtUSDn(GAM.oe.off, 0)} (불법 모드 ${fmtUSDn(GAM.oe.on, 0)}).</p>
+    <p>불법 모드로 한 판이 끝날 때마다 ${(GAM.oe.p * 100).toFixed(0)}% 확률로 경찰이 옵니다. 벌금 대신, 지금까지 불법 홀짝으로 번 돈(순이익 누적, 진 판은 빼고 셈)의 ${GAM.oe.seize * 100}%를 압류하고 누적을 0으로 되돌립니다. 랭킹 이름에는 영구 빨간 줄이 그어집니다.</p></div>`};
   if (!g){
     const h = s.hist.slice(0, 3).map(x => `<span class="${cls(x.pay - x.stake)}">${x.pay > x.stake ? `${x.k}연속` : '실패'} ${signUSD(x.pay - x.stake)}</span>`).join(' · ');
     return `<div class="card-h"><h2>✊ 홀짝 ${infoBtn('oe')}</h2><small>맞히면 ${OE_M}배 · 틀리면 전부</small></div>
       <p class="mg-desc">${h ? `최근 ${h}` : '맞힐 때마다 상금 2배, 틀리면 전부 잃습니다. 언제 그만둘지는 내가 정합니다'}</p>
+      ${gamIl() || (gamS().oeAcc || 0) > 0 ? `<p class="muted" style="margin:0 0 8px">불법 홀짝 누적 순이익 <b class="num ${cls(gamS().oeAcc || 0)}">${signUSD(gamS().oeAcc || 0)}</b> · 단속되면 ${GAM.oe.seize * 100}% 압류</p>` : ''}
       <div class="mg-foot"><span class="muted">한도 ${fmtUSDn(gamMax('oe'), 0)}</span><button class="btn solid" id="oeGo" ${S.over ? 'disabled' : ''}>새 게임</button></div>`;
   }
   const L = g.last, pot = oePot(g), next = Math.round(pot * OE_M * 100) / 100;
@@ -4412,6 +4418,7 @@ function oeFinish(){
   if (pay > 0) receiveUSD(pay);
   s.hist.unshift({at:Date.now(), stake:g.stake, pay, win, k:g.k}); s.hist = s.hist.slice(0, 10);
   altLog('gamble', `홀짝 ${g.lost ? `${g.k + 1}번째에서 틀림` : `${g.k}연속 맞히고 받음`}${g.il ? ' (불법)' : ''}`, pay - g.stake, 'USD');
+  if (g.il){ const G = gamS(); G.oeAcc = Math.round(((G.oeAcc || 0) + pay - g.stake) * 100) / 100; }   // 불법 홀짝 누적 순이익
   s.cur = null; OEV.reveal = false; OEV.busy = false; commit();
   police('oe', g.il);
   showModal(`<h2 class="${win ? 'up' : ''}">${g.lost ? `${g.k + 1}번째에서 틀렸습니다` : `🏆 ${g.k}연속 맞힘`}</h2><div class="bd"><div><span>판돈</span><b class="num">${fmtUSD(g.stake)}</b></div><div><span>받은 돈</span><b class="num">${fmtUSD(pay)}</b></div><div class="tot"><span>손익</span><b class="num ${cls(pay - g.stake)}">${signUSD(pay - g.stake)}</b></div></div><div class="acts"><button class="btn solid" data-close>확인</button></div>`);
