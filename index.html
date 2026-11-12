@@ -1145,7 +1145,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '2.2.9';
+const VERSION = '2.2.10';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -5413,7 +5413,7 @@ async function bsPlay(ev, done, rerender){
     }
     const G2 = G();
     if (G2 && !G2.over && G2.turn === me() && ev.some(e => (e.t === 'turn' && e.i === me()) || e.t === 'load') && ev.some(e => e.i !== undefined && e.i !== me() && e.t !== 'skip' && e.t !== 'turn' || e.t === 'load')){
-      BSV.banner = '네 차례다'; BSV.msg = ''; rerender(); BSAU.turn(); await bsWait(1100); BSV.banner = '';
+      BSV.banner = 'YOUR TURN'; BSV.msg = ''; rerender(); BSAU.turn(); await bsWait(1100); BSV.banner = '';
     }
   } catch(err){ if (err !== 'stop') console.error(err); }
   BSV.busy = false; BSV.view = null; BSV.shooter = null; BSV.black = false; BSV.item = null; BSV.msg = ''; BSV.fx = ''; BSV.aim = null; BSV.eject = null; BSV.lay = null; BSV.flash = ''; BSV.want = null; BSV.go = null; BSV.banner = '';
