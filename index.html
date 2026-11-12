@@ -1129,7 +1129,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '2.1.30';
+const VERSION = '2.1.31';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -6119,17 +6119,18 @@ async function admSearch(q){
 async function admOpenUser(uid){
   ADM.uid = uid; ADM.data = null; renderAdmin();
   const sb = ACC.sb;
-  const [sv, pay, res, bml, ban, who] = await Promise.all([
+  const [sv, pay, res, bml, ban, tst, who] = await Promise.all([
     sb.from('seed10k_saves').select('mode,data,updated_at').eq('user_id', uid),
     sb.from('seed10k_payouts').select('id,at,code,game,mode,amount,cost,il,note,claimed_at').eq('user_id', uid).order('id', {ascending:false}).limit(2000),
     sb.from('seed10k_mp_results').select('*').contains('uids', [uid]).order('id', {ascending:false}).limit(30),
     sb.from('seed10k_bmlog').select('at,mode,n,stake,pay,rank,forfeit,il,rounds').eq('user_id', uid).order('at', {ascending:false}).limit(10),
     sb.from('seed10k_mp_bans').select('*').eq('user_id', uid).maybeSingle(),
+    sb.from('seed10k_testers').select('user_id').eq('user_id', uid).maybeSingle(),
     ADM.users && ADM.users.find(u => u.user_id === uid) ? Promise.resolve({data:[ADM.users.find(u => u.user_id === uid)]}) : sb.rpc('seed10k_admin_users', {q:''}).then(r => ({data:(r.data || []).filter(u => u.user_id === uid)})),
   ]);
   if (ADM.uid !== uid) return;
   const saves = sv.data || [];
-  ADM.data = {saves, pays:pay.data || [], res:res.data || [], bm:bml.data || [], ban:ban.data || null, who:(who.data || [])[0] || null, err:[sv, pay, res, bml].map(r => r.error && r.error.message).filter(Boolean)};
+  ADM.data = {saves, pays:pay.data || [], res:res.data || [], bm:bml.data || [], ban:ban.data || null, tester:!!(tst && tst.data), who:(who.data || [])[0] || null, err:[sv, pay, res, bml].map(r => r.error && r.error.message).filter(Boolean)};
   if (!ADM.mode || !saves.some(s => s.mode === ADM.mode)) ADM.mode = (saves.find(s => s.mode === S.mode) || saves[0] || {}).mode || S.mode;
   renderAdmin();
   const el = $('#admUser'); if (el) el.scrollIntoView({block:'start', behavior:'smooth'});
@@ -6164,6 +6165,7 @@ function admUserHTML(){
     <p class="muted" style="margin:0 0 8px">계정 id ${esc(ADM.uid)}${u.joined ? ` · 가입 ${admT(u.joined)}` : ''}</p>
     ${D.err.length ? `<p class="down">일부를 불러오지 못했습니다: ${esc(D.err.join(' / '))}</p>` : ''}
     <div class="adm-ban ${D.ban ? 'on' : ''}">${D.ban ? `<b>🚫 멀티플레이 제한됨</b> <small class="muted">${admT(D.ban.at)}${D.ban.reason ? ' · ' + esc(D.ban.reason) : ''}</small><button class="btn" id="admUnban">제한 풀기</button>` : `<span>멀티플레이 가능</span><button class="btn" id="admBan">멀티플레이 제한</button>`}</div>
+    <div class="adm-ban ${D.tester ? 'on' : ''}">${D.tester ? '<b>🧪 테스트 계정</b> <small class="muted">돈이 줄지 않음 · 랭킹 제외 · 멀티 불가</small><button class="btn" id="admUntest">해제</button>' : '<span>일반 계정</span><button class="btn" id="admTest">테스트 계정으로</button>'}</div>
     <div class="mv-tools"><div class="seg">${seg('sim', '시뮬레이션')}${seg('live', '실제 시세')}</div></div>
     <dl class="kv adm-kv">
       <div><dt>멀티 누적 순획득</dt><dd class="num ${M.net > 0 ? 'up' : M.net < 0 ? 'down' : ''}">${admUSD(M.net)}</dd></div>
@@ -6219,6 +6221,13 @@ document.addEventListener('click', async e => {
       toast('멀티플레이를 제한했습니다'); admOpenUser(ADM.uid);
     };
     return;
+  }
+  if (t.id === 'admTest' || t.id === 'admUntest'){
+    const q = t.id === 'admTest' ? ACC.sb.from('seed10k_testers').insert({user_id:ADM.uid}) : ACC.sb.from('seed10k_testers').delete().eq('user_id', ADM.uid);
+    const {error} = await q;
+    if (error) return toast(`바꾸지 못했습니다: ${error.message}`, true);
+    toast(t.id === 'admTest' ? '테스트 계정으로 바꿨습니다 (그 계정이 다시 접속하면 적용)' : '테스트 계정을 해제했습니다');
+    return admOpenUser(ADM.uid);
   }
   if (t.id === 'admUnban'){
     const {error} = await ACC.sb.from('seed10k_mp_bans').delete().eq('user_id', ADM.uid);
