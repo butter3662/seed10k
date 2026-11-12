@@ -57,8 +57,7 @@ button{cursor:pointer}
 
 /* ───────── header / session ───────── */
 .top{
-  position:sticky; top:0; z-index:30; background:color-mix(in srgb,var(--paper) 97%,transparent);
-  backdrop-filter:saturate(1.2) blur(8px); -webkit-backdrop-filter:saturate(1.2) blur(8px);
+  position:sticky; top:0; z-index:30; background:var(--paper);   /* 불투명: 반투명+흐림(backdrop-filter)은 iPad Safari에서 위쪽 칩 글자가 흐리게 보였다 */
   border-bottom:1px solid var(--rule);
 }
 .top-in{max-width:1180px;margin:0 auto;display:flex;align-items:center;gap:16px;padding:12px 16px 11px;padding-top:calc(18px + env(safe-area-inset-top))}
@@ -1034,7 +1033,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '2.1.21';
+const VERSION = '2.1.22';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -4884,10 +4883,10 @@ document.addEventListener('click', e => {
    사이트는 Supabase에 요청(seed10k_room_reqs)만 넣고, 라즈베리파이 심판이 규칙대로 처리해 방(seed10k_rooms)을 고친다.
    방이 바뀌면 Supabase 실시간이 알려 주고(놓칠 때를 위해 3초마다도 확인), 끝나면 받을 돈(seed10k_payouts)을 '받기'로 가져온다.
    판돈은 들어갈 때 이 기기 통장에서 내고, 돌려받거나 이긴 돈은 받기로 들어온다 */
-const MP_GAMES = {oe:{nm:'홀짝 대결', ic:'✊', ready:true, desc:'2명 · 번갈아 구슬을 쥐고 맞히기, 3점 먼저'},
+const MP_GAMES = {bm:{nm:'주사위 세계여행', ic:'🎲', ready:true, desc:'2~4명 · 파산할 때까지, 순위 배수'},   // 도박 탭의 혼자 하기 카드와 같은 순서
                   sl:{nm:'뱀사다리', ic:'🐍', ready:true, desc:'2~4명 · 100칸 먼저 도착하면 판돈을 모두 가져감'},
-                  bj:{nm:'블랙잭 테이블', ic:'🃏', ready:true, desc:'1~5명 · 각자 같은 딜러와 대결'},
-                  bm:{nm:'주사위 세계여행', ic:'🎲', ready:true, desc:'2~4명 · 파산할 때까지, 순위 배수'}};
+                  oe:{nm:'홀짝 대결', ic:'✊', ready:true, desc:'2명 · 번갈아 구슬을 쥐고 맞히기, 3점 먼저'},
+                  bj:{nm:'블랙잭 테이블', ic:'🃏', ready:true, desc:'1~5명 · 각자 같은 딜러와 대결'}};
 const MP_MIN = {oe:2, sl:2, bj:1, bm:2};
 const MP = {code:null, room:null, ch:null, poll:null, ref:null, refAt:0, busy:false, lastSeq:0, view:{}, payCh:null};
 const mpKey = () => ACC.user ? `seed10k.mp.${ACC.user.id}` : null;
