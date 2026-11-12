@@ -970,6 +970,15 @@ html.bm-open .top,html.bm-open .tabbar{visibility:hidden}
 .bm-ov.b3 .bm-tok-u{width:100%;height:100%;transform-origin:50% 100%;transform:rotateZ(-45deg) rotateX(calc(var(--tilt) * -1)) translateY(-18%);transform-style:preserve-3d}
 .bm-tok-u{width:100%;height:100%}
 .bm-ov.b3 .bm-tok-i{box-shadow:0 3px 0 color-mix(in srgb,var(--pc) 55%,#000),0 8px 10px rgba(0,0,0,.45)}
+.bm-ov.b3 .bm-tok.b3t .bm-tok-u{position:absolute;left:0;bottom:50%;height:170%;transform:rotateZ(-45deg) rotateX(calc(var(--tilt) * -1))}
+.bm-tok.b3t .bm-tok-i{position:relative;width:100%;height:100%;border-radius:0;background:none;box-shadow:none;outline:0;display:block}
+.bm-tok.b3t .bm-pawn{display:block;width:100%;height:100%;overflow:visible;filter:drop-shadow(0 1px 0 rgba(0,0,0,.35))}
+.bm-tok.b3t.turn .bm-pawn{filter:drop-shadow(0 0 4px #fff) drop-shadow(0 0 8px var(--pc))}
+.bm-tok.b3t.turn .bm-tok-i{outline:0}
+.bm-tok-sh{position:absolute;left:8%;top:8%;width:84%;height:84%;border-radius:50%;background:radial-gradient(closest-side,rgba(0,0,0,.5),transparent);transform:translate(10%,10%)}
+.bm-tags{position:absolute;inset:0;pointer-events:none;z-index:3}
+.bm-tag.on{background:var(--pc);color:#111}
+.bm-tag{position:absolute;left:0;top:-3px;padding:1px 7px;border-radius:999px;background:rgba(10,12,18,.82);border:1.5px solid var(--pc);color:#fff;font-size:clamp(9px,1.25vw,12px);font-weight:800;line-height:1.5;white-space:nowrap;box-shadow:0 2px 4px rgba(0,0,0,.4)}
 .bm-blds{position:absolute;inset:0;transform-style:preserve-3d;pointer-events:none}
 .bm-b3{position:absolute;transform-style:preserve-3d;width:0;height:0}
 .bm-b3 i{position:absolute;left:0;bottom:0;transform-origin:50% 100%;transform:translateX(-50%) rotateZ(-45deg) rotateX(calc(var(--tilt) * -1));font-style:normal;white-space:nowrap;line-height:1;letter-spacing:-.18em;filter:drop-shadow(0 2px 1px rgba(0,0,0,.5)) drop-shadow(0 0 2px var(--oc))}
@@ -1191,7 +1200,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '2.2.22';
+const VERSION = '2.2.23';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -4051,6 +4060,18 @@ function bmDieHTML(){
   const face = (n, cls) => `<div class="bm-f ${cls}">${[1, 2, 3, 4, 5, 6, 7, 8, 9].map(k => `<i${BM_PIPS[n].includes(k) ? ' class="on"' : ''}></i>`).join('')}</div>`;
   return `<div class="bm-die"><div class="bm-cube">${face(1, 'f1')}${face(6, 'f6')}${face(3, 'f3')}${face(4, 'f4')}${face(5, 'f5')}${face(2, 'f2')}</div></div>`;
 }
+// 체스 폰 그림 (40×64): 받침 → 목 → 깃 → 머리. 좌우 그라데이션으로 둥근 몸을 표현
+function bmPawnSVG(i){
+  const id = 'bmPg' + i, hl = `color-mix(in srgb,var(--pc) 38%,#fff)`, mid = 'var(--pc)', dk = `color-mix(in srgb,var(--pc) 55%,#000)`;
+  return `<svg class="bm-pawn" viewBox="0 0 40 64" aria-hidden="true"><defs>
+    <linearGradient id="${id}" x1="0" x2="1" y1="0" y2="0"><stop offset="0" style="stop-color:${dk}"/><stop offset=".28" style="stop-color:${hl}"/><stop offset=".55" style="stop-color:${mid}"/><stop offset="1" style="stop-color:${dk}"/></linearGradient>
+    <radialGradient id="${id}h" cx=".36" cy=".32" r=".7"><stop offset="0" style="stop-color:${hl}"/><stop offset=".55" style="stop-color:${mid}"/><stop offset="1" style="stop-color:${dk}"/></radialGradient></defs>
+    <path d="M5 60q0-6 6-8h18q6 2 6 8z" fill="url(#${id})"/><ellipse cx="20" cy="60.5" rx="15" ry="3" fill="${dk}"/>
+    <path d="M10 52q4-4 5-14h10q1 10 5 14z" fill="url(#${id})"/>
+    <ellipse cx="20" cy="37" rx="10" ry="3.2" fill="url(#${id})"/><ellipse cx="20" cy="36" rx="10" ry="2.4" style="fill:${hl}" opacity=".55"/>
+    <circle cx="20" cy="23" r="10.5" fill="url(#${id}h)"/><ellipse cx="16.5" cy="19" rx="3.2" ry="2.2" fill="#fff" opacity=".45"/>
+  </svg>`;
+}
 function bmBuild(){
   const ov = $('#bmOv'), g = bmG(); if (!ov || !g) return;
   const cells = BM_SQ.map((c, k) => {
@@ -4061,7 +4082,10 @@ function bmBuild(){
       : `<span class="bm-ic">${BM_ICON[c.t]}</span><span class="bm-n bm-sp">${c.s}</span><span class="bm-p"></span>`;
     return `<button class="bm-c bm-${side}${k % 10 === 0 ? ' bm-k' : ''} bm-t-${c.t}" data-bmsq="${k}" style="grid-row:${r};grid-column:${col}">${body}</button>`;
   }).join('');
-  const toks = g.pl.map((p, i) => `<div class="bm-tok" data-tok="${i}" style="--pc:${BM.cols[i]}"><div class="bm-tok-u"><div class="bm-tok-i"><span>${i === bmMe() ? '나' : esc([...p.nm][0] || '?')}</span></div></div></div>`).join('');
+  // 말: 평면 판은 동그라미, 입체 판은 플레이어 색의 체스 폰(빛이 왼쪽 위에서 오는 원통 그늘) + 머리 위 이름표 + 판에 드리운 그림자
+  const toks = g.pl.map((p, i) => bm3D()
+    ? `<div class="bm-tok b3t" data-tok="${i}" style="--pc:${BM.cols[i]}"><i class="bm-tok-sh"></i><div class="bm-tok-u"><div class="bm-tok-i">${bmPawnSVG(i)}</div></div></div>`
+    : `<div class="bm-tok" data-tok="${i}" style="--pc:${BM.cols[i]}"><div class="bm-tok-u"><div class="bm-tok-i"><span>${i === bmMe() ? '나' : esc([...p.nm][0] || '?')}</span></div></div></div>`).join('');
   const top = `<div class="bm-top"><button class="btn" id="bmClose">닫기</button><div class="bm-ttl"><b>🎲 부루마블</b><small id="bmSub"></small></div><div class="bm-tr"><button class="btn bm-spd" id="bm3d"></button><button class="btn bm-spd" id="bmSpd"></button><button class="btn" id="bmQuit">기권</button></div></div>`;
   const pls = `<div class="bm-pls" id="bmPls">${g.pl.map((p, i) => `<div class="bm-pl" data-pl="${i}"><i style="background:${BM.cols[i]}"></i><span class="bm-pn"></span><b class="num bm-pc"></b><small class="num bm-pa"></small></div>`).join('')}</div>`;
   const under = `<div class="bm-act" id="bmActBox"></div><div id="bmInfoBox"></div><ul class="bm-log" id="bmLog"></ul>`;
@@ -4072,6 +4096,7 @@ function bmBuild(){
       <div class="bm-board" id="bmBoard">${cells}<div class="bm-logo"><b>부루마블</b></div>
         <div class="bm-toks"><div class="bm-blds" id="bmBlds"></div>${toks}</div></div>
       <div class="bm-hud"><div class="bm-dice" id="bmDice">${bmDieHTML()}${bmDieHTML()}</div><div class="bm-msg" id="bmMsg"></div></div>
+      <div class="bm-tags" id="bmTags">${g.pl.map((p, i) => `<span class="bm-tag" data-tag="${i}" style="--pc:${BM.cols[i]}">${esc(i === bmMe() ? '나' : p.nm)}</span>`).join('')}</div>
       <div class="bm-fx" id="bmFx"></div>
     </div>
     <div class="bm-mid bm-under">${under}</div>${pls}` : `${top}
@@ -4088,6 +4113,25 @@ function bmBuild(){
   $$('#bmDice .bm-cube').forEach((c, k) => { c.style.transform = BM_FACE[d[k]]; });
   if (!bmBuild.rs){ bmBuild.rs = true; window.addEventListener('resize', () => { if (bmOpenNow()) bmPlace(true); }); }
   requestAnimationFrame(() => bmPlace(true));
+  if (bm3D()) bmTagLoop();
+}
+// 이름표: 눕힌 판 안에 두면 뒤쪽 칸에 가려지므로, 눕히지 않은 층에 띄우고 매 프레임 말 머리 위를 따라간다
+function bmTagLoop(){
+  if (BMV.tagRaf) return;
+  const step = () => {
+    BMV.tagRaf = 0;
+    const box = $('#bmTags'); if (!box || !bmOpenNow()) return;
+    const br = box.getBoundingClientRect(), g = bmG();
+    box.querySelectorAll('[data-tag]').forEach(t => {
+      const i = +t.dataset.tag, pw = document.querySelector(`#bmOv [data-tok="${i}"] .bm-pawn`), tok = pw && pw.closest('.bm-tok');
+      if (!pw || !tok || tok.hidden){ t.hidden = true; return; }
+      const r = pw.getBoundingClientRect(); t.hidden = false;
+      t.style.transform = `translate(${r.left - br.left + r.width / 2}px, ${r.top - br.top}px) translate(-50%, -100%)`;
+      t.classList.toggle('on', tok.classList.contains('turn'));
+    });
+    BMV.tagRaf = requestAnimationFrame(step);
+  };
+  BMV.tagRaf = requestAnimationFrame(step);
 }
 // 화면에 보이는 상태: 애니메이션 중에는 재생한 지점까지의 상태
 const bmVw = g => BMV.view || BME.view(g);
@@ -4165,7 +4209,7 @@ function bmInfo(g, k){
 function bmTokXY(i, k){
   const b = $('#bmBoard'), el = b && b.querySelector(`[data-bmsq="${k}"]`); if (!el) return [0, 0];
   // 칸 아래쪽 절반에 2×2로 선다 (이름을 가리지 않게)
-  const w = el.offsetWidth, h = el.offsetHeight, b3 = bm3D(), sz = Math.min(w, h) * (b3 ? 0.46 : 0.36);
+  const w = el.offsetWidth, h = el.offsetHeight, b3 = bm3D(), sz = Math.min(w, h) * (b3 ? 0.58 : 0.36);
   const xy = (b3 ? [[0.3, 0.3], [0.7, 0.3], [0.3, 0.7], [0.7, 0.7]] : [[0.3, 0.58], [0.7, 0.58], [0.3, 0.84], [0.7, 0.84]])[i];
   return [el.offsetLeft + w * xy[0] - sz / 2, el.offsetTop + h * xy[1] - sz / 2, sz];
 }
