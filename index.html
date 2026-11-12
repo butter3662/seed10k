@@ -925,6 +925,7 @@ html[data-game=live] .c-news{order:3}
 .adm-ban .btn{margin-left:auto}.adm-ban.on{background:color-mix(in srgb,var(--danger) 12%,var(--surface-2))}
 .adm-kv{margin:10px 0}
 .adm-h{font-size:14px;margin:16px 0 6px}
+.adm-cmds{list-style:none;margin:0 0 8px;padding:0;display:grid;gap:4px;font-size:13px}
 .adm-sql{white-space:pre-wrap;word-break:break-all;background:var(--surface-2);border-radius:8px;padding:10px;font-size:12px;max-height:40vh;overflow:auto;user-select:all}
 .tabbar button.warn::after{content:"";position:absolute;top:9px;left:calc(50% + 9px);width:8px;height:8px;border-radius:50%;background:var(--danger);box-shadow:0 0 0 2px var(--surface)}
 .tabs-top button.warn::after{content:"";position:absolute;top:6px;right:4px;width:7px;height:7px;border-radius:50%;background:var(--danger)}
@@ -1067,7 +1068,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '2.1.25';
+const VERSION = '2.1.26';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -5902,6 +5903,7 @@ function renderAdmin(){
       <p class="muted" style="margin:0 0 8px">게임 서버가 판이 끝날 때 확인해 적습니다. 홀짝 대결: 같은 상대에게 ${WATCH_ADM.oe}연승(이후 5판마다). 블랙잭 대결: 버스트할 수 없는 11 이하에서 직접 스탠드한 판이 ${WATCH_ADM.bj}판 연속. 주사위 세계여행: 돈이 있는데 직접 '안 산다'를 고른 것이 한 판에 ${WATCH_ADM.bm}번(이후 5번마다).</p>
       ${al ? `<ul class="adm-als">${al}</ul>` : '<p class="empty">알림이 없습니다.</p>'}
       ${ADM.unseen ? '<div class="mg-foot"><button class="btn" id="admSeenAll">모두 확인함</button></div>' : ''}</section>
+    <section class="card" id="admSrv">${admSrvHTML()}</section>
     <section class="card"><div class="card-h"><h2>🔎 유저 검색</h2><small>이메일이나 닉네임 일부</small></div>
       <form id="admQF" class="adm-q"><label class="amt"><input id="admQ" type="search" autocomplete="off" placeholder="비우고 검색하면 최근 저장 순 40명" value="${esc(ADM.q)}"></label><button class="btn solid" type="submit">검색</button></form>
       ${us}</section>
@@ -5909,6 +5911,31 @@ function renderAdmin(){
   </div>`;
 }
 const WATCH_ADM = {oe:5, bj:5, bm:5};
+/* ── 게임 서버(라즈베리파이) 상태와 '서버 업데이트' 버튼 ──
+   버튼은 seed10k_admin_cmds에 요청 한 줄을 넣는다. 파이의 pi/update.py(cron 1분마다)가 git pull + 심판 재시작을 하고 결과를 적는다.
+   파이는 새 커밋이 있으면 버튼 없이도 1분 안에 알아서 받는다 */
+ADM.srv = null; ADM.cmds = null;
+async function admSrvLoad(){
+  const [h, c] = await Promise.all([
+    ACC.sb.from('seed10k_rooms').select('state,updated_at').eq('code', '__ref').maybeSingle(),
+    ACC.sb.from('seed10k_admin_cmds').select('*').order('id', {ascending:false}).limit(5),
+  ]);
+  ADM.srv = h.data ? h.data.state : null; ADM.cmds = c.error ? {err:c.error.message} : c.data || [];
+  const el = $('#admSrv'); if (el) el.innerHTML = admSrvHTML();
+  clearTimeout(ADM.srvT);
+  if (UI.tab === 'admin' && Array.isArray(ADM.cmds) && ADM.cmds.some(x => !x.done)) ADM.srvT = setTimeout(admSrvLoad, 5000);   // 처리될 때까지 지켜본다
+}
+function admSrvHTML(){
+  if (ADM.cmds === null){ setTimeout(admSrvLoad, 0); return '<div class="card-h"><h2>🖥️ 게임 서버</h2></div><p class="muted">불러오는 중…</p>'; }
+  const s = ADM.srv, age = s && s.at ? Math.round((Date.now() - s.at) / 1000) : null, alive = age !== null && age < 40;
+  const pend = Array.isArray(ADM.cmds) && ADM.cmds.some(x => !x.done);
+  const rows = Array.isArray(ADM.cmds) ? ADM.cmds.map(x => `<li><small class="muted">${admT(x.at)}</small> ${x.done ? (x.ok ? '✅' : '⚠️') + ' ' + esc(x.result || '') : '⏳ 파이가 처리하기를 기다리는 중 (1분 안)'}</li>`).join('') : '';
+  return `<div class="card-h"><h2>🖥️ 게임 서버</h2><small>${alive ? '<b class="up">● 켜짐</b>' : '<b class="down">● 꺼짐</b>'}</small></div>
+    <p class="muted" style="margin:0 0 8px">${s ? `마지막 신호 ${age}초 전 · 진행 중인 방 ${s.rooms || 0}개${s.ver ? ` · 코드 ${esc(s.ver)}` : ''}${s.started ? ` · ${admT(s.started)}에 켜짐` : ''}` : '신호 없음'}</p>
+    ${ADM.cmds && ADM.cmds.err ? `<p class="down">버튼을 쓰려면 SQL(supabase/seed10k_admin_cmds.sql)을 먼저 실행하세요 (${esc(ADM.cmds.err)})</p>` : ''}
+    ${rows ? `<ul class="adm-cmds">${rows}</ul>` : ''}
+    <div class="mg-foot"><span class="muted">새 커밋이 있으면 파이가 1분 안에 알아서 받습니다</span><button class="btn solid" id="admUpd" ${pend || (ADM.cmds && ADM.cmds.err) ? 'disabled' : ''}>서버 업데이트</button></div>`;
+}
 
 async function admSearch(q){
   ADM.q = q;
@@ -5997,6 +6024,12 @@ document.addEventListener('click', async e => {
     const id = +t.dataset.admseen, {error} = await ACC.sb.from('seed10k_alerts').update({seen:true}).eq('id', id);
     if (error) return toast(error.message, true);
     const a = ADM.alerts.find(x => x.id === id); if (a && !a.seen){ a.seen = true; ADM.unseen--; } admBadge(); return renderAdmin();
+  }
+  if (t.id === 'admUpd'){
+    t.disabled = true;
+    const {error} = await ACC.sb.from('seed10k_admin_cmds').insert({kind:'update'});
+    if (error){ t.disabled = false; return toast(`요청하지 못했습니다: ${error.message}`, true); }
+    toast('요청했습니다. 파이가 1분 안에 받아서 처리합니다'); return admSrvLoad();
   }
   if (t.id === 'admSeenAll'){
     const {error} = await ACC.sb.from('seed10k_alerts').update({seen:true}).eq('seen', false);

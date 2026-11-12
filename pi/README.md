@@ -106,3 +106,21 @@ docker compose logs --tail 20 seed10k-referee
 echo 'NTFY_TOPIC=seed10k-여기에무작위글자' >> .env
 docker compose up -d --force-recreate seed10k-referee
 ```
+
+## 자동 업데이트 (관리 탭 '서버 업데이트' 버튼)
+
+`pi/update.py`를 cron으로 1분마다 돌리면, GitHub에 새 커밋이 생겼을 때 파이가 알아서 `git pull`을 하고 바뀐 쪽만 다시 켠다.
+- 심판: `pi/referee.ts`, `pi/mp_core.js`, `pi/bm_engine.js`, `pi/bs_engine.js`가 바뀌었을 때
+- 시세 수집기: `pi/runner.ts`, `supabase/functions/`가 바뀌었을 때
+- `docker-compose.yml`이 바뀌면 `docker compose up -d`
+
+관리 탭의 **서버 업데이트** 버튼은 `seed10k_admin_cmds` 표에 요청을 넣고, 파이가 1분 안에 처리해 결과를 적는다(바뀐 게 없어도 심판을 다시 켠다). 버튼을 쓰려면 `supabase/seed10k_admin_cmds.sql`을 한 번 실행한다.
+
+설치 (한 번만):
+
+```bash
+cd /home/butter3662/seed10k && git pull
+(crontab -l 2>/dev/null; echo '* * * * * /usr/bin/python3 /home/butter3662/seed10k/pi/update.py >> /home/butter3662/seed10k-update.log 2>&1') | crontab -
+```
+
+기록: `tail -f ~/seed10k-update.log`. 파이에서 저장소 파일을 직접 고치면 `git pull --ff-only`가 실패하니 고치지 않는다(`.env`는 git이 무시하는 파일이라 괜찮다).

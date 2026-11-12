@@ -150,8 +150,19 @@ async function ticks() {
   } catch (e) { console.error("[seed10k-ref] 시간 처리 실패:", String((e as Error)?.message || e).slice(0, 300)); }
   finally { busy = false; }
 }
+// 지금 돌고 있는 코드의 커밋 (관리 탭에 보인다). 저장소가 /app에 읽기 전용으로 붙어 있다
+function commit(): string {
+  try {
+    const head = Deno.readTextFileSync("/app/.git/HEAD").trim();
+    if (!head.startsWith("ref: ")) return head.slice(0, 7);
+    const ref = head.slice(5);
+    try { return Deno.readTextFileSync(`/app/.git/${ref}`).trim().slice(0, 7); }
+    catch { const line = Deno.readTextFileSync("/app/.git/packed-refs").split("\n").find((l) => l.endsWith(" " + ref)); return line ? line.slice(0, 7) : "?"; }
+  } catch { return "?"; }
+}
+const STARTED = Date.now(), VER = commit();
 async function beat() {
-  await rest("POST", "seed10k_rooms?on_conflict=code", [{ code: "__ref", game: "-", mode: "-", status: "sys", state: { at: Date.now(), rooms: rooms.size }, updated_at: new Date().toISOString() }], "resolution=merge-duplicates,return=minimal");
+  await rest("POST", "seed10k_rooms?on_conflict=code", [{ code: "__ref", game: "-", mode: "-", status: "sys", state: { at: Date.now(), rooms: rooms.size, ver: VER, started: STARTED }, updated_at: new Date().toISOString() }], "resolution=merge-duplicates,return=minimal");
 }
 async function cleanup() {   // 하루 지난 처리된 요청과 닫힌 방을 지운다
   const day = new Date(Date.now() - 864e5).toISOString();
