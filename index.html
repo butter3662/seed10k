@@ -244,6 +244,12 @@ html[data-mode=dark] .mono{background:hsl(var(--h) 32% 22%);color:hsl(var(--h) 7
 .bm-rec{font-size:12.5px;line-height:1.55;font-variant-numeric:tabular-nums;max-height:min(66vh,620px)}
 .bm-rec div{padding:2px 0;border-bottom:1px solid var(--rule)}
 .bust-n{color:var(--danger);font-weight:850;font-size:12px;margin-left:5px;letter-spacing:.02em}
+#maint{position:fixed;inset:0;z-index:10000;background:var(--paper);display:grid;place-items:center;padding:24px}
+#maint .maint-box{max-width:460px;text-align:center;display:grid;gap:10px;justify-items:center}
+#maint .maint-ic{font-size:52px}
+#maint h1{margin:0;font-size:22px;font-weight:850;color:var(--ink)}
+#maint p{margin:0;font-size:16px;line-height:1.6;color:var(--ink-2);word-break:keep-all}
+html.maint-on body{overflow:hidden}
 .hist-open{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;text-align:left;color:var(--ink);cursor:pointer;font:inherit}
 .hist-open b{display:block;font-size:16px;font-weight:800}
 .hist-open small{display:block;color:var(--ink-3);font-size:12.5px;margin-top:2px}
@@ -606,6 +612,17 @@ html.gated body{overflow:hidden}
 .oe-steps i.bad{background:var(--danger);border-color:var(--danger)}
 .gm-ov .gm-body{width:min(100%,560px);margin:0}
 .gm-ov .gm-sp{width:64px}
+.mp-games{display:grid;gap:8px}
+.mp-g{height:auto;padding:10px 12px;display:grid;justify-items:start;gap:2px;text-align:left}
+.mp-g small{color:var(--ink-3);font-weight:600}
+.mp-code{display:flex;align-items:center;gap:10px;background:var(--surface-2);border-radius:12px;padding:10px 14px;margin-bottom:10px}
+.mp-code small{color:var(--ink-3);font-size:12px}.mp-code b{font-size:28px;letter-spacing:.18em;font-weight:900;flex:1}
+.mp-seats{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin-bottom:10px}
+.mp-seat{background:var(--surface-2);border-radius:10px;padding:8px 10px;display:grid;gap:2px;border:2px solid transparent}
+.mp-seat.me{border-color:var(--brass)}.mp-seat.left{opacity:.5}
+.mp-seat small{color:var(--ink-3);font-size:12px;min-height:14px}
+.oe-pick{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;width:100%}
+.oe-pick .btn{padding:0;height:40px}
 .bj-table{display:grid;gap:10px;background:radial-gradient(120% 140% at 50% 0%,#1F6B45,#0F3D27);border-radius:14px;padding:12px;color:#fff;margin:6px 0 4px}
 .bj-row{display:grid;grid-template-columns:42px 1fr;gap:8px;align-items:start}
 .bj-who{font-size:12px;font-weight:800;opacity:.75;padding-top:22px}
@@ -983,7 +1000,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '2.1.15';
+const VERSION = '2.1.16';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -1110,6 +1127,24 @@ function zoneParts(tz, d = now()){
   return {date:`${p.year}-${p.month}-${p.day}`, h:+p.hour, mi:+p.minute, wd:p.weekday};
 }
 const kstDate = () => zoneParts('Asia/Seoul').date;
+/* ── 정기 서버 점검: 매월 1일 16:55 ~ 17:05 (한국 시각) 접속 차단 ──
+   이 기기 시계를 한국 시각으로 바꿔 판단한다. 열려 있던 화면도 그 시각이 되면 저장을 마치고 막고, 끝나면 새로 고친다 */
+const MAINT_MSG = '매월 1일  16시 55분부터 17시 5분까지는 정기 서버 점검 시간입니다. 나중에 다시 방문해주세요';
+function inMaint(d = now()){ const p = zoneParts('Asia/Seoul', d), hm = p.h * 60 + p.mi; return +p.date.slice(8, 10) === 1 && hm >= 16 * 60 + 55 && hm < 17 * 60 + 5; }
+function maintShow(){
+  if (document.getElementById('maint')) return;
+  const el = document.createElement('div'); el.id = 'maint'; el.setAttribute('role', 'alertdialog'); el.setAttribute('aria-live', 'assertive');
+  el.innerHTML = `<div class="maint-box"><div class="maint-ic" aria-hidden="true">🛠️</div><h1>정기 서버 점검 중</h1><p>${MAINT_MSG}</p></div>`;
+  document.body.appendChild(el); document.documentElement.classList.add('maint-on');
+}
+function maintTick(){
+  if (inMaint()){
+    if (!document.getElementById('maint')){
+      try { if (typeof S !== 'undefined' && S && S.dirty && ACC.user) pushCloud(); } catch(e){}
+      maintShow();
+    }
+  } else if (document.getElementById('maint')) location.reload();
+}
 function kstTime(d){ const p = zoneParts('Asia/Seoul', d); return `${String(p.h).padStart(2,'0')}:${String(p.mi).padStart(2,'0')}`; }
 /* 현지 정규장 시각을 한국 시각 문자열로 (오늘 기준, 서머타임 반영) */
 function sessInKST(m){
@@ -2381,8 +2416,13 @@ function showModal(html, onClose, locked){
   const md = $('#modal'), sc = $('#scrim');
   md.innerHTML = html; md.hidden = false; sc.hidden = false; md.dataset.kind = '';
   md.dataset.locked = locked ? '1' : '';
+  const tok = md._tok = (md._tok || 0) + 1;   // 닫자마자 다른 창을 열면, 앞 창의 '닫기'가 새 창을 숨기지 않게
   requestAnimationFrame(() => { md.classList.add('on'); sc.classList.add('on'); });
-  const close = () => { blurField(); md.classList.remove('on'); if (!UI.sheet) sc.classList.remove('on'); setTimeout(() => { md.hidden = true; if (!UI.sheet) sc.hidden = true; }, 180); onClose && onClose(); };
+  const close = () => {
+    if (md._tok !== tok){ onClose && onClose(); return; }   // 이미 다른 창으로 바뀌었다
+    blurField(); md.classList.remove('on'); if (!UI.sheet) sc.classList.remove('on');
+    setTimeout(() => { if (md._tok !== tok) return; md.hidden = true; if (!UI.sheet) sc.hidden = true; }, 180); onClose && onClose();
+  };
   md.querySelectorAll('[data-close]').forEach(b => b.onclick = close);
   const first = md.querySelector('button'); first && first.focus();
   return close;
@@ -4255,7 +4295,8 @@ async function markBusted(k){
 /* ── 도박 탭 화면 ── */
 function renderGamblePane(p){
   const il = gamIl(), G = gamS();
-  p.innerHTML = `<section class="card gam-il ${il ? 'on' : ''}"><div class="card-h"><h2>${il ? '🚨' : '🎲'} 불법 모드</h2><button class="sw ${il ? 'on' : ''}" id="ilSw" role="switch" aria-checked="${il}"><i></i></button></div>
+  p.innerHTML = `<section class="card c-mg" id="mpCard">${mpCardHTML()}</section>
+    <section class="card gam-il ${il ? 'on' : ''}"><div class="card-h"><h2>${il ? '🚨' : '🎲'} 불법 모드</h2><button class="sw ${il ? 'on' : ''}" id="ilSw" role="switch" aria-checked="${il}"><i></i></button></div>
       <p class="mg-desc">${il ? '켜짐' : '꺼짐'}: 판돈 한도 ${['bm', 'sl', 'oe', 'bj'].map(k => `${GAM[k].nm} ${fmtUSDn(il ? GAM[k].on : GAM[k].off, 0)}`).join(' · ')}</p>
       <p class="muted" style="margin:4px 0 0">켜면 한도가 10배가 되지만, 한 판이 끝날 때마다 경찰 단속 확률이 있습니다 (${['bm', 'sl', 'oe', 'bj'].map(k => `${GAM[k].nm} ${(GAM[k].p * 100).toFixed(1)}%`).join(' · ')}). 단속되면 지금까지 불법 도박(모든 게임 합산)으로 번 돈의 ${GAM.seize * 100}%를 압류하고, 랭킹 이름에 영구 빨간 줄과 단속 횟수가 표시됩니다.</p>
       ${il || ilAcc() ? `<p class="muted" style="margin:4px 0 0">불법 도박 누적 순이익 <b class="num ${cls(ilAcc())}">${signUSD(ilAcc())}</b> · 단속되면 ${GAM.seize * 100}% 압류</p>` : ''}${G.bust ? `<p style="margin:4px 0 0"><b class="down">단속 ${G.bust}회</b></p>` : ''}</section>
@@ -4790,6 +4831,282 @@ document.addEventListener('click', e => {
   const t = e.target.closest('#bjGo, #bjEnd, [data-bj]'); if (!t) return;
   if (t.id === 'bjGo') bjStart(); else if (t.id === 'bjEnd') bjFinish(); else bjAct(t.dataset.bj);
 });
+
+/* ───────── 멀티플레이 (방 코드로 같이 하기) ─────────
+   사이트는 Supabase에 요청(seed10k_room_reqs)만 넣고, 라즈베리파이 심판이 규칙대로 처리해 방(seed10k_rooms)을 고친다.
+   방이 바뀌면 Supabase 실시간이 알려 주고(놓칠 때를 위해 3초마다도 확인), 끝나면 받을 돈(seed10k_payouts)을 '받기'로 가져온다.
+   판돈은 들어갈 때 이 기기 통장에서 내고, 돌려받거나 이긴 돈은 받기로 들어온다 */
+const MP_GAMES = {oe:{nm:'홀짝 대결', ic:'✊', ready:true, desc:'2명 · 번갈아 구슬을 쥐고 맞히기, 3점 먼저'},
+                  sl:{nm:'뱀사다리', ic:'🐍', ready:false, desc:'2~4명'},
+                  bj:{nm:'블랙잭', ic:'🃏', ready:false, desc:'1~5명'},
+                  bm:{nm:'주사위 세계여행', ic:'🎲', ready:false, desc:'2~4명'}};
+const MP_MIN = {oe:2, sl:2, bj:1, bm:2};
+const MP = {code:null, room:null, ch:null, poll:null, ref:null, refAt:0, busy:false, lastSeq:0, view:{}, payCh:null};
+const mpKey = () => ACC.user ? `seed10k.mp.${ACC.user.id}` : null;
+const mpMe = () => MP.room && ACC.user ? MP.room.state.seats.findIndex(s => s.uid === ACC.user.id) : -1;
+const mpNick = () => (ACC.user && ((ACC.user.user_metadata || {}).nickname || (acctList().find(a => a.id === ACC.user.id) || {}).nick)) || (ACC.user ? ACC.user.email.split('@')[0] : '플레이어');
+
+// 심판(라즈베리파이)이 켜져 있는지: '__ref' 줄의 시각이 30초 안인가
+async function mpRefAlive(force){
+  if (!ACC.sb) return false;
+  if (!force && Date.now() - MP.refAt < 15000) return MP.ref;
+  try { const {data} = await ACC.sb.from('seed10k_rooms').select('state').eq('code', '__ref').maybeSingle(); MP.ref = !!(data && data.state && Date.now() - data.state.at < 30000); }
+  catch(e){ MP.ref = false; }
+  MP.refAt = Date.now(); return MP.ref;
+}
+// 요청을 넣고 심판이 처리할 때까지 기다린다 (최대 60초)
+async function mpReq(code, kind, arg = {}){
+  const {data, error} = await ACC.sb.from('seed10k_room_reqs').insert({user_id:ACC.user.id, code, kind, arg}).select('id').single();
+  if (error) return {ok:false, err:errText(error)};
+  const t0 = Date.now();
+  while (Date.now() - t0 < 60000){
+    await new Promise(r => setTimeout(r, Date.now() - t0 < 3000 ? 300 : 1000));
+    const {data:r} = await ACC.sb.from('seed10k_room_reqs').select('done,ok,err,res').eq('id', data.id).maybeSingle();
+    if (r && r.done) return {ok:!!r.ok, err:r.err, res:r.res || {}};
+    if (Date.now() - t0 > 8000 && !MP.slowWarned){ MP.slowWarned = true; toast('게임 서버(라즈베리파이) 응답이 늦습니다. 조금 더 기다립니다'); }
+  }
+  return {ok:false, err:'게임 서버가 응답하지 않습니다', timeout:true};
+}
+const mpCode = () => Array.from({length:6}, () => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[Math.floor(Math.random() * 32)]).join('');
+
+/* ── 도박 탭 카드 ── */
+function mpCardHTML(){
+  INFO.mp = {t:'같이 하기 (멀티플레이)', h:`<div class="prose"><ul>
+    <li>방장이 게임과 판돈을 정해 방을 만들면 6자리 코드가 나옵니다. 친구는 "코드로 참가"에 그 코드를 넣습니다.</li>
+    <li>들어갈 때 판돈을 냅니다. 대기실에서 나가거나 방이 닫히면 판돈을 돌려받습니다.</li>
+    <li>주사위·카드·숨긴 값은 게임 서버(라즈베리파이)가 정하고 판정해서, 누구도 결과를 조작할 수 없습니다.</li>
+    <li>끝나면 이긴 돈이 자동으로 들어옵니다. 불법 모드 방이면 받을 때 혼자 할 때와 같은 확률로 경찰 단속이 있습니다.</li>
+    <li>같은 모드(실제 시세/시뮬레이션)끼리만 같이 할 수 있습니다. 차례에서 정해진 시간 안에 고르지 않으면 서버가 대신 고릅니다.</li></ul></div>`};
+  if (!ACC.user) return `<div class="card-h"><h2>👥 같이 하기</h2></div><p class="mg-desc">로그인하면 방 코드로 친구와 같이 할 수 있습니다.</p>`;
+  const saved = (() => { try { return localStorage.getItem(mpKey()); } catch(e){ return null; } })();
+  return `<div class="card-h"><h2>👥 같이 하기 ${infoBtn('mp')}</h2><small id="mpRef">${MP.ref === false ? '<span class="down">게임 서버 꺼짐</span>' : MP.ref ? '게임 서버 켜짐' : ''}</small></div>
+    <p class="mg-desc">방을 만들고 코드를 알려 주면 친구가 들어옵니다. ${Object.values(MP_GAMES).filter(g => g.ready).map(g => g.ic + g.nm).join(' · ')}${Object.values(MP_GAMES).some(g => !g.ready) ? ` (곧: ${Object.values(MP_GAMES).filter(g => !g.ready).map(g => g.nm).join(', ')})` : ''}</p>
+    ${saved ? `<p class="mg-desc">들어가 있는 방 <b class="num">${esc(saved)}</b> <button class="btn" id="mpResume" style="margin-left:6px">이어가기</button></p>` : ''}
+    <div class="mg-foot"><button class="btn" id="mpJoinBtn">코드로 참가</button><button class="btn solid" id="mpNewBtn">방 만들기</button></div>`;
+}
+
+
+/* ── 방 만들기 / 참가 ── */
+async function mpNew(){
+  if (!ACC.user) return toast('로그인해야 합니다', true);
+  if (!(await mpRefAlive(true))) return toast('게임 서버(라즈베리파이)가 꺼져 있어 지금은 방을 만들 수 없습니다', true);
+  const list = Object.entries(MP_GAMES);
+  const c = showModal(`<h2>👥 방 만들기</h2><p class="muted" style="margin:0 0 8px">게임을 고르세요</p>
+    <div class="mp-games">${list.map(([k, g]) => `<button class="btn mp-g" data-mpg="${k}" ${g.ready ? '' : 'disabled'}><b>${g.ic} ${g.nm}</b><small>${g.ready ? g.desc : '준비 중'}</small></button>`).join('')}</div>
+    <div class="acts"><button class="btn" data-close>닫기</button></div>`);
+  $$('#modal [data-mpg]').forEach(b => b.onclick = () => {
+    const k = b.dataset.mpg; c();
+    // 판돈 정하기 (혼자 할 때와 같은 한도·같은 창). 낸 뒤 방을 만든다
+    betDialog(k, `👥 ${MP_GAMES[k].nm} 방`, `<p class="muted" style="margin:0 0 8px">방에 들어오는 사람 모두 같은 판돈을 냅니다. ${gamIl() ? '🚨 불법 모드 방이 됩니다' : ''}</p>`, async bet => {
+      const code = mpCode();
+      toast('방을 만드는 중…');
+      const r = await mpReq(code, 'create', {game:k, mode:S.mode, stake:bet, il:gamIl(), nick:mpNick()});
+      if (!r.ok){ if (!r.timeout){ receiveUSD(bet); commit(); } return toast(`방을 만들지 못했습니다: ${r.err}${r.timeout ? ' (판돈은 서버가 처리하면 돌려받거나 방에 들어갑니다)' : ''}`, true); }
+      mpEnter(code);
+    });
+  });
+}
+async function mpJoin(pre){
+  if (!ACC.user) return toast('로그인해야 합니다', true);
+  const c = showModal(`<h2>👥 코드로 참가</h2><label class="amt"><input id="mpCodeIn" type="text" maxlength="6" autocapitalize="characters" autocomplete="off" placeholder="방 코드 6자리" value="${esc(pre || '')}"></label>
+    <p class="muted" id="mpJoinMsg" style="margin:6px 0 0"></p><div class="acts"><button class="btn" data-close>닫기</button><button class="btn solid" id="mpJoinGo">찾기</button></div>`);
+  const inp = $('#mpCodeIn'); inp.focus();
+  inp.oninput = () => { inp.value = inp.value.toUpperCase().replace(/[^A-Z0-9]/g, ''); };
+  $('#mpJoinGo').onclick = async () => {
+    const code = inp.value.trim(), msg = t => { $('#mpJoinMsg').textContent = t; };
+    if (code.length !== 6) return msg('6자리 코드를 넣으세요');
+    const {data:room} = await ACC.sb.from('seed10k_rooms').select('*').eq('code', code).maybeSingle();
+    if (!room || room.status === 'sys') return msg('없는 방 코드입니다');
+    if (room.state.seats.some(s => s.uid === ACC.user.id)){ c(); return mpEnter(code); }   // 이미 들어가 있음
+    if (room.status !== 'lobby') return msg(room.status === 'closed' ? '닫힌 방입니다' : '이미 시작한 방입니다');
+    if (room.mode !== S.mode) return msg(`이 방은 ${room.mode === 'live' ? '실제 시세' : '시뮬레이션'} 모드 방입니다. 규칙·설정에서 모드를 바꾼 뒤 참가하세요`);
+    const g = MP_GAMES[room.game] || {nm:room.game, ic:''};
+    $('#modal').innerHTML = `<h2>${g.ic} ${g.nm} · 방 ${code}</h2>
+      <p>방장 <b>${esc(room.state.seats[0] ? room.state.seats[0].nick : '')}</b> · ${room.state.seats.length}/${room.state.maxP}명${room.il ? ' · <b class="down">🚨 불법 모드 방</b>' : ''}</p>
+      <p>판돈 <b class="num">${fmtUSD(room.stake)}</b>을 내고 들어갑니다. 대기실에서 나가면 돌려받습니다.</p>
+      ${room.il && !gamIl() ? '<p class="down">불법 모드 방이라 들어가면 불법 모드가 켜집니다 (끝날 때 경찰 단속 확률이 있습니다).</p>' : ''}
+      <div class="acts"><button class="btn" data-close>닫기</button><button class="btn solid" id="mpPay">${fmtUSD(room.stake)} 내고 참가</button></div>`;
+    $('#mpPay').onclick = async () => {
+      if (S.usd < room.stake) return toast(`달러 통장에 ${fmtUSD(room.stake)}이 있어야 합니다`, true);
+      if (room.il && !gamIl()){ gamS().il = true; }
+      S.usd = Math.round((S.usd - room.stake) * 100) / 100; commit(); c();
+      toast('참가하는 중…');
+      const r = await mpReq(code, 'join', {mode:S.mode, il:gamIl(), nick:mpNick()});
+      if (!r.ok){ if (!r.timeout){ S.usd = Math.round((S.usd + room.stake) * 100) / 100; commit(); } return toast(`참가하지 못했습니다: ${r.err}`, true); }
+      mpEnter(code);
+    };
+  };
+}
+
+/* ── 방 화면 ── */
+function mpEnter(code){
+  MP.code = code; try { localStorage.setItem(mpKey(), code); } catch(e){}
+  mpSub(code); mpOpen(); mpFetch();
+}
+function mpSub(code){
+  if (MP.ch){ try { ACC.sb.removeChannel(MP.ch); } catch(e){} MP.ch = null; }
+  try {
+    MP.ch = ACC.sb.channel('room-' + code).on('postgres_changes', {event:'*', schema:'public', table:'seed10k_rooms', filter:`code=eq.${code}`}, p => { if (p.new && p.new.code === MP.code) mpSet(p.new); }).subscribe();
+  } catch(e){}
+  clearInterval(MP.poll); MP.poll = setInterval(() => { if (!document.hidden && MP.code) mpFetch(); }, 3000);   // 실시간을 놓칠 때를 위해
+}
+async function mpFetch(){
+  if (!MP.code || !ACC.sb) return;
+  const {data} = await ACC.sb.from('seed10k_rooms').select('*').eq('code', MP.code).maybeSingle();
+  if (data) mpSet(data);
+}
+function mpSet(room){
+  const prev = MP.room;
+  if (prev && prev.code === room.code && (room.ver || 0) < (prev.ver || 0)) return;   // 늦게 온 옛 상태는 버린다
+  MP.room = room;
+  const ev = room.state.ev;
+  if (ev && ev.seq > MP.lastSeq){ MP.lastSeq = ev.seq; mpOnEv(ev, prev); }
+  if (room.status === 'closed' || (room.status !== 'lobby' && mpMe() < 0 && !(prev && prev.state.seats.some(s => ACC.user && s.uid === ACC.user.id)))) {}
+  mpRender();
+  if (room.status === 'over' || room.status === 'closed') mpClaim();
+}
+function mpOnEv(ev){
+  if (ev.t === 'oe_reveal'){ MP.view.oeShow = ev; clearTimeout(MP.view.oeT); MP.view.oeT = setTimeout(() => { MP.view.oeShow = null; mpRender(); }, 2200); }
+}
+function mpOpen(){
+  let ov = $('#mpOv');
+  if (!ov){ ov = document.createElement('div'); ov.id = 'mpOv'; ov.className = 'bm-ov gm-ov'; ov.setAttribute('role', 'dialog'); document.body.appendChild(ov); }
+  ov.hidden = false; document.documentElement.classList.add('bm-open');
+  mpRender();
+}
+function mpHide(){
+  const ov = $('#mpOv'); if (ov && !ov.hidden){ ov.hidden = true; ov.innerHTML = ''; document.documentElement.classList.remove('bm-open'); }
+  if (UI.tab === 'market') renderInvest();
+}
+function mpReset(){ mpHide(); MP.code = null; MP.room = null; MP.lastSeq = 0; MP.view = {}; clearInterval(MP.poll); if (MP.ch){ try { ACC.sb.removeChannel(MP.ch); } catch(e){} MP.ch = null; } }
+function mpForget(){
+  MP.code = null; MP.room = null; MP.lastSeq = 0; MP.view = {};
+  clearInterval(MP.poll); if (MP.ch){ try { ACC.sb.removeChannel(MP.ch); } catch(e){} MP.ch = null; }
+  try { localStorage.removeItem(mpKey()); } catch(e){}
+}
+function mpRender(){
+  const ov = $('#mpOv'); if (!ov || ov.hidden) return;
+  const R = MP.room, g = R ? MP_GAMES[R.game] : null;
+  const body = !R ? '<p class="muted">방을 불러오는 중…</p>' : R.status === 'closed' ? `<p>방이 닫혔습니다.</p><p class="muted">대기실에서 닫힌 방은 판돈을 돌려받습니다.</p>` : R.status === 'lobby' ? mpLobbyHTML(R) : (MP_VIEW[R.game] || (() => ''))(R);
+  ov.innerHTML = `<div class="bm-top"><button class="btn" id="mpClose">닫기</button><div class="bm-ttl"><b>${g ? g.ic + ' ' + g.nm : '👥 같이 하기'}</b><small>방 ${esc(MP.code || '')} · 달러 통장 ${fmtUSD(S.usd)}</small></div><button class="btn" id="mpLeave">나가기</button></div>
+    <section class="card c-mg gm-body">${body}</section>`;
+}
+function mpSeatsHTML(R, extra){
+  const me = mpMe();
+  return `<div class="mp-seats">${R.state.seats.map((s, i) => `<div class="mp-seat ${i === me ? 'me' : ''} ${s.left ? 'left' : ''}"><b>${esc(s.nick)}</b><small>${s.uid === R.host ? '방장' : ''}${i === me ? (s.uid === R.host ? ' · 나' : '나') : ''}${s.left ? ' · 나감' : ''}${extra ? extra(s, i) : ''}</small></div>`).join('')}</div>`;
+}
+function mpLobbyHTML(R){
+  const me = mpMe(), host = ACC.user && R.host === ACC.user.id, n = R.state.seats.length, min = MP_MIN[R.game] || 2;
+  const prev = R.state.prev;
+  return `<div class="mp-code"><small>방 코드</small><b class="num">${esc(R.code)}</b><button class="btn" id="mpCopy">복사</button></div>
+    <p class="muted" style="margin:0 0 8px">판돈 ${fmtUSD(R.stake)} · ${n}/${R.state.maxP}명${R.il ? ' · <b class="down">🚨 불법 모드 방</b>' : ''} · ${R.mode === 'live' ? '실제 시세' : '시뮬레이션'} 모드</p>
+    ${prev && prev.seats ? `<p class="muted" style="margin:0 0 8px">지난 판: ${prev.seats.map((nm, i) => `${esc(nm)} ${prev.score ? prev.score[i] : ''}`).join(' : ')}${prev.win !== undefined ? ` · ${esc(prev.seats[prev.win])} 승` : ''}</p>` : ''}
+    ${mpSeatsHTML(R)}
+    <div class="bm-acts">${me < 0 ? `<button class="btn solid" id="mpRejoin">${fmtUSD(R.stake)} 내고 참가</button>`
+      : host ? `<button class="btn solid" id="mpStart" ${n >= min ? '' : 'disabled'}>${n >= min ? '시작' : `${min}명이 되면 시작할 수 있습니다`}</button>` : '<p class="bm-wait">방장이 시작하기를 기다리는 중…</p>'}</div>`;
+}
+async function mpAct(kind, arg, spent){
+  if (MP.busy) return; MP.busy = true; mpRender();
+  try {
+    const r = await mpReq(MP.code, kind, arg);
+    if (!r.ok){ if (spent && !r.timeout){ receiveUSD(spent); commit(); } toast(r.err, true); }
+    await mpFetch();
+  } finally { MP.busy = false; mpRender(); }
+}
+document.addEventListener('click', async e => {
+  const t = e.target.closest('button'); if (!t) return;
+  if (t.id === 'mpNewBtn') return mpNew();
+  if (t.id === 'mpJoinBtn') return mpJoin();
+  if (t.id === 'mpResume'){ let c = null; try { c = localStorage.getItem(mpKey()); } catch(e){} if (c) mpEnter(c); return; }
+  if (t.id === 'mpClose') return mpHide();
+  if (t.id === 'mpCopy'){ try { await navigator.clipboard.writeText(MP.code); toast('방 코드를 복사했습니다'); } catch(e){ toast(`방 코드: ${MP.code}`); } return; }
+  if (t.id === 'mpStart') return mpAct('start');
+  if (t.id === 'mpLeave'){
+    const R = MP.room;
+    if (!R || R.status === 'closed' || mpMe() < 0 || R.status === 'over'){ if (R && R.status === 'over' && mpMe() >= 0) mpReq(MP.code, 'leave'); mpForget(); mpHide(); return; }
+    const playing = R.status === 'play';
+    const c = showModal(`<h2>방에서 나갈까요?</h2><p>${playing ? '진행 중에 나가면 <b>기권</b>으로 처리되어 판돈을 잃습니다.' : R.host === ACC.user.id ? '방장이 나가면 방이 닫히고 모두 판돈을 돌려받습니다.' : '판돈을 돌려받습니다.'}</p>
+      <div class="acts"><button class="btn" data-close>취소</button><button class="btn solid" id="mpLeaveYes">나가기</button></div>`);
+    $('#mpLeaveYes').onclick = async () => { c(); const r = await mpReq(MP.code, 'leave'); if (!r.ok) return toast(r.err, true); mpForget(); mpHide(); setTimeout(mpClaim, 800); };
+    return;
+  }
+  if (t.id === 'mpRejoin' || t.id === 'mpAgain'){
+    const R = MP.room; if (!R) return;
+    if (S.usd < R.stake) return toast(`달러 통장에 ${fmtUSD(R.stake)}이 있어야 합니다`, true);
+    if (R.mode !== S.mode) return toast('같은 모드에서만 참가할 수 있습니다', true);
+    if (R.il && !gamIl()) gamS().il = true;
+    S.usd = Math.round((S.usd - R.stake) * 100) / 100; commit();
+    return mpAct(t.id === 'mpAgain' ? 'again' : 'join', {mode:S.mode, il:gamIl(), nick:mpNick()}, R.stake);
+  }
+  if (t.dataset.mpa){ const a = JSON.parse(t.dataset.mpa); return mpAct('act', a); }
+});
+
+/* ── 받을 돈 가져오기 (끝난 판, 환불) ── */
+async function mpClaim(){
+  if (!ACC.sb || !ACC.user || MP.claiming) return;
+  MP.claiming = true;
+  try {
+    const {data} = await ACC.sb.from('seed10k_payouts').select('*').eq('user_id', ACC.user.id).eq('mode', S.mode).is('claimed_at', null).order('id', {ascending:true}).limit(20);
+    for (const p of data || []){
+      // 받음 표시가 먼저 성공한 기기만 돈을 받는다 (여러 탭·기기에서 두 번 받지 않게)
+      const {data:got} = await ACC.sb.from('seed10k_payouts').update({claimed_at:new Date().toISOString()}).eq('id', p.id).is('claimed_at', null).select('id');
+      if (!got || !got.length) continue;
+      const amt = +p.amount || 0, net = Math.round((amt - (+p.cost || 0)) * 100) / 100;
+      if (amt > 0) receiveUSD(amt);
+      altLog('gamble', `👥 ${p.note || (MP_GAMES[p.game] || {}).nm || '같이 하기'}${p.il ? ' (불법)' : ''}`, net, 'USD');
+      commit();
+      if (amt > 0) toast(`👥 ${p.note || '같이 하기'}: ${fmtUSD(amt)}을 받았습니다`);
+      if (p.il && GAM[p.game]) police(p.game, true, net);
+    }
+  } catch(e){ console.warn('[seed10k] 받을 돈 확인 실패', e); }
+  finally { MP.claiming = false; }
+}
+function mpWatchPayouts(){
+  if (!ACC.sb || !ACC.user) return;
+  if (MP.payCh){ try { ACC.sb.removeChannel(MP.payCh); } catch(e){} }
+  try { MP.payCh = ACC.sb.channel('pay-' + ACC.user.id).on('postgres_changes', {event:'INSERT', schema:'public', table:'seed10k_payouts', filter:`user_id=eq.${ACC.user.id}`}, () => mpClaim()).subscribe(); } catch(e){}
+  setTimeout(mpClaim, 2500);
+}
+setInterval(() => { if (!document.hidden && ACC.user) mpClaim(); }, 30000);
+setInterval(() => { if (!document.hidden && ACC.user && UI.tab === 'market' && $('#mpRef')) mpRefAlive().then(() => { const el = $('#mpRef'); if (el) el.innerHTML = MP.ref === false ? '<span class="down">게임 서버 꺼짐</span>' : MP.ref ? '게임 서버 켜짐' : ''; }); }, 15000);
+
+/* ── 게임별 화면 ── */
+const MP_VIEW = {};
+const mpLeft = dl => dl ? Math.max(0, Math.ceil((dl - Date.now()) / 1000)) : null;
+setInterval(() => { const el = $('#mpTimer'); if (el && MP.room) { const s = mpLeft(MP.room.state.deadline); el.textContent = s === null ? '' : `${s}초`; } }, 500);
+
+// 홀짝 대결
+MP_VIEW.oe = R => {
+  const st = R.state, g = st.g || {}, me = mpMe(), opp = 1 - me, seats = st.seats;
+  const show = MP.view.oeShow && MP.view.oeShow.seq <= st.seq ? MP.view.oeShow : null;
+  const over = R.status === 'over';
+  const sc = `<div class="oe-score"><span><b>${esc(seats[me] ? seats[me].nick : '')}</b> (나) <b class="num up">${g.score ? g.score[me] : 0}</b></span><span class="muted">${over ? '끝' : `${g.round}판 · 3점 먼저`}</span><span><b class="num">${g.score ? g.score[opp] : 0}</b> <b>${esc(seats[opp] ? seats[opp].nick : '')}</b></span></div>`;
+  let hand, msg, acts = '';
+  if (show){
+    const iWon = show.pt === me;
+    hand = `<div class="oe-hand open"><div class="oe-marbles">${Array.from({length:show.n}, (_, k) => `<i style="--d:${k * 25}ms"></i>`).join('')}</div><b class="num">${show.n}개 · ${show.n % 2 ? '홀' : '짝'}</b></div>`;
+    msg = `<p class="oe-res ${iWon ? 'up' : 'down'}">${show.guesser === me ? `내가 ${show.pick === 'odd' ? '홀' : '짝'}을 골라 ${show.ok ? '맞혔다!' : '틀렸다'}` : `상대가 ${show.pick === 'odd' ? '홀' : '짝'}을 골라 ${show.ok ? '맞혔다' : '틀렸다!'}`} · ${iWon ? '내' : '상대'} 1점</p>`;
+  } else if (over){
+    const iWon = g.win === me;
+    hand = `<div class="oe-hand"><span class="fist">${iWon ? '🏆' : '😵'}</span></div>`;
+    msg = `<p class="oe-res ${iWon ? 'up' : 'down'}">${iWon ? `이겼다! ${fmtUSD(R.stake * 2)}을 받습니다` : '졌다'} (${g.score[me]}:${g.score[opp]}${g.why && g.why !== '3점 먼저' ? ', ' + esc(g.why) : ''})</p>`;
+    const host = ACC.user && R.host === ACC.user.id;
+    acts = host ? `<button class="btn solid" id="mpAgain">한 판 더 (${fmtUSD(R.stake)})</button>` : '<p class="bm-wait">방장이 한 판 더 열면 다시 참가할 수 있습니다</p>';
+  } else if (g.phase === 'hide'){
+    hand = `<div class="oe-hand"><span class="fist">✊</span></div>`;
+    if (g.hider === me){
+      msg = `<p class="oe-res">구슬을 몇 개 쥘까요? <span class="muted" id="mpTimer"></span></p>`;
+      acts = `<div class="oe-pick">${Array.from({length:20}, (_, k) => `<button class="btn" data-mpa='{"n":${k + 1}}' ${MP.busy ? 'disabled' : ''}>${k + 1}</button>`).join('')}</div>`;
+    } else msg = `<p class="oe-res muted">상대가 구슬을 쥐는 중… <span id="mpTimer"></span></p>`;
+  } else {
+    hand = `<div class="oe-hand"><span class="fist">✊</span></div>`;
+    if (g.hider !== me){
+      msg = `<p class="oe-res">상대가 쥔 구슬은 홀일까 짝일까? <span class="muted" id="mpTimer"></span></p>`;
+      acts = `<button class="btn" data-mpa='{"pick":"odd"}' ${MP.busy ? 'disabled' : ''}>홀</button><button class="btn" data-mpa='{"pick":"even"}' ${MP.busy ? 'disabled' : ''}>짝</button>`;
+    } else msg = `<p class="oe-res muted">상대가 고르는 중… <span id="mpTimer"></span></p>`;
+  }
+  return `<div class="card-h"><h2>✊ 홀짝 대결</h2><small>판돈 ${fmtUSD(R.stake)}${R.il ? ' · 🚨 불법' : ''}</small></div>${sc}${hand}${msg}<div class="bm-acts">${acts}</div>`;
+};
 
 /* ───────── 복권 탭: 로또6/45 (실제 추첨 결과로 정산) · 스피또2000 (긁는 즉석복권) ─────────
    로또 규칙 출처: 동행복권 '로또6/45 소개' (1게임 1,000원, 1~45 중 6개, 판매 일~금 06:00~24:00·토 06:00~20:00, 토 20:35경 추첨,
@@ -6195,6 +6512,7 @@ async function handleSession(session){
   if (S.mode === 'live') startLivePolling(); else stopLivePolling();
   go(UI.tab); renderHeader();
   afterAuthResolved();
+  mpReset(); if (ACC.user) mpWatchPayouts();   // 멀티플레이: 계정이 바뀌면 방 화면을 닫고 그 계정의 받을 돈을 확인
 }
 function afterAuthResolved(){
   renderGate();
@@ -6686,6 +7004,8 @@ document.addEventListener('input', e => {
 let rzT = null;
 window.addEventListener('resize', () => { clearTimeout(rzT); rzT = setTimeout(() => { if (UI.sheet) renderChartBox(); }, 120); });
 /* ───────── 시작 ───────── */
+setInterval(maintTick, 10000);
+if (inMaint()) { applyTheme(); maintShow(); throw new Error('정기 서버 점검 시간'); }   // 점검 중에는 앱을 시작하지 않는다
 applyTheme();
 S = load(SET.mode === 'live' ? 'live' : 'sim');
 if (!SET.mode) S._ph = true;

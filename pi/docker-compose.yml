@@ -1,4 +1,4 @@
-# SEED 10K 시세 수집기 (라즈베리파이)
+# SEED 10K 시세 수집기 + 멀티플레이 심판 (라즈베리파이)
 # 실행: cd ~/seed10k/pi && docker compose up -d
 # 로그: docker compose logs -f --tail 50
 services:
@@ -14,3 +14,18 @@ services:
     working_dir: /app
     command: ["run", "--allow-net", "--allow-env", "pi/runner.ts"]
     # 밖에서 접속할 포트는 열지 않는다 (나가는 요청만 한다)
+
+  # 멀티플레이 심판: 방 요청을 게임 규칙(mp_core.js)으로 처리한다. 시세 수집기와 따로 돌아서 한쪽이 멈춰도 다른 쪽은 계속 돈다
+  seed10k-referee:
+    image: denoland/deno:2.7.11
+    init: true
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - ..:/app:ro
+      - deno-cache:/deno-dir           # 처음 받은 라이브러리(supabase-js)를 다시 켤 때도 쓰게 둔다
+    working_dir: /app
+    command: ["run", "--allow-net", "--allow-env", "--allow-sys", "--allow-read=/app", "pi/referee.ts"]
+    # 밖에서 접속할 포트는 열지 않는다 (Supabase로 나가는 연결만)
+volumes:
+  deno-cache:

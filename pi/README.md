@@ -1,4 +1,4 @@
-# SEED 10K 시세 수집기 — 라즈베리파이
+# SEED 10K 시세 수집기 + 멀티플레이 심판 — 라즈베리파이
 
 Supabase Edge Function과 **같은 코드**(`supabase/functions/seed10k-quotes/index.ts`의 `run()`)를 파이에서 7초마다 돌린다.
 
@@ -62,3 +62,31 @@ docker compose logs --tail 20
 
 ## 되돌리기
 Supabase에서 `seed10k_setup.sql`의 5) 일정을 다시 실행하고, 파이에서 `docker compose down`.
+
+## 멀티플레이 심판 (방 코드로 같이 하기)
+
+`docker compose`가 시세 수집기 옆에 `seed10k-referee`를 하나 더 띄운다. 같은 `pi/.env`(Supabase 주소·비밀 키)를 쓴다.
+
+```
+사이트 ──요청──> seed10k_room_reqs ──실시간 알림──> 파이 심판 (pi/referee.ts + pi/mp_core.js)
+파이 심판 ──결과──> seed10k_rooms(모두에게 보이는 상태) · seed10k_room_priv(숨긴 값) · seed10k_payouts(받을 돈)
+```
+파이는 Supabase로 나가는 연결만 쓰고, 공유기 포트를 열 필요가 없다. 와이파이가 잠깐 끊겨도 다시 연결되면 남은 요청을 이어서 처리한다.
+
+### 처음 한 번
+1. Supabase SQL Editor에서 `supabase/seed10k_multi.sql`을 실행한다.
+2. 파이에서:
+```bash
+cd /home/butter3662/seed10k && git pull && cd pi && docker compose up -d
+docker compose logs --tail 20 seed10k-referee
+```
+`[seed10k-ref] 시작: 진행 중인 방 0개`와 `실시간 연결: SUBSCRIBED`가 보이면 된다.
+
+### 확인
+- Supabase → Table Editor → `seed10k_rooms`의 `__ref` 줄 `state.at`이 10초마다 바뀐다. 사이트의 "같이 하기" 카드에 "게임 서버 켜짐"이 보인다.
+- 심판이 꺼지면 사이트는 "게임 서버 꺼짐"을 보여 주고 새 방을 만들지 않는다. 진행 중인 방은 그대로 남아 있다가 심판이 다시 켜지면 이어진다.
+
+| 하고 싶은 것 | 명령 (`/home/butter3662/seed10k/pi`에서) |
+|---|---|
+| 심판 로그 | `docker compose logs -f --tail 50 seed10k-referee` |
+| 심판만 다시 켜기 | `docker compose restart seed10k-referee` |
