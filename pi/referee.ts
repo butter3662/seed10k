@@ -102,6 +102,10 @@ async function bjWatch(room: Room, res: any) {   // 블랙잭: 버스트할 수 
       msg: `블랙잭 대결: ${room.state.seats[i].nick}이(가) ${n}판 연속 11 이하에서 스탠드 (판돈 $${room.stake}, 방 ${room.code})`, detail: { n } });
   }
 }
+async function tester(uid: string) {   // 테스트 계정(돈이 줄지 않음)은 다른 계정에 돈을 넘길 수 있어 멀티에 못 들어온다
+  try { const r = await rest("GET", `seed10k_testers?user_id=eq.${encodeURIComponent(uid)}&select=user_id`) || []; return r.length > 0; }
+  catch { return false; }   // 표가 아직 없으면(SQL 실행 전) 막지 않는다
+}
 async function banned(uid: string) {
   const r = await rest("GET", `seed10k_mp_bans?user_id=eq.${encodeURIComponent(uid)}&select=user_id`) || [];
   return r.length > 0;
@@ -120,9 +124,9 @@ async function work() {
         try {
           if (q.kind !== "create") await loadRoom(q.code);
           const room0 = rooms.get(q.code);
-          if ((q.kind === "create" || q.kind === "join" || q.kind === "again") && await banned(q.user_id)) {
-            await rest("PATCH", `seed10k_room_reqs?id=eq.${q.id}`, { done: true, ok: false, err: "부정행위로 멀티플레이가 제한된 계정입니다" }, "return=minimal");
-            handled++; continue;
+          if (q.kind === "create" || q.kind === "join" || q.kind === "again") {
+            const why = await banned(q.user_id) ? "부정행위로 멀티플레이가 제한된 계정입니다" : await tester(q.user_id) ? "테스트 계정은 멀티플레이를 할 수 없습니다" : "";
+            if (why) { await rest("PATCH", `seed10k_room_reqs?id=eq.${q.id}`, { done: true, ok: false, err: why }, "return=minimal"); handled++; continue; }
           }
           const out = handle(room0 || null, privs.get(q.code) || {}, q, Date.now(), Math.random);
           if (out.err) patch = { done: true, ok: false, err: out.err };
