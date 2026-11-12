@@ -1229,7 +1229,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '2.2.27';
+const VERSION = '2.2.28';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -5462,17 +5462,17 @@ function bsTableHTML(g, me, o){
   const peek = o.peek !== undefined ? o.peek : g.pk ? g.pk[me] : null;
   const seat = (p, i, mine) => {
     const items = mine ? p.items.map(it => {
-      const dis = !myTurn || !o.mine || (it === 'saw' && g.saw) || (it === 'cig' && p.hp >= BS.hpMax) || (it === 'cuff' && !g.pl.some((q, j) => j !== me && !q.out && !q.cuffed));
+      const dis = !myTurn || !o.mine || BSV.hold || (it === 'saw' && g.saw) || (it === 'cig' && p.hp >= BS.hpMax) || (it === 'cuff' && !g.pl.some((q, j) => j !== me && !q.out && !q.cuffed));
       return `<button class="bs-it" data-bsit="${it}" ${dis ? 'disabled' : ''} title="${BS_IT[it].d}"><span class="bs-ico">${bsIco(it)}</span><small>${BS_IT[it].nm}</small></button>`;
     }).join('') : p.items.map(it => `<span class="bs-it ro" title="${BS_IT[it].nm}"><span class="bs-ico">${bsIco(it)}</span></span>`).join('');
     const can = myTurn && !p.out;
-    return `<div class="bs-p ${mine ? 'me' : ''} ${g.turn === i && !g.over ? 'turn' : ''} ${p.out ? 'out' : ''} ${BSV.flash === 'p' + i ? 'shot' : ''} ${can && BSV.hold ? 'aimable' : ''} ${BSV.aimT === i && can ? 'aimed' : ''}" data-bsi="${i}" ${can && BSV.hold ? `data-bsaim="${i}"` : ''}>
+    return `<div class="bs-p ${mine ? 'me' : ''} ${g.turn === i && !g.over ? 'turn' : ''} ${p.out ? 'out' : ''} ${BSV.flash === 'p' + i ? 'shot' : ''} ${can && BSV.hold && !mine ? 'aimable' : ''} ${BSV.aimT === i && can ? 'aimed' : ''}" data-bsi="${i}" ${can && BSV.hold && !mine ? `data-bsaim="${i}"` : ''}>
       <div class="bs-pn"><b>${mine ? '나' : esc(p.nm)}</b><span class="bs-tag">${p.out ? '탈락' : p.cuffed ? '⛓️ 묶임' : g.turn === i && !g.over ? '차례' : ''}</span>${bsHP(p.hp, BSV.flash === 'p' + i)}</div>
       <div class="bs-items ${mine ? 'mine' : ''}">${items || '<span class="bs-none">아이템 없음</span>'}</div>
     </div>`;
   };
   const opp = g.pl.map((p, i) => i === me ? '' : seat(p, i, false)).join('');
-  const msg = BSV.msg || (g.over ? (g.win === me ? '🏆 WIN!' : g.quit && g.quitHalf ? '🏃 기권하고 자리를 떴다' : g.quit ? '🏳️ 기권했다' : '💀 졌다') : myTurn ? (BSV.hold ? (BSV.aimT !== null && BSV.aimT !== undefined ? `${BSV.aimT === me ? '나' : esc(g.pl[BSV.aimT].nm)}에게 겨눴다` : '누구를 쏠까? (자리나 버튼을 누르면 바로 쏜다)') : '아이템을 쓰거나 총을 드세요') : `${esc(g.pl[g.turn].nm)} 차례…`);
+  const msg = BSV.msg || (g.over ? (g.win === me ? '🏆 WIN!' : g.quit && g.quitHalf ? '🏃 기권하고 자리를 떴다' : g.quit ? '🏳️ 기권했다' : '💀 졌다') : myTurn ? (BSV.hold ? (BSV.aimT !== null && BSV.aimT !== undefined ? `${BSV.aimT === me ? '나' : esc(g.pl[BSV.aimT].nm)}에게 겨눴다` : '누구를 쏠까? (아이템은 총을 내려놓고 쓸 수 있다)') : '아이템을 쓰거나 총을 드세요') : `${esc(g.pl[g.turn].nm)} 차례…`);
   const s3 = bs3Want(); BS3.ctx = {g, me};
   const aim = BSV.aim || (myTurn && BSV.hold && BSV.aimT !== null && BSV.aimT !== undefined ? (BSV.aimT === me ? 'down' : 'up') : 'rest');
   return `${o.solo ? '' : !g.over && o.mine ? '<div class="bs-quit"><button class="btn" data-bsdo="quit">기권</button></div>' : '<div class="bs-quit"></div>'}<div class="bs-table">
@@ -5646,6 +5646,7 @@ function bsFinish(run){
 }
 // 직접 조작 (혼자·같이 하기 같이): 탄 넣기, 펌프, 총 들기, 겨누기. 방아쇠만 혼자/같이 하기가 따로 보낸다
 document.addEventListener('click', e => {
+  if (e.target.closest('.bs-it')) return;   // 아이템 단추는 아래 처리기에서만 (자리를 겨누는 것으로 번지지 않게)
   const el = e.target.closest('[data-bsshell], [data-bsdo], [data-bsaim], [data-bsgun]'); if (!el || !el.closest('.bs-table, .bs-ctl, .bs-foot, .bs-quit')) return;
   if (el.dataset.bsshell !== undefined && BSV.want === 'load' && BSV.lay){
     const k = +el.dataset.bsshell; if (!BSV.lay.in.includes(k)) BSV.lay.in.push(k);
