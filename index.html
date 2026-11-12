@@ -87,6 +87,7 @@ button{cursor:pointer}
 .icon-btn[aria-pressed=true]{background:var(--brass-soft);border-color:var(--brass);color:var(--brass)}
 .who{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--rule);background:var(--surface);color:var(--ink);border-radius:999px;height:40px;padding:0 12px 0 10px;font-weight:700;font-size:13.5px;flex:none;max-width:150px}
 .who[hidden]{display:none}
+.who-list{justify-content:flex-start}.who-list .btn.acct{flex:1 1 180px}
 @media (max-width:640px){   /* 휴대폰: 위쪽 여백 오른쪽에 작게 */
   .top-in{position:relative;padding-top:calc(24px + env(safe-area-inset-top))}
   .who{position:absolute;top:calc(5px + env(safe-area-inset-top));right:16px;height:auto;border:0;background:none;padding:0;font-size:11.5px;font-weight:700;color:var(--ink-2);gap:4px;max-width:60vw;line-height:16px}
@@ -949,7 +950,7 @@ html[data-game=live] .c-news{order:3}
 <body>
 <header class="top">
   <div class="top-in">
-    <div class="brand" aria-label="SEED 10K">
+    <div class="brand" aria-label="SEED 10K 홈으로" role="link" tabindex="0" style="cursor:pointer">
       <svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="30" fill="var(--slab)"/><circle cx="32" cy="32" r="21" fill="none" stroke="var(--brass-hi)" stroke-width="4"/><path d="M24 38l8-12 8 12" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg>
       <span class="wm">SEED</span><b>10K</b>
     </div>
@@ -1033,7 +1034,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '2.1.20';
+const VERSION = '2.1.21';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -3457,8 +3458,9 @@ const BME = {
   pay(g, i, amt, to, ev){
     const p = g.pl[i];
     if (amt <= 0) return true;
-    if (p.me && g.pending && g.pending.k === 'sell'){ g.pending.pays.push({amt, to}); return true; }
-    if (p.me && p.cash < amt && p.cash + BME.sellValue(g, i) >= amt){
+    // 팔 것 고르기는 한 번에 한 사람만 (같이 하기에서 둘이 동시에 모자라면 뒤 사람은 자동으로 판다)
+    if (p.me && g.pending && g.pending.k === 'sell' && g.pending.who === i){ g.pending.pays.push({amt, to}); return true; }
+    if (p.me && !(g.pending && g.pending.k === 'sell') && p.cash < amt && p.cash + BME.sellValue(g, i) >= amt){
       g.pending = {k:'sell', who:i, pays:[{amt, to}]};
       BME.log(g, `${p.nm} 돈이 모자람 (${bmW(amt)} 필요)`); ev.push({t:'msg', s:`돈이 모자랍니다! ${bmW(amt)} 필요`, k:'short', i});
       return true;
@@ -3721,7 +3723,7 @@ const BME = {
   afterAction(g){
     if (g.pending) return;
     const p = g.pl[g.turn];
-    if (g.pl[0].out || BME.alive(g) <= 1){ g.over = true; g.pending = null; return; }   // 한 명만 남거나 내가 파산하면 끝
+    if ((!g.multi && g.pl[0].out) || BME.alive(g) <= 1){ g.over = true; g.pending = null; return; }   // 한 명만 남거나 (혼자 하기에서) 내가 파산하면 끝
     if (g.again && !p.out && !p.jail && !p.space){ g.again = false; g.pending = p.me ? {k:'roll'} : null; return; }
     BME.next(g);
   },
@@ -3787,6 +3789,8 @@ function bmCardHTML(){
     <div class="mg-foot"><span class="muted">${g ? '' : `달러 통장 <b class="num">${fmtUSDn(S.usd)}</b>`}</span><span style="display:flex;gap:8px">${b.last ? '<button class="btn" id="bmLastLog">지난 판 기록</button>' : ''}<button class="btn solid" id="bmGo" ${!g && (S.over || lock) ? 'disabled' : ''}>${label}</button></span></div>`;
 }
 function bmSetup(){
+  if (BMV.mp && bmOpenNow()) bmHide();
+  BMV.mp = false;
   const b = bmToday();
   if (b.cur) return bmOpen();
   if (S.over) return toast('파산해서 할 수 없습니다', true);
@@ -3826,8 +3830,10 @@ function bmSetup(){
   };
 }
 
-const BMV = {busy:false, gen:0, sel:-1, tok:null, view:null, msg:'', built:false};
-function bmG(){ return S && S.bm && S.bm.cur; }
+const BMV = {busy:false, gen:0, sel:-1, tok:null, view:null, msg:'', built:false, mp:false};
+// mp: 같이 하기 판을 보는 중 (게임 상태는 심판이 정한 방 상태, 나는 자리 번호 bmMe())
+function bmG(){ return BMV.mp ? (MP.room && MP.room.game === 'bm' && MP.room.state.g) || null : S && S.bm && S.bm.cur; }
+const bmMe = () => BMV.mp ? mpMe() : 0;
 const bmFast = () => !!SET.bmFast;
 const bmReduce = () => { try { return matchMedia('(prefers-reduced-motion: reduce)').matches; } catch(e){ return false; } };
 // 애니메이션 시간: 빠르게 켜면 절반
@@ -3877,7 +3883,7 @@ function bmBuild(){
       : `<span class="bm-ic">${BM_ICON[c.t]}</span><span class="bm-n bm-sp">${c.s}</span><span class="bm-p"></span>`;
     return `<button class="bm-c bm-${side}${k % 10 === 0 ? ' bm-k' : ''} bm-t-${c.t}" data-bmsq="${k}" style="grid-row:${r};grid-column:${col}">${body}</button>`;
   }).join('');
-  const toks = g.pl.map((p, i) => `<div class="bm-tok" data-tok="${i}" style="--pc:${BM.cols[i]}"><div class="bm-tok-i"><span>${p.me ? '나' : p.nm[0]}</span></div></div>`).join('');
+  const toks = g.pl.map((p, i) => `<div class="bm-tok" data-tok="${i}" style="--pc:${BM.cols[i]}"><div class="bm-tok-i"><span>${i === bmMe() ? '나' : esc([...p.nm][0] || '?')}</span></div></div>`).join('');
   ov.innerHTML = `<div class="bm-top"><button class="btn" id="bmClose">닫기</button><div class="bm-ttl"><b>🎲 주사위 세계여행</b><small id="bmSub"></small></div><div class="bm-tr"><button class="btn bm-spd" id="bmSpd"></button><button class="btn" id="bmQuit">기권</button></div></div>
     <div class="bm-board" id="bmBoard">${cells}
       <div class="bm-mid">
@@ -3901,9 +3907,10 @@ const bmVw = g => BMV.view || BME.view(g);
 function bmUpdate(){
   const ov = $('#bmOv'), g = bmG(); if (!ov || !g) return;
   if (!BMV.built) bmBuild();
-  const V = bmVw(g), pd = g.pending, myTurn = g.turn === 0 && !BMV.busy && !g.over;
+  const ME = bmMe(), V = bmVw(g), pd = g.pending, myTurn = g.turn === ME && !BMV.busy && !g.over;
   const cur = BMV.busy && BMV.actor !== undefined ? BMV.actor : g.turn;   // 애니메이션 중에는 움직이는 사람
-  $('#bmSub').textContent = `${g.round}바퀴 · 판돈 ${fmtUSD(g.stake)}`;
+  if (BMV.mp) $('#bmSub').innerHTML = `${g.round}바퀴 · 판돈 ${fmtUSD(g.stake)} · <span id="mpTimer"></span>`;
+  else $('#bmSub').textContent = `${g.round}바퀴 · 판돈 ${fmtUSD(g.stake)}`;
   $('#bmSpd').textContent = bmFast() ? '빠르게 ✓' : '빠르게';
   $('#bmQuit').hidden = g.over;
   BM_SQ.forEach((c, k) => {
@@ -3913,7 +3920,7 @@ function bmUpdate(){
     el.style.setProperty('--oc', o >= 0 ? BM.cols[o] : 'transparent');
     el.classList.toggle('fly', !!(pd && pd.k === 'space' && myTurn && k !== 30));
     el.classList.toggle('sel', BMV.sel === k);
-    el.classList.toggle('sellable', !!(pd && pd.k === 'sell' && !BMV.busy && V.own[k] === 0));
+    el.classList.toggle('sellable', !!(pd && pd.k === 'sell' && pd.who === ME && !BMV.busy && V.own[k] === ME));
     const pEl = el.querySelector('.bm-p');
     if (c.t === 'city'){
       pEl.textContent = bmWs(o >= 0 ? BME.rentOf(k, V.lv[k]) : c.p);
@@ -3926,7 +3933,7 @@ function bmUpdate(){
     const out = V.out[i];
     el.classList.toggle('on', cur === i && !(g.over && !BMV.busy));
     el.classList.toggle('out', out);
-    el.querySelector('.bm-pn').textContent = `${p.nm}${V.jail[i] ? ' 🏝️' : ''}${V.space && V.space[i] ? ' 🚀' : ''}${V.free[i] ? ' 🎫' : ''}${V.coupon && V.coupon[i] ? ' 🎟️'.repeat(V.coupon[i]) : ''}`;
+    el.querySelector('.bm-pn').textContent = `${BMV.mp && i === ME ? '나' : p.nm}${V.jail[i] ? ' 🏝️' : ''}${V.space && V.space[i] ? ' 🚀' : ''}${V.free[i] ? ' 🎫' : ''}${V.coupon && V.coupon[i] ? ' 🎟️'.repeat(V.coupon[i]) : ''}`;
     el.querySelector('.bm-pc').textContent = out ? '파산' : bmW(V.cash[i]);
     let a = V.cash[i]; V.own.forEach((o, k) => { if (o === i) a += BM_SQ[k].p + BME.bldCost(k, V.lv[k]); });
     el.querySelector('.bm-pa').textContent = out ? '' : `자산 ${bmW(a)}`;
@@ -3934,22 +3941,23 @@ function bmUpdate(){
   });
   // 행동 버튼
   let act = '';
-  if (g.over && !BMV.busy) act = `<button class="btn solid bm-roll" id="bmEnd">결과 보기</button>`;
+  if (g.over && !BMV.busy) act = BMV.mp ? mbmOverHTML(g) : `<button class="btn solid bm-roll" id="bmEnd">결과 보기</button>`;
+  else if (!BMV.busy && pd && pd.k === 'sell' && pd.who !== ME) act = `<p class="bm-wait">${esc(g.pl[pd.who].nm)}이(가) 팔 것을 고르는 중…</p>`;
   else if (!BMV.busy && pd && pd.k === 'sell'){
-    const need = BME.need(g), cash = g.pl[0].cash;
-    const list = BM_SQ.map((c, k) => g.own[k] === 0 ? `<button class="btn bm-sell" data-bmsell="${k}"><span>${c.s} ${BME.sellName(g, k)}</span><b class="num">+${bmW(BME.sellOne(g, k))}</b></button>` : '').join('');
+    const need = BME.need(g), cash = g.pl[ME].cash;
+    const list = BM_SQ.map((c, k) => g.own[k] === ME ? `<button class="btn bm-sell" data-bmsell="${k}"><span>${c.s} ${BME.sellName(g, k)}</span><b class="num">+${bmW(BME.sellOne(g, k))}</b></button>` : '').join('');
     act = `<p class="bm-q">💸 돈이 모자랍니다. 팔 땅이나 건물을 고르세요 <small>내야 할 돈 ${bmW(need)} · 현금 ${bmW(cash)} · <b>${bmW(Math.max(0, need - cash))} 더 필요</b> (한 도시에서는 호텔 → 빌딩 → 별장 → 땅 순으로 팔립니다)</small></p><div class="bm-sells">${list}</div><div class="bm-acts"><button class="btn" data-bmsell="auto">통행료 낮은 것부터 자동으로 팔기</button></div>`;
   }
-  else if (BMV.busy || g.turn !== 0) act = `<p class="bm-wait">${cur === 0 ? '내' : g.pl[cur].nm} 차례…</p>`;
+  else if (BMV.busy || g.turn !== ME) act = `<p class="bm-wait">${cur === ME ? '내' : esc(g.pl[cur].nm)} 차례…</p>`;
   else if (pd && pd.k === 'roll') act = `<button class="btn solid bm-roll" id="bmRoll">🎲 주사위 굴리기</button>`;
-  else if (pd && pd.k === 'buy'){ const c = BM_SQ[pd.sq]; act = `<p class="bm-q">${c.n}을(를) ${bmW(c.p)}에 살까요? <small>${c.sp ? `통행료 ${bmW(c.r[0])} (건물 없음)` : `대지료 ${bmW(c.r[0])}, 건물을 지으면 최대 ${bmW(BME.rentOf(pd.sq, bmLv(2, 1, 1)))}`} · 현금 ${bmW(g.pl[0].cash)}</small></p><div class="bm-acts"><button class="btn" data-bmyes="0">안 산다</button><button class="btn solid" data-bmyes="1">산다</button></div>`; }
+  else if (pd && pd.k === 'buy'){ const c = BM_SQ[pd.sq]; act = `<p class="bm-q">${c.n}을(를) ${bmW(c.p)}에 살까요? <small>${c.sp ? `통행료 ${bmW(c.r[0])} (건물 없음)` : `대지료 ${bmW(c.r[0])}, 건물을 지으면 최대 ${bmW(BME.rentOf(pd.sq, bmLv(2, 1, 1)))}`} · 현금 ${bmW(g.pl[bmMe()].cash)}</small></p><div class="bm-acts"><button class="btn" data-bmyes="0">안 산다</button><button class="btn solid" data-bmyes="1">산다</button></div>`; }
   else if (pd && pd.k === 'build'){
-    const c = BM_SQ[pd.sq], lv = g.lv[pd.sq], cash = g.pl[0].cash;
+    const c = BM_SQ[pd.sq], lv = g.lv[pd.sq], cash = g.pl[ME].cash;
     const opts = BME.canBuild(g, pd.sq).map(o => { const nl = lv + (o.k === 'v' ? 1 : o.k === 'b' ? 3 : 6); return `<button class="btn bm-sell" data-bmbuild="${o.k}" ${cash < o.cost ? 'disabled' : ''}><span>${BM_BI[o.k]} ${o.nm} ${bmW(o.cost)}</span><b class="num">→ ${bmW(BME.rentOf(pd.sq, nl))}</b></button>`; }).join('');
     act = `<p class="bm-q">${c.n}에 무엇을 지을까요? <small>지금 ${bmBldIcons(lv) || '건물 없음'} · 통행료 ${bmW(BME.rentOf(pd.sq, lv))} · 현금 ${bmW(cash)}</small></p><div class="bm-sells">${opts}</div><div class="bm-acts"><button class="btn" data-bmyes="0">그만 짓기</button></div>`;
   }
-  else if (pd && pd.k === 'coupon') act = `<p class="bm-q">🎟️ 우대권을 쓸까요? <small>${BM_SQ[pd.sq].n} 통행료 ${bmW(pd.r)} (${g.pl[pd.o].nm}에게) · 남은 우대권 ${g.pl[0].coupon}장 · 현금 ${bmW(g.pl[0].cash)}</small></p><div class="bm-acts"><button class="btn" data-bmyes="0">그냥 낸다</button><button class="btn solid" data-bmyes="1">우대권 쓴다</button></div>`;
-  else if (pd && pd.k === 'space') act = `<p class="bm-q">🚀 우주여행: 갈 칸을 누르세요${BMV.sel >= 0 && BMV.sel !== 30 ? `: <b>${BM_SQ[BMV.sel].n}</b>` : ''} <small>컬럼비아호 주인이 다른 사람이면 우주여행비 ${bmW(BM.spaceFee)}${g.pl[0].space === 2 ? ' (초대권으로 면제)' : ''}</small></p><div class="bm-acts"><button class="btn solid" id="bmSpace" ${BMV.sel < 0 || BMV.sel === 30 ? 'disabled' : ''}>여기로 가기</button></div>`;
+  else if (pd && pd.k === 'coupon') act = `<p class="bm-q">🎟️ 우대권을 쓸까요? <small>${BM_SQ[pd.sq].n} 통행료 ${bmW(pd.r)} (${g.pl[pd.o].nm}에게) · 남은 우대권 ${g.pl[ME].coupon}장 · 현금 ${bmW(g.pl[ME].cash)}</small></p><div class="bm-acts"><button class="btn" data-bmyes="0">그냥 낸다</button><button class="btn solid" data-bmyes="1">우대권 쓴다</button></div>`;
+  else if (pd && pd.k === 'space') act = `<p class="bm-q">🚀 우주여행: 갈 칸을 누르세요${BMV.sel >= 0 && BMV.sel !== 30 ? `: <b>${BM_SQ[BMV.sel].n}</b>` : ''} <small>컬럼비아호 주인이 다른 사람이면 우주여행비 ${bmW(BM.spaceFee)}${g.pl[bmMe()].space === 2 ? ' (초대권으로 면제)' : ''}</small></p><div class="bm-acts"><button class="btn solid" id="bmSpace" ${BMV.sel < 0 || BMV.sel === 30 ? 'disabled' : ''}>여기로 가기</button></div>`;
   const ab = $('#bmActBox'); if (ab.dataset.h !== act){ ab.innerHTML = act; ab.dataset.h = act; }
   $('#bmMsg').textContent = BMV.msg;
   $('#bmInfoBox').innerHTML = BMV.sel >= 0 && !(pd && pd.k === 'space') ? bmInfo(g, BMV.sel) : '';
@@ -4097,11 +4105,11 @@ async function bmPlay(ev, v0, done){
         if (dl.some(d => d)) await bmWait(260);
       } else if (e.t === 'msg'){
         BMV.msg = e.s; bmUpdate();
-        const me = e.i === 0, k = e.k;
+        const me = e.i === bmMe(), k = e.k;
         if (k === 'buy'){ bmBanner(`🚩 ${e.s}`, me ? 'gold' : '', 800); await bmWait(500); }
         else if (k === 'build'){ bmBanner(`${BM_BI[e.v] || '🏗️'} ${e.s}`, me ? 'gold' : '', 850); await bmWait(550); }
         else if (k === 'coupon'){ bmBanner('🎟️ 우대권 사용', me ? 'green' : '', 800); await bmWait(450); }
-        else if (k === 'rent'){ bmBanner(`💸 ${e.s}`, e.to === 0 ? 'green' : me ? 'red' : '', 900); if (e.v >= 40) bmShake(); await bmWait(520); }
+        else if (k === 'rent'){ bmBanner(`💸 ${e.s}`, e.to === bmMe() ? 'green' : me ? 'red' : '', 900); if (e.v >= 40) bmShake(); await bmWait(520); }
         else if (k === 'tax'){ bmBanner(`💸 ${e.s}`, '', 750); await bmWait(420); }
         else if (k === 'fund'){ bmBanner(`💰 ${e.s}`, me ? 'green' : '', 900); await bmWait(500); }
         else if (k === 'salary'){ bmFloat(bmTokEl(e.i), `+${bmW(BM.salary)}`, 'up'); await bmWait(120); }
@@ -4121,10 +4129,10 @@ async function bmPlay(ev, v0, done){
   BMV.busy = false; BMV.tok = null; BMV.view = null;
   bmUpdate();
   if (g.over){
-    const rank = BME.ranking(g).indexOf(0) + 1;
-    bmBanner(rank === 1 ? '🏆 1위!' : g.pl[0].out ? '💥 파산' : `${rank}위`, rank === 1 ? 'gold' : '', 1600);
+    const ME = bmMe(), rank = g.rank ? g.rank[ME] : BME.ranking(g).indexOf(ME) + 1;
+    bmBanner(rank === 1 ? '🏆 1위!' : g.pl[ME].out ? '💥 파산' : `${rank}위`, rank === 1 ? 'gold' : '', 1600);
     if (rank === 1) bmConfetti();
-  } else if (v0.turn !== undefined && g.turn !== v0.turn) bmBanner(g.pl[g.turn].me ? '내 차례!' : `${g.pl[g.turn].nm} 차례`, 'small ' + (g.pl[g.turn].me ? 'gold' : ''), 750);
+  } else if (v0.turn !== undefined && g.turn !== v0.turn) bmBanner(g.turn === bmMe() ? '내 차례!' : `${g.pl[g.turn].nm} 차례`, 'small ' + (g.turn === bmMe() ? 'gold' : ''), 750);
   done && done();
 }
 // 황금열쇠 카드: 뒤집어서 보여 준다
@@ -4145,6 +4153,7 @@ async function bmCard(text){
 function bmTick(){
   const g = bmG(); if (!g || !bmOpenNow() || BMV.busy) return;
   bmUpdate();
+  if (BMV.mp) return;   // 같이 하기: 컴퓨터가 없고, 진행은 심판이 한다
   if (g.over || g.pl[g.turn].me || (g.pending && g.pending.k === 'sell')) return;   // 팔 것 고르기는 남의 차례에도 사람이 해야 한다
   const gen = BMV.gen;
   BMV.busy = true; bmUpdate();
@@ -4218,6 +4227,7 @@ document.addEventListener('click', e => {
   if (t.id === 'bmGo'){ bmSetup(); return; }
   const g = bmG(); if (!g) return;
   if (t.id === 'bmClose'){ bmHide(); return; }
+  if (BMV.mp && t.id === 'bmQuit'){ mbmQuit(); return; }
   if (t.id === 'bmSpd'){ SET.bmFast = !SET.bmFast; saveSet(); bmUpdate(); return; }
   if (t.id === 'bmQuit'){
     const qr = bmQuitRank(g), qm = BM.pay[g.n][qr - 1] || 0;
@@ -4228,14 +4238,15 @@ document.addEventListener('click', e => {
   if (t.id === 'bmEnd'){ bmFinish(false); return; }
   // 팔 것 고르기 (남의 차례에 생길 수도 있다)
   if (!BMV.busy && g.pending && g.pending.k === 'sell'){
-    const k = t.dataset.bmsell !== undefined ? t.dataset.bmsell : t.dataset.bmsq !== undefined && g.own[+t.dataset.bmsq] === 0 ? t.dataset.bmsq : null;
-    if (k !== null){ bmAct(g2 => BME.sell(g2, k === 'auto' ? 'auto' : +k)); return; }
+    const k = t.dataset.bmsell !== undefined ? t.dataset.bmsell : t.dataset.bmsq !== undefined && g.own[+t.dataset.bmsq] === bmMe() ? t.dataset.bmsq : null;
+    if (k !== null && g.pending.who === bmMe()){ if (BMV.mp) return mbmSend({op:'sell', arg:k === 'auto' ? 'auto' : +k}); bmAct(g2 => BME.sell(g2, k === 'auto' ? 'auto' : +k)); return; }
   }
-  if (BMV.busy || g.turn !== 0 || g.over) { if (t.dataset.bmsq){ BMV.sel = +t.dataset.bmsq; bmRender(); } return; }
-  if (t.id === 'bmRoll'){ bmAct(g2 => BME.roll(g2, Math.random)); return; }
-  if (t.dataset.bmyes !== undefined){ bmAct(g2 => BME.decide(g2, t.dataset.bmyes === '1', -1, Math.random)); return; }
-  if (t.id === 'bmSpace'){ const to = BMV.sel; if (to >= 0 && to !== 30) bmAct(g2 => BME.decide(g2, true, to, Math.random)); return; }
-  if (t.dataset.bmbuild){ const kd = t.dataset.bmbuild; bmAct(g2 => BME.decide(g2, true, kd, Math.random)); return; }
+  if (BMV.busy || g.turn !== bmMe() || g.over) { if (t.dataset.bmsq){ BMV.sel = +t.dataset.bmsq; bmRender(); } return; }
+  const pk = g.pending && g.pending.k;
+  if (t.id === 'bmRoll'){ if (BMV.mp) return mbmSend({op:'roll'}); bmAct(g2 => BME.roll(g2, Math.random)); return; }
+  if (t.dataset.bmyes !== undefined){ if (BMV.mp) return mbmSend({op:pk, yes:t.dataset.bmyes === '1'}); bmAct(g2 => BME.decide(g2, t.dataset.bmyes === '1', -1, Math.random)); return; }
+  if (t.id === 'bmSpace'){ const to = BMV.sel; if (to >= 0 && to !== 30){ if (BMV.mp) return mbmSend({op:'space', yes:true, arg:to}); bmAct(g2 => BME.decide(g2, true, to, Math.random)); } return; }
+  if (t.dataset.bmbuild){ const kd = t.dataset.bmbuild; if (BMV.mp) return mbmSend({op:'build', yes:true, arg:kd}); bmAct(g2 => BME.decide(g2, true, kd, Math.random)); return; }
   if (t.dataset.bmsq){ const k = +t.dataset.bmsq; BMV.sel = BMV.sel === k && !(g.pending && g.pending.k === 'space') ? -1 : k; bmRender(); return; }
 });
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && bmOpenNow() && $('#modal').hidden) bmHide(); });
@@ -4876,7 +4887,7 @@ document.addEventListener('click', e => {
 const MP_GAMES = {oe:{nm:'홀짝 대결', ic:'✊', ready:true, desc:'2명 · 번갈아 구슬을 쥐고 맞히기, 3점 먼저'},
                   sl:{nm:'뱀사다리', ic:'🐍', ready:true, desc:'2~4명 · 100칸 먼저 도착하면 판돈을 모두 가져감'},
                   bj:{nm:'블랙잭 테이블', ic:'🃏', ready:true, desc:'1~5명 · 각자 같은 딜러와 대결'},
-                  bm:{nm:'주사위 세계여행', ic:'🎲', ready:false, desc:'2~4명'}};
+                  bm:{nm:'주사위 세계여행', ic:'🎲', ready:true, desc:'2~4명 · 파산할 때까지, 순위 배수'}};
 const MP_MIN = {oe:2, sl:2, bj:1, bm:2};
 const MP = {code:null, room:null, ch:null, poll:null, ref:null, refAt:0, busy:false, lastSeq:0, view:{}, payCh:null};
 const mpKey = () => ACC.user ? `seed10k.mp.${ACC.user.id}` : null;
@@ -5021,10 +5032,12 @@ function mpSet(room){
   const ev = room.state.ev;
   if (ev && ev.seq > MP.lastSeq){ MP.lastSeq = ev.seq; mpOnEv(ev, prev); }
   if (room.status === 'closed' || (room.status !== 'lobby' && mpMe() < 0 && !(prev && prev.state.seats.some(s => ACC.user && s.uid === ACC.user.id)))) {}
+  if (room.game === 'bm') mbmSync(room);
   mpRender();
-  if ((room.status === 'over' || room.status === 'closed') && !MP.view.bjHold) mpClaim();   // 블랙잭은 딜러 카드를 다 보여 준 뒤에 받는다
+  if ((room.status === 'over' || room.status === 'closed') && !MP.view.bjHold && !MP.view.bmHold) mpClaim();   // 블랙잭은 딜러 카드를 다 보여 준 뒤에 받는다
 }
 function mpOnEv(ev, prev){
+  if (ev.t === 'bm'){ if (prev && prev.code === MP.room.code && prev.status === 'play' && BMV.mp && bmOpenNow()){ (MP.view.bmQ = MP.view.bmQ || []).push(ev); MP.view.bmHold = true; mbmRun(); } return; }
   if (ev.t === 'bj_end'){ if (prev && prev.code === MP.room.code && prev.status !== 'over'){ mbjReveal(); } return; }
   if (ev.t === 'sl'){ if (prev && prev.code === MP.room.code && prev.status === 'play'){ (MP.view.slQ = MP.view.slQ || []).push(ev); mslRun(); } return; }
   if (ev.t === 'oe_reveal'){ MP.view.oeShow = ev; clearTimeout(MP.view.oeT); MP.view.oeT = setTimeout(() => { MP.view.oeShow = null; mpRender(); }, 2200); }
@@ -5048,6 +5061,7 @@ function mpForget(){
 function mpRender(){
   const ov = $('#mpOv'); if (!ov || ov.hidden) return;
   const R = MP.room, g = R ? MP_GAMES[R.game] : null;
+  if (R && R.game === 'bm' && (R.status === 'play' || R.status === 'over') && mpMe() >= 0){ mbmOpen(); return; }
   if (R && MP_UPD[R.game] && (R.status === 'play' || R.status === 'over') && MP_UPD[R.game](R)){
     const sm = ov.querySelector('.bm-ttl small'); if (sm) sm.textContent = `방 ${MP.code || ''} · 달러 통장 ${fmtUSD(S.usd)}`;
     return;
@@ -5336,6 +5350,45 @@ document.addEventListener('click', e => {
   mpAct('act', {a}, spent);
 });
 
+// 주사위 세계여행: 혼자 할 때의 보드 화면(bm.js)을 그대로 쓰고, 상태는 심판이 보낸 방 상태(BMV.mp)를 본다
+function mbmOpen(){
+  const ov = $('#mpOv'); if (ov && !ov.hidden){ ov.hidden = true; ov.innerHTML = ''; }
+  if (BMV.mp && bmOpenNow()) return bmUpdate();
+  BMV.mp = true; MP.view.bmQ = []; MP.view.bmHold = false;
+  bmOpen();
+}
+function mbmSync(room){
+  if (!BMV.mp || !bmOpenNow()) return;
+  if (room.status === 'lobby' || room.status === 'closed'){ bmHide(); BMV.mp = false; mpOpen(); return; }   // 한 판 더 → 대기실
+  if (!BMV.busy) bmUpdate();
+}
+function mbmRun(){
+  if (BMV.busy || !BMV.mp || !bmOpenNow()) return;
+  const ev = (MP.view.bmQ || []).shift();
+  if (!ev){ MP.view.bmHold = false; if (MP.room && MP.room.status === 'over') setTimeout(mpClaim, 300); bmUpdate(); return; }
+  bmPlay(ev.list || [], ev.v0, () => setTimeout(mbmRun, bmMs(200)));
+}
+function mbmSend(a){
+  if (MP.busy || BMV.busy) return;
+  BMV.sel = -1;
+  mpAct('act', a);
+}
+function mbmQuit(){
+  const g = bmG(); if (!g || g.over) return;
+  const left = g.pl.filter((p, i) => i !== bmMe() && !p.out).length, n = g.n, m = BM.pay[n][left] || 0;
+  const c = showModal(`<h2>기권할까요?</h2><p>지금 파산한 것으로 보고 <b>${left + 1}위 (${n}명 중)</b>로 끝납니다. ${m ? `판돈의 ${m}배인 ${fmtUSD(Math.round(g.stake * m * 100) / 100)}을 받습니다.` : `판돈 ${fmtUSD(g.stake)}을 잃습니다.`} 남은 사람들은 계속합니다.</p>
+    <div class="acts"><button class="btn" data-close>계속하기</button><button class="btn solid" id="mbmQuitYes">기권</button></div>`);
+  $('#mbmQuitYes').onclick = async () => { c(); const r = await mpReq(MP.code, 'leave'); if (!r.ok) return toast(r.err, true); bmHide(); BMV.mp = false; mpForget(); setTimeout(mpClaim, 800); };
+}
+function mbmOverHTML(g){
+  const R = MP.room, me = bmMe(), n = g.n, host = ACC.user && R && R.host === ACC.user.id;
+  const order = g.pl.map((p, i) => i).sort((a, b) => (g.rank ? g.rank[a] - g.rank[b] : 0));
+  const rows = order.map(i => { const rk = g.rank ? g.rank[i] : 0, m = BM.pay[n][rk - 1] || 0; return `<div><span>${rk}위 ${esc(i === me ? '나' : g.pl[i].nm)}${R && R.state.seats[i] && R.state.seats[i].left ? ' (기권)' : ''}</span><b class="num">${g.pl[i].out ? '파산' : '자산 ' + bmW(BME.assets(g, i))} · ${m}배</b></div>`; }).join('');
+  const myM = g.rank ? BM.pay[n][g.rank[me] - 1] || 0 : 0;
+  return `<p class="bm-q">${g.rank && g.rank[me] === 1 ? '🏆 ' : ''}${g.rank ? g.rank[me] : '?'}위 · ${fmtUSD(Math.round(g.stake * myM * 100) / 100)}을 받습니다 (판돈 ${fmtUSD(g.stake)})</p><div class="bd">${rows}</div>
+    <div class="bm-acts">${host ? `<button class="btn solid" id="mpAgain">한 판 더 (${fmtUSD(R.stake)})</button>` : '<p class="bm-wait">방장이 한 판 더 열면 다시 참가할 수 있습니다</p>'}</div>`;
+}
+
 /* ───────── 관리 탭 (관리자 계정에만 보인다) ─────────
    관리자 여부는 Supabase의 seed10k_admins 표가 정한다 (사이트 코드에 이메일을 넣지 않는다).
    다른 계정의 기록을 읽는 권한도 데이터베이스 정책(seed10k_is_admin)이 막고 연다. 화면을 고쳐도 일반 계정은 읽을 수 없다.
@@ -5384,7 +5437,7 @@ function renderAdmin(){
   const us = ADM.users === null ? '' : ADM.users.length ? `<ul class="adm-us">${ADM.users.map(u => `<li><button class="adm-u ${u.user_id === ADM.uid ? 'on' : ''}" data-admu="${u.user_id}"><b>${esc(u.nickname || '(닉네임 없음)')}</b><small>${esc(u.email || '')}</small><small class="muted">가입 ${admT(u.joined)}${u.last_save ? ` · 마지막 저장 ${admT(u.last_save)}` : ''}</small></button></li>`).join('')}</ul>` : '<p class="empty">찾은 계정이 없습니다.</p>';
   v.innerHTML = `<div class="stack">
     <section class="card"><div class="card-h"><h2>🚨 부정행위 의심 알림</h2><small>${ADM.unseen ? `<b class="down">확인 안 함 ${ADM.unseen}건</b>` : '모두 확인함'}</small></div>
-      <p class="muted" style="margin:0 0 8px">게임 서버가 판이 끝날 때 확인해 적습니다. 홀짝 대결: 같은 상대에게 ${WATCH_ADM.oe}연승(이후 5판마다). 블랙잭 테이블: 버스트할 수 없는 11 이하에서 직접 스탠드한 판이 ${WATCH_ADM.bj}판 연속. 주사위 세계여행(돈이 있는데 땅 안 사기 ${WATCH_ADM.bm}회 이상)은 그 멀티플레이가 생길 때 같이 확인합니다.</p>
+      <p class="muted" style="margin:0 0 8px">게임 서버가 판이 끝날 때 확인해 적습니다. 홀짝 대결: 같은 상대에게 ${WATCH_ADM.oe}연승(이후 5판마다). 블랙잭 테이블: 버스트할 수 없는 11 이하에서 직접 스탠드한 판이 ${WATCH_ADM.bj}판 연속. 주사위 세계여행: 돈이 있는데 직접 '안 산다'를 고른 것이 한 판에 ${WATCH_ADM.bm}번(이후 5번마다).</p>
       ${al ? `<ul class="adm-als">${al}</ul>` : '<p class="empty">알림이 없습니다.</p>'}
       ${ADM.unseen ? '<div class="mg-foot"><button class="btn" id="admSeenAll">모두 확인함</button></div>' : ''}</section>
     <section class="card"><div class="card-h"><h2>🔎 유저 검색</h2><small>이메일이나 닉네임 일부</small></div>
@@ -7187,7 +7240,19 @@ function whoUpdate(){
   const u = ACC.user, nm = u ? (ACC.nick || (u.email || '').split('@')[0] || '계정') : '';
   b.hidden = !u; b.querySelector('span').textContent = nm; b.title = u ? `${nm} (${u.email || ''}) · 계정 설정` : '';
 }
-document.addEventListener('click', e => { if (e.target.closest('#whoBtn')){ go('info'); setTimeout(() => { const el = $('#btnLogout'); if (el) el.closest('.set-row').scrollIntoView({block:'center', behavior:'smooth'}); }, 60); } });
+// 오른쪽 위 계정 이름: 계정 전환 창 / 왼쪽 위 로고: 홈
+function whoOpen(){
+  if (!ACC.user) return;
+  const others = acctListHTML('btn acct');
+  const c = showModal(`<h2>계정 전환</h2><p class="muted" style="margin:0 0 10px">지금 계정: <b>${esc(ACC.nick || ACC.user.email || '')}</b>${ACC.nick ? ` · ${esc(ACC.user.email || '')}` : ''}</p>
+    ${others ? `<div class="acct-list who-list">${others}</div>` : '<p class="muted">이 기기에서 로그인했던 다른 계정이 없습니다.</p>'}
+    <div class="acts"><button class="btn" data-close>닫기</button><button class="btn" id="btnLogout">로그아웃</button><button class="btn solid" id="btnAcctAdd">＋ 계정 추가</button></div>`);
+  $$('#modal [data-acct], #modal #btnLogout, #modal #btnAcctAdd').forEach(b => b.addEventListener('click', () => c()));   // 창을 닫고 나서 원래 동작
+}
+document.addEventListener('click', e => {
+  if (e.target.closest('#whoBtn')){ whoOpen(); return; }
+  if (e.target.closest('.top .brand')){ if ($('#modal').hidden) go('home'); }
+});
 function renderRankCard(){ const c = $('#rankCard'); if (c) c.innerHTML = rankCardHTML(); }
 async function saveNickname(v){
   v = String(v || '').trim();

@@ -14,6 +14,7 @@
 // 멀티플레이가 제한된 계정(seed10k_mp_bans)은 방을 만들거나 들어올 수 없다.
 
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
+import { BM } from "./bm_engine.js";
 import { handle, tick, resultOf, streakOf, streakHit, newFlags, WATCH, bjLowStreak } from "./mp_core.js";
 
 const BASE = (Deno.env.get("SUPABASE_URL") || "").replace(/\/+$/, "");
@@ -54,7 +55,7 @@ async function save(out: { room: Room; priv: any; payouts?: any[] }, room0: Room
   if (room.status === "closed") { rooms.delete(room.code); privs.delete(room.code); }
   else { rooms.set(room.code, room); privs.set(room.code, out.priv || {}); }
   // 기록·알림은 실패해도 게임은 계속된다
-  watch(room0, room).catch((e) => console.error("[seed10k-ref] 기록·알림 실패:", String((e as Error)?.message || e).slice(0, 300)));
+  watch(room0, room, out.priv || {}).catch((e) => console.error("[seed10k-ref] 기록·알림 실패:", String((e as Error)?.message || e).slice(0, 300)));
 }
 
 /* ── 판 결과 기록과 악용 의심 알림 ── */
@@ -64,7 +65,7 @@ async function alert(a: { kind: string; game: string; code: string; mode: string
   console.log("[seed10k-ref] 알림:", a.msg);
   if (NTFY) await fetch("https://ntfy.sh/", { method: "POST", body: JSON.stringify({ topic: NTFY, title: "SEED 10K 부정행위 의심", message: a.msg, tags: ["rotating_light"] }), signal: AbortSignal.timeout(10_000) }).catch(() => {});
 }
-async function watch(room0: Room | undefined, room: Room) {
+async function watch(room0: Room | undefined, room: Room, priv: any) {
   const nick = (i: number) => (room.state.seats[i] || {}).nick || "?";
   for (const f of newFlags(room0, room)) {
     await alert({ kind: f.kind, game: room.game, code: room.code, mode: room.mode, uid: room.state.seats[f.seat]?.uid, msg: f.msg, detail: f });
@@ -73,6 +74,13 @@ async function watch(room0: Room | undefined, room: Room) {
   const res = resultOf(room);
   await rest("POST", "seed10k_mp_results", [res], "return=minimal");
   if (room.game === "bj") await bjWatch(room, res);
+  if (room.game === "bm") {   // 주사위 세계여행: 혼자 할 때처럼 판 전체 기록을 각자의 seed10k_bmlog에 남긴다
+    const g = room.state.g, n = room.state.seats.length, at = new Date().toISOString();
+    const standings = g.pl.map((p: any, i: number) => ({ nm: p.nm, rank: g.rank[i], out: p.out, outAt: p.outAt || 0, cash: p.cash })).sort((a: any, b: any) => a.rank - b.rank);
+    await rest("POST", "seed10k_bmlog", room.state.seats.map((s: any, i: number) => ({ user_id: s.uid, at, mode: room.mode, n, stake: room.stake,
+      pay: Math.round(room.stake * (BM.pay[n][g.rank[i] - 1] || 0) * 100) / 100,
+      rank: g.rank[i], forfeit: !!s.left, il: room.il, rounds: g.round || 0, standings, log: (priv.rec || []).slice(-6000) })), "return=minimal");
+  }
   if (room.game === "oe" && res.pair && res.winner) {   // 홀짝: 같은 상대에게 계속 이기면 (부계정이 일부러 져 주는지)
     const rows = await rest("GET", `seed10k_mp_results?game=eq.oe&pair=eq.${encodeURIComponent(res.pair)}&order=id.desc&limit=60&select=winner`) || [];
     const n = streakOf(rows);

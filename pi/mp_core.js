@@ -10,6 +10,8 @@
 //   state.ev: {seq, ...}       화면이 연출할 마지막 사건 (seq가 바뀌면 새 사건)
 // payouts: [{user_id, amount, cost, il, note}]  끝나거나 환불할 때 각자 받을 돈 (사이트가 '받기'로 가져간다)
 
+import { BM, BME } from "./bm_engine.js";   // 주사위 세계여행 규칙 (사이트 bm.js에서 떼어 낸 같은 코드)
+
 export const LIMITS = {   // 사이트의 GAM과 같다 (판돈 한도: 평소 off, 불법 모드 on)
   oe: {nm: "홀짝", min: 1, off: 10, on: 100, minP: 2, maxP: 2},
   sl: {nm: "뱀사다리", min: 5, off: 50, on: 500, minP: 2, maxP: 4},
@@ -400,3 +402,103 @@ export function bjLowStreak(rows, uid) {
   for (const r of rows) { const i = (r.uids || []).indexOf(uid); if (i < 0 || !(r.summary && r.summary.low && r.summary.low[i])) break; n++; }
   return n;
 }
+
+/* ───────── 주사위 세계여행 (2~4명, 사람끼리) ─────────
+   혼자 할 때와 같은 규칙(bm_engine.js = 사이트 bm.js의 규칙 부분)으로, 한 명만 남을 때까지(나머지가 모두 파산할 때까지) 한다.
+   순위 배수도 같다: 2명 2·0배, 3명 2.5·0.5·0배, 4명 3·1·0·0배 (평균 1배).
+   황금열쇠 순서(deck)와 판 전체 기록(rec)은 숨긴 상태(priv)에 둔다 (다음 카드를 미리 볼 수 없게).
+   고를 때마다 30초. 넘기면 컴퓨터와 같은 판단으로 대신 한다 (사기·우대권·우주여행·팔기), 짓기는 그만둔다.
+   진행 중에 나가면 그 자리에서 파산한 것으로 본다 (혼자 할 때 기권과 같다).
+   의심 확인: 돈이 있는데(땅값 이상) 직접 '안 산다'를 고른 수를 세어 5번마다 알림 */
+const BM_TURN_MS = 30_000;
+const bmLoad = (room, priv) => ({...room.state.g, deck: priv.deck, rec: priv.rec || []});
+function bmStore(room, priv, g) { const {deck, rec, ...pub} = g; priv.deck = deck; priv.rec = rec; room.state.g = pub; }
+const bmV0 = (g) => ({...BME.view(g), pos: g.pl.map((p) => p.pos), turn: g.turn});
+export const bmActor = (g) => (g.pending && g.pending.k === "sell" ? g.pending.who : g.turn);
+GAMES.bm = {
+  init(room, priv, now, rnd) {
+    const st = room.state, n = st.seats.length;
+    const g = BME.newGame(n, room.stake, rnd);
+    g.multi = true; g.nobuy = Array(n).fill(0);
+    g.pl.forEach((p, i) => { p.nm = st.seats[i].nick; p.me = true; });
+    g.log = []; g.rec = [];
+    BME.rec(g, `시작 (같이 하기): ${n}명 ${st.seats.map((s) => s.nick).join(", ")}, 판돈 ${room.stake}달러`);
+    BME.log(g, `${g.pl[g.turn].nm}부터 시작`);
+    g.pending = {k: "roll"};
+    bmStore(room, priv, g);
+    st.deadline = now + BM_TURN_MS;
+  },
+  act(room, priv, me, a, now, rnd) {
+    const st = room.state, g = bmLoad(room, priv), pd = g.pending;
+    if (g.over) return {err: "끝난 판입니다"};
+    if (me !== bmActor(g)) return {err: "내 차례가 아닙니다"};
+    const v0 = bmV0(g); let ev;
+    const op = a.op;
+    if (op === "roll") { if (!pd || pd.k !== "roll") return {err: "지금은 주사위를 굴릴 때가 아닙니다"}; ev = BME.roll(g, rnd); }
+    else if (op === "sell") {
+      if (!pd || pd.k !== "sell") return {err: "팔 때가 아닙니다"};
+      if (a.arg !== "auto" && !(Number.isInteger(a.arg) && g.own[a.arg] === me)) return {err: "내 땅이 아닙니다"};
+      ev = BME.sell(g, a.arg === "auto" ? "auto" : a.arg, [], rnd);
+    } else if (["buy", "build", "coupon", "space"].includes(op)) {
+      if (!pd || pd.k !== op) return {err: "지금 고를 수 없습니다"};
+      if (op === "build" && a.yes && !["v", "b", "h"].includes(a.arg)) return {err: "지을 것이 잘못됐습니다"};
+      if (op === "space" && !(Number.isInteger(a.arg) && a.arg >= 0 && a.arg < 40 && a.arg !== 30)) return {err: "갈 칸이 잘못됐습니다"};
+      if (op === "buy" && !a.yes) {   // 살 수 있을 때만(현금 ≥ 땅값) 묻는다
+        g.nobuy[me] = (g.nobuy[me] || 0) + 1;
+        if (streakHit(g.nobuy[me], WATCH.bmNoBuy)) (st.flags = st.flags || []).push({kind: "bm_nobuy", seat: me, n: g.nobuy[me],
+          msg: `주사위 세계여행: ${st.seats[me].nick}이(가) 돈이 있는데 땅을 안 산 것이 ${g.nobuy[me]}번 (판돈 $${room.stake}, 방 ${room.code})`});
+      }
+      ev = BME.decide(g, !!a.yes, op === "build" || op === "space" ? a.arg : -1, rnd);
+    } else return {err: "모르는 행동입니다"};
+    return GAMES.bm.after(room, priv, g, ev, v0, now, false);
+  },
+  after(room, priv, g, ev, v0, now, auto) {
+    bmStore(room, priv, g);
+    bump(room, {t: "bm", list: ev, v0, auto: !!auto});
+    if (g.over) return GAMES.bm.finish(room, priv, g, "한 명만 남음");
+    room.state.deadline = now + BM_TURN_MS;
+    return {};
+  },
+  finish(room, priv, g, why) {
+    const st = room.state, n = st.seats.length, r = BME.ranking(g);
+    g.over = true; g.pending = null; g.win = r[0]; g.why = why; g.rank = st.seats.map((s, i) => r.indexOf(i) + 1);
+    BME.rec(g, `끝: ${r.map((i, k) => `${k + 1}.${g.pl[i].nm}${g.pl[i].out ? `(파산 ${g.pl[i].outAt}번째)` : `(자산 ${BME.assets(g, i)})`}`).join(" ")}`);
+    bmStore(room, priv, g);
+    room.status = "over"; st.deadline = null;
+    return {payouts: st.seats.map((s, i) => {
+      const rank = g.rank[i], m = BM.pay[n][rank - 1] || 0;
+      return {user_id: s.uid, amount: r2(room.stake * m), cost: room.stake, il: room.il, note: `주사위 세계여행 ${n}명 ${rank}위${s.left ? " (기권)" : ""}`};
+    })};
+  },
+  auto(room, priv, now, rnd) {
+    const g = bmLoad(room, priv), pd = g.pending, i = g.turn, p = g.pl[i], v0 = bmV0(g);
+    let ev;
+    if (!pd || pd.k === "roll") ev = BME.roll(g, rnd);
+    else if (pd.k === "sell") ev = BME.sell(g, "auto", [], rnd);
+    else if (pd.k === "buy") ev = BME.decide(g, BME.botBuy(g, i, pd.sq), -1, rnd);
+    else if (pd.k === "build") ev = BME.decide(g, false, -1, rnd);
+    else if (pd.k === "coupon") ev = BME.decide(g, pd.r >= 300 || pd.r >= p.cash * 0.3, -1, rnd);
+    else if (pd.k === "space") ev = BME.decide(g, true, BME.botSpace(g, i), rnd);
+    else ev = [];
+    BME.rec(g, `(시간 초과: ${g.pl[i].nm} 대신 결정)`);
+    return GAMES.bm.after(room, priv, g, ev, v0, now, true);
+  },
+  forfeit(room, priv, me, now) {
+    const g = bmLoad(room, priv), v0 = bmV0(g), ev = [], pd = g.pending;
+    if (g.pl[me].out) return [];
+    const mySell = pd && pd.k === "sell" && pd.who === me, otherSell = pd && pd.k === "sell" && !mySell, myTurn = g.turn === me;
+    if (!otherSell) g.pending = null;                       // 내가 고를 차례였던 것은 없앤다 (남이 팔 것을 고르는 중이면 그대로)
+    BME.bankrupt(g, me, mySell ? pd.pays[0].to : -1, ev);   // 그 자리에서 파산: 빚 정리 중이었으면 남은 현금은 받을 사람에게
+    BME.log(g, `${g.pl[me].nm} 기권`);
+    if (BME.alive(g) <= 1) g.over = true;
+    else if (mySell) BME.afterAction(g);
+    else if (myTurn && !otherSell) BME.next(g);
+    const r = GAMES.bm.after(room, priv, g, ev, v0, now, false);
+    if (g.over && !r.payouts) return GAMES.bm.finish(room, priv, g, "한 명만 남음").payouts;
+    return r.payouts || [];
+  },
+  summary(room) {
+    const g = room.state.g; if (!g) return null;
+    return {seats: room.state.seats.map((s) => s.nick), rank: g.rank || null, nobuy: g.nobuy, rounds: g.round};
+  },
+};
