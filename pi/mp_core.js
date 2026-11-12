@@ -89,9 +89,9 @@ export function handle(room0, priv0, req, now = Date.now(), rnd = Math.random) {
       const L = LIMITS[room.game];
       if (st.seats.length < L.minP) return {err: `${L.minP}명 이상 있어야 시작할 수 있습니다`};
       room.status = "play";
-      G.init(room, priv, now, rnd);
-      bump(room, {t: "start"});
-      return {room, priv, payouts: [], res: {}};
+      const r = G.init(room, priv, now, rnd);                                     // 블랙잭은 딜러 블랙잭이면 바로 끝난다
+      if (room.status === "play") bump(room, {t: "start"});
+      return {room, priv, payouts: (r && r.payouts) || [], res: {}};
     }
     case "act": {
       if (room.status !== "play") return {err: "진행 중인 판이 아닙니다"};
@@ -274,4 +274,129 @@ export const streakHit = (n, k = WATCH.oeStreak) => n >= k && (n - k) % k === 0;
 export function newFlags(room0, room) {
   const a = (room0 && room0.state && room0.state.flags || []).length, b = (room && room.state && room.state.flags) || [];
   return b.length >= a ? b.slice(a) : b;   // 줄었으면 새 판이 시작된 것
+}
+
+/* ───────── 블랙잭 테이블 (1~5명, 모두 같은 딜러와) ─────────
+   혼자 할 때와 같은 규칙: 6벌을 판마다 새로 섞고, 딜러는 소프트 17 포함 17 이상에서 선다(S17).
+   딜러 업카드가 A·10이면 먼저 블랙잭인지 확인(피크). 더블은 처음 두 장일 때(스플릿 뒤에도), 스플릿은 같은 숫자 두 장, 최대 4손, A는 한 장씩만.
+   받는 돈(판돈 포함): 이기면 2배, 비기면 1배, 블랙잭 2.5배(3:2). 플레이어끼리 돈이 오가지 않고 각자 딜러와 정산한다.
+   자리 순서대로 차례가 돈다. 한 번 고를 때마다 20초, 넘기면 스탠드. 진행 중에 나가면 그 사람 손은 모두 진다.
+   더블·스플릿 추가 판돈은 사이트가 먼저 내고 요청한다 (cost에 더해 정산 때 받는 돈과 같이 적는다).
+   의심 확인: 버스트할 수 없는 11 이하에서 직접 스탠드한 판을 low[자리]로 남긴다 (심판이 연속 판 수를 센다) */
+export const BJM = {decks: 6, bjPay: 2.5, maxHands: 4, turnMs: 20_000};
+const bjVal = (c) => Math.min(10, c % 13 + 1), bjRank = (c) => c % 13 + 1;
+export function bjTotal(cards) { let t = 0, a = 0; for (const c of cards) { const v = bjVal(c); t += v; if (v === 1) a++; } const soft = a > 0 && t + 10 <= 21; return {t: soft ? t + 10 : t, soft}; }
+const bjIsBJ = (cards) => cards.length === 2 && bjTotal(cards).t === 21;
+export function bjCan(P, cur, a) {
+  const h = P.hands[cur]; if (!h || h.done) return false;
+  const two = h.cards.length === 2;
+  if (a === "hit" || a === "stand") return true;
+  if (a === "double") return two;
+  if (a === "split") return two && bjRank(h.cards[0]) === bjRank(h.cards[1]) && P.hands.length < BJM.maxHands && !(h.split && bjRank(h.cards[0]) === 1);
+  return false;
+}
+const bjDraw = (priv) => priv.shoe[priv.ix++];
+GAMES.bj = {
+  init(room, priv, now, rnd) {
+    const st = room.state, n = st.seats.length, N = 52 * BJM.decks, shoe = Array.from({length: N}, (_, k) => k);
+    for (let i = N - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [shoe[i], shoe[j]] = [shoe[j], shoe[i]]; }
+    priv.shoe = shoe; priv.ix = 0;
+    const first = st.seats.map(() => bjDraw(priv)), up = bjDraw(priv), second = st.seats.map(() => bjDraw(priv));
+    priv.hole = bjDraw(priv);
+    const g = st.g = {dealer: [up], hole: true, players: st.seats.map((s, i) => ({hands: [{cards: [first[i], second[i]], bet: room.stake, done: false, dbl: false, split: false, res: null}], cost: room.stake, pay: 0})),
+      turn: 0, cur: 0, phase: "play", low: Array(n).fill(false), log: []};
+    if ((bjVal(up) === 1 || bjVal(up) === 10) && bjIsBJ([up, priv.hole])) {   // 딜러 블랙잭: 바로 정산
+      g.log.push("딜러 블랙잭");
+      g.players.forEach((P) => P.hands.forEach((h) => { h.done = true; }));
+      return GAMES.bj.dealer(room, priv, now);
+    }
+    g.players.forEach((P, i) => { if (bjIsBJ(P.hands[0].cards)) { P.hands[0].done = true; g.log.push(`${st.seats[i].nick} 블랙잭`); } });
+    g.turn = -1;
+    return GAMES.bj.advance(room, priv, now);
+  },
+  // 다음으로 고를 손을 찾는다. 없으면 딜러 차례
+  advance(room, priv, now) {
+    const st = room.state, g = st.g;
+    for (let i = Math.max(0, g.turn); i < g.players.length; i++) {
+      if (st.seats[i].left) continue;
+      const k = g.players[i].hands.findIndex((h) => !h.done);
+      if (k >= 0) { g.turn = i; g.cur = k; st.deadline = now + BJM.turnMs; return {}; }
+    }
+    return GAMES.bj.dealer(room, priv, now);
+  },
+  dealer(room, priv, now) {
+    const st = room.state, g = st.g;
+    g.dealer.push(priv.hole); g.hole = false; g.turn = -1;
+    const live = g.players.some((P, i) => !st.seats[i].left && P.hands.some((h) => bjTotal(h.cards).t <= 21));
+    if (live && !bjIsBJ(g.dealer)) while (bjTotal(g.dealer).t < 17) g.dealer.push(bjDraw(priv));
+    const d = bjTotal(g.dealer).t, dbj = bjIsBJ(g.dealer);
+    g.players.forEach((P, i) => {
+      let pay = 0;
+      for (const h of P.hands) {
+        const p = bjTotal(h.cards).t, pbj = !h.split && P.hands.length === 1 && bjIsBJ(h.cards);
+        let m;
+        if (st.seats[i].left) m = 0;
+        else if (dbj) m = pbj ? 1 : 0;
+        else if (pbj) m = BJM.bjPay;
+        else if (p > 21) m = 0;
+        else if (d > 21 || p > d) m = 2;
+        else if (p === d) m = 1;
+        else m = 0;
+        h.res = st.seats[i].left ? "lose" : pbj && m === BJM.bjPay ? "bj" : m === 2 ? "win" : m === 1 ? "push" : "lose";
+        pay += h.bet * m;
+      }
+      P.pay = r2(pay);
+    });
+    g.phase = "over"; room.status = "over"; st.deadline = null;
+    bump(room, {t: "bj_end"});
+    return {payouts: st.seats.map((s, i) => {
+      const P = g.players[i], net = r2(P.pay - P.cost);
+      return {user_id: s.uid, amount: P.pay, cost: P.cost, il: room.il,
+        note: `블랙잭 테이블 ${s.left ? "기권" : P.hands.some((h) => h.res === "bj") ? "블랙잭" : net > 0 ? "승" : net === 0 ? "무" : "패"}${P.hands.length > 1 ? ` (${P.hands.length}손)` : ""}`};
+    })};
+  },
+  act(room, priv, me, a, now) {
+    const st = room.state, g = st.g;
+    if (me !== g.turn) return {err: "내 차례가 아닙니다"};
+    return GAMES.bj.doAct(room, priv, me, a.a, now, false);
+  },
+  doAct(room, priv, me, a, now, auto) {
+    const st = room.state, g = st.g, P = g.players[me], h = P.hands[g.cur];
+    if (!bjCan(P, g.cur, a)) return {err: "지금 할 수 없는 행동입니다"};
+    const nm = st.seats[me].nick, t0 = bjTotal(h.cards).t;
+    if (a === "hit") { h.cards.push(bjDraw(priv)); if (bjTotal(h.cards).t >= 21) h.done = true; }
+    else if (a === "stand") { h.done = true; if (!auto && t0 <= 11) g.low[me] = true; }
+    else if (a === "double") { P.cost = r2(P.cost + h.bet); h.bet = r2(h.bet * 2); h.dbl = true; h.cards.push(bjDraw(priv)); h.done = true; }
+    else if (a === "split") {
+      const c2 = h.cards.pop(), ace = bjRank(c2) === 1;
+      const h2 = {cards: [c2], bet: h.bet, done: false, dbl: false, split: true, res: null};
+      h.split = true; P.cost = r2(P.cost + h.bet);
+      h.cards.push(bjDraw(priv)); h2.cards.push(bjDraw(priv));
+      P.hands.splice(g.cur + 1, 0, h2);
+      if (ace) { h.done = true; h2.done = true; }
+      else { if (bjTotal(h.cards).t === 21) h.done = true; if (bjTotal(h2.cards).t === 21) h2.done = true; }
+    }
+    g.log.push(`${nm} ${({hit: "히트", stand: "스탠드", double: "더블", split: "스플릿"})[a]}${auto ? "(시간 초과)" : ""}`);
+    if (g.log.length > 30) g.log.splice(0, g.log.length - 30);
+    bump(room, {t: "bj", who: me, a});
+    return GAMES.bj.advance(room, priv, now) || {};
+  },
+  auto(room, priv, now) { const g = room.state.g; return g.turn >= 0 ? GAMES.bj.doAct(room, priv, g.turn, "stand", now, true) : {}; },
+  forfeit(room, priv, me, now) {
+    const st = room.state, g = st.g;
+    g.players[me].hands.forEach((h) => { h.done = true; });
+    g.log.push(`${st.seats[me].nick} 나감`);
+    if (g.turn === me) { const r = GAMES.bj.advance(room, priv, now); return (r && r.payouts) || []; }
+    return [];
+  },
+  summary(room) {
+    const g = room.state.g; if (!g) return null;
+    return {seats: room.state.seats.map((s) => s.nick), net: g.players.map((P) => r2(P.pay - P.cost)), low: g.low, dealer: bjTotal(g.dealer).t};
+  },
+};
+// 블랙잭 '계속 스탠드': rows는 이 사람이 낀 블랙잭 판(최근 것부터). 11 이하 직접 스탠드가 몇 판 연속인가
+export function bjLowStreak(rows, uid) {
+  let n = 0;
+  for (const r of rows) { const i = (r.uids || []).indexOf(uid); if (i < 0 || !(r.summary && r.summary.low && r.summary.low[i])) break; n++; }
+  return n;
 }

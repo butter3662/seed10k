@@ -637,6 +637,10 @@ html.gated body{overflow:hidden}
 .bj-row{display:grid;grid-template-columns:42px 1fr;gap:8px;align-items:start}
 .bj-who{font-size:12px;font-weight:800;opacity:.75;padding-top:22px}
 .bj-hands{display:flex;flex-wrap:wrap;gap:10px}
+.mbj-row{grid-template-columns:54px 1fr;border-top:1px solid rgba(255,255,255,.12);padding-top:8px}
+.mbj-row .bj-who{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:grid;gap:2px}
+.mbj-row .bj-who small{font-size:10.5px;font-weight:800;color:#FFD66B;opacity:1}
+.mbj-row.me .bj-who{opacity:1;color:#FFD66B}.mbj-row.left{opacity:.45}
 .bj-hand{display:flex;flex-direction:column;gap:4px;padding:4px;border-radius:10px;border:2px solid transparent}
 .bj-hand.cur{border-color:var(--brass);background:rgba(255,255,255,.06)}
 .bj-cards{display:flex;min-height:66px}
@@ -1029,7 +1033,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '2.1.19';
+const VERSION = '2.1.20';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -4767,9 +4771,9 @@ const BJE = {
 function bjS(){ if (!S.bj || typeof S.bj !== 'object') S.bj = {cur:null, hist:[]}; return S.bj; }
 const BJV = {shown:null, t:null, anim:false, seen:new Set(), now:new Set()};   // shown: 딜러 카드를 몇 장까지 보였는지. seen: 이미 그린 카드(새 카드만 날아오게)
 const BJ_SUIT = ['♠', '♥', '♦', '♣'];
-function bjCardHTML(c, back, k, key){
-  const id = key + (back ? 'b' : 'f'); BJV.now.add(id);
-  const fresh = !BJV.seen.has(id), flip = fresh && !back && BJV.seen.has(key + 'b');   // 엎어 둔 카드를 뒤집을 때는 뒤집기 연출
+function bjCardHTML(c, back, k, key, V = BJV){   // V: 어떤 카드를 이미 그렸는지 (혼자 하기 BJV / 같이 하기 MP.view.bjV)
+  const id = key + (back ? 'b' : 'f'); V.now.add(id);
+  const fresh = !V.seen.has(id), flip = fresh && !back && V.seen.has(key + 'b');   // 엎어 둔 카드를 뒤집을 때는 뒤집기 연출
   const cl = fresh ? (flip ? ' flip' : ' new') : '';
   if (back) return `<span class="bjc back${cl}" style="--k:${k}"></span>`;
   const r = BJE.rank(c), s = Math.floor(c / 13) % 4, red = s === 1 || s === 2;
@@ -4871,7 +4875,7 @@ document.addEventListener('click', e => {
    판돈은 들어갈 때 이 기기 통장에서 내고, 돌려받거나 이긴 돈은 받기로 들어온다 */
 const MP_GAMES = {oe:{nm:'홀짝 대결', ic:'✊', ready:true, desc:'2명 · 번갈아 구슬을 쥐고 맞히기, 3점 먼저'},
                   sl:{nm:'뱀사다리', ic:'🐍', ready:true, desc:'2~4명 · 100칸 먼저 도착하면 판돈을 모두 가져감'},
-                  bj:{nm:'블랙잭', ic:'🃏', ready:false, desc:'1~5명'},
+                  bj:{nm:'블랙잭 테이블', ic:'🃏', ready:true, desc:'1~5명 · 각자 같은 딜러와 대결'},
                   bm:{nm:'주사위 세계여행', ic:'🎲', ready:false, desc:'2~4명'}};
 const MP_MIN = {oe:2, sl:2, bj:1, bm:2};
 const MP = {code:null, room:null, ch:null, poll:null, ref:null, refAt:0, busy:false, lastSeq:0, view:{}, payCh:null};
@@ -5013,13 +5017,15 @@ function mpSet(room){
   const prev = MP.room;
   if (prev && prev.code === room.code && (room.ver || 0) < (prev.ver || 0)) return;   // 늦게 온 옛 상태는 버린다
   MP.room = room;
+  if (room.status === 'lobby'){ MP.view.bjV = null; MP.view.bjHold = false; }   // 새 판이면 카드를 처음부터 날아오게
   const ev = room.state.ev;
   if (ev && ev.seq > MP.lastSeq){ MP.lastSeq = ev.seq; mpOnEv(ev, prev); }
   if (room.status === 'closed' || (room.status !== 'lobby' && mpMe() < 0 && !(prev && prev.state.seats.some(s => ACC.user && s.uid === ACC.user.id)))) {}
   mpRender();
-  if (room.status === 'over' || room.status === 'closed') mpClaim();
+  if ((room.status === 'over' || room.status === 'closed') && !MP.view.bjHold) mpClaim();   // 블랙잭은 딜러 카드를 다 보여 준 뒤에 받는다
 }
 function mpOnEv(ev, prev){
+  if (ev.t === 'bj_end'){ if (prev && prev.code === MP.room.code && prev.status !== 'over'){ mbjReveal(); } return; }
   if (ev.t === 'sl'){ if (prev && prev.code === MP.room.code && prev.status === 'play'){ (MP.view.slQ = MP.view.slQ || []).push(ev); mslRun(); } return; }
   if (ev.t === 'oe_reveal'){ MP.view.oeShow = ev; clearTimeout(MP.view.oeT); MP.view.oeT = setTimeout(() => { MP.view.oeShow = null; mpRender(); }, 2200); }
 }
@@ -5262,6 +5268,74 @@ async function mslRun(){
 }
 window.addEventListener('resize', () => { if (MP.room && $('#mslBoard')) MP_UPD.sl(MP.room); });
 
+// 블랙잭 테이블 (1~5명이 같은 딜러와). 카드는 심판이 나눠 주고, 딜러가 엎어 둔 카드는 끝날 때까지 심판만 안다
+function mbjReveal(){   // 끝나면 딜러 카드를 한 장씩
+  const R = MP.room; if (!R || !R.state.g) return;
+  clearTimeout(MP.view.bjT); MP.view.bjHold = true; MP.view.bjShown = 1; mpRender();
+  const n = R.state.g.dealer.length;
+  const step = () => {
+    if (!MP.room || MP.room.code !== R.code || !MP.view.bjHold){ MP.view.bjHold = false; return; }
+    MP.view.bjShown++; mpRender();
+    if (MP.view.bjShown < n) MP.view.bjT = setTimeout(step, bmMs(600));
+    else { MP.view.bjHold = false; MP.view.bjShown = null; mpRender(); setTimeout(mpClaim, 300); }
+  };
+  MP.view.bjT = setTimeout(step, bmMs(450));
+}
+function mbjBody(R){
+  const st = R.state, g = st.g, me = mpMe(), V = MP.view.bjV || (MP.view.bjV = {seen:new Set(), now:new Set()});
+  V.now = new Set();
+  const RES = {bj:['블랙잭!', 'up'], win:['승', 'up'], push:['무', ''], lose:['패', 'down']};
+  const over = R.status === 'over', shown = over && MP.view.bjShown ? Math.min(MP.view.bjShown, g.dealer.length) : g.dealer.length;
+  const revealing = over && shown < g.dealer.length, showRes = over && !revealing;
+  const dc = g.hole ? [g.dealer[0], null] : g.dealer.slice(0, Math.max(2, shown));
+  const dCards = dc.map((c, k) => bjCardHTML(c, c === null || (revealing && k >= shown), k, `d${k}`, V)).join('');
+  const dVis = dc.filter((c, k) => c !== null && !(revealing && k >= shown));
+  const dTot = dVis.length ? (over && !revealing ? `${BJE.total(dVis).t}` : bjTot(dVis)) : '';
+  const rows = st.seats.map((s, i) => {
+    const P = g.players[i], turn = !over && g.turn === i;
+    const hands = P.hands.map((h, k) => {
+      const t = BJE.total(h.cards).t, cur = turn && k === g.cur;
+      return `<div class="bj-hand ${cur ? 'cur' : ''}"><div class="bj-cards">${h.cards.map((c, j) => bjCardHTML(c, false, j, `p${i}h${k}-${j}-${c}`, V)).join('')}</div>
+        <div class="bj-meta"><b class="num">${t > 21 ? `${t} 버스트` : h.done || over ? t : bjTot(h.cards)}</b><small>${fmtUSD(h.bet)}${h.dbl ? ' · 더블' : ''}</small>${showRes && h.res ? `<em class="${RES[h.res][1]}">${RES[h.res][0]}</em>` : ''}</div></div>`;
+    }).join('');
+    return `<div class="bj-row mbj-row ${i === me ? 'me' : ''} ${s.left ? 'left' : ''}"><span class="bj-who">${esc(i === me ? '나' : s.nick)}${turn ? '<small>차례</small>' : ''}${s.left ? '<small>나감</small>' : ''}</span><div class="bj-hands">${hands}</div></div>`;
+  }).join('');
+  const P = me >= 0 ? g.players[me] : null;
+  let msg, acts = '';
+  if (showRes){
+    const net = P ? Math.round((P.pay - P.cost) * 100) / 100 : 0;
+    msg = P ? `<p class="oe-res ${cls(net)}">${st.seats[me].left ? '기권' : net > 0 ? '이겼다!' : net === 0 ? '비겼다' : '졌다'} · 받을 돈 ${fmtUSD(P.pay)} (건 돈 ${fmtUSD(P.cost)})</p>` : '';
+    const host = ACC.user && R.host === ACC.user.id;
+    acts = host ? `<button class="btn solid" id="mpAgain">한 판 더 (${fmtUSD(R.stake)})</button>` : '<p class="bm-wait">방장이 한 판 더 열면 다시 참가할 수 있습니다</p>';
+  } else if (revealing) msg = '<p class="oe-res muted">딜러 차례…</p>';
+  else if (g.turn === me && P){
+    const h = P.hands[g.cur], more = h.bet, rich = S.usd >= more, can = a => BJE.can({phase:'play', hands:P.hands, cur:g.cur}, a);
+    msg = `<p class="oe-res">${P.hands.length > 1 ? `${g.cur + 1}번째 손 · ` : ''}할 행동을 고르세요 <span class="muted" id="mpTimer"></span></p>`;
+    acts = ['hit', 'stand', 'double', 'split'].map(a => {
+      const ok = can(a) && (a === 'hit' || a === 'stand' || rich);
+      return `<button class="btn ${a === 'stand' ? 'solid' : ''}" data-mpbj="${a}" ${ok && !MP.busy ? '' : 'disabled'}>${BJ_ACT[a]}${(a === 'double' || a === 'split') && can(a) ? ` +${fmtUSD(more)}` : ''}</button>`;
+    }).join('');
+  } else msg = `<p class="oe-res muted">${g.turn >= 0 ? `${esc(st.seats[g.turn].nick)} 차례…` : '딜러 차례…'} <span id="mpTimer"></span></p>`;
+  const h = `<div class="bj-table"><div class="bj-row"><span class="bj-who">딜러</span><div class="bj-hand"><div class="bj-cards">${dCards}</div><div class="bj-meta"><b class="num">${dTot}${showRes && BJE.total(g.dealer).t > 21 ? ' 버스트' : ''}</b></div></div></div>${rows}</div>
+    ${msg}<div class="bm-acts">${acts}</div><p class="muted" style="margin:6px 0 0;font-size:12px">시간 안에 고르지 않으면 스탠드합니다 (20초)</p>`;
+  V.now.forEach(x => V.seen.add(x));
+  return h;
+}
+MP_VIEW.bj = R => `<div class="card-h"><h2>🃏 블랙잭 테이블</h2><small>판돈 ${fmtUSD(R.stake)} · ${R.state.seats.length}명 · 블랙잭 ${BJ.bjPay}배${R.il ? ' · 🚨 불법' : ''}</small></div><div id="mbjBody"></div>`;
+MP_UPD.bj = R => { const b = $('#mbjBody'); if (!b || !R.state.g) return false; mpSetH(b, mbjBody(R)); return true; };
+document.addEventListener('click', e => {
+  const t = e.target.closest('[data-mpbj]'); if (!t || MP.busy) return;
+  const R = MP.room, g = R && R.state.g, me = mpMe(), a = t.dataset.mpbj;
+  if (!g || g.turn !== me || R.status !== 'play') return;
+  let spent = 0;
+  if (a === 'double' || a === 'split'){   // 추가 판돈은 먼저 낸다 (요청이 거절되면 돌려받는다)
+    spent = g.players[me].hands[g.cur].bet;
+    if (S.usd < spent) return toast(`달러 통장에 ${fmtUSD(spent)}이 있어야 합니다`, true);
+    S.usd = Math.round((S.usd - spent) * 100) / 100; commit();
+  }
+  mpAct('act', {a}, spent);
+});
+
 /* ───────── 관리 탭 (관리자 계정에만 보인다) ─────────
    관리자 여부는 Supabase의 seed10k_admins 표가 정한다 (사이트 코드에 이메일을 넣지 않는다).
    다른 계정의 기록을 읽는 권한도 데이터베이스 정책(seed10k_is_admin)이 막고 연다. 화면을 고쳐도 일반 계정은 읽을 수 없다.
@@ -5310,7 +5384,7 @@ function renderAdmin(){
   const us = ADM.users === null ? '' : ADM.users.length ? `<ul class="adm-us">${ADM.users.map(u => `<li><button class="adm-u ${u.user_id === ADM.uid ? 'on' : ''}" data-admu="${u.user_id}"><b>${esc(u.nickname || '(닉네임 없음)')}</b><small>${esc(u.email || '')}</small><small class="muted">가입 ${admT(u.joined)}${u.last_save ? ` · 마지막 저장 ${admT(u.last_save)}` : ''}</small></button></li>`).join('')}</ul>` : '<p class="empty">찾은 계정이 없습니다.</p>';
   v.innerHTML = `<div class="stack">
     <section class="card"><div class="card-h"><h2>🚨 부정행위 의심 알림</h2><small>${ADM.unseen ? `<b class="down">확인 안 함 ${ADM.unseen}건</b>` : '모두 확인함'}</small></div>
-      <p class="muted" style="margin:0 0 8px">홀짝 대결에서 같은 상대에게 ${WATCH_ADM.oe}연승할 때마다 게임 서버가 적습니다. 블랙잭(계속 스탠드)과 주사위 세계여행(돈이 있는데 땅 안 사기 ${WATCH_ADM.bm}회 이상)은 그 게임의 멀티플레이가 생길 때 같이 확인합니다.</p>
+      <p class="muted" style="margin:0 0 8px">게임 서버가 판이 끝날 때 확인해 적습니다. 홀짝 대결: 같은 상대에게 ${WATCH_ADM.oe}연승(이후 5판마다). 블랙잭 테이블: 버스트할 수 없는 11 이하에서 직접 스탠드한 판이 ${WATCH_ADM.bj}판 연속. 주사위 세계여행(돈이 있는데 땅 안 사기 ${WATCH_ADM.bm}회 이상)은 그 멀티플레이가 생길 때 같이 확인합니다.</p>
       ${al ? `<ul class="adm-als">${al}</ul>` : '<p class="empty">알림이 없습니다.</p>'}
       ${ADM.unseen ? '<div class="mg-foot"><button class="btn" id="admSeenAll">모두 확인함</button></div>' : ''}</section>
     <section class="card"><div class="card-h"><h2>🔎 유저 검색</h2><small>이메일이나 닉네임 일부</small></div>

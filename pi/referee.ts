@@ -14,7 +14,7 @@
 // 멀티플레이가 제한된 계정(seed10k_mp_bans)은 방을 만들거나 들어올 수 없다.
 
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
-import { handle, tick, resultOf, streakOf, streakHit, newFlags, WATCH } from "./mp_core.js";
+import { handle, tick, resultOf, streakOf, streakHit, newFlags, WATCH, bjLowStreak } from "./mp_core.js";
 
 const BASE = (Deno.env.get("SUPABASE_URL") || "").replace(/\/+$/, "");
 const KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
@@ -69,9 +69,10 @@ async function watch(room0: Room | undefined, room: Room) {
   for (const f of newFlags(room0, room)) {
     await alert({ kind: f.kind, game: room.game, code: room.code, mode: room.mode, uid: room.state.seats[f.seat]?.uid, msg: f.msg, detail: f });
   }
-  if (!(room0 && room0.status === "play" && room.status === "over")) return;
+  if (!(room0 && room0.status !== "over" && room.status === "over")) return;   // 판이 막 끝났을 때만 (블랙잭은 시작하자마자 끝날 수 있다)
   const res = resultOf(room);
   await rest("POST", "seed10k_mp_results", [res], "return=minimal");
+  if (room.game === "bj") await bjWatch(room, res);
   if (room.game === "oe" && res.pair && res.winner) {   // 홀짝: 같은 상대에게 계속 이기면 (부계정이 일부러 져 주는지)
     const rows = await rest("GET", `seed10k_mp_results?game=eq.oe&pair=eq.${encodeURIComponent(res.pair)}&order=id.desc&limit=60&select=winner`) || [];
     const n = streakOf(rows);
@@ -80,6 +81,17 @@ async function watch(room0: Room | undefined, room: Room) {
       await alert({ kind: "oe_streak", game: "oe", code: room.code, mode: room.mode, uid: res.winner, other: res.uids[l],
         msg: `홀짝 대결: ${nick(w)}이(가) 같은 상대 ${nick(l)}에게 ${n}연승 (판돈 $${room.stake}, 방 ${room.code})`, detail: { n, stake: room.stake } });
     }
+  }
+}
+async function bjWatch(room: Room, res: any) {   // 블랙잭: 버스트할 수 없는 11 이하에서 직접 스탠드한 판이 이어지면
+  const low = (res.summary && res.summary.low) || [];
+  for (let i = 0; i < res.uids.length; i++) {
+    if (!low[i]) continue;
+    const uid = res.uids[i];
+    const rows = await rest("GET", `seed10k_mp_results?game=eq.bj&uids=cs.%7B${encodeURIComponent(uid)}%7D&order=id.desc&limit=60&select=uids,summary`) || [];
+    const n = bjLowStreak(rows, uid);
+    if (streakHit(n, WATCH.bjStand)) await alert({ kind: "bj_stand", game: "bj", code: room.code, mode: room.mode, uid,
+      msg: `블랙잭 테이블: ${room.state.seats[i].nick}이(가) ${n}판 연속 11 이하에서 스탠드 (판돈 $${room.stake}, 방 ${room.code})`, detail: { n } });
   }
 }
 async function banned(uid: string) {
