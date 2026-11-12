@@ -725,6 +725,7 @@ html.gated body{overflow:hidden}
 .bs-stage.bs3.bang::after{animation-duration:.25s}
 .bs-stage.bs3 .bs-count{z-index:2;text-shadow:0 1px 2px #000}
 .bs-stage.hitme::after{content:'';position:absolute;inset:0;background:radial-gradient(closest-side,transparent 40%,rgba(200,0,0,.75));animation:bsFlash .7s ease-out forwards;pointer-events:none;z-index:3}
+.bs-black{position:absolute;inset:0;z-index:6;background:#000;pointer-events:none}
 .bs-ico{display:block;width:24px;height:24px}.bs-ico svg{width:100%;height:100%;display:block}.bs-it.ro .bs-ico{width:20px;height:20px}
 .bs-quit{display:flex;justify-content:flex-end;margin-bottom:6px}.bs-quit .btn{height:34px;padding:0 14px;font-size:13px;opacity:.85}
 /* 기기의 '동작 줄이기'가 켜져 있어도 이 게임의 연출은 보여 준다 (짧고 깜빡임이 약한 것만) */
@@ -1142,7 +1143,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '2.2.0';
+const VERSION = '2.2.1';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -5290,7 +5291,7 @@ function bsTableHTML(g, me, o){
       <div class="bs-dealer ${BSV.lay && BSV.lay.in && BSV.lay.in.length ? 'feed' : ''} ${BSV.fx === 'rack' ? 'racking' : ''}">${BS_DEALER}<i class="bs-hand l">${BS_HAND}</i><i class="bs-hand r">${BS_HAND}</i></div>
       ${bsLayHTML()}
       <div class="bs-gunwrap aim-${aim} ${BSV.hold || BSV.aim === 'up' || BSV.aim === 'down' ? 'held' : ''} ${g.saw ? 'sawed' : ''}" ${myTurn && !BSV.hold ? 'data-bsgun="1" role="button" aria-label="총 들기"' : ''}><div class="bs-kick">${BS_GUN}<i class="bs-muzzle"></i></div></div>
-      `}${BSV.banner ? `<div class="bs-banner">${BSV.banner}</div>` : ''}
+      `}${BSV.black && !s3 ? '<div class="bs-black"></div>' : ''}${BSV.banner ? `<div class="bs-banner">${BSV.banner}</div>` : ''}
       ${!s3 && BSV.eject !== undefined && BSV.eject !== null ? `<i class="bs-eject ${BSV.eject ? 'live' : 'blank'}"></i>` : ''}
       <div class="bs-count"><span><i class="live"></i>실탄 <b>${g.live}</b></span><span><i class="blank"></i>공포탄 <b>${g.blank}</b></span>${g.saw ? '<span>🪚 톱</span>' : ''}</div>
     </div>
@@ -5370,7 +5371,12 @@ async function bsPlay(ev, done, rerender){
         const byMe = e.i === me(); BSV.hold = false; BSV.aimT = null; BSV.shooter = byMe ? 'me' : 'op';
         BSV.eject = null; BSV.aim = up; BSV.msg = `${nm(e.i)} → ${self ? (byMe ? '나' : '자기 자신') : nm(e.target)}`; rerender(); await bsWait(byMe ? 250 : 1100);
         bsViewDo(e); BSV.fx = e.live ? 'bang' : 'click'; BSV.flash = e.live ? 'p' + e.target : '';
-        BSV.msg = e.live ? `💥 실탄! ${nm(e.target)} 목숨 −${e.dmg}${e.out ? ' · 탈락' : ''}` : '딸깍… 공포탄'; rerender(); await bsWait(e.live ? 1200 : 900);
+        BSV.msg = e.live ? `💥 실탄! ${nm(e.target)} 목숨 −${e.dmg}${e.out ? ' · 탈락' : ''}` : '딸깍… 공포탄'; rerender();
+        if (e.live && e.dmg){   // 맞으면 암전: 번쩍한 직후 화면이 꺼졌다가 돌아온다 (내가 맞으면 길게). 3D는 장면이 직접 어둡게 한다
+          const hitMe = e.target === me(), D = hitMe && !e.out ? 1350 : 550;
+          await bsWait(70); if (BS3.st !== 'on'){ BSV.black = true; rerender(); } await bsWait(D);
+          if (BSV.black){ BSV.black = false; rerender(); } await bsWait(hitMe && !e.out ? 650 : 500);
+        } else await bsWait(e.live ? 1200 : 900);
         BSV.flash = ''; BSV.fx = '';
         BSV.fx = 'rack'; BSV.eject = e.live; BSV.aim = 'rest'; rerender(); await bsWait(700); BSV.shooter = null;
         BSV.fx = ''; BSV.eject = null;
@@ -5390,7 +5396,7 @@ async function bsPlay(ev, done, rerender){
       BSV.banner = '네 차례다'; BSV.msg = ''; rerender(); await bsWait(1100); BSV.banner = '';
     }
   } catch(err){ if (err !== 'stop') console.error(err); }
-  BSV.busy = false; BSV.view = null; BSV.shooter = null; BSV.msg = ''; BSV.fx = ''; BSV.aim = null; BSV.eject = null; BSV.lay = null; BSV.flash = ''; BSV.want = null; BSV.go = null; BSV.banner = '';
+  BSV.busy = false; BSV.view = null; BSV.shooter = null; BSV.black = false; BSV.msg = ''; BSV.fx = ''; BSV.aim = null; BSV.eject = null; BSV.lay = null; BSV.flash = ''; BSV.want = null; BSV.go = null; BSV.banner = '';
   rerender();
   if (done) done();
 }
@@ -5690,7 +5696,7 @@ function bs3Build(){
   BS3.R = R; BS3.scene = scene; BS3.cam = cam;
   BS3.o = {T, M, eyeG, saw, sparks, sparkP, sparkV, gun, gunIn, barrel, pump, peekM, GP, flash, flashL, smokes, lay, ejects, mkShell, arms, dealer, head, eyeM, eyeL, spot, bulb, red, torso};
   const v = () => new T.Vector3();
-  BS3.a = {t:0, last:0, gP:new T.Vector3(0, 0.03, 0.05), gQ:new T.Quaternion(), prev:{}, feed:null, rackT:9, bangT:9, clickT:9, sawT:9, hitT:9, hitMe:false, shake:0, saw:1, peek:0, layT:0, tmp:[v(), v(), v(), v()]};
+  BS3.a = {blackT:99, blackD:0, blackF:1, t:0, last:0, gP:new T.Vector3(0, 0.03, 0.05), gQ:new T.Quaternion(), prev:{}, feed:null, rackT:9, bangT:9, clickT:9, sawT:9, hitT:9, hitMe:false, shake:0, saw:1, peek:0, layT:0, tmp:[v(), v(), v(), v()]};
   BS3.a.gQ.copy(bs3Q(new T.Vector3(-1, 0, 0), 'side'));
 
   // 처음 보이는 순간에 셰이더를 만드느라 멈칫하지 않게 미리 만들어 둔다 (톱·불똥·탄은 평소에 숨겨져 있다)
@@ -5748,12 +5754,14 @@ function bs3Frame(now){
   const ctx = BS3.ctx || {}, g = ctx.g, me = ctx.me || 0;
   const Lay = BSV.lay, fx = BSV.fx || '', P = A.prev;
   // 상태가 바뀐 순간을 잡는다
-  if (fx !== P.fx){ if (fx === 'bang') { A.bangT = 0; A.hitMe = BSV.flash === 'p' + me; A.hitT = 0; } if (fx === 'click') A.clickT = 0; if (fx === 'rack') A.rackT = 0; if (fx === 'saw') A.sawT = 0; }
+  if (fx !== P.fx){ if (fx === 'bang') { A.bangT = 0; A.hitMe = BSV.flash === 'p' + me; A.hitT = 0;
+    // 암전: 누가 실탄에 맞았으면 번쩍한 직후 꺼진다. 내가 맞으면 1.35초(탈락이면 짧게 끊고 쓰러지는 모습을 보여 준다), 상대면 0.55초
+    if (BSV.flash){ const out = g && g.pl[me] && g.pl[me].out; A.blackT = 0; A.blackD = A.hitMe && !out ? 1.35 : 0.55; A.blackF = A.hitMe && !out ? 0.65 : 0.45; } } if (fx === 'click') A.clickT = 0; if (fx === 'rack') A.rackT = 0; if (fx === 'saw') A.sawT = 0; }
   if (BSV.eject !== P.eject && BSV.eject !== null && BSV.eject !== undefined) bs3Eject(!!BSV.eject);
   if (Lay && !P.lay){ A.layT = 0; O.ejects.splice(0).forEach(s => BS3.scene.remove(s)); }
   if (Lay && Lay.in && Lay.in.length > (P.inN || 0)) A.feed = {k:Lay.in[Lay.in.length - 1], t:0};
   P.fx = fx; P.eject = BSV.eject; P.lay = !!Lay; P.inN = Lay && Lay.in ? Lay.in.length : 0;
-  A.layT += dt; A.rackT += dt; A.bangT += dt; A.clickT += dt; A.sawT += dt; A.hitT += dt;
+  A.blackT = (A.blackT === undefined ? 99 : A.blackT) + dt; A.layT += dt; A.rackT += dt; A.bangT += dt; A.clickT += dt; A.sawT += dt; A.hitT += dt;
 
   // 총의 목표 자세
   const camP = new T.Vector3(0, 1.1, 1.62), headW = new T.Vector3(0, 0.82, -1.0);
@@ -5895,11 +5903,13 @@ function bs3Frame(now){
   const lookP = new T.Vector3(0, 0.3 + (A.hitMe && A.hitT < 0.4 ? -0.08 * Math.exp(-A.hitT * 5) : 0), -0.45);
   // 내가 지면: 시야가 옆으로 기울며 탁자 높이로 무너지고, 점점 어두워진다
   const up2 = g && !g.over ? bs3Ease((A.meFall - 3.2) / 1.2) : 0;   // 여럿이 하는 판에서 먼저 탈락하면 잠시 뒤 다시 일어나 구경한다
-  const mf = bs3Ease((A.meFall - 0.15) / 1.0) * (1 - up2), roll = mf * 1.25 + (A.meFall > 1.15 && A.meFall < 1.5 ? Math.sin((A.meFall - 1.15) / 0.35 * Math.PI) * 0.06 : 0);
+  const mf = bs3Ease((A.meFall - 0.6) / 1.0) * (1 - up2), roll = mf * 1.25 + (A.meFall > 1.6 && A.meFall < 1.95 ? Math.sin((A.meFall - 1.6) / 0.35 * Math.PI) * 0.06 : 0);
   if (mf > 0){ BS3.cam.position.lerp(new T.Vector3(0.45, 0.16, 1.05), mf); lookP.lerp(new T.Vector3(-0.5, 0.02, 0.45), mf); }
   BS3.cam.up.set(Math.sin(roll), Math.cos(roll), 0);
   BS3.cam.lookAt(lookP);
-  BS3.R.toneMappingExposure = 1.15 * (1 - 0.8 * bs3Ease((A.meFall - 0.9) / 1.6) * (1 - up2));
+  const bt = A.blackT - 0.07, black = bt < 0 ? 1 : bt < A.blackD ? 0 : bs3Ease((bt - A.blackD) / A.blackF);
+  BS3.R.toneMappingExposure = 1.15 * (1 - 0.8 * bs3Ease((A.meFall - 1.4) / 1.6) * (1 - up2)) * black;
+  BS3.black = black;
   BS3.R.render(BS3.scene, BS3.cam);
 }
 // 잘린 총신 조각: 탁자로 떨어져 구른다 (탄피와 같이 다음 장전 때 치운다)
