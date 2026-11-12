@@ -22,3 +22,19 @@ drop policy if exists "seed10k_ranks_insert_own" on public.seed10k_ranks;
 drop policy if exists "seed10k_ranks_update_own" on public.seed10k_ranks;
 create policy "seed10k_ranks_insert_own" on public.seed10k_ranks for insert with check (auth.uid() = user_id and not public.seed10k_is_tester(user_id));
 create policy "seed10k_ranks_update_own" on public.seed10k_ranks for update using (auth.uid() = user_id) with check (auth.uid() = user_id and not public.seed10k_is_tester(user_id));
+
+-- 관리 탭에서 테스트 계정을 지정·해제할 수 있게 (관리자만)
+drop policy if exists "seed10k_testers_insert_admin" on public.seed10k_testers;
+drop policy if exists "seed10k_testers_delete_admin" on public.seed10k_testers;
+create policy "seed10k_testers_insert_admin" on public.seed10k_testers for insert with check (public.seed10k_is_admin());
+create policy "seed10k_testers_delete_admin" on public.seed10k_testers for delete using (public.seed10k_is_admin());
+
+-- 테스트 계정이 되면 랭킹에 올라가 있던 줄을 바로 지운다
+create or replace function public.seed10k_tester_unrank() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  delete from public.seed10k_ranks where user_id = new.user_id;
+  return new;
+end $$;
+drop trigger if exists seed10k_tester_unrank on public.seed10k_testers;
+create trigger seed10k_tester_unrank after insert on public.seed10k_testers for each row execute function public.seed10k_tester_unrank();
