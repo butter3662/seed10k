@@ -630,6 +630,8 @@ html.gated body{overflow:hidden}
 .mp-seat{background:var(--surface-2);border-radius:10px;padding:8px 10px;display:grid;gap:2px;border:2px solid transparent}
 .mp-seat.me{border-color:var(--brass)}.mp-seat.left{opacity:.5}
 .mp-seat small{color:var(--ink-3);font-size:12px;min-height:14px}
+.run-btn{border-color:color-mix(in srgb,var(--danger) 55%,var(--rule));color:var(--danger)}
+.run-card{border-color:color-mix(in srgb,var(--danger) 45%,var(--rule))}
 .mp-dot{display:inline-block;width:9px;height:9px;border-radius:50%;vertical-align:-1px}
 .oe-pick{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;width:100%}
 .oe-pick .btn{padding:0;height:40px}
@@ -1033,7 +1035,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '2.1.22';
+const VERSION = '2.1.23';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -3940,7 +3942,7 @@ function bmUpdate(){
   });
   // 행동 버튼
   let act = '';
-  if (g.over && !BMV.busy) act = BMV.mp ? mbmOverHTML(g) : `<button class="btn solid bm-roll" id="bmEnd">결과 보기</button>`;
+  if (g.over && !BMV.busy) act = BMV.mp ? mbmOverHTML(g) : `<button class="btn solid bm-roll" id="bmEnd">결과 보기</button>${(BM.pay[g.n][BME.ranking(g).indexOf(0)] || 0) < 1 ? '<button class="btn run-btn" id="bmRun">🏃 도망가기</button>' : ''}`;
   else if (!BMV.busy && pd && pd.k === 'sell' && pd.who !== ME) act = `<p class="bm-wait">${esc(g.pl[pd.who].nm)}이(가) 팔 것을 고르는 중…</p>`;
   else if (!BMV.busy && pd && pd.k === 'sell'){
     const need = BME.need(g), cash = g.pl[ME].cash;
@@ -4194,12 +4196,14 @@ function bmLastLog(){
   $('#modal').dataset.kind = 'info';
   const bx = $('#modal .bm-rec'); if (bx) bx.scrollTop = bx.scrollHeight;
 }
-function bmFinish(forfeit){
+function bmFinish(forfeit, run){
   const b = bmToday(), g = b.cur; if (!g) return;
   let rank;
   if (forfeit) rank = bmQuitRank(g);
   else { const r = BME.ranking(g); rank = r.indexOf(0) + 1; }
-  const mult = BM.pay[g.n][rank - 1] || 0, pay = Math.round(g.stake * mult * 100) / 100;
+  const mult0 = BM.pay[g.n][rank - 1] || 0, ran = !!run && !forfeit && mult0 < 1;   // 판돈보다 적게 받는 순위면 도망칠 수 있다
+  const loss = Math.round(g.stake * (1 - mult0) * 100) / 100;
+  const mult = ran ? 1 : mult0, pay = Math.round(g.stake * mult * 100) / 100;      // 도망치면 판돈을 그대로 돌려받는다
   if (pay > 0) receiveUSD(pay);
   b.hist.unshift({at:Date.now(), stake:g.stake, pay, rank, n:g.n, ...(forfeit ? {ff:1} : {})});
   b.hist = b.hist.slice(0, 10);
@@ -4209,12 +4213,13 @@ function bmFinish(forfeit){
   bmSaveLog({at:new Date().toISOString(), mode:S.mode, n:g.n, stake:g.stake, pay, rank, forfeit:!!forfeit, il:!!g.il, rounds:g.round || 0, standings:fin, log:g.rec || []});
   b.last = {at:Date.now(), rank, n:g.n, forfeit:!!forfeit, log:(g.rec || []).slice(-3000)};   // 지난 판 기록 보기용 (이 기기·내 저장에 1판만)
   b.cur = null;
-  altLog('gamble', `주사위 세계여행 ${forfeit ? `기권 (${rank}위)` : rank + '위'}${g.il ? ' (불법)' : ''}`, pay - g.stake, 'USD');
+  altLog('gamble', `주사위 세계여행 ${forfeit ? `기권 (${rank}위)` : rank + '위'}${ran ? ' → 도망' : ''}${g.il ? ' (불법)' : ''}`, pay - g.stake, 'USD');
   commit();
   bmHide();
   police('bm', g.il, pay - g.stake);
+  runCheck(); if (ran) runAdd('bm', loss);
   const rows = r ? r.map((i, k) => `<div><span>${k + 1}위 ${g.pl[i].nm}</span><b class="num">${g.pl[i].out ? '파산' : '자산 ' + bmW(BME.assets(g, i))}</b></div>`).join('') : '';
-  showModal(`<h2 class="${pay > g.stake ? 'up' : ''}">${forfeit ? `기권 · ${rank}위 (${g.n}명 중)` : `${rank}위 (${g.n}명 중)`}</h2>
+  showModal(`<h2 class="${pay > g.stake ? 'up' : ''}">${forfeit ? `기권 · ${rank}위 (${g.n}명 중)` : ran ? `🏃 ${rank}위에서 도망쳤습니다` : `${rank}위 (${g.n}명 중)`}</h2>${ran ? runNote(loss) : ''}
     ${rows ? `<div class="bd" style="margin-bottom:10px">${rows}</div>` : ''}
     <div class="bd"><div><span>판돈</span><b class="num">${fmtUSD(g.stake)}</b></div><div><span>돌려받은 돈 (${mult}배)</span><b class="num">${fmtUSD(pay)}</b></div>
     <div class="tot"><span>손익</span><b class="num ${cls(pay - g.stake)}">${signUSD(pay - g.stake)}</b></div></div>
@@ -4235,6 +4240,7 @@ document.addEventListener('click', e => {
     return;
   }
   if (t.id === 'bmEnd'){ bmFinish(false); return; }
+  if (t.id === 'bmRun' && !BMV.mp){ bmFinish(false, true); return; }
   // 팔 것 고르기 (남의 차례에 생길 수도 있다)
   if (!BMV.busy && g.pending && g.pending.k === 'sell'){
     const k = t.dataset.bmsell !== undefined ? t.dataset.bmsell : t.dataset.bmsq !== undefined && g.own[+t.dataset.bmsq] === bmMe() ? t.dataset.bmsq : null;
@@ -4324,6 +4330,42 @@ function police(k, il, net){
   setTimeout(tryShow, 900);
   return true;
 }
+/* ── 도망가기 (컴퓨터와 하는 판에서 졌을 때) ──
+   진 판에서 '도망가기'를 누르면 잃을 돈을 내지 않는다(판돈을 돌려받는다). 대신 그 뒤 도박 판(어떤 게임이든, 같이 하기 포함)이
+   끝날 때마다 RUN.p 확률로 적발되는지 본다. RUN.n판 동안 안 걸리면 끝. 걸리면 안 낸 돈의 RUN.mult배를 압수하고 전과(단속 횟수) 1회.
+   한 번이라도 걸릴 확률 = 1 − (1 − p)ⁿ = 1 − 0.85⁵ ≈ 55.6%, 평균 압수액 ≈ 0.556 × 2 = 1.11배 → 평균적으로는 그냥 내는 것(1배)보다 조금 손해 */
+const RUN = {p:0.15, n:5, mult:2};
+function runS(){ const G = gamS(); if (!Array.isArray(G.runs)) G.runs = []; return G.runs; }
+function runAdd(k, loss){
+  loss = Math.round(loss * 100) / 100; if (!(loss > 0)) return;
+  runS().push({k, amt:loss, left:RUN.n, at:Date.now()});
+  altLog('gamble', `🏃 ${GAM[k] ? GAM[k].nm : k}에서 도망 (${fmtUSDn(loss)} 안 냄)`, 0, 'USD');
+  save();
+}
+const runNote = loss => `<p class="muted">이후 도박 ${RUN.n}판 동안 판이 끝날 때마다 ${RUN.p * 100}% 확률로 적발됩니다. 걸리면 안 낸 돈의 ${RUN.mult}배(<b>${fmtUSDn(loss * RUN.mult)}</b>)를 압수당하고 전과(랭킹의 단속 횟수)가 1회 늘어납니다.</p>`;
+// 도박 한 판이 끝날 때마다 (도망친 그 판보다 먼저 부른다: 그 판은 지난 도주들에게 '이후 판'이다)
+function runCheck(){
+  const G = gamS(), runs = runS(); if (!runs.length) return;
+  const caught = [];
+  for (const r of runs){ r.left--; if (Math.random() < RUN.p) caught.push(r); }
+  G.runs = runs.filter(r => !caught.includes(r) && r.left > 0);
+  if (!caught.length){ save(); return; }
+  let tot = 0, od = 0;
+  for (const r of caught){
+    const amt = Math.round(r.amt * RUN.mult * 100) / 100; tot += amt;
+    od += spendUSD(amt) || 0;
+    G.bust = (G.bust || 0) + 1; G.bustAt = Date.now();
+    altLog('police', `🚔 도주 적발 (${GAM[r.k] ? GAM[r.k].nm : r.k}): 안 낸 ${fmtUSDn(r.amt)}의 ${RUN.mult}배 압수`, -amt, 'USD');
+    markBusted('run');
+  }
+  commit();
+  const html = `<div class="police"><div class="siren"><i></i><i></i></div><h2>🚔 도주 적발!</h2>
+      <p>${caught.map(r => `${GAM[r.k] ? GAM[r.k].nm : r.k}에서 안 낸 ${fmtUSDn(r.amt)}`).join(', ')}이(가) 들통났습니다. ${RUN.mult}배인 <b>${fmtUSDn(Math.round(tot * 100) / 100)}</b>을 압수당했습니다${od > 0 ? ` (달러가 모자라 마이너스통장에서 ${fmtUSDn(od)})` : ''}.</p>
+      <p class="muted">전과가 ${caught.length}회 늘었습니다 (단속 ${G.bust}회째). 랭킹의 이름에 빨간 줄과 횟수가 표시됩니다.</p></div>
+      <div class="acts"><button class="btn solid" data-close>확인</button></div>`;
+  const tryShow = () => { if ($('#modal').hidden) showModal(html); else setTimeout(tryShow, 300); };
+  setTimeout(tryShow, 1400);
+}
 // 랭킹 빨간 줄: 서버의 seed10k_busted 표에 한 번 남기면 지울 수 없다 (supabase/seed10k_busted.sql)
 // 단속 횟수: seed10k_busts 표에 단속마다 한 줄 (supabase/seed10k_busts.sql). 넣기·읽기만 되고 고치기·지우기는 안 된다
 async function markBusted(k){
@@ -4343,6 +4385,9 @@ function renderGamblePane(p){
       <p class="mg-desc">${il ? '켜짐' : '꺼짐'}: 판돈 한도 ${['bm', 'sl', 'oe', 'bj'].map(k => `${GAM[k].nm} ${fmtUSDn(il ? GAM[k].on : GAM[k].off, 0)}`).join(' · ')}</p>
       <p class="muted" style="margin:4px 0 0">켜면 한도가 10배가 되지만, 한 판이 끝날 때마다 경찰 단속 확률이 있습니다 (${['bm', 'sl', 'oe', 'bj'].map(k => `${GAM[k].nm} ${(GAM[k].p * 100).toFixed(1)}%`).join(' · ')}). 단속되면 지금까지 불법 도박(모든 게임 합산)으로 번 돈의 ${GAM.seize * 100}%를 압류하고, 랭킹 이름에 영구 빨간 줄과 단속 횟수가 표시됩니다.</p>
       ${il || ilAcc() ? `<p class="muted" style="margin:4px 0 0">불법 도박 누적 순이익 <b class="num ${cls(ilAcc())}">${signUSD(ilAcc())}</b> · 단속되면 ${GAM.seize * 100}% 압류</p>` : ''}${G.bust ? `<p style="margin:4px 0 0"><b class="down">단속 ${G.bust}회</b></p>` : ''}</section>
+    ${runS().length ? `<section class="card run-card"><div class="card-h"><h2>🏃 도주 중</h2><small>${runS().length}건</small></div>
+      <p class="mg-desc">${runS().map(r => `${GAM[r.k] ? GAM[r.k].nm : r.k} ${fmtUSDn(r.amt)} · 남은 ${r.left}판`).join('<br>')}</p>
+      <p class="muted" style="margin:4px 0 0">도박 판이 끝날 때마다 건마다 ${RUN.p * 100}% 확률로 적발 → 안 낸 돈의 ${RUN.mult}배 압수 + 전과 1회</p></section>` : ''}
     <section class="card c-mg" id="bmCard">${bmCardHTML()}</section>
     <section class="card c-mg" id="slCard">${slCardHTML()}</section>
     <section class="card c-mg" id="oePane">${oePaneHTML()}</section>
@@ -4496,7 +4541,7 @@ function slUpdate(){
   const g = slS().cur; if (!g || !$('#slOv')) return;
   const act = $('#slAct');
   $('#slQuit').hidden = g.over;
-  if (g.over && !SLV.busy) act.innerHTML = `<button class="btn solid bm-roll" id="slEnd">결과 보기</button>`;
+  if (g.over && !SLV.busy) act.innerHTML = `<button class="btn solid bm-roll" id="slEnd">결과 보기</button>${g.win !== 0 ? '<button class="btn run-btn" id="slRun">🏃 도망가기</button>' : ''}`;
   else if (SLV.busy || g.turn !== 0) act.innerHTML = `<p class="bm-wait">${g.turn ? '컴퓨터' : '내'} 차례…</p>`;
   else act.innerHTML = `<button class="btn solid bm-roll" id="slRoll">🎲 주사위 굴리기</button>`;
   $('#slLog').innerHTML = SLV.busy ? $('#slLog').innerHTML : g.log.slice(-4).reverse().map(s => `<li>${esc(s)}</li>`).join('');
@@ -4546,21 +4591,24 @@ function slTick(){
   const pos0 = g.pos.slice(), ev = SLE.roll(g, Math.random); save(); slPlay(ev, pos0);
 }
 function slHide(){ SLV.gen++; SLV.busy = false; const ov = $('#slOv'); if (ov && !ov.hidden){ ov.hidden = true; document.documentElement.classList.remove('bm-open'); if (UI.tab === 'market') renderInvest(); } }
-function slFinish(forfeit){
+function slFinish(forfeit, run){
   const s = slS(), g = s.cur; if (!g) return;
-  const win = !forfeit && g.win === 0, pay = win ? Math.round(g.stake * 2 * 100) / 100 : 0;
+  const win = !forfeit && g.win === 0, ran = !!run && !win && !forfeit;
+  const pay = win ? Math.round(g.stake * 2 * 100) / 100 : ran ? g.stake : 0;   // 도망치면 판돈을 돌려받는다
   if (pay > 0) receiveUSD(pay);
   s.hist.unshift({at:Date.now(), stake:g.stake, pay, win, ...(forfeit ? {ff:1} : {})}); s.hist = s.hist.slice(0, 10);
-  altLog('gamble', `뱀사다리 ${win ? '승리' : forfeit ? '기권' : '패배'}${g.il ? ' (불법)' : ''}`, pay - g.stake, 'USD');
+  altLog('gamble', `뱀사다리 ${win ? '승리' : forfeit ? '기권' : ran ? '패배 → 도망' : '패배'}${g.il ? ' (불법)' : ''}`, pay - g.stake, 'USD');
   s.cur = null; commit(); slHide();
   police('sl', g.il, pay - g.stake);
-  showModal(`<h2 class="${win ? 'up' : ''}">${win ? '🏆 이겼습니다' : forfeit ? '기권했습니다' : '졌습니다'}</h2><div class="bd"><div><span>판돈</span><b class="num">${fmtUSD(g.stake)}</b></div><div><span>받은 돈</span><b class="num">${fmtUSD(pay)}</b></div><div class="tot"><span>손익</span><b class="num ${cls(pay - g.stake)}">${signUSD(pay - g.stake)}</b></div></div><div class="acts"><button class="btn solid" data-close>확인</button></div>`);
+  runCheck(); if (ran) runAdd('sl', g.stake);
+  showModal(`<h2 class="${win ? 'up' : ''}">${win ? '🏆 이겼습니다' : forfeit ? '기권했습니다' : ran ? '🏃 도망쳤습니다' : '졌습니다'}</h2>${ran ? runNote(g.stake) : ''}<div class="bd"><div><span>판돈</span><b class="num">${fmtUSD(g.stake)}</b></div><div><span>받은 돈</span><b class="num">${fmtUSD(pay)}</b></div><div class="tot"><span>손익</span><b class="num ${cls(pay - g.stake)}">${signUSD(pay - g.stake)}</b></div></div><div class="acts"><button class="btn solid" data-close>확인</button></div>`);
 }
 document.addEventListener('click', e => {
   const t = e.target.closest('#slOv button'); if (!t) return;
   const g = slS().cur; if (!g) return;
   if (t.id === 'slClose'){ slHide(); return; }
   if (t.id === 'slEnd'){ slFinish(false); return; }
+  if (t.id === 'slRun'){ slFinish(false, true); return; }
   if (t.id === 'slQuit'){ const c = showModal(`<h2>기권할까요?</h2><p>판돈 ${fmtUSD(g.stake)}을 잃습니다.</p><div class="acts"><button class="btn" data-close>계속하기</button><button class="btn solid" id="slQuitYes">기권</button></div>`); $('#slQuitYes').onclick = () => { c(); setTimeout(() => slFinish(true), 200); }; return; }
   if (t.id === 'slRoll' && !SLV.busy && g.turn === 0 && !g.over){ const pos0 = g.pos.slice(), ev = SLE.roll(g, Math.random); save(); slPlay(ev, pos0); }
 });
@@ -4622,7 +4670,7 @@ function oeCardHTML(){
     <div class="oe-steps" aria-hidden="true">${steps}</div>
     <div class="oe-hand ${L && OEV.reveal ? 'open' : ''}" id="oeHand">${L && OEV.reveal ? `<div class="oe-marbles">${Array.from({length:L.n}, (_, k) => `<i style="--d:${k * 25}ms"></i>`).join('')}</div><b class="num">${L.n}개 · ${L.n % 2 ? '홀' : '짝'}</b>` : '<span class="fist">✊</span>'}</div>
     ${L && OEV.reveal ? `<p class="oe-res ${L.ok ? 'up' : 'down'}">${L.ok ? (g.k >= OE_MAX ? `${OE_MAX}연속! 상금을 받습니다` : `맞혔다! 상금 ${fmtUSD(pot)}`) : '틀렸다… 상금을 전부 잃었습니다'} (내 선택: ${L.pick === 'odd' ? '홀' : '짝'})</p>` : `<p class="oe-res muted">${OEV.busy ? '…' : '홀일까 짝일까?'}${L && !OEV.busy ? `<small>지난 판: ${L.n}개 ${L.n % 2 ? '홀' : '짝'} · 맞힘</small>` : ''}</p>`}
-    <div class="bm-acts">${over ? `<button class="btn solid" id="oeEnd">결과 보기</button>`
+    <div class="bm-acts">${over ? `<button class="btn solid" id="oeEnd">결과 보기</button>${lost ? '<button class="btn run-btn" id="oeRun">🏃 도망가기</button>' : ''}`
       : `<button class="btn" data-oe="odd" ${OEV.busy ? 'disabled' : ''}>홀</button><button class="btn" data-oe="even" ${OEV.busy ? 'disabled' : ''}>짝</button>${k ? `<button class="btn solid" id="oeCash" ${OEV.busy ? 'disabled' : ''}>그만하고 ${fmtUSD(pot)} 받기</button>` : ''}`}</div>`;
 }
 const OEV = {busy:false, reveal:false, t:null};
@@ -4651,20 +4699,23 @@ function oePick(pick){
     OEV.t = setTimeout(() => { OEV.reveal = false; OEV.busy = false; oeRender(); }, 2000);
   }, bmMs(900));
 }
-function oeFinish(){
+function oeFinish(run){
   const s = oeS(), g = s.cur; if (!g || OEV.busy) return;
   if (!g.over && g.k < 1) return;              // 한 번은 해야 그만둘 수 있다
   clearTimeout(OEV.t);
-  const pay = g.lost ? 0 : oePot(g), win = pay > g.stake;
+  const ran = !!run && g.lost;
+  const pay = ran ? g.stake : g.lost ? 0 : oePot(g), win = pay > g.stake;   // 도망치면 판돈을 돌려받는다
   if (pay > 0) receiveUSD(pay);
   s.hist.unshift({at:Date.now(), stake:g.stake, pay, win, k:g.k}); s.hist = s.hist.slice(0, 10);
-  altLog('gamble', `홀짝 ${g.lost ? `${g.k + 1}번째에서 틀림` : `${g.k}연속 맞히고 받음`}${g.il ? ' (불법)' : ''}`, pay - g.stake, 'USD');
+  altLog('gamble', `홀짝 ${g.lost ? `${g.k + 1}번째에서 틀림${ran ? ' → 도망' : ''}` : `${g.k}연속 맞히고 받음`}${g.il ? ' (불법)' : ''}`, pay - g.stake, 'USD');
   s.cur = null; OEV.reveal = false; OEV.busy = false; commit(); oeRender();
   police('oe', g.il, pay - g.stake);
-  showModal(`<h2 class="${win ? 'up' : ''}">${g.lost ? `${g.k + 1}번째에서 틀렸습니다` : `🏆 ${g.k}연속 맞힘`}</h2><div class="bd"><div><span>판돈</span><b class="num">${fmtUSD(g.stake)}</b></div><div><span>받은 돈</span><b class="num">${fmtUSD(pay)}</b></div><div class="tot"><span>손익</span><b class="num ${cls(pay - g.stake)}">${signUSD(pay - g.stake)}</b></div></div><div class="acts"><button class="btn solid" data-close>확인</button></div>`);
+  runCheck(); if (ran) runAdd('oe', g.stake);
+  showModal(`<h2 class="${win ? 'up' : ''}">${ran ? '🏃 도망쳤습니다' : g.lost ? `${g.k + 1}번째에서 틀렸습니다` : `🏆 ${g.k}연속 맞힘`}</h2>${ran ? runNote(g.stake) : ''}<div class="bd"><div><span>판돈</span><b class="num">${fmtUSD(g.stake)}</b></div><div><span>받은 돈</span><b class="num">${fmtUSD(pay)}</b></div><div class="tot"><span>손익</span><b class="num ${cls(pay - g.stake)}">${signUSD(pay - g.stake)}</b></div></div><div class="acts"><button class="btn solid" data-close>확인</button></div>`);
 }
 document.addEventListener('click', e => { if (e.target.closest('#oeCash')) oeFinish(); });
 document.addEventListener('click', e => { const t = e.target.closest('#oeEnd'); if (t) oeFinish(); });
+document.addEventListener('click', e => { if (e.target.closest('#oeRun')) oeFinish(true); });
 
 /* ───────── 블랙잭 ─────────
    규칙: 6벌(312장)을 판마다 새로 섞는다(카드 세기 없음). 딜러는 소프트 17 포함 17 이상이면 선다(S17).
@@ -4825,7 +4876,7 @@ function bjCardInnerHTML(){
     </div>
     ${showRes ? `<p class="oe-res ${cls(g.pay - g.cost)}">${g.pay > g.cost ? '이겼다!' : g.pay === g.cost ? '비겼다' : '졌다'} · 받을 돈 ${fmtUSD(g.pay)} (건 돈 ${fmtUSD(g.cost)})</p>`
       : revealing ? '<p class="oe-res muted">딜러 차례…</p>' : `<p class="oe-res muted">${g.hands.length > 1 ? `${g.cur + 1}번째 손 · ` : ''}할 행동을 고르세요</p>`}
-    <div class="bm-acts">${over ? (showRes ? '<button class="btn solid" id="bjEnd">정산하기</button>' : '')
+    <div class="bm-acts">${over ? (showRes ? '<button class="btn solid" id="bjEnd">정산하기</button>' + (g.pay < g.cost ? '<button class="btn run-btn" id="bjRun">🏃 도망가기</button>' : '') : '')
       : ['hit', 'stand', 'double', 'split'].map(a => {
           const ok = BJE.can(g, a) && (a === 'hit' || a === 'stand' || rich);
           return `<button class="btn ${a === 'stand' ? 'solid' : ''}" data-bj="${a}" ${ok && !BJV.anim ? '' : 'disabled'}>${BJ_ACT[a]}${(a === 'double' || a === 'split') && BJE.can(g, a) ? ` +${fmtUSD(more)}` : ''}</button>`;
@@ -4864,19 +4915,23 @@ function bjAct(a){
   BJE.act(g, a); save();
   if (g.phase === 'over') bjReveal(); else bjRender();
 }
-function bjFinish(){
+function bjFinish(run){
   const s = bjS(), g = s.cur; if (!g || g.phase !== 'over' || BJV.anim) return;
-  if (g.pay > 0) receiveUSD(g.pay);
-  const net = Math.round((g.pay - g.cost) * 100) / 100;
-  const res = g.hands.some(h => h.res === 'bj') ? '블랙잭' : net > 0 ? '승' : net === 0 ? '무' : '패';
-  s.hist.unshift({at:Date.now(), stake:g.stake, cost:g.cost, pay:g.pay, res}); s.hist = s.hist.slice(0, 10);
-  altLog('gamble', `블랙잭: ${res}${g.hands.length > 1 ? ` (${g.hands.length}손)` : ''}${g.il ? ' (불법)' : ''}`, net, 'USD');
+  const ran = !!run && g.pay < g.cost, loss = Math.round((g.cost - g.pay) * 100) / 100;
+  const got = ran ? g.cost : g.pay;   // 도망치면 건 돈(판돈 + 더블·스플릿)을 모두 돌려받는다
+  if (got > 0) receiveUSD(got);
+  const net = Math.round((got - g.cost) * 100) / 100;
+  const res = ran ? '도망' : g.hands.some(h => h.res === 'bj') ? '블랙잭' : net > 0 ? '승' : net === 0 ? '무' : '패';
+  s.hist.unshift({at:Date.now(), stake:g.stake, cost:g.cost, pay:got, res}); s.hist = s.hist.slice(0, 10);
+  altLog('gamble', `블랙잭: ${ran ? '패 → 도망' : res}${g.hands.length > 1 ? ` (${g.hands.length}손)` : ''}${g.il ? ' (불법)' : ''}`, net, 'USD');
   s.cur = null; BJV.shown = null; commit(); bjRender();
   police('bj', g.il, net);
+  runCheck();
+  if (ran){ runAdd('bj', loss); showModal(`<h2>🏃 도망쳤습니다</h2><p>잃을 ${fmtUSD(loss)}을 내지 않고 건 돈 ${fmtUSD(g.cost)}을 돌려받았습니다.</p>${runNote(loss)}<div class="acts"><button class="btn solid" data-close>확인</button></div>`); }
 }
 document.addEventListener('click', e => {
-  const t = e.target.closest('#bjGo, #bjEnd, [data-bj]'); if (!t) return;
-  if (t.id === 'bjGo') bjStart(); else if (t.id === 'bjEnd') bjFinish(); else bjAct(t.dataset.bj);
+  const t = e.target.closest('#bjGo, #bjEnd, #bjRun, [data-bj]'); if (!t) return;
+  if (t.id === 'bjGo') bjStart(); else if (t.id === 'bjEnd') bjFinish(); else if (t.id === 'bjRun') bjFinish(true); else bjAct(t.dataset.bj);
 });
 
 /* ───────── 멀티플레이 (방 코드로 같이 하기) ─────────
@@ -5136,6 +5191,7 @@ async function mpClaim(){
       commit();
       if (amt > 0) toast(`👥 ${p.note || '같이 하기'}: ${fmtUSD(amt)}을 받았습니다`);
       if (p.il && GAM[p.game]) police(p.game, true, net);
+      if (!/환불/.test(p.note || '')) runCheck();   // 도망친 뒤의 '이후 판'에는 같이 하기 판도 들어간다
     }
   } catch(e){ console.warn('[seed10k] 받을 돈 확인 실패', e); }
   finally { MP.claiming = false; }
