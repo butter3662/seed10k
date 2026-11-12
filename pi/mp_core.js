@@ -189,3 +189,62 @@ GAMES.oe = {
   },
   summary(room) { const g = room.state.g; return g ? {score: g.score, win: g.win, seats: room.state.seats.map((s) => s.nick)} : null; },
 };
+
+/* ───────── 뱀사다리 (2~4명) ─────────
+   혼자 할 때와 같은 판(사다리 9개, 뱀 10마리). 자리 순서대로 돌아가며 주사위 1개를 굴린다(첫 차례는 무작위).
+   100칸에 정확히 도착하면 이기고 모두의 판돈(인원 × 판돈)을 가져간다. 넘치면 넘친 만큼 되돌아간다.
+   차례마다 20초, 넘기면 서버가 대신 굴린다. 나간 사람 차례는 건너뛰고, 한 명만 남으면 그 사람이 이긴다 */
+export const SL_LAD = {1: 38, 4: 14, 9: 31, 21: 42, 28: 84, 36: 44, 51: 67, 71: 91, 80: 100};
+export const SL_SNK = {16: 6, 47: 26, 49: 11, 56: 53, 62: 19, 64: 60, 87: 24, 93: 73, 95: 75, 98: 78};
+const SL_TURN_MS = 20_000;
+const alive = (room) => room.state.seats.map((s, i) => (s.left ? -1 : i)).filter((i) => i >= 0);
+function nextTurn(room, from) {
+  const n = room.state.seats.length;
+  for (let k = 1; k <= n; k++) { const j = (from + k) % n; if (!room.state.seats[j].left) return j; }
+  return from;
+}
+GAMES.sl = {
+  init(room, priv, now, rnd) {
+    const n = room.state.seats.length, first = Math.floor(rnd() * n);
+    room.state.g = {pos: Array(n).fill(0), turn: first, first, win: -1, log: [`${room.state.seats[first].nick}부터 시작`]};
+    room.state.deadline = now + SL_TURN_MS;
+  },
+  act(room, priv, me, a, now, rnd) {
+    const g = room.state.g;
+    if (me !== g.turn) return {err: "내 차례가 아닙니다"};
+    if (!a.roll) return {err: "주사위를 굴리세요"};
+    return GAMES.sl.roll(room, now, rnd, false);
+  },
+  roll(room, now, rnd, auto) {
+    const st = room.state, g = st.g, i = g.turn, nm = st.seats[i].nick;
+    const d = 1 + Math.floor(rnd() * 6), from = g.pos[i], list = [{t: "dice", i, d}];
+    let to = from + d; const path = [];
+    for (let k = from + 1; k <= Math.min(to, 100); k++) path.push(k);
+    if (to > 100) { const back = to - 100; for (let k = 99; k >= 100 - back; k--) path.push(k); to = 100 - back; }
+    list.push({t: "move", i, path});
+    let line = `${nm} ${d}${auto ? "(시간 초과, 자동)" : ""} → ${to}칸`;
+    if (SL_LAD[to]) { list.push({t: "ladder", i, from: to, to: SL_LAD[to]}); line += ` 사다리 타고 ${SL_LAD[to]}칸`; to = SL_LAD[to]; }
+    else if (SL_SNK[to]) { list.push({t: "snake", i, from: to, to: SL_SNK[to]}); line += ` 뱀에게 물려 ${SL_SNK[to]}칸`; to = SL_SNK[to]; }
+    const pos0 = g.pos.slice();
+    g.pos[i] = to; g.log.push(line); if (g.log.length > 30) g.log.splice(0, g.log.length - 30);
+    if (to === 100) { list.push({t: "win", i}); bump(room, {t: "sl", list, pos0}); return GAMES.sl.finish(room, i, "100칸 도착"); }
+    g.turn = nextTurn(room, i); st.deadline = now + SL_TURN_MS;
+    bump(room, {t: "sl", list, pos0});
+    return {};
+  },
+  finish(room, win, why) {
+    const st = room.state, n = st.seats.length, pot = r2(room.stake * n);
+    room.status = "over"; st.deadline = null; st.g.win = win; st.g.why = why;
+    return {payouts: st.seats.map((s, i) => ({user_id: s.uid, amount: i === win ? pot : 0, cost: room.stake, il: room.il,
+      note: `뱀사다리 ${n}명 ${i === win ? "1등" : "패"}`}))};
+  },
+  auto(room, priv, now, rnd) { return GAMES.sl.roll(room, now, rnd, true); },
+  forfeit(room, priv, me, now) {
+    const st = room.state, g = st.g, live = alive(room);
+    g.log.push(`${st.seats[me].nick} 나감`);
+    if (live.length === 1) return GAMES.sl.finish(room, live[0], "혼자 남음").payouts;
+    if (g.turn === me) { g.turn = nextTurn(room, me); st.deadline = now + SL_TURN_MS; }
+    return [];
+  },
+  summary(room) { const g = room.state.g; return g ? {win: g.win, seats: room.state.seats.map((s) => s.nick), pos: g.pos} : null; },
+};

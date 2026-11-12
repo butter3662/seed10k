@@ -621,6 +621,7 @@ html.gated body{overflow:hidden}
 .mp-seat{background:var(--surface-2);border-radius:10px;padding:8px 10px;display:grid;gap:2px;border:2px solid transparent}
 .mp-seat.me{border-color:var(--brass)}.mp-seat.left{opacity:.5}
 .mp-seat small{color:var(--ink-3);font-size:12px;min-height:14px}
+.mp-dot{display:inline-block;width:9px;height:9px;border-radius:50%;vertical-align:-1px}
 .oe-pick{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;width:100%}
 .oe-pick .btn{padding:0;height:40px}
 .bj-table{display:grid;gap:10px;background:radial-gradient(120% 140% at 50% 0%,#1F6B45,#0F3D27);border-radius:14px;padding:12px;color:#fff;margin:6px 0 4px}
@@ -1000,7 +1001,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '2.1.16';
+const VERSION = '2.1.17';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -4404,16 +4405,14 @@ function slOpen(){
   if (!ov){ ov = document.createElement('div'); ov.id = 'slOv'; ov.className = 'bm-ov'; ov.setAttribute('role', 'dialog'); document.body.appendChild(ov); }
   ov.hidden = false; document.documentElement.classList.add('bm-open');
   SLV.gen++; SLV.busy = false; SLV.tok = null;
-  const cells = Array.from({length:100}, (_, k) => { const n = k + 1, [r, c] = slRC(n); return `<div class="sl-c ${(r + c) % 2 ? 'a' : 'b'}" style="grid-row:${r};grid-column:${c}"><span>${n}</span></div>`; }).join('');
+  const cells = slCellsHTML();
   ov.innerHTML = `<div class="bm-top"><button class="btn" id="slClose">닫기</button><div class="bm-ttl"><b>🐍 뱀사다리</b><small>판돈 ${fmtUSD(g.stake)}${g.il ? ' · 🚨 불법' : ''}</small></div><button class="btn" id="slQuit">기권</button></div>
     <div class="sl-board" id="slBoard">${cells}<svg class="sl-svg" id="slSvg"></svg><div class="sl-tok" data-sltok="0" style="--pc:${BM.cols[0]}"><span>나</span></div><div class="sl-tok" data-sltok="1" style="--pc:${BM.cols[1]}"><span>컴</span></div><div class="bm-fx" id="slFx"></div></div>
     <div class="sl-panel"><div class="bm-row"><div class="bm-dice" id="slDice">${bmDieHTML()}</div><div class="bm-msg" id="slMsg"></div></div><div class="bm-act" id="slAct"></div><ul class="bm-log" id="slLog"></ul></div>`;
   slDraw(); slUpdate(); slTick();
 }
-// 뱀(곡선)·사다리(가로대) 그리기
-function slDraw(){
-  const b = $('#slBoard'), svg = $('#slSvg'); if (!b || !svg) return;
-  const w = b.clientWidth; svg.setAttribute('viewBox', `0 0 ${w} ${w}`);
+// 뱀(곡선)·사다리(가로대) 그리기 (같이 하기 판도 같은 그림을 쓴다)
+function slSvgHTML(w){
   const s = w / 10;
   let h = '';
   for (const [a, z] of Object.entries(SL_LAD)){
@@ -4430,7 +4429,13 @@ function slDraw(){
     const c = cols[i % cols.length];
     h += `<path class="sl-snk" stroke="${c}" d="M${x1} ${y1} C ${p1[0]} ${p1[1]}, ${p2[0]} ${p2[1]}, ${x2} ${y2}"/><circle cx="${x1}" cy="${y1}" r="${s * 0.2}" fill="${c}"/><circle cx="${x1 - s * 0.07}" cy="${y1 - s * 0.05}" r="${s * 0.045}" fill="#fff"/><circle cx="${x1 + s * 0.07}" cy="${y1 - s * 0.05}" r="${s * 0.045}" fill="#fff"/>`;
   });
-  svg.innerHTML = h;
+  return h;
+}
+function slCellsHTML(){ return Array.from({length:100}, (_, k) => { const n = k + 1, [r, c] = slRC(n); return `<div class="sl-c ${(r + c) % 2 ? 'a' : 'b'}" style="grid-row:${r};grid-column:${c}"><span>${n}</span></div>`; }).join(''); }
+function slDraw(){
+  const b = $('#slBoard'), svg = $('#slSvg'); if (!b || !svg) return;
+  const w = b.clientWidth; svg.setAttribute('viewBox', `0 0 ${w} ${w}`);
+  svg.innerHTML = slSvgHTML(w);
   slPlace(true);
 }
 function slPlace(instant){
@@ -4837,7 +4842,7 @@ document.addEventListener('click', e => {
    방이 바뀌면 Supabase 실시간이 알려 주고(놓칠 때를 위해 3초마다도 확인), 끝나면 받을 돈(seed10k_payouts)을 '받기'로 가져온다.
    판돈은 들어갈 때 이 기기 통장에서 내고, 돌려받거나 이긴 돈은 받기로 들어온다 */
 const MP_GAMES = {oe:{nm:'홀짝 대결', ic:'✊', ready:true, desc:'2명 · 번갈아 구슬을 쥐고 맞히기, 3점 먼저'},
-                  sl:{nm:'뱀사다리', ic:'🐍', ready:false, desc:'2~4명'},
+                  sl:{nm:'뱀사다리', ic:'🐍', ready:true, desc:'2~4명 · 100칸 먼저 도착하면 판돈을 모두 가져감'},
                   bj:{nm:'블랙잭', ic:'🃏', ready:false, desc:'1~5명'},
                   bm:{nm:'주사위 세계여행', ic:'🎲', ready:false, desc:'2~4명'}};
 const MP_MIN = {oe:2, sl:2, bj:1, bm:2};
@@ -4965,7 +4970,8 @@ function mpSet(room){
   mpRender();
   if (room.status === 'over' || room.status === 'closed') mpClaim();
 }
-function mpOnEv(ev){
+function mpOnEv(ev, prev){
+  if (ev.t === 'sl'){ if (prev && prev.code === MP.room.code && prev.status === 'play'){ (MP.view.slQ = MP.view.slQ || []).push(ev); mslRun(); } return; }
   if (ev.t === 'oe_reveal'){ MP.view.oeShow = ev; clearTimeout(MP.view.oeT); MP.view.oeT = setTimeout(() => { MP.view.oeShow = null; mpRender(); }, 2200); }
 }
 function mpOpen(){
@@ -4987,9 +4993,14 @@ function mpForget(){
 function mpRender(){
   const ov = $('#mpOv'); if (!ov || ov.hidden) return;
   const R = MP.room, g = R ? MP_GAMES[R.game] : null;
+  if (R && MP_UPD[R.game] && (R.status === 'play' || R.status === 'over') && MP_UPD[R.game](R)){
+    const sm = ov.querySelector('.bm-ttl small'); if (sm) sm.textContent = `방 ${MP.code || ''} · 달러 통장 ${fmtUSD(S.usd)}`;
+    return;
+  }
   const body = !R ? '<p class="muted">방을 불러오는 중…</p>' : R.status === 'closed' ? `<p>방이 닫혔습니다.</p><p class="muted">대기실에서 닫힌 방은 판돈을 돌려받습니다.</p>` : R.status === 'lobby' ? mpLobbyHTML(R) : (MP_VIEW[R.game] || (() => ''))(R);
   ov.innerHTML = `<div class="bm-top"><button class="btn" id="mpClose">닫기</button><div class="bm-ttl"><b>${g ? g.ic + ' ' + g.nm : '👥 같이 하기'}</b><small>방 ${esc(MP.code || '')} · 달러 통장 ${fmtUSD(S.usd)}</small></div><button class="btn" id="mpLeave">나가기</button></div>
     <section class="card c-mg gm-body">${body}</section>`;
+  if (R && MP_UPD[R.game] && (R.status === 'play' || R.status === 'over')) MP_UPD[R.game](R);
 }
 function mpSeatsHTML(R, extra){
   const me = mpMe();
@@ -5000,7 +5011,7 @@ function mpLobbyHTML(R){
   const prev = R.state.prev;
   return `<div class="mp-code"><small>방 코드</small><b class="num">${esc(R.code)}</b><button class="btn" id="mpCopy">복사</button></div>
     <p class="muted" style="margin:0 0 8px">판돈 ${fmtUSD(R.stake)} · ${n}/${R.state.maxP}명${R.il ? ' · <b class="down">🚨 불법 모드 방</b>' : ''} · ${R.mode === 'live' ? '실제 시세' : '시뮬레이션'} 모드</p>
-    ${prev && prev.seats ? `<p class="muted" style="margin:0 0 8px">지난 판: ${prev.seats.map((nm, i) => `${esc(nm)} ${prev.score ? prev.score[i] : ''}`).join(' : ')}${prev.win !== undefined ? ` · ${esc(prev.seats[prev.win])} 승` : ''}</p>` : ''}
+    ${prev && prev.seats ? `<p class="muted" style="margin:0 0 8px">지난 판: ${prev.score ? prev.seats.map((nm, i) => `${esc(nm)} ${prev.score[i]}`).join(' : ') + ' · ' : ''}${prev.win >= 0 && prev.seats[prev.win] !== undefined ? `${esc(prev.seats[prev.win])} 승` : ''}</p>` : ''}
     ${mpSeatsHTML(R)}
     <div class="bm-acts">${me < 0 ? `<button class="btn solid" id="mpRejoin">${fmtUSD(R.stake)} 내고 참가</button>`
       : host ? `<button class="btn solid" id="mpStart" ${n >= min ? '' : 'disabled'}>${n >= min ? '시작' : `${min}명이 되면 시작할 수 있습니다`}</button>` : '<p class="bm-wait">방장이 시작하기를 기다리는 중…</p>'}</div>`;
@@ -5071,7 +5082,7 @@ setInterval(() => { if (!document.hidden && ACC.user) mpClaim(); }, 30000);
 setInterval(() => { if (!document.hidden && ACC.user && UI.tab === 'market' && $('#mpRef')) mpRefAlive().then(() => { const el = $('#mpRef'); if (el) el.innerHTML = MP.ref === false ? '<span class="down">게임 서버 꺼짐</span>' : MP.ref ? '게임 서버 켜짐' : ''; }); }, 15000);
 
 /* ── 게임별 화면 ── */
-const MP_VIEW = {};
+const MP_VIEW = {}, MP_UPD = {};   // MP_VIEW: 처음 그리기, MP_UPD: 이미 그린 화면을 그 자리에서 고치기 (그렸으면 true)
 const mpLeft = dl => dl ? Math.max(0, Math.ceil((dl - Date.now()) / 1000)) : null;
 setInterval(() => { const el = $('#mpTimer'); if (el && MP.room) { const s = mpLeft(MP.room.state.deadline); el.textContent = s === null ? '' : `${s}초`; } }, 500);
 
@@ -5107,6 +5118,99 @@ MP_VIEW.oe = R => {
   }
   return `<div class="card-h"><h2>✊ 홀짝 대결</h2><small>판돈 ${fmtUSD(R.stake)}${R.il ? ' · 🚨 불법' : ''}</small></div>${sc}${hand}${msg}<div class="bm-acts">${acts}</div>`;
 };
+
+// 뱀사다리 (2~4명). 판은 혼자 할 때와 같다. 굴림 결과는 심판이 정하고, 화면은 받은 이벤트를 차례로 움직여 보여 준다
+MP_VIEW.sl = R => {
+  const st = R.state, n = st.seats.length;
+  return `<div class="card-h"><h2>🐍 뱀사다리</h2><small>판돈 ${fmtUSD(R.stake)} · ${n}명 · 1등 ${fmtUSD(R.stake * n)}${R.il ? ' · 🚨 불법' : ''}</small></div>
+    <div class="sl-board" id="mslBoard">${slCellsHTML()}<svg class="sl-svg" id="mslSvg"></svg>${st.seats.map((p, i) => `<div class="sl-tok" data-msltok="${i}" style="--pc:${BM.cols[i % BM.cols.length]}"><span>${esc([...(p.nick || '?')][0])}</span></div>`).join('')}<div class="bm-fx" id="mslFx"></div></div>
+    <div class="sl-panel" style="margin-top:10px"><div id="mslSeats"></div><div class="bm-row"><div class="bm-dice" id="mslDice">${bmDieHTML()}</div><div class="bm-msg" id="mslMsg"></div></div><div class="bm-acts" id="mslAct"></div><ul class="bm-log" id="mslLog"></ul></div>`;
+};
+const mpSetH = (el, h) => { if (el && el._h !== h){ el._h = h; el.innerHTML = h; } };   // 바뀐 것만 다시 그린다 (누르는 중인 버튼이 사라지지 않게)
+const mslNm = (R, i) => i === mpMe() ? '나' : (R.state.seats[i] || {}).nick || '?';
+function mslPlace(R, instant){
+  const b = $('#mslBoard'), g = R.state.g; if (!b || !g) return;
+  const w = b.clientWidth, pos = MP.view.slTok || g.pos, sz = w / 10 * 0.46, n = pos.length;
+  const off = n <= 2 ? [[-0.32, 0], [0.32, 0]] : [[-0.3, -0.3], [0.3, -0.3], [-0.3, 0.3], [0.3, 0.3]];
+  pos.forEach((p, i) => {
+    const t = document.querySelector(`[data-msltok="${i}"]`); if (!t) return;
+    const [x, y] = slXY(p, w), [ox, oy] = off[i] || [0, 0];
+    if (instant) t.style.transition = 'none';
+    t.style.width = t.style.height = sz + 'px';
+    t.style.opacity = R.state.seats[i].left ? '.35' : '';
+    t.style.transform = `translate(${x - sz / 2 + ox * sz}px, ${y - sz / 2 + oy * sz}px)`;
+    if (instant){ t.offsetWidth; t.style.transition = ''; }
+  });
+}
+MP_UPD.sl = R => {
+  const b = $('#mslBoard'), svg = $('#mslSvg'), g = R.state.g; if (!b || !svg || !g) return false;
+  const w = b.clientWidth;
+  if (+svg.dataset.w !== w){ svg.dataset.w = w; svg.setAttribute('viewBox', `0 0 ${w} ${w}`); svg.innerHTML = slSvgHTML(w); mslPlace(R, true); }
+  const busy = !!MP.view.slBusy, pos = MP.view.slTok || g.pos, me = mpMe(), over = R.status === 'over' && !busy;
+  mpSetH($('#mslSeats'), mpSeatsHTML(R, (s, i) => `<span style="display:block"><span class="mp-dot" style="background:${BM.cols[i % BM.cols.length]}"></span> ${pos[i]}칸${!over && !busy && R.status === 'play' && i === g.turn ? ' · 🎲 차례' : ''}${over && i === g.win ? ' · 🏆' : ''}</span>`));
+  const msg = $('#mslMsg'), act = $('#mslAct');
+  if (busy){ mpSetH(act, '<p class="bm-wait">움직이는 중…</p>'); mslPlace(R, false); return true; }
+  if (over){
+    const iWon = g.win === me, pot = R.stake * R.state.seats.length, host = ACC.user && R.host === ACC.user.id;
+    mpSetH(msg, iWon ? `<b class="up">🏆 이겼다! ${fmtUSD(pot)}을 받습니다</b>` : `<b class="down">${esc(mslNm(R, g.win))} 승리</b>${g.why && g.why !== '100칸 도착' ? ` (${esc(g.why)})` : ''}`);
+    mpSetH(act, host ? `<button class="btn solid" id="mpAgain">한 판 더 (${fmtUSD(R.stake)})</button>` : '<p class="bm-wait">방장이 한 판 더 열면 다시 참가할 수 있습니다</p>');
+  } else if (g.turn === me){
+    mpSetH(msg, `내 차례 <span class="muted" id="mpTimer"></span>`);
+    mpSetH(act, `<button class="btn solid bm-roll" data-mpa='{"roll":1}' ${MP.busy ? 'disabled' : ''}>🎲 주사위 굴리기</button>`);
+  } else {
+    mpSetH(msg, `${esc(mslNm(R, g.turn))} 차례… <span class="muted" id="mpTimer"></span>`);
+    mpSetH(act, '<p class="bm-wait">기다리는 중 (20초가 지나면 자동으로 굴립니다)</p>');
+  }
+  mpSetH($('#mslLog'), (g.log || []).slice(-4).reverse().map(t => `<li>${esc(t)}</li>`).join(''));
+  mslPlace(R, false);
+  return true;
+};
+function mslSay(t){ const m = $('#mslMsg'); if (m){ m._h = null; m.textContent = t; } }
+function mslWait(ms){ const gen = MP.view.slGen; return new Promise((res, rej) => setTimeout(() => (gen === MP.view.slGen && $('#mslBoard')) ? res() : rej('stop'), bmMs(ms))); }
+async function mslRun(){
+  if (MP.view.slBusy) return;
+  MP.view.slBusy = true; MP.view.slGen = (MP.view.slGen || 0) + 1;
+  try {
+    while (MP.view.slQ && MP.view.slQ.length){
+      const ev = MP.view.slQ.shift(), R = MP.room, me = mpMe();
+      if (!R || !$('#mslBoard')) throw 'stop';
+      MP.view.slTok = ev.pos0.slice(); MP_UPD.sl(R);
+      const fx = $('#mslFx'), tokEl = i => document.querySelector(`[data-msltok="${i}"]`);
+      for (const e of ev.list){
+        const nm = mslNm(R, e.i);
+        if (e.t === 'dice'){
+          mslSay(`${nm} 굴리는 중…`);
+          const c = $('#mslDice .bm-cube'), box = $('#mslDice');
+          box.classList.add('rolling'); c.style.transition = 'none'; c.style.transform = `rotateX(${Math.random() * 360}deg) rotateY(${Math.random() * 360}deg)`; c.offsetWidth;
+          c.style.transition = `transform ${bmMs(700)}ms cubic-bezier(.2,.75,.25,1)`; c.style.transform = `rotateX(720deg) rotateY(720deg) ` + BM_FACE[e.d];
+          await mslWait(720); box.classList.remove('rolling');
+          mslSay(`${nm}: ${e.d}`);
+          await mslWait(180);
+        } else if (e.t === 'move'){
+          for (const k of e.path){
+            MP.view.slTok[e.i] = k; const t = tokEl(e.i); if (!t) break; const inner = t.querySelector('span');
+            t.style.transition = `transform ${bmMs(140)}ms ease-out`; inner.classList.remove('hop'); inner.offsetWidth; inner.classList.add('hop');
+            mslPlace(R, false); await mslWait(150);
+          }
+        } else if (e.t === 'ladder' || e.t === 'snake'){
+          const mine = e.i === me;
+          bmBannerIn(fx, e.t === 'ladder' ? `🪜 ${mine ? '' : nm + ' '}사다리! ${e.from} → ${e.to}` : `🐍 ${mine ? '' : nm + ' '}뱀! ${e.from} → ${e.to}`, mine ? (e.t === 'ladder' ? 'green' : 'red') : '', 900);
+          await mslWait(380);
+          MP.view.slTok[e.i] = e.to; const t = tokEl(e.i);
+          if (t) t.style.transition = `transform ${bmMs(e.t === 'ladder' ? 650 : 800)}ms ${e.t === 'ladder' ? 'ease-in-out' : 'cubic-bezier(.5,0,.7,1)'}`;
+          mslPlace(R, false); await mslWait(e.t === 'ladder' ? 700 : 850);
+        } else if (e.t === 'win'){
+          bmBannerIn(fx, e.i === me ? '🏆 내가 이겼다!' : `😵 ${nm} 승리`, e.i === me ? 'gold' : 'red', 1600);
+          if (e.i === me) bmConfettiIn(fx);
+          await mslWait(600);
+        }
+      }
+    }
+  } catch(err){ if (err !== 'stop') console.error(err); MP.view.slQ = []; }
+  MP.view.slBusy = false; MP.view.slTok = null;
+  mpRender();
+}
+window.addEventListener('resize', () => { if (MP.room && $('#mslBoard')) MP_UPD.sl(MP.room); });
 
 /* ───────── 복권 탭: 로또6/45 (실제 추첨 결과로 정산) · 스피또2000 (긁는 즉석복권) ─────────
    로또 규칙 출처: 동행복권 '로또6/45 소개' (1게임 1,000원, 1~45 중 6개, 판매 일~금 06:00~24:00·토 06:00~20:00, 토 20:35경 추첨,
