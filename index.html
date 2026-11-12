@@ -1153,7 +1153,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '2.2.13';
+const VERSION = '2.2.14';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -6899,12 +6899,14 @@ async function admSrvLoad(){
     ACC.sb.from('seed10k_rooms').select('state,updated_at').eq('code', '__ref').maybeSingle(),
     ACC.sb.from('seed10k_admin_cmds').select('*').order('id', {ascending:false}).limit(5),
   ]);
-  ADM.srv = h.data ? h.data.state : null; ADM.cmds = c.error ? {err:c.error.message} : c.data || [];
+  ADM.srv = h.data ? h.data.state : null; ADM.cmds = c.error ? {err:c.error.message} : c.data || []; ADM.srvAt = Date.now();
   const el = $('#admSrv'); if (el) el.innerHTML = admSrvHTML();
   clearTimeout(ADM.srvT);
-  if (UI.tab === 'admin' && Array.isArray(ADM.cmds) && ADM.cmds.some(x => !x.done)) ADM.srvT = setTimeout(admSrvLoad, 5000);   // 처리될 때까지 지켜본다
+  // 관리 탭이 열려 있는 동안 계속 새로 읽는다 (요청 처리 중이면 5초, 평소 15초). 예전에는 처음 한 번만 읽어서, 탭을 다시 열면 오래된 신호로 '꺼짐'이 떴다
+  if (UI.tab === 'admin') ADM.srvT = setTimeout(admSrvLoad, Array.isArray(ADM.cmds) && ADM.cmds.some(x => !x.done) ? 5000 : 15000);
 }
 function admSrvHTML(){
+  if (ADM.cmds !== null && Date.now() - (ADM.srvAt || 0) > 10000){ clearTimeout(ADM.srvT); ADM.srvT = setTimeout(admSrvLoad, 0); }   // 읽은 지 오래됐으면 바로 다시 읽는다
   if (ADM.cmds === null){ setTimeout(admSrvLoad, 0); return '<div class="card-h"><h2>🖥️ 게임 서버</h2></div><p class="muted">불러오는 중…</p>'; }
   const s = ADM.srv, age = s && s.at ? Math.round((Date.now() - s.at) / 1000) : null, alive = age !== null && age < 40;
   const pend = Array.isArray(ADM.cmds) && ADM.cmds.some(x => !x.done);
