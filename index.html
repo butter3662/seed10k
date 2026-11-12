@@ -1154,7 +1154,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '2.2.19';
+const VERSION = '2.2.20';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -4418,6 +4418,7 @@ const gamMax = k => Math.min(gamIl() ? GAM[k].on : GAM[k].off, Math.floor(Math.m
 // 판돈 고르기 공통 화면. onStart(bet)
 function betDialog(k, title, extraHTML, onStart){
   const G = GAM[k];
+  if (typeof gmHide === 'function') gmHide();   // 판이 끝난 게임 화면에서 '새 게임'을 누르면 그 화면을 닫고 판돈 창만 띄운다 (창 두 겹 방지). 시작하면 onStart가 다시 연다
   UI.betIn = UI.betIn || {};
   const close = showModal(`<h2>${title}</h2>${extraHTML || ''}<div id="betBox"></div>
     <div class="acts"><button class="btn" data-close>닫기</button><button class="btn solid" id="betGo">시작</button></div>`);
