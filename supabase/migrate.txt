@@ -1,0 +1,8 @@
+# GitHub Actions(.github/workflows/sql.yml)가 자동으로 실행하는 SQL 파일 (위에서부터 차례로)
+# 처음 보는 파일이나 내용이 바뀐 파일만 실행하고, 실행한 파일과 내용(sha256)을 seed10k_migrations 표에 남긴다.
+# 여기 없는 옛 파일(seed10k.sql, seed10k_setup.sql 등)은 이미 실행된 것으로 보고 건드리지 않는다.
+# 새 SQL 파일은 여러 번 실행해도 되게 쓰고 맨 아래에 이름을 더한다.
+seed10k_multi.sql
+seed10k_admin.sql
+seed10k_admin_cmds.sql
+seed10k_testers.sql

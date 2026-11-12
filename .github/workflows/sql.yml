@@ -1,0 +1,32 @@
+name: Supabase SQL 자동 실행
+
+# supabase/ 아래 SQL이나 migrate.txt가 바뀌어 main에 올라오면, migrate.txt에 적힌 파일 중
+# 처음 보거나 내용이 바뀐 것만 데이터베이스에 실행한다 (tools/migrate.py).
+# 필요한 비밀값: SUPABASE_DB_URL (Supabase → Connect → Session pooler 주소). 없으면 아무것도 하지 않는다.
+# Actions 탭에서 손으로 다시 실행할 수도 있다.
+
+on:
+  push:
+    branches: [main]
+    paths: ['supabase/*.sql', 'supabase/migrate.txt', 'tools/migrate.py']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sql
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: psql 준비
+        run: command -v psql || (sudo apt-get update -q && sudo apt-get install -y -q postgresql-client)
+      - name: SQL 실행
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: python3 tools/migrate.py
