@@ -986,7 +986,8 @@ html.bm-open .top,html.bm-open .tabbar{visibility:hidden}
 .bm-ov.b3 .bm-hud .bm-msg{text-align:center;color:#fff;text-shadow:0 1px 3px #000,0 0 8px rgba(0,0,0,.8);font-size:clamp(11px,2vw,15px)}
 .bm-ov.b3 .bm-hud .bm-die{--s:clamp(30px,5.5vw,52px);filter:drop-shadow(0 8px 8px rgba(0,0,0,.55))}
 .bm-ov.b3 .bm-fx{position:absolute;inset:0;z-index:4}
-.bm-under{width:min(100%,620px);display:flex;flex-direction:column;gap:6px;padding:4px 2px 0;overflow:visible}
+.bm-under{width:min(100%,620px);display:flex;flex-direction:column;gap:6px;padding:4px 2px 0;overflow:visible;flex:none;min-height:auto;height:auto}   /* 줄어들지 않게: 줄면 버튼·기록이 참가자 칸 위로 겹친다 */
+.bm-ov.b3 .bm-pls{flex:none}
 @media (prefers-reduced-motion: reduce){.bm-tok.turn .bm-tok-i,.bm-roll,.bm-c.fly{animation:none}}
 html[data-game=live] .c-news{order:3}
 /* ───────── 상세 차트 ───────── */
@@ -1200,7 +1201,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '2.2.23';
+const VERSION = '2.2.24';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -4963,7 +4964,7 @@ function oeFinish(run){
   if (pay > 0) receiveUSD(pay);
   s.hist.unshift({at:Date.now(), stake:g.stake, pay, win, k:g.k}); s.hist = s.hist.slice(0, 10);
   altLog('gamble', `홀짝 ${g.lost ? `${g.k + 1}번째에서 틀림${ran ? ' → 도망' : ''}` : `${g.k}연속 맞히고 받음`}${g.il ? ' (불법)' : ''}`, pay - g.stake, 'USD');
-  s.cur = null; OEV.reveal = false; OEV.busy = false; commit(); oeRender();
+  s.cur = null; OEV.reveal = false; OEV.busy = false; commit(); gmHide(); oeRender();
   police('oe', g.il, pay - g.stake);
   runCheck(); if (ran) runAdd('oe', g.stake);
   showModal(`<h2 class="${win ? 'up' : ''}">${ran ? '🏃 도망쳤습니다' : g.lost ? `${g.k + 1}번째에서 틀렸습니다` : `🏆 ${g.k}연속 맞힘`}</h2>${ran ? runNote(g.stake) : ''}<div class="bd"><div><span>판돈</span><b class="num">${fmtUSD(g.stake)}</b></div><div><span>받은 돈</span><b class="num">${fmtUSD(pay)}</b></div><div class="tot"><span>손익</span><b class="num ${cls(pay - g.stake)}">${signUSD(pay - g.stake)}</b></div></div><div class="acts"><button class="btn solid" data-close>확인</button></div>`);
@@ -5179,9 +5180,10 @@ function bjFinish(run){
   const res = ran ? '도망' : g.hands.some(h => h.res === 'bj') ? '블랙잭' : net > 0 ? '승' : net === 0 ? '무' : '패';
   s.hist.unshift({at:Date.now(), stake:g.stake, cost:g.cost, pay:got, res}); s.hist = s.hist.slice(0, 10);
   altLog('gamble', `블랙잭: ${ran ? '패 → 도망' : res}${g.hands.length > 1 ? ` (${g.hands.length}손)` : ''}${g.il ? ' (불법)' : ''}`, net, 'USD');
-  s.cur = null; BJV.shown = null; commit(); bjRender();
+  s.cur = null; BJV.shown = null; commit(); gmHide(); bjRender();   // 결과를 보면 게임 화면을 닫고 도박 탭으로 (판 없는 화면이 남지 않게)
   police('bj', g.il, net);
   runCheck();
+  if (!ran) toast(`블랙잭 ${res} ${signUSD(net)}`, net < 0);
   if (ran){ runAdd('bj', loss); showModal(`<h2>🏃 도망쳤습니다</h2><p>잃을 ${fmtUSD(loss)}을 내지 않고 건 돈 ${fmtUSD(g.cost)}을 돌려받았습니다.</p>${runNote(loss)}<div class="acts"><button class="btn solid" data-close>확인</button></div>`); }
 }
 document.addEventListener('click', e => {
