@@ -993,18 +993,15 @@ html.bm-open .top,html.bm-open .tabbar{visibility:hidden}
 .bm-tag{position:absolute;left:0;top:-3px;padding:1px 7px;border-radius:999px;background:rgba(10,12,18,.82);border:1.5px solid var(--pc);color:#fff;font-size:clamp(9px,1.25vw,12px);font-weight:800;line-height:1.5;white-space:nowrap;box-shadow:0 2px 4px rgba(0,0,0,.4)}
 .bm-blds{position:absolute;inset:0;transform-style:preserve-3d;pointer-events:none}
 .bm-bset{position:absolute;inset:0;transform-style:preserve-3d}
-.bm-bx{position:absolute;transform-style:preserve-3d}
-.bm-bx i{position:absolute;left:0;top:0;transform-origin:0 0;backface-visibility:visible}
-.bm-bx .ft{inset:0;width:100%;height:100%}
-.bm-bx .fy{background:color-mix(in srgb,var(--oc) 22%,#d9d3c6)}
-.bm-bx .fx{background:color-mix(in srgb,var(--oc) 18%,#efe9dc)}
-.bm-bx.kv .ft{background:linear-gradient(135deg,#d2503f,#a8352a)}                       /* 별장: 빨간 지붕 */
-.bm-bx.kv .fy,.bm-bx.kv .fx{background-image:linear-gradient(transparent 55%,rgba(0,0,0,.12) 55%)}
-.bm-bx.kb .ft{background:color-mix(in srgb,var(--oc) 70%,#fff)}
-.bm-bx.kb .fy,.bm-bx.kb .fx{background-image:repeating-linear-gradient(0deg,transparent 0 18%,rgba(40,60,90,.35) 18% 30%)}
-.bm-bx.kh .ft{background:linear-gradient(135deg,color-mix(in srgb,var(--oc) 80%,#fff),var(--oc))}
-.bm-bx.kh .fy,.bm-bx.kh .fx{background-image:repeating-linear-gradient(0deg,transparent 0 9%,rgba(255,230,150,.75) 9% 15%),repeating-linear-gradient(90deg,transparent 0 22%,rgba(0,0,0,.15) 22% 28%)}
-.bm-bx.kh .fy{box-shadow:inset 0 0 0 1px rgba(0,0,0,.2)}
+.bm-fc{position:absolute;left:0;top:0;transform-origin:0 0;display:block}
+.bm-fc.fy{background:color-mix(in srgb,var(--oc) 22%,#d9d3c6)}
+.bm-fc.fx{background:color-mix(in srgb,var(--oc) 18%,#efe9dc)}
+.bm-fc.ft.kv{background:linear-gradient(135deg,#d2503f,#a8352a)}                       /* 별장: 빨간 지붕 */
+.bm-fc.kv.fy,.bm-fc.kv.fx{background-image:linear-gradient(transparent 55%,rgba(0,0,0,.12) 55%)}
+.bm-fc.ft.kb{background:color-mix(in srgb,var(--oc) 70%,#fff)}
+.bm-fc.kb.fy,.bm-fc.kb.fx{background-image:repeating-linear-gradient(0deg,transparent 0 18%,rgba(40,60,90,.35) 18% 30%)}
+.bm-fc.ft.kh{background:linear-gradient(135deg,color-mix(in srgb,var(--oc) 80%,#fff),var(--oc))}
+.bm-fc.kh.fy,.bm-fc.kh.fx{background-image:repeating-linear-gradient(0deg,transparent 0 9%,rgba(255,230,150,.75) 9% 15%),repeating-linear-gradient(90deg,transparent 0 22%,rgba(0,0,0,.15) 22% 28%)}
 .bm-hud{position:absolute;left:50%;top:36%;transform:translate(-50%,-50%);display:grid;justify-items:center;gap:6px;pointer-events:none;width:44%;z-index:3}
 .bm-ov.b3 .bm-hud .bm-msg{text-align:center;color:#fff;text-shadow:0 1px 3px #000,0 0 8px rgba(0,0,0,.8);font-size:clamp(11px,2vw,15px)}
 .bm-ov.b3 .bm-hud .bm-die{--s:clamp(30px,5.5vw,52px);filter:drop-shadow(0 8px 8px rgba(0,0,0,.55))}
@@ -1232,7 +1229,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '2.2.26';
+const VERSION = '2.2.27';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -4273,10 +4270,12 @@ function bmPlace(instant){
 // 입체 판의 건물: 판 위에 진짜 상자로 세운다 (윗면 + 보이는 옆면 두 개. 보는 쪽이 판의 +x·+y 방향이라 나머지 면은 안 보인다)
 //   별장: 낮은 집(빨간 지붕), 빌딩: 중간 높이, 호텔: 가장 높고 창문 줄무늬. 벽은 주인 색을 옅게, 지붕은 주인 색
 function bmBox(x, y, w, d, h, cls){
-  return `<div class="bm-bx ${cls}" style="left:${x.toFixed(1)}px;top:${y.toFixed(1)}px;width:${w.toFixed(1)}px;height:${d.toFixed(1)}px;--h:${h.toFixed(1)}px">
-    <i class="fy" style="width:${w.toFixed(1)}px;height:${h.toFixed(1)}px;transform:translateY(${d.toFixed(1)}px) rotateX(90deg)"></i>
-    <i class="fx" style="width:${h.toFixed(1)}px;height:${d.toFixed(1)}px;transform:translateX(${w.toFixed(1)}px) rotateY(-90deg)"></i>
-    <i class="ft" style="transform:translateZ(${h.toFixed(1)}px)"></i></div>`;
+  // 면마다 위치·회전을 통째로 준다 (상자 묶음 없이 판 층에 바로): 아이패드 사파리에서 중첩된 입체가 납작해지는 문제를 피한다.
+  // 바닥에서 0.6px 띄워 칸 면과 겹치지 않게 한다 (겹치면 사파리가 옆면을 칸 뒤로 그린다)
+  const f = n => n.toFixed(1), z0 = 0.6;
+  return `<i class="bm-fc fy ${cls}" style="width:${f(w)}px;height:${f(h)}px;transform:translate3d(${f(x)}px,${f(y + d)}px,${z0}px) rotateX(90deg)"></i>`
+    + `<i class="bm-fc fx ${cls}" style="width:${f(h)}px;height:${f(d)}px;transform:translate3d(${f(x + w)}px,${f(y)}px,${z0}px) rotateY(-90deg)"></i>`
+    + `<i class="bm-fc ft ${cls}" style="width:${f(w)}px;height:${f(d)}px;transform:translate3d(${f(x)}px,${f(y)}px,${f(h + z0)}px)"></i>`;
 }
 function bmBldPlace(){
   const box = $('#bmBlds'), g = bmG(), V = BMV.lastV; if (!box || !g || !V) return;
