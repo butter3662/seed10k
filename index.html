@@ -1154,7 +1154,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '2.2.16';
+const VERSION = '2.2.17';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -7704,6 +7704,7 @@ document.addEventListener('pointermove', e => {   // 마우스를 올리면 지�
   tip.style.left = Math.min(box.width - tip.offsetWidth - 4, e.clientX - box.left + 12) + 'px'; tip.style.top = (e.clientY - box.top + 14) + 'px';
 });
 const cls2 = c => c > 0.000005 ? 'up' : c < -0.000005 ? 'down' : 'flat';
+const HOUSE_MAXA = 300;   // 한 채 전용면적 최대 (㎡). 넘게 적으면 이 값으로 계산하고 그렇다고 알려 준다
 function houseBuyDialog(cls){
   const p = hPx(cls); if (p === null) return toast('시세를 아직 받지 못했습니다', true);
   UI.hArea = UI.hArea || 84;
@@ -7715,17 +7716,18 @@ function houseBuyDialog(cls){
     <div class="acts"><button class="btn" data-close>닫기</button><button class="btn solid" id="hGo">사기</button></div>`);
   const inp = $('#hAreaIn');
   const upd = () => {
-    const a = clamp(parseFloat(inp.value) || 0, 0, 300);
+    const raw = parseFloat(String(inp.value).replace(/,/g, '')) || 0, a = clamp(raw, 0, HOUSE_MAXA);
     UI.hArea = a;
     $$('[data-harea]').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.harea === a)));
     const cost = Math.round(p * a), ok = a >= 10 && canPayKRW(cost);
     $('#hInfo').innerHTML = `<div><span>가격</span><b class="num">${fmtKRW(cost)}</b></div><div><span>쓸 수 있는 돈 (원화 + 달러 환전)</span><b class="num">${fmtKRW(S.krw + S.usd * fxRates().sell)}</b></div>${a < 10 ? '<div class="tot"><span>면적은 10㎡ 이상</span><b></b></div>' : ok ? '' : '<div class="tot"><span>돈이 모자랍니다</span><b></b></div>'}`;
+    if (raw > HOUSE_MAXA) $('#hInfo').insertAdjacentHTML('beforeend', `<div class="tot"><span>⚠️ 한 채의 전용면적은 ${HOUSE_MAXA}㎡까지입니다. ${HOUSE_MAXA}㎡로 계산했습니다 (더 사려면 한 채씩 더 사세요)</span></div>`);
     $('#hGo').disabled = !ok;
   };
   inp.addEventListener('input', upd);
   $$('[data-harea]').forEach(b => b.onclick = () => { inp.value = b.dataset.harea; upd(); });
   upd();
-  $('#hGo').onclick = () => { const a = clamp(parseFloat(inp.value) || 0, 10, 300); close(); houseBuy(cls, a); };
+  $('#hGo').onclick = () => { const a = clamp(parseFloat(String(inp.value).replace(/,/g, '')) || 0, 10, HOUSE_MAXA); close(); houseBuy(cls, a); };
 }
 
 /* ── 순자산에 더하는 채권·주택 평가액 (달러) ── */
