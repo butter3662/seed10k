@@ -17,7 +17,7 @@ export const LIMITS = {   // 사이트의 GAM과 같다 (판돈 한도: 평소 o
   oe: {nm: "홀짝", min: 1, off: 10, on: 100, minP: 2, maxP: 2},
   sl: {nm: "뱀사다리", min: 5, off: 50, on: 500, minP: 2, maxP: 4},
   bj: {nm: "블랙잭", min: 5, off: 100, on: 1000, minP: 2, maxP: 5},
-  bs: {nm: "벅샷 룰렛", min: 5, off: 50, on: 500, minP: 2, maxP: 4},
+  bs: {nm: "벅샷 룰렛", min: 5, off: 100, on: 1000, minP: 2, maxP: 4},
   bm: {nm: "주사위 세계여행", min: 10, off: 100, on: 1000, minP: 2, maxP: 4},
 };
 export const LOBBY_IDLE_MS = 20 * 60_000;   // 대기실에서 20분 동안 아무 일도 없으면 닫고 판돈을 돌려준다

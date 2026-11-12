@@ -1068,7 +1068,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '2.1.26';
+const VERSION = '2.1.27';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -4297,7 +4297,7 @@ const GAM = {
   sl:{nm:'뱀사다리', min:5, off:50, on:500, p:0.025},
   oe:{nm:'홀짝', min:1, off:10, on:100, p:0.05},
   bj:{nm:'블랙잭', min:5, off:100, on:1000, p:0.05},
-  bs:{nm:'벅샷 룰렛', min:5, off:50, on:500, p:0.025},
+  bs:{nm:'벅샷 룰렛', min:5, off:100, on:1000, p:0.05},
   seize:0.5
 };
 function gamS(){
