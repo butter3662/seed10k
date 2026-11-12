@@ -1144,7 +1144,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '2.2.4';
+const VERSION = '2.2.5';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -5371,7 +5371,7 @@ async function bsPlay(ev, done, rerender){
       } else if (e.t === 'shot'){
         const self = e.target === e.i, up = (e.target === me()) ? 'down' : 'up';   // 내 쪽(아래)을 쏘면 총구가 아래로
         const byMe = e.i === me(); BSV.hold = false; BSV.aimT = null; BSV.shooter = byMe ? 'me' : 'op';
-        BSV.eject = null; BSV.aim = up; BSV.msg = `${nm(e.i)} → ${self ? (byMe ? '나' : '자기 자신') : nm(e.target)}`; rerender(); await bsWait(byMe ? 250 : 1100);
+        BSV.eject = null; BSV.aim = up; BSV.msg = `${nm(e.i)} → ${self ? (byMe ? '나' : '자기 자신') : nm(e.target)}`; rerender(); await bsWait(byMe ? (BS3.st === 'on' ? (e.target === me() ? 850 : 650) : 250) : 1100);   // 3D는 총이 겨누는 자세까지 다 움직인 뒤에 쏜다 (나를 겨눌 때 움직임이 가장 크다)
         bsViewDo(e); BSV.fx = e.live ? 'bang' : 'click'; BSV.flash = e.live ? 'p' + e.target : '';
         if (e.live){ BSAU.shot(e.dmg > 1); if (e.dmg && e.target === me()) BSAU.ring(e.out ? 3.5 : 2.6); if (e.out) BSAU.thud(e.target === me() ? 1.55 : 0.85); } else BSAU.click();
         BSV.msg = e.live ? `💥 실탄! ${nm(e.target)} 목숨 −${e.dmg}${e.out ? ' · 탈락' : ''}` : '딸깍… 공포탄'; rerender();
