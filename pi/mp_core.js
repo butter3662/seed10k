@@ -10,12 +10,14 @@
 //   state.ev: {seq, ...}       화면이 연출할 마지막 사건 (seq가 바뀌면 새 사건)
 // payouts: [{user_id, amount, cost, il, note}]  끝나거나 환불할 때 각자 받을 돈 (사이트가 '받기'로 가져간다)
 
-import { BM, BME } from "./bm_engine.js";   // 주사위 세계여행 규칙 (사이트 bm.js에서 떼어 낸 같은 코드)
+import { BM, BME } from "./bm_engine.js";
+import { BS_KEYS, BSE } from "./bs_engine.js";   // 벅샷 룰렛 규칙 (사이트 bs.js에서 떼어 낸 같은 코드)   // 주사위 세계여행 규칙 (사이트 bm.js에서 떼어 낸 같은 코드)
 
 export const LIMITS = {   // 사이트의 GAM과 같다 (판돈 한도: 평소 off, 불법 모드 on)
   oe: {nm: "홀짝", min: 1, off: 10, on: 100, minP: 2, maxP: 2},
   sl: {nm: "뱀사다리", min: 5, off: 50, on: 500, minP: 2, maxP: 4},
   bj: {nm: "블랙잭", min: 5, off: 100, on: 1000, minP: 2, maxP: 5},
+  bs: {nm: "벅샷 룰렛", min: 5, off: 50, on: 500, minP: 2, maxP: 4},
   bm: {nm: "주사위 세계여행", min: 10, off: 100, on: 1000, minP: 2, maxP: 4},
 };
 export const LOBBY_IDLE_MS = 20 * 60_000;   // 대기실에서 20분 동안 아무 일도 없으면 닫고 판돈을 돌려준다
@@ -336,8 +338,16 @@ GAMES.bj = {
     return {payouts: st.seats.map((s, i) => ({user_id: s.uid, amount: pays[i], cost: room.stake, il: room.il,
       note: `블랙잭 대결 ${n}명 ${s.left ? "기권" : ({win: "승", tie: "동점", lose: "패", refund: "모두 버스트 환불"})[g.players[i].res]}`}))};
   },
+  // 예전 규칙(딜러와 하는 블랙잭 테이블)으로 시작된 판: 새 규칙으로 이어 갈 수 없으니 건 돈을 모두 돌려주고 끝낸다
+  legacy(room) {
+    const st = room.state, g = st.g;
+    room.status = "over"; st.deadline = null; g.turn = -1; g.why = "규칙이 바뀌어 환불";
+    bump(room, {t: "bj_end"});
+    return {payouts: st.seats.map((s, i) => { const c = (g.players[i] && g.players[i].cost) || room.stake; return {user_id: s.uid, amount: c, cost: c, il: room.il, note: "블랙잭 규칙이 바뀌어 판돈 환불"}; })};
+  },
   act(room, priv, me, a, now) {
     const g = room.state.g;
+    if (!Array.isArray(g.order)) return GAMES.bj.legacy(room);
     if (me !== g.turn) return {err: "내 차례가 아닙니다"};
     if (a.a !== "hit" && a.a !== "stand") return {err: "히트나 스탠드만 할 수 있습니다"};
     return GAMES.bj.doAct(room, priv, me, a.a, now, false);
@@ -352,9 +362,10 @@ GAMES.bj = {
     bump(room, {t: "bj", who: me, a});
     return GAMES.bj.advance(room, priv, now) || {};
   },
-  auto(room, priv, now) { const g = room.state.g; return g.turn >= 0 ? GAMES.bj.doAct(room, priv, g.turn, "stand", now, true) : {}; },
+  auto(room, priv, now) { const g = room.state.g; if (!Array.isArray(g.order)) return GAMES.bj.legacy(room); return g.turn >= 0 ? GAMES.bj.doAct(room, priv, g.turn, "stand", now, true) : {}; },
   forfeit(room, priv, me, now) {
     const st = room.state, g = st.g;
+    if (!Array.isArray(g.order)) return GAMES.bj.legacy(room).payouts;
     g.players[me].done = true; g.log.push(`${st.seats[me].nick} 나감`);
     if (g.turn === me) { const r = GAMES.bj.advance(room, priv, now); return (r && r.payouts) || []; }
     return [];
@@ -469,4 +480,64 @@ GAMES.bm = {
     const g = room.state.g; if (!g) return null;
     return {seats: room.state.seats.map((s) => s.nick), rank: g.rank || null, nobuy: g.nobuy, rounds: g.round};
   },
+};
+
+/* ───────── 벅샷 룰렛 (2~4명) ─────────
+   규칙은 bs_engine.js(사이트 bs.js의 규칙 부분)와 같다. 첫 차례는 무작위. 마지막까지 살아남은 사람이 모두의 판돈을 가져간다.
+   탄 순서(shells)와 돋보기로 본 것(pk)은 숨긴 상태(priv)에 둔다. 돋보기 결과는 쓴 사람의 요청 결과(res)로만 돌려준다.
+   한 번 고를 때마다 30초, 넘기면 컴퓨터 딜러와 같은 판단으로 대신 둔다(쏠 때까지). 진행 중에 나가면 그 자리에서 탈락 */
+const BS_TURN_MS = 30_000;
+const bsLoad = (room, priv) => ({...room.state.g, shells: priv.shells || [], pk: priv.pk || room.state.g.pl.map(() => null)});
+function bsStore(room, priv, g) { const {shells, pk, ...pub} = g; priv.shells = shells; priv.pk = pk; room.state.g = pub; }
+const bsPub = (ev) => ev.map((e) => (e.t === "peek" ? {t: "peek", i: e.i} : e));   // 돋보기 결과는 지운다
+GAMES.bs = {
+  init(room, priv, now, rnd) {
+    const st = room.state, n = st.seats.length, first = Math.floor(rnd() * n);
+    const {g} = BSE.newGame(st.seats.map((s) => s.nick), room.stake, rnd, first);
+    bsStore(room, priv, g);
+    st.deadline = now + BS_TURN_MS;
+  },
+  act(room, priv, me, a, now, rnd) {
+    const g = bsLoad(room, priv);
+    if (g.over) return {err: "끝난 판입니다"};
+    if (g.turn !== me) return {err: "내 차례가 아닙니다"};
+    let ev = null;
+    if (a.op === "shoot" && Number.isInteger(a.target)) ev = BSE.shoot(g, me, a.target, rnd);
+    else if (a.op === "use" && BS_KEYS.includes(a.it)) ev = BSE.use(g, me, a.it, Number.isInteger(a.target) ? a.target : -1, rnd);
+    if (!ev) return {err: "지금 할 수 없습니다"};
+    const pk = ev.find((e) => e.t === "peek" && e.i === me);
+    const r = GAMES.bs.after(room, priv, g, ev, now);
+    return {...r, res: pk ? {peek: pk.live, load: g.load, left: g.live + g.blank} : {}};
+  },
+  after(room, priv, g, ev, now) {
+    bsStore(room, priv, g);
+    bump(room, {t: "bs", list: bsPub(ev)});
+    if (g.over) return GAMES.bs.finish(room);
+    room.state.deadline = now + BS_TURN_MS;
+    return {};
+  },
+  finish(room) {
+    const st = room.state, g = st.g, n = st.seats.length, r = BSE.ranking(g);
+    room.status = "over"; st.deadline = null; g.rank = st.seats.map((s, i) => r.indexOf(i) + 1); g.why = "마지막 생존";
+    return {payouts: st.seats.map((s, i) => ({user_id: s.uid, amount: i === g.win ? r2(room.stake * n) : 0, cost: room.stake, il: room.il,
+      note: `벅샷 룰렛 ${n}명 ${i === g.win ? "승" : `${g.rank[i]}위`}${s.left ? " (기권)" : ""}`}))};
+  },
+  auto(room, priv, now, rnd) {   // 시간 초과: 쏠 때까지 컴퓨터처럼 둔다
+    const g = bsLoad(room, priv), i = g.turn, ev = [];
+    for (let k = 0; k < 12 && !g.over && g.turn === i; k++) {
+      const a = BSE.ai(g, i, rnd), e = BSE.step(g, i, a, rnd) || BSE.shoot(g, i, i, rnd);
+      if (!e) break;
+      ev.push(...e);
+      if (a.op === "shoot") break;
+    }
+    g.log.push(`(시간 초과: ${g.pl[i].nm} 대신 결정)`);
+    return GAMES.bs.after(room, priv, g, ev, now);
+  },
+  forfeit(room, priv, me, now) {
+    const g = bsLoad(room, priv), ev = [];
+    BSE.forfeit(g, me, ev);
+    const r = GAMES.bs.after(room, priv, g, ev, now);
+    return r.payouts || [];
+  },
+  summary(room) { const g = room.state.g; return g ? {seats: room.state.seats.map((s) => s.nick), win: g.win, hp: g.pl.map((p) => p.hp)} : null; },
 };

@@ -636,6 +636,34 @@ html.gated body{overflow:hidden}
 .onl-p{display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--surface-2);border-radius:10px;padding:8px 10px}
 .onl-p span{display:grid;gap:1px;min-width:0}.onl-p b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.onl-p small{color:var(--ink-3);font-size:11.5px}
 .onl-p .btn{padding:6px 12px;font-size:13px;flex:none}
+.bs-table{display:grid;gap:12px;background:radial-gradient(120% 90% at 50% 40%,#2a1d16,#120c09);border-radius:16px;padding:14px;color:#f3e9dc;position:relative;overflow:hidden}
+.bs-table.bang::after{content:'';position:absolute;inset:0;background:radial-gradient(circle at 50% 45%,rgba(255,220,140,.85),rgba(255,90,40,.35) 40%,transparent 70%);animation:bsFlash .5s ease-out forwards;pointer-events:none}
+@keyframes bsFlash{from{opacity:1}to{opacity:0}}
+.bs-table.bang{animation:bsShake .4s}
+@keyframes bsShake{20%{transform:translate(-6px,2px)}40%{transform:translate(5px,-3px)}60%{transform:translate(-3px,1px)}80%{transform:translate(2px,0)}}
+.bs-table.aim .bs-gunart{transform:scale(1.15) rotate(-8deg)}.bs-table.click .bs-gunart{transform:rotate(4deg)}
+.bs-opps{display:grid;gap:8px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+.bs-p{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:10px;display:grid;gap:6px}
+.bs-p.turn{border-color:#E2B94B;box-shadow:0 0 0 2px rgba(226,185,75,.25)}.bs-p.out{opacity:.4}
+.bs-pn{font-size:13.5px}.bs-pn b{font-weight:800}
+.bs-hp{display:flex;gap:2px;font-size:15px}.bs-hp i{font-style:normal;filter:grayscale(1) opacity(.25)}.bs-hp i.on{filter:none}
+.bs-hp.hit{animation:bsHit .5s 2}@keyframes bsHit{50%{transform:scale(1.25);filter:drop-shadow(0 0 6px #ff4b3a)}}
+.bs-items{display:flex;flex-wrap:wrap;gap:4px;font-size:18px;min-height:26px;align-items:center}.bs-items .muted{font-size:12px;color:rgba(243,233,220,.55)}
+.bs-it{display:grid;justify-items:center;gap:1px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.08);color:inherit;border-radius:10px;padding:5px 7px;min-width:52px}
+.bs-it span{font-size:20px;line-height:1}.bs-it small{font-size:10.5px;opacity:.85}.bs-it:disabled{opacity:.4}
+.bs-it:not(:disabled):active{transform:scale(.95)}
+.bs-gun{display:grid;justify-items:center;gap:6px;text-align:center}
+.bs-gunart{font-size:46px;transition:transform .25s;line-height:1}
+.bs-shells{display:flex;gap:4px;flex-wrap:wrap;justify-content:center}.bs-shells i{width:12px;height:26px;border-radius:3px 3px 2px 2px;background:#c9b7a3}.bs-shells i.live{background:#d8403a}
+.bs-gun small.muted{color:rgba(243,233,220,.7)}
+.bs-peek{margin:0;font-size:13px;background:rgba(255,255,255,.08);border-radius:8px;padding:3px 10px}.bs-peek.live b{color:#ff6b5e}
+.bs-msg{margin:0;font-weight:700;min-height:22px}
+.bs-p .bs-shoot{justify-self:start;padding:8px 14px;font-size:13.5px;font-weight:800;background:#b3261e;color:#fff;border:1px solid #d9463c}
+.bs-p .bs-shoot.self{background:#3a2c22;border-color:#8a6a4a;color:#f3e9dc}
+.bs-p .bs-shoot:active{transform:scale(.97)}
+.bs-lv{color:#ff6b5e}
+.bs-log{margin-top:8px}
+#mpTimer{display:inline-block;min-width:3.2em;text-align:left;font-variant-numeric:tabular-nums}
 .mp-dot{display:inline-block;width:9px;height:9px;border-radius:50%;vertical-align:-1px}
 .oe-pick{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;width:100%}
 .oe-pick .btn{padding:0;height:40px}
@@ -1039,7 +1067,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '2.1.24';
+const VERSION = '2.1.25';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -3914,8 +3942,8 @@ function bmUpdate(){
   if (!BMV.built) bmBuild();
   const ME = bmMe(), V = bmVw(g), pd = g.pending, myTurn = g.turn === ME && !BMV.busy && !g.over;
   const cur = BMV.busy && BMV.actor !== undefined ? BMV.actor : g.turn;   // 애니메이션 중에는 움직이는 사람
-  if (BMV.mp) $('#bmSub').innerHTML = `${g.round}바퀴 · 판돈 ${fmtUSD(g.stake)} · <span id="mpTimer"></span>`;
-  else $('#bmSub').textContent = `${g.round}바퀴 · 판돈 ${fmtUSD(g.stake)}`;
+  if (BMV.mp){ mpSetH($('#bmSub'), `${g.round}바퀴 · 판돈 ${fmtUSD(g.stake)} · <span id="mpTimer"></span>`); }
+  else { const sb = $('#bmSub'); sb._h = null; sb.textContent = `${g.round}바퀴 · 판돈 ${fmtUSD(g.stake)}`; }
   $('#bmSpd').textContent = bmFast() ? '빠르게 ✓' : '빠르게';
   $('#bmQuit').hidden = g.over;
   BM_SQ.forEach((c, k) => {
@@ -4268,6 +4296,7 @@ const GAM = {
   sl:{nm:'뱀사다리', min:5, off:50, on:500, p:0.025},
   oe:{nm:'홀짝', min:1, off:10, on:100, p:0.05},
   bj:{nm:'블랙잭', min:5, off:100, on:1000, p:0.05},
+  bs:{nm:'벅샷 룰렛', min:5, off:50, on:500, p:0.025},
   seize:0.5
 };
 function gamS(){
@@ -4383,24 +4412,27 @@ async function markBusted(k){
 
 /* ── 도박 탭 화면 ── */
 function renderGamblePane(p){
+  // 뱀사다리는 없앴다 (벅샷 룰렛으로 바뀜): 하던 판이 있으면 판돈을 돌려준다
+  if (S.sl && S.sl.cur){ const st = S.sl.cur.stake || 0; S.sl.cur = null; if (st > 0){ receiveUSD(st); altLog('gamble', '뱀사다리가 없어져 하던 판의 판돈 환불', 0, 'USD'); } commit(); toast(`뱀사다리가 없어져 하던 판의 판돈 ${fmtUSD(st)}을 돌려드렸습니다`); }
   const il = gamIl(), G = gamS();
   p.innerHTML = `<section class="card c-mg" id="mpCard">${mpCardHTML()}</section>
     <section class="card gam-il ${il ? 'on' : ''}"><div class="card-h"><h2>${il ? '🚨' : '🎲'} 불법 모드</h2><button class="sw ${il ? 'on' : ''}" id="ilSw" role="switch" aria-checked="${il}"><i></i></button></div>
-      <p class="mg-desc">${il ? '켜짐' : '꺼짐'}: 판돈 한도 ${['bm', 'sl', 'oe', 'bj'].map(k => `${GAM[k].nm} ${fmtUSDn(il ? GAM[k].on : GAM[k].off, 0)}`).join(' · ')}</p>
-      <p class="muted" style="margin:4px 0 0">켜면 한도가 10배가 되지만, 한 판이 끝날 때마다 경찰 단속 확률이 있습니다 (${['bm', 'sl', 'oe', 'bj'].map(k => `${GAM[k].nm} ${(GAM[k].p * 100).toFixed(1)}%`).join(' · ')}). 단속되면 지금까지 불법 도박(모든 게임 합산)으로 번 돈의 ${GAM.seize * 100}%를 압류하고, 랭킹 이름에 영구 빨간 줄과 단속 횟수가 표시됩니다.</p>
+      <p class="mg-desc">${il ? '켜짐' : '꺼짐'}: 판돈 한도 ${['bm', 'bs', 'oe', 'bj'].map(k => `${GAM[k].nm} ${fmtUSDn(il ? GAM[k].on : GAM[k].off, 0)}`).join(' · ')}</p>
+      <p class="muted" style="margin:4px 0 0">켜면 한도가 10배가 되지만, 한 판이 끝날 때마다 경찰 단속 확률이 있습니다 (${['bm', 'bs', 'oe', 'bj'].map(k => `${GAM[k].nm} ${(GAM[k].p * 100).toFixed(1)}%`).join(' · ')}). 단속되면 지금까지 불법 도박(모든 게임 합산)으로 번 돈의 ${GAM.seize * 100}%를 압류하고, 랭킹 이름에 영구 빨간 줄과 단속 횟수가 표시됩니다.</p>
       ${il || ilAcc() ? `<p class="muted" style="margin:4px 0 0">불법 도박 누적 순이익 <b class="num ${cls(ilAcc())}">${signUSD(ilAcc())}</b> · 단속되면 ${GAM.seize * 100}% 압류</p>` : ''}${G.bust ? `<p style="margin:4px 0 0"><b class="down">단속 ${G.bust}회</b></p>` : ''}</section>
     ${runS().length ? `<section class="card run-card"><div class="card-h"><h2>🏃 도주 중</h2><small>${runS().length}건</small></div>
       <p class="mg-desc">${runS().map(r => `${GAM[r.k] ? GAM[r.k].nm : r.k} ${fmtUSDn(r.amt)} · 남은 ${r.left}판`).join('<br>')}</p>
       <p class="muted" style="margin:4px 0 0">도박 판이 끝날 때마다 건마다 ${RUN.p * 100}% 확률로 적발 → 안 낸 돈의 ${RUN.mult}배 압수 + 전과 1회</p></section>` : ''}
     <section class="card c-mg" id="bmCard">${bmCardHTML()}</section>
-    <section class="card c-mg" id="slCard">${slCardHTML()}</section>
+    <section class="card c-mg" id="bsPane">${bsPaneHTML()}</section>
     <section class="card c-mg" id="oePane">${oePaneHTML()}</section>
     <section class="card c-mg" id="bjPane">${bjPaneHTML()}</section>`;
 }
 /* ── 홀짝·블랙잭은 팝업(전체 화면)에서 한다: 탭 화면을 내리지 않아도 되게 ──
    팝업 안 카드의 id가 oeCard/bjCard라 기존 그리기 함수(oeRender, bjRender)가 그대로 팝업을 그린다 */
 const GMO = {oe:{t:'✊ 홀짝', id:'oeCard', html:() => oeCardHTML(), start:() => oeStart(), cur:() => oeS().cur},
-             bj:{t:'🃏 블랙잭', id:'bjCard', html:() => bjHTML(), start:() => bjStart(), cur:() => bjS().cur}};
+             bj:{t:'🃏 블랙잭', id:'bjCard', html:() => bjHTML(), start:() => bjStart(), cur:() => bjS().cur},
+             bs:{t:'💥 벅샷 룰렛', id:'bsCard', html:() => bsCardHTML(), start:() => bsStart(), cur:() => bsS().cur}};
 function gmOpen(k){
   let ov = $('#gmOv');
   if (!ov){ ov = document.createElement('div'); ov.id = 'gmOv'; ov.className = 'bm-ov gm-ov'; ov.setAttribute('role', 'dialog'); document.body.appendChild(ov); }
@@ -4938,14 +4970,278 @@ document.addEventListener('click', e => {
   if (t.id === 'bjGo') bjStart(); else if (t.id === 'bjEnd') bjFinish(); else if (t.id === 'bjRun') bjFinish(true); else bjAct(t.dataset.bj);
 });
 
+/* ───────── 벅샷 룰렛 (모티브: Mike Klubnika의 Buckshot Roulette, 2023) ─────────
+   산탄총에 실탄과 공포탄을 섞어 넣는다. 몇 발씩인지는 모두에게 알려 주지만 순서는 모른다.
+   내 차례에 아이템을 쓰고(몇 개든), 나 또는 상대를 쏜다.
+   - 실탄: 맞은 사람 목숨 −1 (톱을 썼으면 −2). 차례가 넘어간다.
+   - 공포탄: 상대를 쐈으면 차례가 넘어가고, 나를 쐈으면 한 번 더 내 차례.
+   목숨은 모두 4로 시작(최대 4). 탄을 다 쓰면 다시 장전하고, 장전할 때마다 살아 있는 사람은 아이템 2개씩(최대 8개).
+   목숨이 0이 되면 탈락, 마지막까지 남은 사람이 이긴다.
+   아이템: 🔍돋보기(지금 탄을 나만 본다) 🚬담배(목숨 +1) 🍺맥주(지금 탄을 쏘지 않고 빼낸다, 모두가 본다)
+           🪚톱(다음 한 발 피해 2배) ⛓️수갑(고른 상대가 다음 차례를 한 번 쉰다)
+   이 규칙 부분(BS ~ BSE)은 라즈베리파이 심판도 같은 코드를 쓴다 (build.py가 pi/bs_engine.js로 떼어 낸다) */
+const BS = {hpMax:4, perLoad:2, itemMax:8, minShells:2, maxShells:8};
+const BS_IT = {
+  glass:{nm:'돋보기', ic:'🔍', d:'지금 장전된 탄이 실탄인지 공포탄인지 나만 봅니다'},
+  cig:{nm:'담배', ic:'🚬', d:'목숨 +1 (최대 4)'},
+  beer:{nm:'맥주', ic:'🍺', d:'지금 탄을 쏘지 않고 빼냅니다 (무슨 탄이었는지 모두 봅니다)'},
+  saw:{nm:'톱', ic:'🪚', d:'다음 한 발의 피해가 2배'},
+  cuff:{nm:'수갑', ic:'⛓️', d:'고른 상대가 다음 차례를 한 번 쉽니다'},
+};
+const BS_KEYS = Object.keys(BS_IT);
+const BSE = {
+  newGame(names, stake, rnd, first){
+    const g = {v:1, n:names.length, stake, pl:names.map(nm => ({nm, hp:BS.hpMax, items:[], cuffed:false, out:false, outAt:0})),
+      turn:first, shells:[], live:0, blank:0, saw:false, load:0, pk:names.map(() => null), log:[], over:false, win:-1, outs:0, shots:0};
+    const ev = [];
+    BSE.reload(g, rnd, ev);
+    BSE.log(g, `${g.pl[first].nm}부터 시작`);
+    return {g, ev};
+  },
+  log(g, t){ g.log.push(t); if (g.log.length > 40) g.log.splice(0, g.log.length - 40); },
+  alive(g){ return g.pl.filter(p => !p.out).length; },
+  reload(g, rnd, ev){
+    const total = BS.minShells + Math.floor(rnd() * (BS.maxShells - BS.minShells + 1)), live = 1 + Math.floor(rnd() * (total - 1));
+    const sh = Array.from({length:total}, (_, k) => k < live);
+    for (let k = total - 1; k > 0; k--){ const j = Math.floor(rnd() * (k + 1)); [sh[k], sh[j]] = [sh[j], sh[k]]; }
+    g.shells = sh; g.live = live; g.blank = total - live; g.saw = false; g.load++; g.pk = g.pl.map(() => null);
+    const got = g.pl.map(p => {
+      if (p.out) return [];
+      const add = [];
+      for (let k = 0; k < BS.perLoad && p.items.length < BS.itemMax; k++){ const it = BS_KEYS[Math.floor(rnd() * BS_KEYS.length)]; p.items.push(it); add.push(it); }
+      return add;
+    });
+    ev.push({t:'load', live, blank:total - live, got});
+    BSE.log(g, `장전: 실탄 ${live} · 공포탄 ${total - live}`);
+  },
+  take(g){   // 맨 앞 탄을 꺼낸다 (쏘거나 맥주로 빼거나). 그 탄을 본 기억은 지운다
+    const s = g.shells.shift();
+    if (s) g.live--; else g.blank--;
+    g.pk = g.pl.map(() => null);
+    return s;
+  },
+  // 아이템 쓰기. 할 수 없으면 null
+  use(g, i, it, target, rnd){
+    const p = g.pl[i], k = p.items.indexOf(it), ev = [];
+    if (g.over || g.turn !== i || k < 0 || !g.shells.length) return null;
+    if (it === 'saw' && g.saw) return null;
+    if (it === 'cuff'){ const q = g.pl[target]; if (!q || target === i || q.out || q.cuffed) return null; }
+    if (it === 'cig' && p.hp >= BS.hpMax) return null;
+    p.items.splice(k, 1);
+    if (it === 'glass'){ g.pk[i] = g.shells[0]; ev.push({t:'peek', i, live:g.shells[0]}); BSE.log(g, `${p.nm} 🔍 돋보기`); }
+    else if (it === 'cig'){ p.hp++; ev.push({t:'heal', i, hp:p.hp}); BSE.log(g, `${p.nm} 🚬 담배 (목숨 ${p.hp})`); }
+    else if (it === 'beer'){ const s = BSE.take(g); ev.push({t:'beer', i, live:s}); BSE.log(g, `${p.nm} 🍺 맥주: ${s ? '실탄' : '공포탄'}을 빼냄`); if (!g.shells.length) BSE.reload(g, rnd, ev); }
+    else if (it === 'saw'){ g.saw = true; ev.push({t:'saw', i}); BSE.log(g, `${p.nm} 🪚 톱`); }
+    else if (it === 'cuff'){ g.pl[target].cuffed = true; ev.push({t:'cuff', i, target}); BSE.log(g, `${p.nm} ⛓️ 수갑 → ${g.pl[target].nm}`); }
+    return ev;
+  },
+  shoot(g, i, target, rnd){
+    if (g.over || g.turn !== i || !g.shells.length) return null;
+    const q = g.pl[target]; if (!q || q.out) return null;
+    const s = BSE.take(g), dmg = s ? (g.saw ? 2 : 1) : 0, ev = [];
+    g.saw = false; g.shots++;
+    if (dmg){ q.hp = Math.max(0, q.hp - dmg); if (!q.hp){ q.out = true; q.outAt = ++g.outs; q.cuffed = false; } }
+    ev.push({t:'shot', i, target, live:s, dmg, hp:q.hp, out:q.out});
+    BSE.log(g, `${g.pl[i].nm} → ${target === i ? '자기 자신' : q.nm}: ${s ? `💥 실탄${dmg > 1 ? ' (톱, 2배)' : ''}` : '딸깍, 공포탄'}${q.out ? ` · ${q.nm} 탈락` : ''}`);
+    if (BSE.alive(g) <= 1){ g.over = true; g.win = g.pl.findIndex(p => !p.out); ev.push({t:'win', i:g.win}); return ev; }
+    if (!(s === false && target === i)) BSE.pass(g, ev);   // 나를 쏴서 공포탄이면 한 번 더
+    else ev.push({t:'again', i});
+    if (!g.shells.length) BSE.reload(g, rnd, ev);
+    return ev;
+  },
+  pass(g, ev){
+    let j = g.turn;
+    for (let guard = 0; guard < g.n * 3; guard++){
+      j = (j + 1) % g.n;
+      const p = g.pl[j]; if (p.out) continue;
+      if (p.cuffed){ p.cuffed = false; ev.push({t:'skip', i:j}); BSE.log(g, `${p.nm} 수갑에 묶여 쉼`); continue; }
+      break;
+    }
+    g.turn = j; ev.push({t:'turn', i:j});
+  },
+  // 나간 사람: 그 자리에서 탈락
+  forfeit(g, i, ev){
+    const p = g.pl[i]; if (p.out) return;
+    p.out = true; p.hp = 0; p.outAt = ++g.outs; p.cuffed = false;
+    BSE.log(g, `${p.nm} 기권`);
+    if (BSE.alive(g) <= 1){ g.over = true; g.win = g.pl.findIndex(q => !q.out); ev.push({t:'win', i:g.win}); return; }
+    if (g.turn === i) BSE.pass(g, ev);
+  },
+  // 순위: 이긴 사람 1위, 나머지는 늦게 탈락한 순
+  ranking(g){ return g.pl.map((p, i) => i).sort((a, b) => (g.pl[a].out ? g.pl[a].outAt : 1e9) < (g.pl[b].out ? g.pl[b].outAt : 1e9) ? 1 : -1); },
+  // 컴퓨터(또는 시간 초과 대신)의 다음 한 수. know: 지금 탄을 알면 true/false
+  ai(g, i, rnd){
+    const p = g.pl[i], know = g.pk[i], has = it => p.items.includes(it);
+    const opps = g.pl.map((q, j) => j).filter(j => j !== i && !g.pl[j].out).sort((a, b) => g.pl[a].hp - g.pl[b].hp);
+    const opp = opps[0];
+    const pr = know !== null ? (know ? 1 : 0) : g.live / Math.max(1, g.live + g.blank);
+    if (p.hp < BS.hpMax && has('cig')) return {op:'use', it:'cig'};
+    if (know === null && has('glass') && g.live && g.blank) return {op:'use', it:'glass'};
+    if (pr === 1){
+      if (has('saw') && !g.saw) return {op:'use', it:'saw'};
+      if (has('cuff') && g.shells.length > 1 && !g.pl[opp].cuffed) return {op:'use', it:'cuff', target:opp};
+      return {op:'shoot', target:opp};
+    }
+    if (pr === 0) return {op:'shoot', target:i};
+    if (has('beer') && pr > 0.3 && pr < 0.7 && g.shells.length > 1) return {op:'use', it:'beer'};
+    if (has('cuff') && g.shells.length > 1 && !g.pl[opp].cuffed) return {op:'use', it:'cuff', target:opp};
+    return {op:'shoot', target: pr >= 0.5 ? opp : i};
+  },
+  step(g, i, a, rnd){ return a.op === 'use' ? BSE.use(g, i, a.it, a.target, rnd) : a.op === 'shoot' ? BSE.shoot(g, i, a.target, rnd) : null; },
+};
+/* ───── 화면 ───── */
+// 혼자 하기: 컴퓨터 딜러와 1:1. 첫 차례는 동전 던지기(같은 판단을 하면 이길 확률 ½) → 이기면 판돈의 2배, 지면 0 (기대 배수 1)
+const BSV = {busy:false, gen:0, msg:'', flash:'', t:null};
+function bsS(){ if (!S.bs || typeof S.bs !== 'object') S.bs = {cur:null, hist:[]}; return S.bs; }
+function bsInfo(){
+  INFO.bs = {t:'벅샷 룰렛', h:`<div class="prose"><ul>
+    <li>산탄총에 실탄과 공포탄을 섞어 넣습니다(모두 2~8발, 실탄·공포탄 최소 1발씩). 몇 발씩인지는 알려 주지만 순서는 모릅니다.</li>
+    <li>내 차례에 아이템을 원하는 만큼 쓰고, <b>딜러</b> 또는 <b>나</b>를 쏩니다. 실탄에 맞으면 목숨 −1. 나를 쐈는데 공포탄이면 한 번 더 내 차례, 그 밖에는 차례가 넘어갑니다.</li>
+    <li>목숨은 모두 ${BS.hpMax}로 시작(최대 ${BS.hpMax}). 탄을 다 쓰면 다시 장전하고, 그때마다 아이템을 ${BS.perLoad}개씩 받습니다(최대 ${BS.itemMax}개). 목숨이 0이 되면 집니다.</li>
+    <li>${BS_KEYS.map(k => `${BS_IT[k].ic} ${BS_IT[k].nm}: ${BS_IT[k].d}`).join('<br>')}</li>
+    <li>누가 먼저 쏠지는 동전 던지기입니다. 이기면 판돈의 2배, 지면 0입니다. 컴퓨터만큼 판단하면 이길 확률이 ½이라 기대 배수는 1입니다.</li></ul>
+    <p>모티브: Mike Klubnika의 게임 Buckshot Roulette(2023). 판돈 한도 ${fmtUSDn(GAM.bs.off, 0)} (불법 모드 ${fmtUSDn(GAM.bs.on, 0)}), 불법 모드 단속 ${(GAM.bs.p * 100).toFixed(1)}%.</p></div>`};
+}
+// 산탄총 그림 (이모지 🔫는 기기에 따라 물총으로 보여서 직접 그린다)
+const BS_GUN = `<svg viewBox="0 0 220 60" width="190" height="52" aria-hidden="true"><path d="M8 22h132v10H8z" fill="#6b6f76"/><path d="M8 33h120v7H8z" fill="#4a4e55"/><rect x="60" y="38" width="34" height="9" rx="3" fill="#8a5a33"/><path d="M128 20h26l8 6h14l40 4v12l-38 6-12 10h-16l6-12h-28z" fill="#9b6436"/><path d="M146 40c2 6 8 8 12 6" stroke="#2c2c2c" stroke-width="3" fill="none"/><circle cx="12" cy="27" r="3" fill="#1c1d20"/></svg>`;
+const bsHP = (hp, flash) => `<span class="bs-hp ${flash ? 'hit' : ''}">${Array.from({length:BS.hpMax}, (_, k) => `<i class="${k < hp ? 'on' : ''}">⚡</i>`).join('')}</span>`;
+const bsShells = (g, reveal) => `<div class="bs-shells" aria-label="실탄 ${g.live}발, 공포탄 ${g.blank}발">${Array.from({length:g.live}, () => '<i class="live"></i>').join('')}${Array.from({length:g.blank}, () => '<i class="blank"></i>').join('')}</div>
+  <small class="muted">남은 탄: 실탄 <b class="bs-lv">${g.live}</b> · 공포탄 <b>${g.blank}</b>${g.saw ? ' · 🪚 톱 장착' : ''}</small>`;
+function bsCardHTML(){
+  bsInfo();
+  const s = bsS(), g = s.cur;
+  if (!g){
+    const h = s.hist.slice(0, 3).map(x => `<span class="${cls(x.pay - x.stake)}">${x.win ? '승' : '패'} ${signUSD(x.pay - x.stake)}</span>`).join(' · ');
+    return `<div class="card-h"><h2>💥 벅샷 룰렛 ${infoBtn('bs')}</h2><small>이기면 2배</small></div>
+      <p class="mg-desc">${h ? `최근 ${h}` : '실탄과 공포탄이 섞인 산탄총으로 딜러와 번갈아 쏩니다. 마지막까지 버티면 판돈 2배'}</p>
+      <div class="mg-foot"><span class="muted">한도 ${fmtUSDn(gamMax('bs'), 0)}</span><button class="btn solid" id="bsGo" ${S.over ? 'disabled' : ''}>새 게임</button></div>`;
+  }
+  return bsTableHTML(g, 0, {mine:true});
+}
+// 판 그리기 (혼자·같이 하기 같이 씀). me: 내 자리, o.mine: 내 아이템을 누를 수 있는지, o.peek: 내가 본 지금 탄
+function bsTableHTML(g, me, o){
+  o = o || {};
+  const myTurn = !g.over && g.turn === me && !BSV.busy && !o.wait;
+  const peek = o.peek !== undefined ? o.peek : g.pk ? g.pk[me] : null;
+  const seats = g.pl.map((p, i) => ({p, i})).filter(x => x.i !== me);
+  const opp = seats.map(({p, i}) => `<div class="bs-p ${g.turn === i && !g.over ? 'turn' : ''} ${p.out ? 'out' : ''}" data-bsi="${i}">
+      <div class="bs-pn"><b>${esc(p.nm)}</b>${p.cuffed ? ' ⛓️' : ''}${p.out ? ' · 탈락' : ''}${g.turn === i && !g.over ? ' · 차례' : ''}</div>${bsHP(p.hp, BSV.flash === 'p' + i)}
+      <div class="bs-items">${p.items.map(it => `<span title="${BS_IT[it].nm}">${BS_IT[it].ic}</span>`).join('') || '<span class="muted">아이템 없음</span>'}</div>
+      ${myTurn && !p.out ? `<button class="btn bs-shoot" data-bsshoot="${i}">🎯 ${esc(p.nm)} 쏘기</button>` : ''}</div>`).join('');
+  const P = g.pl[me];
+  const items = P.items.map((it, k) => {
+    const dis = !myTurn || !o.mine || (it === 'saw' && g.saw) || (it === 'cig' && P.hp >= BS.hpMax) || (it === 'cuff' && !g.pl.some((q, j) => j !== me && !q.out && !q.cuffed));
+    return `<button class="bs-it" data-bsit="${it}" ${dis ? 'disabled' : ''} title="${BS_IT[it].d}"><span>${BS_IT[it].ic}</span><small>${BS_IT[it].nm}</small></button>`;
+  }).join('');
+  const msg = BSV.msg || (g.over ? (g.win === me ? '🏆 살아남았다!' : '💀 졌다') : myTurn ? '쏠 사람을 고르세요 (아이템은 먼저 쓰세요)' : `${esc(g.pl[g.turn].nm)} 차례…`);
+  return `<div class="bs-table ${BSV.fx || ''}">
+    <div class="bs-opps">${opp}</div>
+    <div class="bs-gun"><div class="bs-gunart">${BS_GUN}</div>${bsShells(g)}
+      ${peek !== null && peek !== undefined && !g.over ? `<p class="bs-peek ${peek ? 'live' : ''}">🔍 지금 탄: <b>${peek ? '실탄' : '공포탄'}</b></p>` : ''}
+      <p class="bs-msg">${msg} ${o.timer ? '<span class="muted" id="mpTimer"></span>' : ''}</p></div>
+    <div class="bs-p me ${g.turn === me && !g.over ? 'turn' : ''} ${P.out ? 'out' : ''}" data-bsi="${me}"><div class="bs-pn"><b>나</b>${P.cuffed ? ' ⛓️' : ''}${P.out ? ' · 탈락' : ''}</div>${bsHP(P.hp, BSV.flash === 'p' + me)}
+      <div class="bs-items mine">${items || '<span class="muted">아이템 없음</span>'}</div>
+      ${myTurn ? `<button class="btn bs-shoot self" data-bsshoot="${me}">나 쏘기</button>` : ''}</div>
+  </div>
+  ${o.foot || (g.over && !BSV.busy && o.mine ? `<div class="bm-acts"><button class="btn solid" id="bsEnd">결과 보기</button>${g.win !== me ? '<button class="btn run-btn" id="bsRun">🏃 도망가기</button>' : ''}</div>` : '')}
+  <ul class="bm-log bs-log">${g.log.slice(-5).reverse().map(t => `<li>${esc(t)}</li>`).join('')}</ul>`;
+}
+function bsRender(){ const c = $('#bsCard'); if (c) c.innerHTML = bsCardHTML(); gmSync(); }
+function bsPaneHTML(){
+  const g = bsS().cur; bsInfo();
+  if (!g) return bsCardHTML().replace('id="bsGo"', 'id="bsOpen"');
+  return `<div class="card-h"><h2>💥 벅샷 룰렛 ${infoBtn('bs')}</h2><small>판돈 ${fmtUSD(g.stake)}${g.il ? ' · 🚨 불법' : ''}</small></div>
+    <p class="mg-desc">진행 중 · ${g.over ? '끝남, 결과를 확인하세요' : `내 목숨 ${g.pl[0].hp} · 딜러 목숨 ${g.pl[1].hp}`}</p>
+    <div class="mg-foot"><span class="muted">한도 ${fmtUSDn(gamMax('bs'), 0)}</span><button class="btn solid" id="bsOpen">이어하기</button></div>`;
+}
+function bsStart(){
+  const s = bsS(); if (s.cur) return;
+  if (S.over) return toast('파산해서 할 수 없습니다', true);
+  betDialog('bs', '💥 벅샷 룰렛', `<p class="muted" style="margin:0 0 8px">딜러와 1:1, 목숨 ${BS.hpMax}. 마지막까지 버티면 판돈 2배</p>`, bet => {
+    const first = Math.random() < 0.5 ? 0 : 1;
+    const {g, ev} = BSE.newGame(['나', '딜러'], bet, Math.random, first);
+    g.il = gamIl(); s.cur = g; commit();
+    BSV.msg = ''; bsRender();
+    bsPlay(ev, () => bsTick());
+  });
+}
+const bsWait = ms => { const gen = BSV.gen; return new Promise((res, rej) => setTimeout(() => gen === BSV.gen && $('#bsCard') ? res() : rej('stop'), bmMs(ms))); };
+// 이벤트를 차례로 보여 준다 (쏘기: 총 흔들림 → 실탄이면 번쩍·맞은 쪽 목숨 깜빡, 공포탄이면 딸깍)
+async function bsPlay(ev, done, rerender){
+  rerender = rerender || bsRender;
+  BSV.busy = true; BSV.gen++;
+  try {
+    for (const e of ev){
+      if (e.t === 'load'){ BSV.msg = `🔄 장전: 실탄 ${e.live} · 공포탄 ${e.blank}${e.got && e.got.some(x => x.length) ? ' · 아이템을 받았습니다' : ''}`; rerender(); await bsWait(1300); }
+      else if (e.t === 'shot'){
+        const g = rerender.g ? rerender.g() : bsS().cur, nm = i => i === (rerender.me !== undefined ? rerender.me : 0) ? '나' : esc(g ? g.pl[i].nm : '?');
+        BSV.msg = `${nm(e.i)} → ${e.target === e.i ? (nm(e.i) === '나' ? '나' : '자기 자신') : nm(e.target)}…`; BSV.fx = 'aim'; rerender(); await bsWait(700);
+        BSV.fx = e.live ? 'bang' : 'click'; BSV.flash = e.live ? 'p' + e.target : ''; BSV.msg = e.live ? `💥 실탄! ${nm(e.target)} 목숨 −${e.dmg}${e.out ? ' · 탈락' : ''}` : '딸깍… 공포탄'; rerender(); await bsWait(e.live ? 1100 : 800);
+        BSV.fx = ''; BSV.flash = '';
+      }
+      else if (e.t === 'peek'){ const me = rerender.me !== undefined ? rerender.me : 0, g = rerender.g ? rerender.g() : bsS().cur; BSV.msg = e.i === me && e.live !== undefined ? `🔍 지금 탄은 ${e.live ? '실탄' : '공포탄'}` : e.i === me ? '🔍 돋보기로 탄을 확인했다' : `🔍 ${g ? esc(g.pl[e.i].nm) : '?'}이(가) 돋보기로 탄을 확인했다`; rerender(); await bsWait(900); }
+      else if (e.t === 'beer'){ BSV.msg = `🍺 빼낸 탄: ${e.live ? '실탄' : '공포탄'}`; rerender(); await bsWait(900); }
+      else if (e.t === 'cuff'){ BSV.msg = '⛓️ 수갑'; rerender(); await bsWait(600); }
+      else if (e.t === 'saw'){ BSV.msg = '🪚 총신을 잘랐다 (다음 한 발 2배)'; rerender(); await bsWait(600); }
+      else if (e.t === 'heal'){ BSV.msg = '🚬 목숨 +1'; rerender(); await bsWait(600); }
+      else if (e.t === 'skip'){ BSV.msg = '⛓️ 수갑 때문에 한 번 쉽니다'; rerender(); await bsWait(800); }
+      else if (e.t === 'again'){ BSV.msg = '한 번 더!'; rerender(); await bsWait(600); }
+    }
+  } catch(err){ if (err !== 'stop') console.error(err); }
+  BSV.busy = false; BSV.msg = ''; BSV.fx = '';
+  rerender();
+  if (done) done();
+}
+// 컴퓨터 딜러 차례: 한 수씩 둔다
+function bsTick(){
+  const g = bsS().cur; if (!g || g.over || BSV.busy || g.turn !== 1 || !$('#bsCard')) return;
+  clearTimeout(BSV.t);
+  BSV.t = setTimeout(() => {
+    const g2 = bsS().cur; if (!g2 || g2.over || BSV.busy || g2.turn !== 1) return;
+    const a = BSE.ai(g2, 1, Math.random), ev = BSE.step(g2, 1, a, Math.random) || BSE.shoot(g2, 1, 0, Math.random) || [];
+    save();
+    bsPlay(ev, () => bsTick());
+  }, bmMs(700));
+}
+function bsMine(a){
+  const s = bsS(), g = s.cur; if (!g || g.over || BSV.busy || g.turn !== 0) return;
+  const ev = BSE.step(g, 0, a, Math.random); if (!ev) return toast('지금 할 수 없습니다', true);
+  save();
+  bsPlay(ev, () => bsTick());
+}
+function bsFinish(run){
+  const s = bsS(), g = s.cur; if (!g || !g.over || BSV.busy) return;
+  const win = g.win === 0, ran = !!run && !win;
+  const pay = win ? Math.round(g.stake * 2 * 100) / 100 : ran ? g.stake : 0;
+  if (pay > 0) receiveUSD(pay);
+  s.hist.unshift({at:Date.now(), stake:g.stake, pay, win}); s.hist = s.hist.slice(0, 10);
+  altLog('gamble', `벅샷 룰렛 ${win ? '승리' : ran ? '패배 → 도망' : '패배'}${g.il ? ' (불법)' : ''}`, pay - g.stake, 'USD');
+  s.cur = null; commit(); gmHide();
+  police('bs', g.il, pay - g.stake);
+  runCheck(); if (ran) runAdd('bs', g.stake);
+  showModal(`<h2 class="${win ? 'up' : ''}">${win ? '🏆 살아남았습니다' : ran ? '🏃 도망쳤습니다' : '💀 졌습니다'}</h2>${ran ? runNote(g.stake) : ''}<div class="bd"><div><span>판돈</span><b class="num">${fmtUSD(g.stake)}</b></div><div><span>받은 돈</span><b class="num">${fmtUSD(pay)}</b></div><div><span>쏜 횟수</span><b class="num">${g.shots}발 · 장전 ${g.load}번</b></div></div><div class="acts"><button class="btn solid" data-close>확인</button></div>`);
+}
+document.addEventListener('click', e => {
+  const t = e.target.closest('button'); if (!t) return;
+  if (t.id === 'bsGo'){ bsStart(); return; }
+  if (t.id === 'bsOpen'){ gmOpen('bs'); setTimeout(bsTick, 300); return; }
+  if (!t.closest('#bsCard')) return;
+  if (t.id === 'bsEnd'){ bsFinish(false); return; }
+  if (t.id === 'bsRun'){ bsFinish(true); return; }
+  const g = bsS().cur; if (!g) return;
+  if (t.dataset.bsshoot !== undefined){ bsMine({op:'shoot', target:+t.dataset.bsshoot}); return; }
+  if (t.dataset.bsit){ bsMine({op:'use', it:t.dataset.bsit, target:1}); return; }
+});
+
 /* ───────── 멀티플레이 (방 코드로 같이 하기) ─────────
    사이트는 Supabase에 요청(seed10k_room_reqs)만 넣고, 라즈베리파이 심판이 규칙대로 처리해 방(seed10k_rooms)을 고친다.
    방이 바뀌면 Supabase 실시간이 알려 주고(놓칠 때를 위해 3초마다도 확인), 끝나면 받을 돈(seed10k_payouts)을 '받기'로 가져온다.
    판돈은 들어갈 때 이 기기 통장에서 내고, 돌려받거나 이긴 돈은 받기로 들어온다 */
 const MP_GAMES = {bm:{nm:'주사위 세계여행', ic:'🎲', ready:true, desc:'2~4명 · 파산할 때까지, 순위 배수'},   // 도박 탭의 혼자 하기 카드와 같은 순서
-                  sl:{nm:'뱀사다리', ic:'🐍', ready:true, desc:'2~4명 · 100칸 먼저 도착하면 판돈을 모두 가져감'},
+                  bs:{nm:'벅샷 룰렛', ic:'💥', ready:true, desc:'2~4명 · 마지막까지 살아남은 사람이 판돈을 모두'},
                   oe:{nm:'홀짝 대결', ic:'✊', ready:true, desc:'2명 · 번갈아 구슬을 쥐고 맞히기, 3점 먼저'},
-                  bj:{nm:'블랙잭 대결', ic:'🃏', ready:true, desc:'2~5명 · 딜러 없이, 21에 가장 가까운 사람이 판돈을 모두'}};
+                  bj:{nm:'블랙잭 대결', ic:'🃏', ready:true, desc:'2~5명 · 딜러 없이, 21에 가장 가까운 사람이 판돈을 모두'},
+                  sl:{nm:'뱀사다리', ic:'🐍', ready:false, hide:true, desc:'없어진 게임 (이미 만든 방만 끝까지 할 수 있음)'}};
 const MP_MIN = {oe:2, sl:2, bj:1, bm:2};
 const MP = {code:null, room:null, ch:null, poll:null, ref:null, refAt:0, busy:false, lastSeq:0, view:{}, payCh:null};
 const mpKey = () => ACC.user ? `seed10k.mp.${ACC.user.id}` : null;
@@ -4987,7 +5283,7 @@ function mpCardHTML(){
   if (MP.banned) return `<div class="card-h"><h2>👥 같이 하기 ${infoBtn('mp')}</h2></div><p class="mg-desc down"><b>🚫 부계정을 이용한 부정행위가 적발되어 이 계정은 멀티플레이가 제한되었습니다.</b></p>`;
   const saved = (() => { try { return localStorage.getItem(mpKey()); } catch(e){ return null; } })();
   return `<div class="card-h"><h2>👥 같이 하기 ${infoBtn('mp')}</h2><small id="mpRef">${MP.ref === false ? '<span class="down">게임 서버 꺼짐</span>' : MP.ref ? '게임 서버 켜짐' : ''}</small></div>
-    <p class="mg-desc">방을 만들고 코드를 알려 주면 친구가 들어옵니다. ${Object.values(MP_GAMES).filter(g => g.ready).map(g => g.ic + g.nm).join(' · ')}${Object.values(MP_GAMES).some(g => !g.ready) ? ` (곧: ${Object.values(MP_GAMES).filter(g => !g.ready).map(g => g.nm).join(', ')})` : ''}</p>
+    <p class="mg-desc">방을 만들고 코드를 알려 주면 친구가 들어옵니다. ${Object.values(MP_GAMES).filter(g => g.ready).map(g => g.ic + g.nm).join(' · ')}</p>
     ${saved ? `<p class="mg-desc">들어가 있는 방 <b class="num">${esc(saved)}</b> <button class="btn" id="mpResume" style="margin-left:6px">이어가기</button></p>` : ''}
     <div class="mg-foot"><button class="btn" id="onlBtn">🟢 접속 중 <span class="num" id="onlN">${ONL.list.length}</span>명</button><button class="btn" id="mpJoinBtn">코드로 참가</button><button class="btn solid" id="mpNewBtn">방 만들기</button></div>`;
 }
@@ -5015,7 +5311,7 @@ async function mpNew(to){   // to: 대결을 신청할 사람 {uid, nick} (없�
   if (MP.banned) return toast('멀티플레이가 제한된 계정입니다', true);
   if (!mpWarned(() => mpNew(to))) return;
   if (!(await mpRefAlive(true))) return toast('게임 서버(라즈베리파이)가 꺼져 있어 지금은 방을 만들 수 없습니다', true);
-  const list = Object.entries(MP_GAMES);
+  const list = Object.entries(MP_GAMES).filter(([k, g]) => !g.hide);
   const c = showModal(`<h2>👥 ${to ? `${esc(to.nick)}에게 대결 신청` : '방 만들기'}</h2><p class="muted" style="margin:0 0 8px">게임을 고르세요</p>
     <div class="mp-games">${list.map(([k, g]) => `<button class="btn mp-g" data-mpg="${k}" ${g.ready ? '' : 'disabled'}><b>${g.ic} ${g.nm}</b><small>${g.ready ? g.desc : '준비 중'}</small></button>`).join('')}</div>
     <div class="acts"><button class="btn" data-close>닫기</button></div>`);
@@ -5097,6 +5393,7 @@ function mpSet(room){
   if ((room.status === 'over' || room.status === 'closed') && !MP.view.bmHold) mpClaim();   // 주사위 세계여행은 움직임을 다 보여 준 뒤에 받는다
 }
 function mpOnEv(ev, prev){
+  if (ev.t === 'bs'){ if (prev && prev.code === MP.room.code && prev.status === 'play'){ (MP.view.bsQ = MP.view.bsQ || []).push(ev); MP.view.bmHold = true; mbsRun(); } return; }
   if (ev.t === 'bm'){ if (prev && prev.code === MP.room.code && prev.status === 'play' && BMV.mp && bmOpenNow()){ (MP.view.bmQ = MP.view.bmQ || []).push(ev); MP.view.bmHold = true; mbmRun(); } return; }
   if (ev.t === 'sl'){ if (prev && prev.code === MP.room.code && prev.status === 'play'){ (MP.view.slQ = MP.view.slQ || []).push(ev); mslRun(); } return; }
   if (ev.t === 'oe_reveal'){ MP.view.oeShow = ev; clearTimeout(MP.view.oeT); MP.view.oeT = setTimeout(() => { MP.view.oeShow = null; mpRender(); }, 2200); }
@@ -5128,6 +5425,7 @@ function mpRender(){
   const body = !R ? '<p class="muted">방을 불러오는 중…</p>' : R.status === 'closed' ? `<p>방이 닫혔습니다.</p><p class="muted">대기실에서 닫힌 방은 판돈을 돌려받습니다.</p>` : R.status === 'lobby' ? mpLobbyHTML(R) : (MP_VIEW[R.game] || (() => ''))(R);
   ov.innerHTML = `<div class="bm-top"><button class="btn" id="mpClose">닫기</button><div class="bm-ttl"><b>${g ? g.ic + ' ' + g.nm : '👥 같이 하기'}</b><small>방 ${esc(MP.code || '')} · 달러 통장 ${fmtUSD(S.usd)}</small></div><button class="btn" id="mpLeave">나가기</button></div>
     <section class="card c-mg gm-body">${body}</section>`;
+  mpTick();
   if (R && MP_UPD[R.game] && (R.status === 'play' || R.status === 'over')) MP_UPD[R.game](R);
 }
 function mpSeatsHTML(R, extra){
@@ -5198,7 +5496,7 @@ async function mpClaim(){
       altLog('gamble', `👥 ${p.note || (MP_GAMES[p.game] || {}).nm || '같이 하기'}${p.il ? ' (불법)' : ''}`, net, 'USD');
       commit();
       if (amt > 0) toast(`👥 ${p.note || '같이 하기'}: ${fmtUSD(amt)}을 받았습니다`);
-      if (p.il && GAM[p.game]) police(p.game, true, net);
+      if (p.il && GAM[p.game] && !/환불/.test(p.note || '')) police(p.game, true, net);   // 환불은 단속하지 않는다
       if (!/환불/.test(p.note || '')) runCheck();   // 도망친 뒤의 '이후 판'에는 같이 하기 판도 들어간다
     }
   } catch(e){ console.warn('[seed10k] 받을 돈 확인 실패', e); }
@@ -5217,7 +5515,8 @@ setInterval(() => { if (!document.hidden && ACC.user && UI.tab === 'market' && $
 /* ── 게임별 화면 ── */
 const MP_VIEW = {}, MP_UPD = {};   // MP_VIEW: 처음 그리기, MP_UPD: 이미 그린 화면을 그 자리에서 고치기 (그렸으면 true)
 const mpLeft = dl => dl ? Math.max(0, Math.ceil((dl - Date.now()) / 1000)) : null;
-setInterval(() => { const el = $('#mpTimer'); if (el && MP.room) { const s = mpLeft(MP.room.state.deadline); el.textContent = s === null ? '' : `${s}초`; } }, 500);
+function mpTick(){ const el = $('#mpTimer'); if (el && MP.room){ const s = mpLeft(MP.room.state.deadline), t = s === null ? '' : `${s}초`; if (el.textContent !== t) el.textContent = t; } }
+setInterval(mpTick, 500);
 
 // 홀짝 대결
 MP_VIEW.oe = R => {
@@ -5259,7 +5558,7 @@ MP_VIEW.sl = R => {
     <div class="sl-board" id="mslBoard">${slCellsHTML()}<svg class="sl-svg" id="mslSvg"></svg>${st.seats.map((p, i) => `<div class="sl-tok" data-msltok="${i}" style="--pc:${BM.cols[i % BM.cols.length]}"><span>${esc([...(p.nick || '?')][0])}</span></div>`).join('')}<div class="bm-fx" id="mslFx"></div></div>
     <div class="sl-panel" style="margin-top:10px"><div id="mslSeats"></div><div class="bm-row"><div class="bm-dice" id="mslDice">${bmDieHTML()}</div><div class="bm-msg" id="mslMsg"></div></div><div class="bm-acts" id="mslAct"></div><ul class="bm-log" id="mslLog"></ul></div>`;
 };
-const mpSetH = (el, h) => { if (el && el._h !== h){ el._h = h; el.innerHTML = h; } };   // 바뀐 것만 다시 그린다 (누르는 중인 버튼이 사라지지 않게)
+const mpSetH = (el, h) => { if (el && el._h !== h){ el._h = h; el.innerHTML = h; mpTick(); } };   // 바뀐 것만 다시 그린다 (누르는 중인 버튼이 사라지지 않게)
 const mslNm = (R, i) => i === mpMe() ? '나' : (R.state.seats[i] || {}).nick || '?';
 function mslPlace(R, instant){
   const b = $('#mslBoard'), g = R.state.g; if (!b || !g) return;
@@ -5373,7 +5672,13 @@ function mbjBody(R){
   return h;
 }
 MP_VIEW.bj = R => `<div class="card-h"><h2>🃏 블랙잭 대결</h2><small>판돈 ${fmtUSD(R.stake)} · ${R.state.seats.length}명 · 1등 ${fmtUSD(R.stake * R.state.seats.length)}${R.il ? ' · 🚨 불법' : ''}</small></div><div id="mbjBody"></div>`;
-MP_UPD.bj = R => { const b = $('#mbjBody'); if (!b || !R.state.g) return false; mpSetH(b, mbjBody(R)); return true; };
+MP_UPD.bj = R => {
+  const b = $('#mbjBody'); if (!b || !R.state.g) return false;
+  // 예전 규칙(딜러와 하던 블랙잭 테이블)의 심판이 만든 판이면 그릴 수 없다: 심판을 새로 켠 뒤 새 방을 만들어야 한다
+  if (!Array.isArray(R.state.g.order)){ mpSetH(b, '<p class="oe-res down">이 판은 예전 규칙(딜러와 하는 블랙잭)으로 만들어졌습니다.</p><p class="muted">게임 서버(라즈베리파이)를 새 버전으로 다시 켠 뒤, 나가기를 누르고 방을 새로 만드세요. 대기실에서 나가면 판돈은 돌려받고, 진행 중이면 기권으로 처리됩니다.</p>'); return true; }
+  try { mpSetH(b, mbjBody(R)); } catch(e){ console.error(e); mpSetH(b, `<p class="oe-res down">화면을 그리지 못했습니다</p><p class="muted">${esc(String(e && e.message || e))}</p>`); }
+  return true;
+};
 document.addEventListener('click', e => {
   const t = e.target.closest('[data-mpbj]'); if (!t || MP.busy) return;
   const R = MP.room, g = R && R.state.g, a = t.dataset.mpbj;
@@ -5503,6 +5808,48 @@ function onlGot(p){
   };
   show();
 }
+
+// 벅샷 룰렛 (2~4명). 판 그림은 혼자 할 때(bs.js)와 같고, 돋보기로 본 탄은 내 요청 결과로만 받는다
+const mbsPeek = g => { const p = MP.view.bsPeek; return p && p.load === g.load && p.left === g.live + g.blank ? p.peek : null; };
+function mbsBody(R){
+  const g = R.state.g, me = mpMe(), host = ACC.user && R.host === ACC.user.id;
+  const foot = R.status === 'over' && !BSV.busy ? `<p class="oe-res ${g.win === me ? 'up' : 'down'}">${g.win === me ? `🏆 살아남았다! ${fmtUSD(R.stake * g.n)}을 받습니다` : `💀 ${esc(g.pl[g.win] ? g.pl[g.win].nm : '?')} 승리`}</p>
+    <div class="bm-acts">${host ? `<button class="btn solid" id="mpAgain">한 판 더 (${fmtUSD(R.stake)})</button>` : '<p class="bm-wait">방장이 한 판 더 열면 다시 참가할 수 있습니다</p>'}</div>` : R.status === 'over' ? ' ' : '';
+  return bsTableHTML(g, me < 0 ? 0 : me, {mine:me >= 0, peek:mbsPeek(g), wait:MP.busy || me < 0, timer:R.status === 'play', foot});
+}
+MP_VIEW.bs = R => `<div class="card-h"><h2>💥 벅샷 룰렛</h2><small>판돈 ${fmtUSD(R.stake)} · ${R.state.seats.length}명 · 1등 ${fmtUSD(R.stake * R.state.seats.length)}${R.il ? ' · 🚨 불법' : ''}</small></div><div id="mbsBody"></div>`;
+MP_UPD.bs = R => { const b = $('#mbsBody'); if (!b || !R.state.g) return false; mpSetH(b, mbsBody(R)); return true; };
+const mbsRer = () => { const R = MP.room; if (R && R.game === 'bs') MP_UPD.bs(R); };
+mbsRer.g = () => MP.room && MP.room.state.g; Object.defineProperty(mbsRer, 'me', {get:() => mpMe()});
+function mbsRun(){
+  if (BSV.busy) return;
+  const ev = (MP.view.bsQ || []).shift();
+  if (!ev){ MP.view.bmHold = false; if (MP.room && MP.room.status === 'over') setTimeout(mpClaim, 300); mbsRer(); return; }
+  bsPlay(ev.list || [], () => setTimeout(mbsRun, 150), mbsRer);
+}
+async function mbsSend(a){
+  if (MP.busy || BSV.busy) return;
+  MP.busy = true; mbsRer();
+  try {
+    const r = await mpReq(MP.code, 'act', a);
+    if (!r.ok) toast(r.err, true);
+    else if (r.res && r.res.peek !== undefined) MP.view.bsPeek = r.res;
+    await mpFetch();
+  } finally { MP.busy = false; mbsRer(); }
+}
+document.addEventListener('click', e => {
+  const t = e.target.closest('#mpOv button'); if (!t || !MP.room || MP.room.game !== 'bs') return;
+  const g = MP.room.state.g, me = mpMe(); if (!g || g.turn !== me || MP.room.status !== 'play') return;
+  if (t.dataset.bsshoot !== undefined) return mbsSend({op:'shoot', target:+t.dataset.bsshoot});
+  if (t.dataset.bsit){
+    const it = t.dataset.bsit;
+    if (it !== 'cuff') return mbsSend({op:'use', it});
+    const opps = g.pl.map((p, i) => i).filter(i => i !== me && !g.pl[i].out && !g.pl[i].cuffed);
+    if (opps.length === 1) return mbsSend({op:'use', it, target:opps[0]});
+    const c = showModal(`<h2>⛓️ 누구에게 수갑을 채울까요?</h2><div class="mp-games">${opps.map(i => `<button class="btn" data-bscuff="${i}">${esc(g.pl[i].nm)} (목숨 ${g.pl[i].hp})</button>`).join('')}</div><div class="acts"><button class="btn" data-close>취소</button></div>`);
+    $$('#modal [data-bscuff]').forEach(b => b.onclick = () => { c(); mbsSend({op:'use', it, target:+b.dataset.bscuff}); });
+  }
+});
 
 /* ───────── 관리 탭 (관리자 계정에만 보인다) ─────────
    관리자 여부는 Supabase의 seed10k_admins 표가 정한다 (사이트 코드에 이메일을 넣지 않는다).
