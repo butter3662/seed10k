@@ -3,21 +3,50 @@
 연결 주소는 저장소 비밀값 SUPABASE_DB_URL (Supabase 대시보드 → Connect → Session pooler 주소, 비밀번호 포함).
 - 처음 보는 파일, 내용이 바뀐 파일만 실행한다. 실행 기록: public.seed10k_migrations (정책 없음 = 서버 비밀 키·DB 접속만)
 - 파일마다 한 묶음(트랜잭션)으로 실행해, 중간에 실패하면 그 파일은 하나도 적용되지 않는다. 실패하면 거기서 멈춘다."""
-import hashlib, os, subprocess, sys
+import hashlib, os, re, subprocess, sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 URL = os.environ.get("SUPABASE_DB_URL", "").strip()
 
 
+def parts(url):
+    """주소를 직접 나눈다: 비밀번호에 @ # / ? % 같은 기호가 있어도 되게 (마지막 @ 앞까지가 사용자:비밀번호).
+    비밀번호를 [ ]로 감싼 채 넣었으면 벗긴다."""
+    m = re.match(r"^\s*postgres(?:ql)?://(.+?)\s*$", url, re.S)
+    if not m:
+        return None, "주소가 postgresql:// 로 시작하지 않습니다"
+    userinfo, at, hostpart = m.group(1).rpartition("@")
+    if not at:
+        return None, "주소에 @가 없습니다 (사용자:비밀번호@서버 모양이어야 합니다)"
+    user, _, pw = userinfo.partition(":")
+    if pw.startswith("[") and pw.endswith("]"):
+        pw = pw[1:-1]
+    hostport, _, rest = hostpart.partition("/")
+    db = (rest.split("?")[0] or "postgres")
+    host, _, port = hostport.partition(":")
+    if not host or not user or not pw:
+        return None, "주소에서 서버·사용자·비밀번호를 찾지 못했습니다"
+    return {"PGHOST": host, "PGPORT": port or "5432", "PGUSER": user, "PGPASSWORD": pw, "PGDATABASE": db, "PGSSLMODE": "require", "PGCONNECT_TIMEOUT": "15"}, ""
+
+
+PG = {}
+
+
 def psql(*args, sql=None):
-    cmd = ["psql", URL, "-X", "-q", "-v", "ON_ERROR_STOP=1", *args]
-    return subprocess.run(cmd, input=sql, capture_output=True, text=True)
+    cmd = ["psql", "-X", "-q", "-v", "ON_ERROR_STOP=1", *args]
+    return subprocess.run(cmd, input=sql, capture_output=True, text=True, env={**os.environ, **PG})
 
 
 def main():
     if not URL:
         print("::warning::SUPABASE_DB_URL 비밀값이 없어 SQL을 실행하지 않았습니다 (Settings → Secrets and variables → Actions)")
         return 0
+    global PG
+    PG, why = parts(URL)
+    if not PG:
+        print(f"::error::SUPABASE_DB_URL을 읽지 못했습니다: {why}")
+        return 1
+    print(f"접속: {PG['PGUSER']} @ {PG['PGHOST']}:{PG['PGPORT']}/{PG['PGDATABASE']} (비밀번호 {len(PG['PGPASSWORD'])}자)")
     r = psql("-c", "create table if not exists public.seed10k_migrations (name text primary key, sha text not null, at timestamptz not null default now());"
                    "alter table public.seed10k_migrations enable row level security;")
     if r.returncode:
