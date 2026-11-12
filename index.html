@@ -872,6 +872,22 @@ html[data-game=live] .c-news{order:3}
 .tabbar button[aria-current=page]{color:var(--ink)}
 .tabbar button[aria-current=page] svg{color:var(--brass)}
 .tabbar button,.tabs-top button{position:relative}
+.tabbar.adm{grid-template-columns:repeat(6,1fr)}
+.tabbar button[hidden],.tabs-top button[hidden]{display:none}
+.adm-als,.adm-us{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.adm-al{display:flex;gap:10px;justify-content:space-between;align-items:flex-start;background:color-mix(in srgb,var(--danger) 9%,var(--surface-2));border-radius:10px;padding:10px 12px}
+.adm-al.seen{background:var(--surface-2);opacity:.75}
+.adm-al p{margin:3px 0 0;font-size:13.5px;font-weight:650}
+.adm-al-b{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;flex:none;max-width:45%}
+.adm-al-b .btn,.adm-ban .btn{padding:6px 10px;font-size:12.5px}
+.adm-q{display:flex;gap:8px;margin-bottom:10px}.adm-q .amt{flex:1}
+.adm-u{width:100%;text-align:left;border:1px solid var(--rule);background:var(--surface-2);color:var(--ink);border-radius:10px;padding:9px 12px;display:grid;gap:2px}
+.adm-u.on{border-color:var(--brass)}.adm-u small{font-size:12px;color:var(--ink-2)}
+.adm-ban{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:var(--surface-2);border-radius:10px;padding:8px 12px;margin-bottom:10px}
+.adm-ban .btn{margin-left:auto}.adm-ban.on{background:color-mix(in srgb,var(--danger) 12%,var(--surface-2))}
+.adm-kv{margin:10px 0}
+.adm-h{font-size:14px;margin:16px 0 6px}
+.adm-sql{white-space:pre-wrap;word-break:break-all;background:var(--surface-2);border-radius:8px;padding:10px;font-size:12px;max-height:40vh;overflow:auto;user-select:all}
 .tabbar button.warn::after{content:"";position:absolute;top:9px;left:calc(50% + 9px);width:8px;height:8px;border-radius:50%;background:var(--danger);box-shadow:0 0 0 2px var(--surface)}
 .tabs-top button.warn::after{content:"";position:absolute;top:6px;right:4px;width:7px;height:7px;border-radius:50%;background:var(--danger)}
 
@@ -934,7 +950,7 @@ html[data-game=live] .c-news{order:3}
       <span class="wm">SEED</span><b>10K</b>
     </div>
     <nav class="tabs-top" aria-label="화면">
-      <button data-tab="home">홈</button><button data-tab="market">투자</button><button data-tab="assets">내 자산</button><button data-tab="loans">대출</button><button data-tab="info">규칙·설정</button>
+      <button data-tab="home">홈</button><button data-tab="market">투자</button><button data-tab="assets">내 자산</button><button data-tab="loans">대출</button><button data-tab="info">규칙·설정</button><button data-tab="admin" hidden>관리</button>
     </nav>
     <div class="session" id="simCtl">
       <div class="sess-date"><span id="sessDay">기준일</span><strong id="sessDate"></strong></div>
@@ -966,6 +982,7 @@ html[data-game=live] .c-news{order:3}
   <section class="view" id="v-assets" aria-label="내 자산"></section>
   <section class="view" id="v-loans" aria-label="대출"></section>
   <section class="view" id="v-info" aria-label="규칙과 설정"></section>
+  <section class="view" id="v-admin" aria-label="관리"></section>
 </main>
 
 <nav class="tabbar" aria-label="화면">
@@ -974,6 +991,7 @@ html[data-game=live] .c-news{order:3}
   <button data-tab="assets"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="14" rx="3"/><path d="M3 10h18M16 15h2"/><path d="M7 6V4.5A1.5 1.5 0 0 1 8.5 3h7A1.5 1.5 0 0 1 17 4.5V6"/></svg>내 자산</button>
   <button data-tab="loans" id="tabLoans"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-5 9 5"/><path d="M5 9v9M10 9v9M14 9v9M19 9v9M3 20h18"/></svg>대출</button>
   <button data-tab="info"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg>규칙·설정</button>
+  <button data-tab="admin" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 4.5-3.4 8-8 9-4.6-1-8-4.5-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg>관리</button>
 </nav>
 
 <div class="scrim" id="scrim" hidden></div>
@@ -1011,7 +1029,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '2.1.18';
+const VERSION = '2.1.19';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -4893,6 +4911,7 @@ function mpCardHTML(){
     <li>끝나면 이긴 돈이 자동으로 들어옵니다. 불법 모드 방이면 받을 때 혼자 할 때와 같은 확률로 경찰 단속이 있습니다.</li>
     <li>같은 모드(실제 시세/시뮬레이션)끼리만 같이 할 수 있습니다. 차례에서 정해진 시간 안에 고르지 않으면 서버가 대신 고릅니다.</li></ul></div>`};
   if (!ACC.user) return `<div class="card-h"><h2>👥 같이 하기</h2></div><p class="mg-desc">로그인하면 방 코드로 친구와 같이 할 수 있습니다.</p>`;
+  if (MP.banned) return `<div class="card-h"><h2>👥 같이 하기 ${infoBtn('mp')}</h2></div><p class="mg-desc down"><b>🚫 부계정을 이용한 부정행위가 적발되어 이 계정은 멀티플레이가 제한되었습니다.</b></p>`;
   const saved = (() => { try { return localStorage.getItem(mpKey()); } catch(e){ return null; } })();
   return `<div class="card-h"><h2>👥 같이 하기 ${infoBtn('mp')}</h2><small id="mpRef">${MP.ref === false ? '<span class="down">게임 서버 꺼짐</span>' : MP.ref ? '게임 서버 켜짐' : ''}</small></div>
     <p class="mg-desc">방을 만들고 코드를 알려 주면 친구가 들어옵니다. ${Object.values(MP_GAMES).filter(g => g.ready).map(g => g.ic + g.nm).join(' · ')}${Object.values(MP_GAMES).some(g => !g.ready) ? ` (곧: ${Object.values(MP_GAMES).filter(g => !g.ready).map(g => g.nm).join(', ')})` : ''}</p>
@@ -4902,8 +4921,26 @@ function mpCardHTML(){
 
 
 /* ── 방 만들기 / 참가 ── */
+// 처음 같이 하기를 쓸 때 한 번 (계정마다)
+const MP_WARN = '부계정을 이용한 부정행위 적발시 영구적으로 멀티플레이가 제한될 수 있습니다';
+function mpWarned(go){
+  const k = 'seed10k.mpwarn.' + (ACC.user ? ACC.user.id : '');
+  try { if (localStorage.getItem(k)) return true; } catch(e){}
+  const c = showModal(`<h2>⚠️ 같이 하기 전에</h2><p><b>${MP_WARN}.</b></p><p class="muted">부계정으로 일부러 져 주거나 돈을 몰아주는 행동이 적발되면, 그렇게 얻은 돈은 모두 회수되고 멀티플레이를 더 할 수 없습니다.</p>
+    <div class="acts"><button class="btn" data-close>닫기</button><button class="btn solid" id="mpWarnOk">확인했습니다</button></div>`);
+  $('#mpWarnOk').onclick = () => { try { localStorage.setItem(k, '1'); } catch(e){} c(); setTimeout(go, 200); };
+  return false;
+}
+async function mpBanCheck(){
+  MP.banned = false;
+  if (!ACC.user || !ACC.sb) return;
+  try { const {data} = await ACC.sb.from('seed10k_mp_bans').select('user_id').eq('user_id', ACC.user.id).maybeSingle(); MP.banned = !!data; } catch(e){}
+  if (MP.banned && $('#mpCard')) $('#mpCard').innerHTML = mpCardHTML();
+}
 async function mpNew(){
   if (!ACC.user) return toast('로그인해야 합니다', true);
+  if (MP.banned) return toast('멀티플레이가 제한된 계정입니다', true);
+  if (!mpWarned(mpNew)) return;
   if (!(await mpRefAlive(true))) return toast('게임 서버(라즈베리파이)가 꺼져 있어 지금은 방을 만들 수 없습니다', true);
   const list = Object.entries(MP_GAMES);
   const c = showModal(`<h2>👥 방 만들기</h2><p class="muted" style="margin:0 0 8px">게임을 고르세요</p>
@@ -4923,6 +4960,8 @@ async function mpNew(){
 }
 async function mpJoin(pre){
   if (!ACC.user) return toast('로그인해야 합니다', true);
+  if (MP.banned) return toast('멀티플레이가 제한된 계정입니다', true);
+  if (!mpWarned(() => mpJoin(pre))) return;
   const c = showModal(`<h2>👥 코드로 참가</h2><label class="amt"><input id="mpCodeIn" type="text" maxlength="6" autocapitalize="characters" autocomplete="off" placeholder="방 코드 6자리" value="${esc(pre || '')}"></label>
     <p class="muted" id="mpJoinMsg" style="margin:6px 0 0"></p><div class="acts"><button class="btn" data-close>닫기</button><button class="btn solid" id="mpJoinGo">찾기</button></div>`);
   const inp = $('#mpCodeIn'); inp.focus();
@@ -5084,6 +5123,7 @@ async function mpClaim(){
 }
 function mpWatchPayouts(){
   if (!ACC.sb || !ACC.user) return;
+  mpBanCheck();
   if (MP.payCh){ try { ACC.sb.removeChannel(MP.payCh); } catch(e){} }
   try { MP.payCh = ACC.sb.channel('pay-' + ACC.user.id).on('postgres_changes', {event:'INSERT', schema:'public', table:'seed10k_payouts', filter:`user_id=eq.${ACC.user.id}`}, () => mpClaim()).subscribe(); } catch(e){}
   setTimeout(mpClaim, 2500);
@@ -5221,6 +5261,183 @@ async function mslRun(){
   mpRender();
 }
 window.addEventListener('resize', () => { if (MP.room && $('#mslBoard')) MP_UPD.sl(MP.room); });
+
+/* ───────── 관리 탭 (관리자 계정에만 보인다) ─────────
+   관리자 여부는 Supabase의 seed10k_admins 표가 정한다 (사이트 코드에 이메일을 넣지 않는다).
+   다른 계정의 기록을 읽는 권한도 데이터베이스 정책(seed10k_is_admin)이 막고 연다. 화면을 고쳐도 일반 계정은 읽을 수 없다.
+   - 부정행위 의심 알림: 심판(라즈베리파이)이 판이 끝날 때 확인해 seed10k_alerts에 적는다
+   - 유저 검색 → 최근 기록: 저장 기록(주식·기타·환전 내역), 멀티 판 결과, 받은 돈(멀티 누적 순획득), 주사위 세계여행 기록
+   - 멀티플레이 제한/해제, 멀티로 딴 돈 회수 SQL 만들기 (남의 저장 기록은 사이트에서 고치지 않고 SQL 편집기에서 고친다) */
+const ADM = {on:false, alerts:[], unseen:0, q:'', users:null, uid:null, mode:null, data:null, ch:null};
+const admT = at => at ? new Date(at).toLocaleString('ko-KR', {timeZone:'Asia/Seoul', year:'2-digit', month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit', hour12:false}) : '';
+const admUSD = v => `${v < 0 ? MINUS : ''}${fmtUSD(Math.abs(v))}`;
+const admR2 = v => Math.round(v * 100) / 100;
+
+async function admCheck(){
+  const was = ADM.on;
+  ADM.on = false; ADM.alerts = []; ADM.unseen = 0; ADM.uid = null; ADM.data = null; ADM.users = null;
+  if (ADM.ch){ try { ACC.sb.removeChannel(ADM.ch); } catch(e){} ADM.ch = null; }
+  if (ACC.user && ACC.sb){
+    try { const {data} = await ACC.sb.from('seed10k_admins').select('user_id').eq('user_id', ACC.user.id).maybeSingle(); ADM.on = !!data; } catch(e){}
+  }
+  $$('[data-tab="admin"]').forEach(b => b.hidden = !ADM.on);
+  $('.tabbar').classList.toggle('adm', ADM.on);
+  if (!ADM.on){ if (UI.tab === 'admin') go('home'); return; }
+  try {
+    ADM.ch = ACC.sb.channel('adm-alerts').on('postgres_changes', {event:'INSERT', schema:'public', table:'seed10k_alerts'}, p => {
+      if (!p.new) return;
+      ADM.alerts.unshift(p.new); ADM.unseen++; admBadge();
+      toast(`🚨 부정행위 의심: ${p.new.msg}`, true);
+      if (UI.tab === 'admin') renderAdmin();
+    }).subscribe();
+  } catch(e){}
+  await admLoadAlerts();
+  if (!was && ADM.unseen) toast(`🚨 확인하지 않은 부정행위 의심 알림 ${ADM.unseen}건`, true);
+}
+async function admLoadAlerts(){
+  const {data, error} = await ACC.sb.from('seed10k_alerts').select('*').order('id', {ascending:false}).limit(100);
+  if (!error){ ADM.alerts = data || []; ADM.unseen = ADM.alerts.filter(a => !a.seen).length; }
+  admBadge();
+  if (UI.tab === 'admin') renderAdmin();
+}
+function admBadge(){ $$('[data-tab="admin"]').forEach(b => b.classList.toggle('warn', ADM.unseen > 0)); }
+
+function renderAdmin(){
+  const v = $('#v-admin'); if (!v) return;
+  if (!ADM.on){ v.innerHTML = '<p class="empty">관리자만 볼 수 있습니다.</p>'; return; }
+  const al = ADM.alerts.slice(0, 50).map(a => `<li class="adm-al ${a.seen ? 'seen' : ''}"><div><small class="muted">${admT(a.at)} · ${esc(({oe_streak:'홀짝 연승', bj_stand:'블랙잭 계속 스탠드', bm_nobuy:'주사위 세계여행 땅 안 사기'})[a.kind] || a.kind)} · ${a.mode === 'live' ? '실제 시세' : '시뮬'}</small><p>${esc(a.msg)}</p></div>
+      <div class="adm-al-b">${a.uid ? `<button class="btn" data-admu="${a.uid}">이긴/의심 쪽</button>` : ''}${a.other ? `<button class="btn" data-admu="${a.other}">상대</button>` : ''}${a.seen ? '' : `<button class="btn" data-admseen="${a.id}">확인함</button>`}</div></li>`).join('');
+  const us = ADM.users === null ? '' : ADM.users.length ? `<ul class="adm-us">${ADM.users.map(u => `<li><button class="adm-u ${u.user_id === ADM.uid ? 'on' : ''}" data-admu="${u.user_id}"><b>${esc(u.nickname || '(닉네임 없음)')}</b><small>${esc(u.email || '')}</small><small class="muted">가입 ${admT(u.joined)}${u.last_save ? ` · 마지막 저장 ${admT(u.last_save)}` : ''}</small></button></li>`).join('')}</ul>` : '<p class="empty">찾은 계정이 없습니다.</p>';
+  v.innerHTML = `<div class="stack">
+    <section class="card"><div class="card-h"><h2>🚨 부정행위 의심 알림</h2><small>${ADM.unseen ? `<b class="down">확인 안 함 ${ADM.unseen}건</b>` : '모두 확인함'}</small></div>
+      <p class="muted" style="margin:0 0 8px">홀짝 대결에서 같은 상대에게 ${WATCH_ADM.oe}연승할 때마다 게임 서버가 적습니다. 블랙잭(계속 스탠드)과 주사위 세계여행(돈이 있는데 땅 안 사기 ${WATCH_ADM.bm}회 이상)은 그 게임의 멀티플레이가 생길 때 같이 확인합니다.</p>
+      ${al ? `<ul class="adm-als">${al}</ul>` : '<p class="empty">알림이 없습니다.</p>'}
+      ${ADM.unseen ? '<div class="mg-foot"><button class="btn" id="admSeenAll">모두 확인함</button></div>' : ''}</section>
+    <section class="card"><div class="card-h"><h2>🔎 유저 검색</h2><small>이메일이나 닉네임 일부</small></div>
+      <form id="admQF" class="adm-q"><label class="amt"><input id="admQ" type="search" autocomplete="off" placeholder="비우고 검색하면 최근 저장 순 40명" value="${esc(ADM.q)}"></label><button class="btn solid" type="submit">검색</button></form>
+      ${us}</section>
+    <section class="card" id="admUser"${ADM.uid ? '' : ' hidden'}>${ADM.uid ? admUserHTML() : ''}</section>
+  </div>`;
+}
+const WATCH_ADM = {oe:5, bj:5, bm:5};
+
+async function admSearch(q){
+  ADM.q = q;
+  const {data, error} = await ACC.sb.rpc('seed10k_admin_users', {q});
+  if (error){ toast(`검색하지 못했습니다: ${error.message}`, true); return; }
+  ADM.users = data || []; renderAdmin();
+}
+async function admOpenUser(uid){
+  ADM.uid = uid; ADM.data = null; renderAdmin();
+  const sb = ACC.sb;
+  const [sv, pay, res, bml, ban, who] = await Promise.all([
+    sb.from('seed10k_saves').select('mode,data,updated_at').eq('user_id', uid),
+    sb.from('seed10k_payouts').select('id,at,code,game,mode,amount,cost,il,note,claimed_at').eq('user_id', uid).order('id', {ascending:false}).limit(2000),
+    sb.from('seed10k_mp_results').select('*').contains('uids', [uid]).order('id', {ascending:false}).limit(30),
+    sb.from('seed10k_bmlog').select('at,mode,n,stake,pay,rank,forfeit,il,rounds').eq('user_id', uid).order('at', {ascending:false}).limit(10),
+    sb.from('seed10k_mp_bans').select('*').eq('user_id', uid).maybeSingle(),
+    ADM.users && ADM.users.find(u => u.user_id === uid) ? Promise.resolve({data:[ADM.users.find(u => u.user_id === uid)]}) : sb.rpc('seed10k_admin_users', {q:''}).then(r => ({data:(r.data || []).filter(u => u.user_id === uid)})),
+  ]);
+  if (ADM.uid !== uid) return;
+  const saves = sv.data || [];
+  ADM.data = {saves, pays:pay.data || [], res:res.data || [], bm:bml.data || [], ban:ban.data || null, who:(who.data || [])[0] || null, err:[sv, pay, res, bml].map(r => r.error && r.error.message).filter(Boolean)};
+  if (!ADM.mode || !saves.some(s => s.mode === ADM.mode)) ADM.mode = (saves.find(s => s.mode === S.mode) || saves[0] || {}).mode || S.mode;
+  renderAdmin();
+  const el = $('#admUser'); if (el) el.scrollIntoView({block:'start', behavior:'smooth'});
+}
+// 멀티 누적 순획득 = 받은 돈 - 낸 판돈 (환불은 둘이 같아 0). 받음 표시된 것만 실제로 통장에 들어간 돈
+function admMpNet(pays, mode){
+  const ps = pays.filter(p => p.mode === mode && p.claimed_at);
+  const net = admR2(ps.reduce((a, p) => a + (+p.amount || 0) - (+p.cost || 0), 0));
+  const games = ps.filter(p => !/환불/.test(p.note || '')), wins = games.filter(p => (+p.amount || 0) > (+p.cost || 0));
+  return {net, n:games.length, w:wins.length, pending:pays.filter(p => p.mode === mode && !p.claimed_at).length};
+}
+function admUserHTML(){
+  const D = ADM.data;
+  if (!D) return '<p class="muted">불러오는 중…</p>';
+  const u = D.who || {}, mode = ADM.mode, sv = D.saves.find(s => s.mode === mode), d = sv ? sv.data : null;
+  const seg = (v, l) => `<button data-admmode="${v}" aria-pressed="${mode === v}">${l}</button>`;
+  const M = admMpNet(D.pays, mode);
+  const nm = id => (BY_ID[id] && BY_ID[id].n) || id;
+  const money = (v, cur) => cur === 'KRW' ? fmtKRW(v) : fmtUSD(v);
+  const trades = d && (d.trades || []).slice(0, 20).map(t => `<tr><td>${esc(String(t.dt || ''))}${t.at ? `<br><span class="muted">${admT(t.at)}</span>` : ''}</td><td><span class="side ${t.side === 'buy' ? 'up' : 'down'}">${t.side === 'buy' ? '매수' : '매도'}</span></td><td>${esc(nm(t.id))}<br><span class="muted">${(+t.q || 0).toLocaleString()}주</span></td><td class="r num">${t.amt !== undefined ? money(+t.amt, t.cur) : fmtUSD(+t.usd || 0)}</td></tr>`).join('');
+  const alt = d && (d.altLog || []).slice(0, 30).map(x => `<tr><td>${esc(x.dt || '')}<br><span class="muted">${admT(x.at)}</span></td><td>${esc(x.s)}</td><td class="r num ${x.amt > 0 ? 'up' : ''}">${x.amt > 0 ? '+' : x.amt < 0 ? MINUS : ''}${money(Math.abs(x.amt), x.cur)}</td></tr>`).join('');
+  const fx = d && (d.fxLog || []).slice(0, 10).map(x => `<tr><td>${esc(String(x.dt || ''))}</td><td>${x.dir === 'u2k' ? '달러 → 원화' : '원화 → 달러'}</td><td class="r num">${x.dir === 'u2k' ? fmtUSD(+x.from) : fmtKRW(+x.from)}</td></tr>`).join('');
+  const res = D.res.filter(r => r.mode === mode).map(r => {
+    const me = r.uids.indexOf(ADM.uid), others = (r.seats || []).filter(s => s.uid !== ADM.uid).map(s => esc(s.nick)).join(', ');
+    return `<tr><td>${admT(r.at)}</td><td>${esc((MP_GAMES[r.game] || {}).nm || r.game)}<br><span class="muted">vs ${others}</span></td><td>${r.win === me ? '<b class="up">승</b>' : r.win === null ? '-' : '패'}${r.why ? `<br><span class="muted">${esc(r.why)}</span>` : ''}</td><td class="r num">${fmtUSD(+r.stake)}${r.il ? '<br><span class="muted">불법</span>' : ''}</td></tr>`;
+  }).join('');
+  const pays = D.pays.filter(p => p.mode === mode).slice(0, 20).map(p => `<tr><td>${admT(p.at)}</td><td>${esc(p.note || p.game || '')}</td><td class="r num ${(+p.amount - +p.cost) > 0 ? 'up' : ''}">${admUSD(admR2(+p.amount - +p.cost))}<br><span class="muted">${p.claimed_at ? '받음' : '아직 안 받음'}</span></td></tr>`).join('');
+  const bm = D.bm.filter(b => b.mode === mode).map(b => `<tr><td>${admT(b.at)}</td><td>${b.n}명 · ${b.rank}위${b.forfeit ? ' (기권)' : ''}${b.il ? ' · 불법' : ''}</td><td class="r num">${admUSD(admR2(+b.pay - +b.stake))}</td></tr>`).join('');
+  const tbl = (h, rows, empty) => rows ? `<table class="trades"><thead><tr>${h}</tr></thead><tbody>${rows}</tbody></table>` : `<p class="empty">${empty}</p>`;
+  const G = d && d.gam || {};
+  return `<div class="card-h"><h2>👤 ${esc(u.nickname || '(닉네임 없음)')}</h2><small>${esc(u.email || '')}</small></div>
+    <p class="muted" style="margin:0 0 8px">계정 id ${esc(ADM.uid)}${u.joined ? ` · 가입 ${admT(u.joined)}` : ''}</p>
+    ${D.err.length ? `<p class="down">일부를 불러오지 못했습니다: ${esc(D.err.join(' / '))}</p>` : ''}
+    <div class="adm-ban ${D.ban ? 'on' : ''}">${D.ban ? `<b>🚫 멀티플레이 제한됨</b> <small class="muted">${admT(D.ban.at)}${D.ban.reason ? ' · ' + esc(D.ban.reason) : ''}</small><button class="btn" id="admUnban">제한 풀기</button>` : `<span>멀티플레이 가능</span><button class="btn" id="admBan">멀티플레이 제한</button>`}</div>
+    <div class="mv-tools"><div class="seg">${seg('sim', '시뮬레이션')}${seg('live', '실제 시세')}</div></div>
+    <dl class="kv adm-kv">
+      <div><dt>멀티 누적 순획득</dt><dd class="num ${M.net > 0 ? 'up' : M.net < 0 ? 'down' : ''}">${admUSD(M.net)}</dd></div>
+      <div><dt>멀티 판 수</dt><dd class="num">${M.n}판 · ${M.w}승${M.pending ? ` · 안 받은 것 ${M.pending}건` : ''}</dd></div>
+      ${d ? `<div><dt>달러 통장</dt><dd class="num">${fmtUSD(+d.usd || 0)}</dd></div><div><dt>원화 통장</dt><dd class="num">${fmtKRW(+d.krw || 0)}</dd></div>
+      <div><dt>거래일</dt><dd class="num">${d.day || 0}</dd></div><div><dt>불법 도박 누적 · 단속</dt><dd class="num">${admUSD(+G.ilAcc || 0)} · ${G.bust || 0}회</dd></div>
+      <div><dt>마지막 저장</dt><dd>${admT(sv.updated_at)}</dd></div>` : '<div><dt>저장 기록</dt><dd>이 모드 기록 없음</dd></div>'}
+    </dl>
+    ${M.net > 0 && d ? `<div class="mg-foot"><button class="btn" id="admClaw">멀티로 딴 ${fmtUSD(M.net)} 회수 SQL 만들기</button></div>` : ''}
+    <h3 class="adm-h">멀티 판 결과 (최근 30)</h3>${tbl('<th>시각</th><th>게임 · 상대</th><th>결과</th><th class="r">판돈</th>', res, '멀티 판 기록이 없습니다.')}
+    <h3 class="adm-h">멀티 받은 돈 (최근 20)</h3>${tbl('<th>시각</th><th>내용</th><th class="r">순손익</th>', pays, '받은 돈 기록이 없습니다.')}
+    <h3 class="adm-h">채권·주택·복권·도박 (최근 30)</h3>${tbl('<th>날짜</th><th>내용</th><th class="r">금액</th>', alt, '내역이 없습니다.')}
+    <h3 class="adm-h">주식 거래 (최근 20)</h3>${tbl('<th>날짜</th><th>구분</th><th>종목</th><th class="r">금액</th>', trades, '주식 거래 내역이 없습니다.')}
+    <h3 class="adm-h">주사위 세계여행 (최근 10)</h3>${tbl('<th>시각</th><th>결과</th><th class="r">순손익</th>', bm, '기록이 없습니다.')}
+    <h3 class="adm-h">환전 (최근 10)</h3>${tbl('<th>날짜</th><th>방향</th><th class="r">낸 금액</th>', fx, '환전 내역이 없습니다.')}`;
+}
+// 남의 저장 기록은 사이트에서 못 고친다 (정책). SQL 편집기에서 실행할 문장을 만들어 준다.
+// syncBase를 바꾸고 dirty를 false로 두면, 그 계정이 접속했을 때 서버 기록(회수된 것)을 받아 간다
+function admClawSQL(uid, mode, amt){
+  const tag = 'admin' + Date.now();
+  return `-- ${ADM.data && ADM.data.who ? ADM.data.who.nickname || '' : ''} (${mode}) 멀티로 딴 $${amt.toFixed(2)} 회수\n` +
+    `update public.seed10k_saves set data = data || jsonb_build_object('usd', round((data->>'usd')::numeric - ${amt.toFixed(2)}, 2), 'syncBase', '${tag}', 'dirty', false), updated_at = now()\n` +
+    `where user_id = '${uid}' and mode = '${mode}' returning (data->>'usd')::numeric as usd_after;`;
+}
+document.addEventListener('submit', e => { if (e.target.id === 'admQF'){ e.preventDefault(); admSearch($('#admQ').value.trim()); } });
+document.addEventListener('click', async e => {
+  const t = e.target.closest('button'); if (!t || !ADM.on) return;
+  if (t.dataset.admu) return admOpenUser(t.dataset.admu);
+  if (t.dataset.admmode){ ADM.mode = t.dataset.admmode; return renderAdmin(); }
+  if (t.dataset.admseen){
+    const id = +t.dataset.admseen, {error} = await ACC.sb.from('seed10k_alerts').update({seen:true}).eq('id', id);
+    if (error) return toast(error.message, true);
+    const a = ADM.alerts.find(x => x.id === id); if (a && !a.seen){ a.seen = true; ADM.unseen--; } admBadge(); return renderAdmin();
+  }
+  if (t.id === 'admSeenAll'){
+    const {error} = await ACC.sb.from('seed10k_alerts').update({seen:true}).eq('seen', false);
+    if (error) return toast(error.message, true);
+    return admLoadAlerts();
+  }
+  if (t.id === 'admBan'){
+    const c = showModal(`<h2>멀티플레이를 제한할까요?</h2><p>이 계정은 방을 만들거나 들어갈 수 없게 됩니다. 이미 받은 돈은 그대로라, 회수는 "회수 SQL 만들기"로 따로 합니다.</p>
+      <label class="amt"><input id="admBanWhy" type="text" maxlength="100" placeholder="사유 (예: 부계정으로 홀짝 몰아주기)"></label>
+      <div class="acts"><button class="btn" data-close>취소</button><button class="btn solid" id="admBanGo">제한</button></div>`);
+    $('#admBanGo').onclick = async () => {
+      const {error} = await ACC.sb.from('seed10k_mp_bans').insert({user_id:ADM.uid, reason:$('#admBanWhy').value.trim() || null});
+      c(); if (error) return toast(`제한하지 못했습니다: ${error.message}`, true);
+      toast('멀티플레이를 제한했습니다'); admOpenUser(ADM.uid);
+    };
+    return;
+  }
+  if (t.id === 'admUnban'){
+    const {error} = await ACC.sb.from('seed10k_mp_bans').delete().eq('user_id', ADM.uid);
+    if (error) return toast(error.message, true);
+    toast('제한을 풀었습니다'); return admOpenUser(ADM.uid);
+  }
+  if (t.id === 'admClaw'){
+    const M = admMpNet(ADM.data.pays, ADM.mode), sql = admClawSQL(ADM.uid, ADM.mode, M.net);
+    showModal(`<h2>멀티로 딴 돈 회수</h2><p>남의 기록은 사이트에서 고칠 수 없게 막혀 있어서, 아래 SQL을 Supabase SQL 편집기에 붙여넣고 실행합니다. 달러 통장에서 ${fmtUSD(M.net)}을 뺍니다 (모자라면 음수가 됩니다).</p>
+      <pre class="adm-sql">${esc(sql)}</pre><p class="muted">불법 모드 단속으로 이미 압류된 돈도 이 합계에 들어 있습니다. 실행하면 그 계정이 다음에 접속할 때 서버 기록을 받아 갑니다.</p>
+      <div class="acts"><button class="btn" data-close>닫기</button><button class="btn solid" id="admSqlCopy">복사</button></div>`);
+    $('#admSqlCopy').onclick = async () => { try { await navigator.clipboard.writeText(sql); toast('복사했습니다'); } catch(err){ toast('복사하지 못했습니다. 직접 선택해 복사하세요', true); } };
+  }
+});
 
 /* ───────── 복권 탭: 로또6/45 (실제 추첨 결과로 정산) · 스피또2000 (긁는 즉석복권) ─────────
    로또 규칙 출처: 동행복권 '로또6/45 소개' (1게임 1,000원, 1~45 중 6개, 판매 일~금 06:00~24:00·토 06:00~20:00, 토 20:35경 추첨,
@@ -6403,6 +6620,7 @@ function renderOrder(soft){
 
 /* ───────── 화면 전환 / 커밋 ───────── */
 function go(tab){
+  if (tab === 'admin' && !ADM.on) tab = 'home';
   UI.tab = tab;
   $$('.view').forEach(v => v.classList.toggle('on', v.id === 'v-' + tab));
   $$('[data-tab]').forEach(b => { if (b.dataset.tab === tab) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
@@ -6414,7 +6632,7 @@ function renderTab(){
   const a = document.activeElement;
   const av = a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) ? a.closest('.view') : null;
   if (av && av.id === 'v-' + UI.tab) return;
-  ({home:renderHome, market:renderInvest, assets:renderAssets, loans:renderLoans, info:renderInfo})[UI.tab]();
+  ({home:renderHome, market:renderInvest, assets:renderAssets, loans:renderLoans, info:renderInfo, admin:renderAdmin})[UI.tab]();
   if (UI.tab === 'assets') refreshRanks(false);
 }
 function commit(){
@@ -6627,7 +6845,8 @@ async function handleSession(session){
   go(UI.tab); renderHeader();
   afterAuthResolved();
   whoUpdate();
-  mpReset(); if (ACC.user) mpWatchPayouts();   // 멀티플레이: 계정이 바뀌면 방 화면을 닫고 그 계정의 받을 돈을 확인
+  mpReset(); if (ACC.user) mpWatchPayouts();
+  admCheck();   // 관리자 계정이면 관리 탭을 보인다   // 멀티플레이: 계정이 바뀌면 방 화면을 닫고 그 계정의 받을 돈을 확인
 }
 function afterAuthResolved(){
   renderGate();
