@@ -676,7 +676,7 @@ html.gated body{overflow:hidden}
 @keyframes bsEject{0%{transform:translate(0,0) rotate(0)}60%{transform:translate(60px,-60px) rotate(260deg)}100%{transform:translate(90px,40px) rotate(420deg);opacity:.9}}
 .bs-lay{position:absolute;inset:0;z-index:3;display:flex;align-items:center;justify-content:center;gap:10px;background:rgba(10,11,10,.82)}
 .bs-lay i{width:13px;height:30px;border-radius:3px;transform:rotate(var(--r));animation:bsLayIn .3s calc(var(--k) * 70ms) both}
-.bs-lay i.live{background:linear-gradient(#e0473f 72%,#c9a23a 72%)}.bs-lay i.blank{background:linear-gradient(#5d7fa6 72%,#c9a23a 72%)}
+.bs-lay i.unk{background:linear-gradient(90deg,#6d6a63,#9b968a 45%,#5c5953) top/100% 72% no-repeat,linear-gradient(#c9a23a,#8a6d22);box-shadow:0 2px 3px rgba(0,0,0,.5)}.bs-lay i.live{background:linear-gradient(#e0473f 72%,#c9a23a 72%)}.bs-lay i.blank{background:linear-gradient(#5d7fa6 72%,#c9a23a 72%)}
 @keyframes bsLayIn{from{opacity:0;transform:translateY(-18px) rotate(var(--r))}}
 .bs-lay.go i{transition:transform .5s,opacity .5s;transform:translate(0,40px) scale(.4);opacity:0}
 .bs-count{position:absolute;left:10px;bottom:8px;display:flex;gap:10px;font-size:12px;color:rgba(230,225,211,.75)}
@@ -687,15 +687,18 @@ html.gated body{overflow:hidden}
 .bs-dealer{position:absolute;left:50%;top:0;width:200px;height:118px;margin-left:-100px;z-index:1;pointer-events:none}
 .bs-dsvg{width:100%;height:100%;filter:drop-shadow(0 8px 10px rgba(0,0,0,.7))}
 .bs-deye{animation:bsEye 3s ease-in-out infinite}@keyframes bsEye{50%{opacity:.55}}
-.bs-hand{position:absolute;top:92px;width:40px;height:30px;transition:transform .3s}.bs-hand svg{width:100%;height:100%}
-.bs-hand.l{left:30px}.bs-hand.r{right:30px;transform:scaleX(-1)}
-.bs-dealer.loading .bs-hand.l{animation:bsHandL .66s ease-in-out infinite}.bs-dealer.loading .bs-hand.r{animation:bsHandR .66s ease-in-out infinite}
-@keyframes bsHandL{50%{transform:translate(38px,58px) rotate(20deg)}}@keyframes bsHandR{50%{transform:scaleX(-1) translate(30px,40px) rotate(15deg)}}
-.bs-dealer.racking .bs-hand.r{animation:bsRackH .5s ease-in-out}@keyframes bsRackH{50%{transform:scaleX(-1) translate(-10px,50px)}}
-.bs-dealer.loading .bs-dhead{animation:bsNod .66s ease-in-out infinite}@keyframes bsNod{50%{transform:translateY(3px)}}
+.bs-hand{position:absolute;top:92px;width:40px;height:30px}.bs-hand svg{width:100%;height:100%;display:block}
+.bs-hand.l{left:30px}.bs-hand.r{right:30px}.bs-hand.r svg{transform:scaleX(-1)}
+/* 장전: 왼손은 총 앞쪽을 잡고 가만히, 오른손은 탄 하나마다 '탁자에서 집기 → 총 아래 약실에 밀어 넣기 → 제자리' 한 번 */
+.bs-dealer.feed .bs-hand.l{transform:translate(-8px,52px) rotate(-8deg);transition:transform .35s ease-out}
+.bs-dealer.feed .bs-hand.r{animation:bsFeed .56s cubic-bezier(.45,.05,.35,1) both}
+@keyframes bsFeed{0%{transform:translate(0,0)}32%{transform:translate(-22px,84px) rotate(-6deg)}40%{transform:translate(-22px,88px) rotate(-6deg) scale(.96)}72%{transform:translate(-34px,62px) rotate(-14deg)}80%{transform:translate(-36px,58px) rotate(-14deg) scale(.97)}100%{transform:translate(0,0)}}
+.bs-dealer.feed .bs-dhead{transform:translateY(3px) rotate(-2deg);transition:transform .4s ease-out}
+.bs-dealer.racking .bs-hand.r{animation:bsRackH .6s cubic-bezier(.45,.05,.35,1)}@keyframes bsRackH{35%,55%{transform:translate(-30px,60px) rotate(-10deg)}70%{transform:translate(-10px,60px) rotate(-10deg)}}
+.bs-dealer.racking .bs-hand.l{transform:translate(-8px,52px) rotate(-8deg)}
 .bs-lay{top:auto;height:56%;bottom:0;background:none}
 .bs-gunwrap{top:62%}
-@media (prefers-reduced-motion:reduce){.bs-dealer.loading .bs-hand.l{animation:bsHandL .66s ease-in-out infinite!important}.bs-dealer.loading .bs-hand.r{animation:bsHandR .66s ease-in-out infinite!important}.bs-dealer.racking .bs-hand.r{animation:bsRackH .5s ease-in-out!important}.bs-deye{animation:bsEye 3s ease-in-out infinite!important}}
+@media (prefers-reduced-motion:reduce){.bs-dealer.feed .bs-hand.r{animation:bsFeed .56s cubic-bezier(.45,.05,.35,1) both!important}.bs-dealer.feed .bs-hand.l,.bs-dealer.feed .bs-dhead{transition:transform .35s ease-out!important}.bs-dealer.racking .bs-hand.r{animation:bsRackH .6s cubic-bezier(.45,.05,.35,1)!important}.bs-deye{animation:bsEye 3s ease-in-out infinite!important}}
 /* 분위기: 붉은 조명의 어두운 방, 점묘(디더) 질감, 둥근 선이 그려진 낡은 녹색 탁자 */
 .bs-table{background:#140707;background-image:radial-gradient(80% 50% at 50% 0%,rgba(190,40,30,.28),transparent 70%),radial-gradient(1.2px 1.2px at 25% 25%,rgba(255,255,255,.05) 50%,transparent 51%),radial-gradient(1.2px 1.2px at 75% 75%,rgba(0,0,0,.35) 50%,transparent 51%);background-size:auto,4px 4px,4px 4px;border-color:#3a1210}
 .bs-stage{height:250px;background:radial-gradient(60% 46% at 50% 58%,transparent 62%,rgba(225,215,190,.22) 63%,transparent 64.5%),radial-gradient(70% 70% at 50% 55%,#5d6a46 0%,#3c4530 45%,#1c1f15 80%),#120c0a;border-color:#4a1b16;box-shadow:inset 0 0 60px rgba(0,0,0,.85)}
@@ -1129,7 +1132,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '2.1.31';
+const VERSION = '2.1.32';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -5117,10 +5120,10 @@ const BSE = {
   shoot(g, i, target, rnd){
     if (g.over || g.turn !== i || !g.shells.length) return null;
     const q = g.pl[target]; if (!q || q.out) return null;
-    const s = BSE.take(g), dmg = s ? (g.saw ? 2 : 1) : 0, ev = [];
+    const s = BSE.take(g), dmg = s ? (g.saw ? 2 : 1) : 0, ev = [], pre = q.hp, sw = !!g.saw;
     g.saw = false; g.shots++;
     if (dmg){ q.hp = Math.max(0, q.hp - dmg); if (!q.hp){ q.out = true; q.outAt = ++g.outs; q.cuffed = false; } }
-    ev.push({t:'shot', i, target, live:s, dmg, hp:q.hp, out:q.out});
+    ev.push({t:'shot', i, target, live:s, dmg, hp:q.hp, out:q.out, pre, sw});
     BSE.log(g, `${g.pl[i].nm} → ${target === i ? '자기 자신' : q.nm}: ${s ? `💥 실탄${dmg > 1 ? ' (톱, 2배)' : ''}` : '딸깍, 공포탄'}${q.out ? ` · ${q.nm} 탈락` : ''}`);
     if (BSE.alive(g) <= 1){ g.over = true; g.win = g.pl.findIndex(p => !p.out); ev.push({t:'win', i:g.win}); return ev; }
     if (!(s === false && target === i)) BSE.pass(g, ev);   // 나를 쏴서 공포탄이면 한 번 더
@@ -5202,7 +5205,7 @@ const BS_DEALER = `<svg class="bs-dsvg" viewBox="0 0 220 130" aria-hidden="true"
 </svg>`;
 const BS_HAND = `<svg viewBox="0 0 40 30" aria-hidden="true"><path d="M4 14q2-10 14-10h10q8 0 8 6v10q0 6-8 6H14Q4 26 4 14z" fill="#2b1c16"/><path d="M12 6v-3M18 5V1M24 5V2M30 7V4" stroke="#2b1c16" stroke-width="4" stroke-linecap="round"/></svg>`;
 const bsHP = (hp, flash) => `<span class="bs-hp ${flash ? 'hit' : ''}" aria-label="목숨 ${hp}">${Array.from({length:BS.hpMax}, (_, k) => `<i class="${k < hp ? 'on' : ''}"></i>`).join('')}</span>`;
-// 장전할 때 탁자에 탄을 늘어놓았다가 총에 넣는다 (BSV.lay = {live, blank, k}: k는 무작위 배치용)
+// 장전할 때 탁자에 탄을 늘어놓았다가 총에 넣는다 (BSV.lay = {live, blank, k}: k는 무작위 배치용). 탄은 모두 같은 모양으로 그린다 (어느 것이 실탄인지 보이면 넣는 순서로 짐작할 수 있어 불공평)
 // 조작 줄 (높이 고정). 직접 하기: 장전(탄 넣기) → 펌프 → 총 들기 → 겨누기 → 방아쇠 → 펌프(탄피 빼기)
 function bsCtlHTML(g, me, myTurn){
   const W = BSV.want;
@@ -5211,8 +5214,7 @@ function bsCtlHTML(g, me, myTurn){
   if (!myTurn) return '';
   if (!BSV.hold) return `<button class="btn solid bs-big" data-bsdo="hold">🔫 총 들기</button>`;
   const t = BSV.aimT;
-  if (t === null || t === undefined) return `${g.pl.map((p, i) => p.out ? '' : `<button class="btn ${i === me ? '' : 'bs-red'}" data-bsaim="${i}">${i === me ? '나 겨누기' : `${esc(p.nm)} 겨누기`}</button>`).join('')}<button class="btn" data-bsdo="drop">내려놓기</button>`;
-  return `<button class="btn bs-red bs-big" data-bsdo="fire">💥 방아쇠 당기기</button><button class="btn" data-bsdo="reaim">다시 고르기</button>`;
+  return `${g.pl.map((p, i) => p.out ? '' : `<button class="btn ${i === me ? '' : 'bs-red'}" data-bsaim="${i}">${i === me ? '🔫 나 쏘기' : `🔫 ${esc(p.nm)} 쏘기`}</button>`).join('')}<button class="btn" data-bsdo="drop">내려놓기</button>`;
 }
 // 사람이 할 차례를 기다린다 (장전·펌프). 너무 오래 안 누르면 저절로 넘어간다
 function bsAwait(k, ms, rer){
@@ -5226,7 +5228,7 @@ function bsAwait(k, ms, rer){
 function bsLayHTML(){
   const L = BSV.lay; if (!L) return '';
   const arr = Array.from({length:L.live}, () => 1).concat(Array.from({length:L.blank}, () => 0));
-  return `<div class="bs-lay">${arr.map((v, k) => `<i class="${v ? 'live' : 'blank'} ${L.in && L.in.includes(k) ? 'in' : ''}" style="--k:${k};--r:${((k * 37 + L.k) % 23) - 11}deg"></i>`).join('')}</div>`;
+  return `<div class="bs-lay">${arr.map((v, k) => `<i class="unk ${L.in && L.in.includes(k) ? 'in' : ''}" style="--k:${k};--r:${((k * 37 + L.k) % 23) - 11}deg"></i>`).join('')}</div>`;
 }
 function bsCardHTML(){
   bsInfo();
@@ -5243,6 +5245,8 @@ function bsCardHTML(){
 // 버튼·메시지·돋보기 줄은 늘 자리를 차지하게 두고(안 쓸 때는 숨김) 높이를 고정한다: 차례가 바뀌어도 화면이 움직이지 않게
 function bsTableHTML(g, me, o){
   o = o || {};
+  const V = BSV.busy && BSV.view;
+  if (V) g = Object.assign({}, g, {live:V.live, blank:V.blank, turn:V.turn, saw:V.saw, over:V.over, pl:g.pl.map((p, i) => Object.assign({}, p, {hp:V.hp[i], out:V.out[i], items:V.items[i]}))});
   const myTurn = !g.over && g.turn === me && !BSV.busy && !o.wait;
   const peek = o.peek !== undefined ? o.peek : g.pk ? g.pk[me] : null;
   const seat = (p, i, mine) => {
@@ -5257,13 +5261,13 @@ function bsTableHTML(g, me, o){
     </div>`;
   };
   const opp = g.pl.map((p, i) => i === me ? '' : seat(p, i, false)).join('');
-  const msg = BSV.msg || (g.over ? (g.win === me ? '🏆 살아남았다!' : '💀 졌다') : myTurn ? (BSV.hold ? (BSV.aimT !== null && BSV.aimT !== undefined ? `${BSV.aimT === me ? '나' : esc(g.pl[BSV.aimT].nm)}에게 겨눴다` : '누구를 쏠까? (자리를 눌러 겨누기)') : '아이템을 쓰거나 총을 드세요') : `${esc(g.pl[g.turn].nm)} 차례…`);
+  const msg = BSV.msg || (g.over ? (g.win === me ? '🏆 살아남았다!' : '💀 졌다') : myTurn ? (BSV.hold ? (BSV.aimT !== null && BSV.aimT !== undefined ? `${BSV.aimT === me ? '나' : esc(g.pl[BSV.aimT].nm)}에게 겨눴다` : '누구를 쏠까? (자리나 버튼을 누르면 바로 쏜다)') : '아이템을 쓰거나 총을 드세요') : `${esc(g.pl[g.turn].nm)} 차례…`);
   const aim = BSV.aim || (myTurn && BSV.hold && BSV.aimT !== null && BSV.aimT !== undefined ? (BSV.aimT === me ? 'down' : 'up') : 'rest');
   return `<div class="bs-table">
     <div class="bs-opps n${g.n - 1}">${opp}</div>
     <div class="bs-stage ${BSV.fx || ''}">
       <div class="bs-lamp"></div>
-      <div class="bs-dealer ${BSV.lay ? 'loading' : ''} ${BSV.fx === 'rack' ? 'racking' : ''}">${BS_DEALER}<i class="bs-hand l">${BS_HAND}</i><i class="bs-hand r">${BS_HAND}</i></div>
+      <div class="bs-dealer ${BSV.lay && BSV.lay.in && BSV.lay.in.length ? 'feed' : ''} ${BSV.fx === 'rack' ? 'racking' : ''}">${BS_DEALER}<i class="bs-hand l">${BS_HAND}</i><i class="bs-hand r">${BS_HAND}</i></div>
       ${bsLayHTML()}
       <div class="bs-gunwrap aim-${aim} ${BSV.hold || BSV.aim === 'up' || BSV.aim === 'down' ? 'held' : ''} ${g.saw ? 'sawed' : ''}" ${myTurn && !BSV.hold ? 'data-bsgun="1" role="button" aria-label="총 들기"' : ''}><div class="bs-kick">${BS_GUN}<i class="bs-muzzle"></i></div></div>
       ${BSV.banner ? `<div class="bs-banner">${BSV.banner}</div>` : ''}
@@ -5300,43 +5304,73 @@ function bsStart(){
 const bsLoader = g => g && g.pl.length === 2 && g.pl[1].nm === '딜러' && g.pl[0].nm === '나' ? 0 : g ? g.turn : -1;
 const bsWait = ms => { const gen = BSV.gen; return new Promise((res, rej) => setTimeout(() => gen === BSV.gen && $('.bs-table') ? res() : rej('stop'), bmMs(ms))); };   // 혼자(#bsCard)·같이(#mbsBody) 모두 판이 보이는 동안만
 // 이벤트를 차례로 보여 준다 (쏘기: 총 흔들림 → 실탄이면 번쩍·맞은 쪽 목숨 깜빡, 공포탄이면 딸깍)
+// 연출 시작 때의 화면 상태: 끝난 상태(g)에서 이벤트를 거꾸로 되돌린다. 연출하면서 하나씩 다시 적용한다
+const BS_EVIT = {peek:'glass', heal:'cig', beer:'beer', saw:'saw', cuff:'cuff'};
+function bsViewOf(g, ev){
+  const v = {hp:g.pl.map(p => p.hp), out:g.pl.map(p => !!p.out), items:g.pl.map(p => p.items.slice()), live:g.live, blank:g.blank, turn:g.turn, saw:!!g.saw, over:!!g.over};
+  const rm = (a, it) => { const k = a.lastIndexOf(it); if (k >= 0) a.splice(k, 1); };
+  for (let k = ev.length - 1; k >= 0; k--){
+    const e = ev[k];
+    if (e.t === 'win') v.over = false;
+    else if (e.t === 'shot'){ v.hp[e.target] = e.pre !== undefined ? e.pre : Math.min(BS.hpMax, e.hp + e.dmg); v.out[e.target] = false; if (e.live) v.live++; else v.blank++; v.saw = e.sw !== undefined ? e.sw : e.dmg > 1; v.turn = e.i; }
+    else if (e.t === 'load'){ v.live -= e.live; v.blank -= e.blank; (e.got || []).forEach((a, i) => a.forEach(it => rm(v.items[i], it))); }
+    else if (e.t === 'turn' || e.t === 'skip'){ const a = ev.slice(0, k).reverse().find(x => x.i !== undefined && x.t !== 'skip' && x.t !== 'turn'); if (a) v.turn = a.i; }
+    else if (BS_EVIT[e.t]){ v.items[e.i].push(BS_EVIT[e.t]); v.turn = e.i; if (e.t === 'heal') v.hp[e.i]--; if (e.t === 'beer'){ if (e.live) v.live++; else v.blank++; } if (e.t === 'saw') v.saw = false; }
+  }
+  v.live = Math.max(0, v.live); v.blank = Math.max(0, v.blank);
+  return v;
+}
+function bsViewDo(e){
+  const v = BSV.view; if (!v) return;
+  const rm = (a, it) => { const k = a.indexOf(it); if (k >= 0) a.splice(k, 1); };
+  if (e.t === 'shot'){ v.hp[e.target] = e.hp; v.out[e.target] = !!e.out; if (e.live) v.live = Math.max(0, v.live - 1); else v.blank = Math.max(0, v.blank - 1); v.saw = false; }
+  else if (e.t === 'load'){ v.live += e.live; v.blank += e.blank; (e.got || []).forEach((a, i) => a.forEach(it => v.items[i] && v.items[i].push(it))); }
+  else if (e.t === 'turn') v.turn = e.i;
+  else if (e.t === 'win') v.over = true;
+  else if (BS_EVIT[e.t]){ rm(v.items[e.i], BS_EVIT[e.t]); if (e.t === 'heal') v.hp[e.i] = e.hp; if (e.t === 'beer'){ if (e.live) v.live = Math.max(0, v.live - 1); else v.blank = Math.max(0, v.blank - 1); } if (e.t === 'saw') v.saw = true; }
+}
 async function bsPlay(ev, done, rerender){
   rerender = rerender || bsRender;
   BSV.busy = true; BSV.gen++;
   const me = () => rerender.me !== undefined ? rerender.me : 0, G = () => rerender.g ? rerender.g() : bsS().cur;
   const nm = i => i === me() ? '나' : esc(G() ? G().pl[i].nm : '?');
+  BSV.view = G() ? bsViewOf(G(), ev) : null;
   try {
     for (const e of ev){
       if (e.t === 'load'){
         BSV.aim = 'rest'; BSV.eject = null;
         BSV.hold = false; BSV.aimT = null; const n = e.live + e.blank;
-        BSV.lay = {live:e.live, blank:e.blank, k:Math.floor(Math.random() * 23), in:[]}; BSV.msg = `실탄 ${e.live} · 공포탄 ${e.blank}`; rerender(); await bsWait(1800);
+        BSV.lay = {live:e.live, blank:e.blank, k:Math.floor(Math.random() * 23), in:[]}; bsViewDo(e); BSV.msg = `실탄 ${e.live} · 공포탄 ${e.blank}`; rerender(); await bsWait(1800);
         BSV.msg = '딜러가 장전한다…'; rerender();
-        for (let k = 0; k < n; k++){ BSV.lay.in.push(k); rerender(); await bsWait(330); }   // 딜러가 탄을 하나씩 집어 넣는다
-        BSV.lay = null; BSV.fx = 'rack'; BSV.msg = '철컥'; rerender(); await bsWait(700);
+        for (let k = 0; k < n; k++){ BSV.lay.in.push(k); rerender(); await bsWait(560); }   // 딜러가 탄을 하나씩 집어 넣는다 (손 동작 한 번 = 탄 한 발)
+        BSV.lay = null; BSV.fx = 'rack'; BSV.msg = '철컥'; rerender(); await bsWait(800);
         BSV.fx = ''; BSV.msg = e.got && e.got.some(x => x.length) ? '아이템을 나눠 받았다' : '장전 완료'; rerender(); await bsWait(600);
       } else if (e.t === 'shot'){
         const self = e.target === e.i, up = (e.target === me()) ? 'down' : 'up';   // 내 쪽(아래)을 쏘면 총구가 아래로
         const byMe = e.i === me(); BSV.hold = false; BSV.aimT = null;
         BSV.eject = null; BSV.aim = up; BSV.msg = `${nm(e.i)} → ${self ? (byMe ? '나' : '자기 자신') : nm(e.target)}`; rerender(); await bsWait(byMe ? 250 : 1100);
-        BSV.fx = e.live ? 'bang' : 'click'; BSV.flash = e.live ? 'p' + e.target : '';
+        bsViewDo(e); BSV.fx = e.live ? 'bang' : 'click'; BSV.flash = e.live ? 'p' + e.target : '';
         BSV.msg = e.live ? `💥 실탄! ${nm(e.target)} 목숨 −${e.dmg}${e.out ? ' · 탈락' : ''}` : '딸깍… 공포탄'; rerender(); await bsWait(e.live ? 1200 : 900);
         BSV.flash = ''; BSV.fx = '';
         BSV.fx = 'rack'; BSV.eject = e.live; BSV.aim = 'rest'; rerender(); await bsWait(700);
         BSV.fx = ''; BSV.eject = null;
-      } else if (e.t === 'peek'){
+      } else if (e.t === 'peek'){ bsViewDo(e);
         BSV.fx = 'peek'; BSV.msg = e.i === me() && e.live !== undefined ? `🔍 지금 탄은 ${e.live ? '실탄' : '공포탄'}` : e.i === me() ? '🔍 돋보기로 탄을 확인했다' : `🔍 ${nm(e.i)}이(가) 돋보기로 탄을 확인했다`; rerender(); await bsWait(1000); BSV.fx = '';
-      } else if (e.t === 'beer'){
+      } else if (e.t === 'beer'){ bsViewDo(e);
         BSV.fx = 'rack'; BSV.eject = e.live; BSV.msg = `🍺 탄을 빼냈다: ${e.live ? '실탄' : '공포탄'}`; rerender(); await bsWait(1000); BSV.fx = ''; BSV.eject = null;
-      } else if (e.t === 'cuff'){ BSV.msg = `⛓️ ${nm(e.target)}에게 수갑`; rerender(); await bsWait(800); }
-      else if (e.t === 'saw'){ BSV.fx = 'saw'; BSV.msg = '🪚 총신을 잘랐다 · 다음 한 발 2배'; rerender(); await bsWait(900); BSV.fx = ''; }
-      else if (e.t === 'heal'){ BSV.msg = `🚬 ${nm(e.i)} 목숨 +1`; rerender(); await bsWait(800); }
+      } else if (e.t === 'cuff'){ bsViewDo(e); BSV.msg = `⛓️ ${nm(e.target)}에게 수갑`; rerender(); await bsWait(800); }
+      else if (e.t === 'saw'){ bsViewDo(e); BSV.fx = 'saw'; BSV.msg = '🪚 총신을 잘랐다 · 다음 한 발 2배'; rerender(); await bsWait(900); BSV.fx = ''; }
+      else if (e.t === 'heal'){ bsViewDo(e); BSV.msg = `🚬 ${nm(e.i)} 목숨 +1`; rerender(); await bsWait(800); }
       else if (e.t === 'skip'){ BSV.msg = `⛓️ ${nm(e.i)} 수갑 때문에 한 번 쉼`; rerender(); await bsWait(900); }
       else if (e.t === 'again'){ BSV.msg = '공포탄 · 한 번 더!'; rerender(); await bsWait(700); }
-      else if (e.t === 'turn' && e.i === me() && !G().over){ BSV.banner = '네 차례다'; rerender(); await bsWait(1100); BSV.banner = ''; }
+      else if (e.t === 'turn' || e.t === 'win') bsViewDo(e);
+    }
+    const G2 = G();
+    if (G2 && !G2.over && G2.turn === me() && ev.some(e => (e.t === 'turn' && e.i === me()) || e.t === 'load') && ev.some(e => e.i !== undefined && e.i !== me() && e.t !== 'skip' && e.t !== 'turn' || e.t === 'load')){
+      BSV.banner = '네 차례다'; BSV.msg = ''; rerender(); await bsWait(1100); BSV.banner = '';
     }
   } catch(err){ if (err !== 'stop') console.error(err); }
-  BSV.busy = false; BSV.msg = ''; BSV.fx = ''; BSV.aim = null; BSV.eject = null; BSV.lay = null; BSV.flash = ''; BSV.want = null; BSV.go = null; BSV.banner = '';
+  BSV.busy = false; BSV.view = null; BSV.msg = ''; BSV.fx = ''; BSV.aim = null; BSV.eject = null; BSV.lay = null; BSV.flash = ''; BSV.want = null; BSV.go = null; BSV.banner = '';
   rerender();
   if (done) done();
 }
@@ -5386,9 +5420,8 @@ document.addEventListener('click', e => {
   if (d === 'hold' || el.dataset.bsgun){ BSV.hold = true; BSV.aimT = null; rer(); return; }
   if (d === 'drop'){ BSV.hold = false; BSV.aimT = null; rer(); return; }
   if (d === 'reaim'){ BSV.aimT = null; rer(); return; }
-  if (el.dataset.bsaim !== undefined && BSV.hold){ BSV.aimT = +el.dataset.bsaim; rer(); return; }
-  if (d === 'fire' && BSV.hold && BSV.aimT !== null && BSV.aimT !== undefined){
-    const target = BSV.aimT;
+  if (el.dataset.bsaim !== undefined && BSV.hold){   // 겨눈 쪽으로 바로 쏜다 (방아쇠 단계 없음)
+    const target = +el.dataset.bsaim; BSV.aimT = target;
     if ($('#bsCard')) bsMine({op:'shoot', target}); else if (typeof mbsSend === 'function') mbsSend({op:'shoot', target});
   }
 });

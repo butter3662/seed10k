@@ -57,10 +57,10 @@ const BSE = {
   shoot(g, i, target, rnd){
     if (g.over || g.turn !== i || !g.shells.length) return null;
     const q = g.pl[target]; if (!q || q.out) return null;
-    const s = BSE.take(g), dmg = s ? (g.saw ? 2 : 1) : 0, ev = [];
+    const s = BSE.take(g), dmg = s ? (g.saw ? 2 : 1) : 0, ev = [], pre = q.hp, sw = !!g.saw;
     g.saw = false; g.shots++;
     if (dmg){ q.hp = Math.max(0, q.hp - dmg); if (!q.hp){ q.out = true; q.outAt = ++g.outs; q.cuffed = false; } }
-    ev.push({t:'shot', i, target, live:s, dmg, hp:q.hp, out:q.out});
+    ev.push({t:'shot', i, target, live:s, dmg, hp:q.hp, out:q.out, pre, sw});
     BSE.log(g, `${g.pl[i].nm} → ${target === i ? '자기 자신' : q.nm}: ${s ? `💥 실탄${dmg > 1 ? ' (톱, 2배)' : ''}` : '딸깍, 공포탄'}${q.out ? ` · ${q.nm} 탈락` : ''}`);
     if (BSE.alive(g) <= 1){ g.over = true; g.win = g.pl.findIndex(p => !p.out); ev.push({t:'win', i:g.win}); return ev; }
     if (!(s === false && target === i)) BSE.pass(g, ev);   // 나를 쏴서 공포탄이면 한 번 더
