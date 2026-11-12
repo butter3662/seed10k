@@ -1145,7 +1145,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '2.2.10';
+const VERSION = '2.2.11';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -5284,7 +5284,7 @@ function bsTableHTML(g, me, o){
     </div>`;
   };
   const opp = g.pl.map((p, i) => i === me ? '' : seat(p, i, false)).join('');
-  const msg = BSV.msg || (g.over ? (g.win === me ? '🏆 살아남았다!' : g.quit && g.quitHalf ? '🏃 기권하고 자리를 떴다' : g.quit ? '🏳️ 기권했다' : '💀 졌다') : myTurn ? (BSV.hold ? (BSV.aimT !== null && BSV.aimT !== undefined ? `${BSV.aimT === me ? '나' : esc(g.pl[BSV.aimT].nm)}에게 겨눴다` : '누구를 쏠까? (자리나 버튼을 누르면 바로 쏜다)') : '아이템을 쓰거나 총을 드세요') : `${esc(g.pl[g.turn].nm)} 차례…`);
+  const msg = BSV.msg || (g.over ? (g.win === me ? '🏆 WIN!' : g.quit && g.quitHalf ? '🏃 기권하고 자리를 떴다' : g.quit ? '🏳️ 기권했다' : '💀 졌다') : myTurn ? (BSV.hold ? (BSV.aimT !== null && BSV.aimT !== undefined ? `${BSV.aimT === me ? '나' : esc(g.pl[BSV.aimT].nm)}에게 겨눴다` : '누구를 쏠까? (자리나 버튼을 누르면 바로 쏜다)') : '아이템을 쓰거나 총을 드세요') : `${esc(g.pl[g.turn].nm)} 차례…`);
   const s3 = bs3Want(); BS3.ctx = {g, me};
   const aim = BSV.aim || (myTurn && BSV.hold && BSV.aimT !== null && BSV.aimT !== undefined ? (BSV.aimT === me ? 'down' : 'up') : 'rest');
   return `${o.solo ? '' : !g.over && o.mine ? '<div class="bs-quit"><button class="btn" data-bsdo="quit">기권</button></div>' : '<div class="bs-quit"></div>'}<div class="bs-table">
@@ -5454,7 +5454,7 @@ function bsFinish(run){
   s.cur = null; commit(); gmHide();
   police('bs', g.il, pay - g.stake);
   runCheck(); if (ran) runAdd('bs', g.stake);
-  showModal(`<h2 class="${win ? 'up' : ''}">${win ? '🏆 살아남았습니다' : ran ? '🏃 도망쳤습니다' : half ? '🏃 기권하고 자리를 떴습니다' : g.quit ? '🏳️ 기권했습니다' : '💀 졌습니다'}</h2>${half ? `<p class="muted">${BS_QUIT_TN}번째 차례 안에 기권해서 판돈의 절반을 돌려받았습니다.</p>` : ''}${ran ? runNote(g.stake) : ''}<div class="bd"><div><span>판돈</span><b class="num">${fmtUSD(g.stake)}</b></div><div><span>받은 돈</span><b class="num">${fmtUSD(pay)}</b></div><div><span>쏜 횟수</span><b class="num">${g.shots}발 · 장전 ${g.load}번</b></div></div><div class="acts"><button class="btn solid" data-close>확인</button></div>`);
+  showModal(`<h2 class="${win ? 'up' : ''}">${win ? '🏆 WIN!' : ran ? '🏃 도망쳤습니다' : half ? '🏃 기권하고 자리를 떴습니다' : g.quit ? '🏳️ 기권했습니다' : '💀 졌습니다'}</h2>${half ? `<p class="muted">${BS_QUIT_TN}번째 차례 안에 기권해서 판돈의 절반을 돌려받았습니다.</p>` : ''}${ran ? runNote(g.stake) : ''}<div class="bd"><div><span>판돈</span><b class="num">${fmtUSD(g.stake)}</b></div><div><span>받은 돈</span><b class="num">${fmtUSD(pay)}</b></div><div><span>쏜 횟수</span><b class="num">${g.shots}발 · 장전 ${g.load}번</b></div></div><div class="acts"><button class="btn solid" data-close>확인</button></div>`);
 }
 // 직접 조작 (혼자·같이 하기 같이): 탄 넣기, 펌프, 총 들기, 겨누기. 방아쇠만 혼자/같이 하기가 따로 보낸다
 document.addEventListener('click', e => {
@@ -6775,7 +6775,7 @@ function onlGot(p){
 const mbsPeek = g => { const p = MP.view.bsPeek; return p && p.load === g.load && p.left === g.live + g.blank ? p.peek : null; };
 function mbsBody(R){
   const g = R.state.g, me = mpMe(), host = ACC.user && R.host === ACC.user.id;
-  const foot = R.status === 'over' && !BSV.busy ? `<p class="oe-res ${g.win === me ? 'up' : 'down'}">${g.win === me ? `🏆 살아남았다! ${fmtUSD(R.stake * g.n)}을 받습니다` : `💀 ${esc(g.pl[g.win] ? g.pl[g.win].nm : '?')} 승리`}</p>
+  const foot = R.status === 'over' && !BSV.busy ? `<p class="oe-res ${g.win === me ? 'up' : 'down'}">${g.win === me ? `🏆 WIN! ${fmtUSD(R.stake * g.n)}을 받습니다` : `💀 ${esc(g.pl[g.win] ? g.pl[g.win].nm : '?')} 승리`}</p>
     <div class="bm-acts">${host ? `<button class="btn solid" id="mpAgain">한 판 더 (${fmtUSD(R.stake)})</button>` : '<p class="bm-wait">방장이 한 판 더 열면 다시 참가할 수 있습니다</p>'}</div>` : R.status === 'over' ? ' ' : '';
   return bsTableHTML(g, me < 0 ? 0 : me, {mine:me >= 0, peek:mbsPeek(g), wait:MP.busy || me < 0, timer:R.status === 'play', foot});
 }
