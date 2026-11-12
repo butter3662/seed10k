@@ -684,6 +684,7 @@ html.gated body{overflow:hidden}
 .bs-count i{display:inline-block;width:6px;height:12px;border-radius:1px;margin-right:4px;vertical-align:-1px}.bs-count i.live{background:#e0473f}.bs-count i.blank{background:#5d7fa6}
 .bs-peek{margin:0;height:24px;line-height:24px;text-align:center;font-size:13px}.bs-peek b{color:#7fb0e0}.bs-peek.live b{color:#ff6b5e}
 .bs-msg{margin:0;height:44px;display:flex;align-items:center;justify-content:center;text-align:center;font-weight:700;line-height:1.3}
+.bs-msg{flex-direction:column;gap:1px}.bs-tmr{font-size:12px;font-weight:600;min-height:15px;line-height:15px;font-variant-numeric:tabular-nums}
 .bs-foot{min-height:52px}
 .bs-dealer{position:absolute;left:50%;top:0;width:200px;height:118px;margin-left:-100px;z-index:1;pointer-events:none}
 .bs-dsvg{width:100%;height:100%;filter:drop-shadow(0 8px 10px rgba(0,0,0,.7))}
@@ -1145,7 +1146,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '2.2.11';
+const VERSION = '2.2.12';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -5269,7 +5270,7 @@ function bsCardHTML(){
 function bsTableHTML(g, me, o){
   o = o || {};
   const V = BSV.busy && BSV.view;
-  if (V) g = Object.assign({}, g, {live:V.live, blank:V.blank, turn:V.turn, saw:V.saw, over:V.over, pl:g.pl.map((p, i) => Object.assign({}, p, {hp:V.hp[i], out:V.out[i], items:V.items[i]}))});
+  if (V) g = Object.assign({}, g, {live:V.live, blank:V.blank, turn:V.turn, saw:V.saw, over:V.over, load:V.load, pl:g.pl.map((p, i) => Object.assign({}, p, {hp:V.hp[i], out:V.out[i], items:V.items[i]}))});
   const myTurn = !g.over && g.turn === me && !BSV.busy && !o.wait;
   const peek = o.peek !== undefined ? o.peek : g.pk ? g.pk[me] : null;
   const seat = (p, i, mine) => {
@@ -5299,7 +5300,7 @@ function bsTableHTML(g, me, o){
       <div class="bs-count"><span><i class="live"></i>실탄 <b>${g.live}</b></span><span><i class="blank"></i>공포탄 <b>${g.blank}</b></span>${g.saw ? '<span>🪚 톱</span>' : ''}</div>
     </div>
     <p class="bs-peek ${peek ? 'live' : ''}" style="visibility:${peek !== null && peek !== undefined && !g.over ? 'visible' : 'hidden'}">🔍 지금 탄: <b>${peek ? '실탄' : '공포탄'}</b></p>
-    <p class="bs-msg">${msg} ${o.timer ? '<span class="muted" id="mpTimer"></span>' : ''}</p>
+    <p class="bs-msg">${o.timer ? '<span class="bs-tmr muted" id="mpTimer"></span>' : ''}<span>${msg}</span></p>
     <div class="bs-ctl">${bsCtlHTML(g, me, myTurn)}</div>
     ${seat(g.pl[me], me, true)}
   </div>
@@ -5337,13 +5338,13 @@ const bsWait = ms => { const gen = BSV.gen; return new Promise((res, rej) => set
 // 연출 시작 때의 화면 상태: 끝난 상태(g)에서 이벤트를 거꾸로 되돌린다. 연출하면서 하나씩 다시 적용한다
 const BS_EVIT = {peek:'glass', heal:'cig', beer:'beer', saw:'saw', cuff:'cuff'};
 function bsViewOf(g, ev){
-  const v = {hp:g.pl.map(p => p.hp), out:g.pl.map(p => !!p.out), items:g.pl.map(p => p.items.slice()), live:g.live, blank:g.blank, turn:g.turn, saw:!!g.saw, over:!!g.over};
+  const v = {hp:g.pl.map(p => p.hp), out:g.pl.map(p => !!p.out), items:g.pl.map(p => p.items.slice()), live:g.live, blank:g.blank, turn:g.turn, saw:!!g.saw, over:!!g.over, load:g.load || 0};
   const rm = (a, it) => { const k = a.lastIndexOf(it); if (k >= 0) a.splice(k, 1); };
   for (let k = ev.length - 1; k >= 0; k--){
     const e = ev[k];
     if (e.t === 'win') v.over = false;
     else if (e.t === 'shot'){ v.hp[e.target] = e.pre !== undefined ? e.pre : Math.min(BS.hpMax, e.hp + e.dmg); v.out[e.target] = false; if (e.live) v.live++; else v.blank++; v.saw = e.sw !== undefined ? e.sw : e.dmg > 1; v.turn = e.i; }
-    else if (e.t === 'load'){ v.live -= e.live; v.blank -= e.blank; (e.got || []).forEach((a, i) => a.forEach(it => rm(v.items[i], it))); }
+    else if (e.t === 'load'){ v.load--; v.live -= e.live; v.blank -= e.blank; (e.got || []).forEach((a, i) => a.forEach(it => rm(v.items[i], it))); }
     else if (e.t === 'turn' || e.t === 'skip'){ const a = ev.slice(0, k).reverse().find(x => x.i !== undefined && x.t !== 'skip' && x.t !== 'turn'); if (a) v.turn = a.i; }
     else if (BS_EVIT[e.t]){ v.items[e.i].push(BS_EVIT[e.t]); v.turn = e.i; if (e.t === 'heal') v.hp[e.i]--; if (e.t === 'beer'){ if (e.live) v.live++; else v.blank++; } if (e.t === 'saw') v.saw = false; }
   }
@@ -5354,7 +5355,7 @@ function bsViewDo(e){
   const v = BSV.view; if (!v) return;
   const rm = (a, it) => { const k = a.indexOf(it); if (k >= 0) a.splice(k, 1); };
   if (e.t === 'shot'){ v.hp[e.target] = e.hp; v.out[e.target] = !!e.out; if (e.live) v.live = Math.max(0, v.live - 1); else v.blank = Math.max(0, v.blank - 1); v.saw = false; }
-  else if (e.t === 'load'){ v.live += e.live; v.blank += e.blank; (e.got || []).forEach((a, i) => a.forEach(it => v.items[i] && v.items[i].push(it))); }
+  else if (e.t === 'load'){ v.load++; v.live += e.live; v.blank += e.blank; (e.got || []).forEach((a, i) => a.forEach(it => v.items[i] && v.items[i].push(it))); }
   else if (e.t === 'turn') v.turn = e.i;
   else if (e.t === 'win') v.over = true;
   else if (BS_EVIT[e.t]){ rm(v.items[e.i], BS_EVIT[e.t]); if (e.t === 'heal') v.hp[e.i] = e.hp; if (e.t === 'beer'){ if (e.live) v.live = Math.max(0, v.live - 1); else v.blank = Math.max(0, v.blank - 1); } if (e.t === 'saw') v.saw = true; }
@@ -5808,7 +5809,10 @@ function bs3Frame(now){
     // 암전: 누가 실탄에 맞았으면 번쩍한 직후 꺼진다. 내가 맞으면 1.35초(탈락이면 짧게 끊고 쓰러지는 모습을 보여 준다), 상대면 0.55초
     if (BSV.flash){ const out = g && g.pl[me] && g.pl[me].out; A.blackT = 0; A.blackD = A.hitMe && !out ? 1.35 : 0.55; A.blackF = A.hitMe && !out ? 0.65 : 0.45; } } if (fx === 'click') A.clickT = 0; if (fx === 'rack') A.rackT = 0; if (fx === 'saw') A.sawT = 0; }
   if (BSV.eject !== P.eject && BSV.eject !== null && BSV.eject !== undefined) bs3Eject(!!BSV.eject);
-  if (Lay && !P.lay){ A.layT = 0; O.ejects.splice(0).forEach(s => BS3.scene.remove(s)); }
+  if (Lay && !P.lay) A.layT = 0;
+  // 탁자에 남은 탄피·잘린 총신 조각은 새로 장전할 때(장전 횟수가 바뀌면) 치운다. 새 판이거나 화면이 가려진 사이에 장전돼도 치워진다
+  const loadKey = g ? `${g.n}:${g.stake}:${g.load}` : '';
+  if (loadKey !== A.loadKey){ A.loadKey = loadKey; O.ejects.splice(0).forEach(s => BS3.scene.remove(s)); }
   if (Lay && Lay.in && Lay.in.length > (P.inN || 0)) A.feed = {k:Lay.in[Lay.in.length - 1], t:0};
   P.fx = fx; P.eject = BSV.eject; P.lay = !!Lay; P.inN = Lay && Lay.in ? Lay.in.length : 0;
   A.blackT = (A.blackT === undefined ? 99 : A.blackT) + dt; A.layT += dt; A.rackT += dt; A.bangT += dt; A.clickT += dt; A.sawT += dt; A.hitT += dt;
