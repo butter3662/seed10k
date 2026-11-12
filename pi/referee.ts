@@ -74,7 +74,7 @@ async function watch(room0: Room | undefined, room: Room, priv: any) {
   const res = resultOf(room);
   await rest("POST", "seed10k_mp_results", [res], "return=minimal");
   if (room.game === "bj") await bjWatch(room, res);
-  if (room.game === "bm") {   // 주사위 세계여행: 혼자 할 때처럼 판 전체 기록을 각자의 seed10k_bmlog에 남긴다
+  if (room.game === "bm") {   // 부루마블: 혼자 할 때처럼 판 전체 기록을 각자의 seed10k_bmlog에 남긴다
     const g = room.state.g, n = room.state.seats.length, at = new Date().toISOString();
     const standings = g.pl.map((p: any, i: number) => ({ nm: p.nm, rank: g.rank[i], out: p.out, outAt: p.outAt || 0, cash: p.cash })).sort((a: any, b: any) => a.rank - b.rank);
     await rest("POST", "seed10k_bmlog", room.state.seats.map((s: any, i: number) => ({ user_id: s.uid, at, mode: room.mode, n, stake: room.stake,

@@ -11,14 +11,14 @@
 // payouts: [{user_id, amount, cost, il, note}]  끝나거나 환불할 때 각자 받을 돈 (사이트가 '받기'로 가져간다)
 
 import { BM, BME } from "./bm_engine.js";
-import { BS_KEYS, BSE } from "./bs_engine.js";   // 벅샷 룰렛 규칙 (사이트 bs.js에서 떼어 낸 같은 코드)   // 주사위 세계여행 규칙 (사이트 bm.js에서 떼어 낸 같은 코드)
+import { BS_KEYS, BSE } from "./bs_engine.js";   // 벅샷 룰렛 규칙 (사이트 bs.js에서 떼어 낸 같은 코드)   // 부루마블 규칙 (사이트 bm.js에서 떼어 낸 같은 코드)
 
 export const LIMITS = {   // 사이트의 GAM과 같다 (판돈 한도: 평소 off, 불법 모드 on)
   oe: {nm: "홀짝", min: 1, off: 10, on: 100, minP: 2, maxP: 2},
   sl: {nm: "뱀사다리", min: 5, off: 50, on: 500, minP: 2, maxP: 4},
   bj: {nm: "블랙잭", min: 5, off: 100, on: 1000, minP: 2, maxP: 5},
   bs: {nm: "벅샷 룰렛", min: 5, off: 100, on: 1000, minP: 2, maxP: 4},
-  bm: {nm: "주사위 세계여행", min: 10, off: 100, on: 1000, minP: 2, maxP: 4},
+  bm: {nm: "부루마블", min: 10, off: 100, on: 1000, minP: 2, maxP: 4},
 };
 export const LOBBY_IDLE_MS = 20 * 60_000;   // 대기실에서 20분 동안 아무 일도 없으면 닫고 판돈을 돌려준다
 export const OVER_KEEP_MS = 30 * 60_000;    // 끝난 방은 30분 뒤 닫는다
@@ -382,7 +382,7 @@ export function bjLowStreak(rows, uid) {
   return n;
 }
 
-/* ───────── 주사위 세계여행 (2~4명, 사람끼리) ─────────
+/* ───────── 부루마블 (2~4명, 사람끼리) ─────────
    혼자 할 때와 같은 규칙(bm_engine.js = 사이트 bm.js의 규칙 부분)으로, 한 명만 남을 때까지(나머지가 모두 파산할 때까지) 한다.
    순위 배수도 같다: 2명 2·0배, 3명 2.5·0.5·0배, 4명 3·1·0·0배 (평균 1배).
    황금열쇠 순서(deck)와 판 전체 기록(rec)은 숨긴 상태(priv)에 둔다 (다음 카드를 미리 볼 수 없게).
@@ -425,7 +425,7 @@ GAMES.bm = {
       if (op === "buy" && !a.yes) {   // 살 수 있을 때만(현금 ≥ 땅값) 묻는다
         g.nobuy[me] = (g.nobuy[me] || 0) + 1;
         if (streakHit(g.nobuy[me], WATCH.bmNoBuy)) (st.flags = st.flags || []).push({kind: "bm_nobuy", seat: me, n: g.nobuy[me],
-          msg: `주사위 세계여행: ${st.seats[me].nick}이(가) 돈이 있는데 땅을 안 산 것이 ${g.nobuy[me]}번 (판돈 $${room.stake}, 방 ${room.code})`});
+          msg: `부루마블: ${st.seats[me].nick}이(가) 돈이 있는데 땅을 안 산 것이 ${g.nobuy[me]}번 (판돈 $${room.stake}, 방 ${room.code})`});
       }
       ev = BME.decide(g, !!a.yes, op === "build" || op === "space" ? a.arg : -1, rnd);
     } else return {err: "모르는 행동입니다"};
@@ -446,7 +446,7 @@ GAMES.bm = {
     room.status = "over"; st.deadline = null;
     return {payouts: st.seats.map((s, i) => {
       const rank = g.rank[i], m = BM.pay[n][rank - 1] || 0;
-      return {user_id: s.uid, amount: r2(room.stake * m), cost: room.stake, il: room.il, note: `주사위 세계여행 ${n}명 ${rank}위${s.left ? " (기권)" : ""}`};
+      return {user_id: s.uid, amount: r2(room.stake * m), cost: room.stake, il: room.il, note: `부루마블 ${n}명 ${rank}위${s.left ? " (기권)" : ""}`};
     })};
   },
   auto(room, priv, now, rnd) {

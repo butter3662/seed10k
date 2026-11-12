@@ -835,7 +835,7 @@ html.gated body{overflow:hidden}
 .sp-res{text-align:center;margin-top:8px;font-size:16px;font-weight:800;display:grid;gap:2px}
 .sp-res small{font-size:12px;font-weight:600}
 table.mini{border-collapse:collapse;margin:6px 0}table.mini td,table.mini th{padding:3px 10px 3px 0;text-align:left;font-size:13px}
-/* 주사위 세계여행 */
+/* 부루마블 */
 html.bm-open,html.bm-open body{overflow:hidden}
 /* iOS Safari에서 흐림 효과(backdrop-filter)가 걸린 머리글·탭 막대가 위 레이어를 뚫고 비쳐 보이는 문제: 게임 화면을 연 동안 아예 숨긴다 */
 html.bm-open .top,html.bm-open .tabbar{visibility:hidden}
@@ -942,7 +942,7 @@ html.bm-open .top,html.bm-open .tabbar{visibility:hidden}
 .bm-pl b{font-size:13.5px}
 .bm-pl small{grid-column:2/4;color:var(--ink-3);font-size:11px}
 
-/* ── 주사위 세계여행 입체 판: 판을 45° 돌려 비스듬히 눕힌다 (마름모 모양). 칸에 두께, 말·건물은 세워서 ── */
+/* ── 부루마블 입체 판: 판을 45° 돌려 비스듬히 눕힌다 (마름모 모양). 칸에 두께, 말·건물은 세워서 ── */
 .bm-ov.b3{--tilt:56deg}
 .bm-stage{position:relative;width:min(100%,900px);aspect-ratio:1.5;perspective:2000px;perspective-origin:50% 20%;margin:2px auto 0;flex:none}
 .bm-stage.shake{animation:bmshake .45s}
@@ -1191,7 +1191,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '2.2.21';
+const VERSION = '2.2.22';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -3488,7 +3488,7 @@ function mgAnswer(ans, close){
   }, 200);
 }
 
-/* ───────── 미니게임: 주사위 세계여행 (컴퓨터 상대 보드게임) ─────────
+/* ───────── 미니게임: 부루마블 (컴퓨터 상대 보드게임) ─────────
    부루마불(씨앗사) 1탄의 땅값·통행료·건설비·황금열쇠를 따른 40칸 보드. 숫자의 출처: 나무위키 '부루마불/주요 카드'(2023-07-02 판)와
    '부루마불'(2016-12-14 판), 위키백과 '부루마불'(시작 자금 293만, 월급 20만). 자료에 없는 부분(황금열쇠 칸 위치, 카드 장수,
    건물 통행료를 더하는 방식, 우주여행비 등)은 INFO 설명에 따로 적었다.
@@ -3943,7 +3943,7 @@ function bmLockText(ms){
 }
 function bmCardHTML(){
   const b = bmToday(), g = b.cur;
-  INFO.bm = {t:'주사위 세계여행', h:`<div class="prose"><p>부루마불(씨앗사) 1탄의 땅값·통행료·건설비·황금열쇠를 따랐습니다. 숫자는 나무위키 '부루마불/주요 카드'(2023년 7월 판)와 위키백과 '부루마불'에서 가져왔고, 자료에 없는 부분은 아래에 '자료 없음'으로 표시했습니다. 돈은 게임 속 돈입니다.</p><ul>
+  INFO.bm = {t:'부루마블', h:`<div class="prose"><p>부루마불(씨앗사) 1탄의 땅값·통행료·건설비·황금열쇠를 따랐습니다. 숫자는 나무위키 '부루마불/주요 카드'(2023년 7월 판)와 위키백과 '부루마불'에서 가져왔고, 자료에 없는 부분은 아래에 '자료 없음'으로 표시했습니다. 돈은 게임 속 돈입니다.</p><ul>
     <li>40칸 보드, 컴퓨터 1~3명. 모두 ${bmW(BM.start)}으로 시작하고, 출발을 지나거나 서면 월급 ${bmW(BM.salary)}을 받습니다.</li>
     <li>주인 없는 땅에 서면 살 수 있습니다. 내 도시에 다시 서면 별장(2채까지)·빌딩(1)·호텔(1)을 원하는 만큼 짓습니다(산 그 차례에는 못 짓습니다). 제주도·부산·서울·콩코드 여객기·퀸 엘리자베스호·컬럼비아호는 건물을 못 짓는 특수 땅입니다.</li>
     <li>통행료 = 대지료 + 별장(1채 또는 2채 값) + 빌딩 + 호텔. 땅을 누르면 금액이 나옵니다. (건물 통행료를 더하는 방식은 자료 없음, 흔히 쓰는 방식)</li>
@@ -3961,7 +3961,7 @@ function bmCardHTML(){
   const lock = g ? 0 : bmLockLeft();
   const label = g ? '이어 하기' : S.over ? '파산해서 할 수 없습니다' : lock ? `${bmLockText(lock)} 뒤부터` : '새 게임';
   const h = b.hist.slice(0, 3).map(x => `<span class="${cls(x.pay - x.stake)}">${x.rank}/${x.n}위 ${signUSD(x.pay - x.stake)}</span>`).join(' · ');
-  return `<div class="card-h"><h2>🎲 주사위 세계여행 ${infoBtn('bm')}</h2><small>${isLive() ? '오늘' : '이번 거래일'} ${b.n}판</small></div>
+  return `<div class="card-h"><h2>🎲 부루마블 ${infoBtn('bm')}</h2><small>${isLive() ? '오늘' : '이번 거래일'} ${b.n}판</small></div>
     ${lock ? `<p class="mg-desc">${ACC.user ? '가입' : '이 기록을 시작'}하고 ${BM.waitDays}일이 지나야 할 수 있습니다.</p>` : g ? `<p class="mg-desc">진행 중: ${g.round}바퀴째, 판돈 ${fmtUSD(g.stake)}</p>` : h ? `<p class="mg-desc">최근 ${h}</p>` : `<p class="mg-desc">판돈을 걸고 컴퓨터와 도시를 사고파는 주사위 보드게임</p>`}
     <div class="mg-foot"><span class="muted">${g ? '' : `달러 통장 <b class="num">${fmtUSDn(S.usd)}</b>`}</span><span style="display:flex;gap:8px">${b.last ? '<button class="btn" id="bmLastLog">지난 판 기록</button>' : ''}<button class="btn solid" id="bmGo" ${!g && (S.over || lock) ? 'disabled' : ''}>${label}</button></span></div>`;
 }
@@ -3973,7 +3973,7 @@ function bmSetup(){
   if (S.over) return toast('파산해서 할 수 없습니다', true);
   if (bmLockLeft()) return toast(`가입하고 ${BM.waitDays}일이 지나야 할 수 있습니다 (${bmLockText(bmLockLeft())} 남음)`, true);
   UI.bmN = UI.bmN || 2; UI.bmBet = UI.bmBet || '';
-  const close = showModal(`<h2>🎲 주사위 세계여행</h2><div id="bmSet"></div>
+  const close = showModal(`<h2>🎲 부루마블</h2><div id="bmSet"></div>
     <div class="acts"><button class="btn" data-close>닫기</button><button class="btn solid" id="bmStart">시작</button></div>`);
   const draw = () => {
     const box = $('#bmSet'); if (!box) return;
@@ -4062,14 +4062,14 @@ function bmBuild(){
     return `<button class="bm-c bm-${side}${k % 10 === 0 ? ' bm-k' : ''} bm-t-${c.t}" data-bmsq="${k}" style="grid-row:${r};grid-column:${col}">${body}</button>`;
   }).join('');
   const toks = g.pl.map((p, i) => `<div class="bm-tok" data-tok="${i}" style="--pc:${BM.cols[i]}"><div class="bm-tok-u"><div class="bm-tok-i"><span>${i === bmMe() ? '나' : esc([...p.nm][0] || '?')}</span></div></div></div>`).join('');
-  const top = `<div class="bm-top"><button class="btn" id="bmClose">닫기</button><div class="bm-ttl"><b>🎲 주사위 세계여행</b><small id="bmSub"></small></div><div class="bm-tr"><button class="btn bm-spd" id="bm3d"></button><button class="btn bm-spd" id="bmSpd"></button><button class="btn" id="bmQuit">기권</button></div></div>`;
+  const top = `<div class="bm-top"><button class="btn" id="bmClose">닫기</button><div class="bm-ttl"><b>🎲 부루마블</b><small id="bmSub"></small></div><div class="bm-tr"><button class="btn bm-spd" id="bm3d"></button><button class="btn bm-spd" id="bmSpd"></button><button class="btn" id="bmQuit">기권</button></div></div>`;
   const pls = `<div class="bm-pls" id="bmPls">${g.pl.map((p, i) => `<div class="bm-pl" data-pl="${i}"><i style="background:${BM.cols[i]}"></i><span class="bm-pn"></span><b class="num bm-pc"></b><small class="num bm-pa"></small></div>`).join('')}</div>`;
   const under = `<div class="bm-act" id="bmActBox"></div><div id="bmInfoBox"></div><ul class="bm-log" id="bmLog"></ul>`;
   ov.classList.toggle('b3', bm3D());
   // 입체 판: 판(칸·말·건물)만 비스듬히 눕히고, 주사위·글자·효과는 눕히지 않은 층에 띄운다. 고를 것·기록은 판 아래로
   ov.innerHTML = bm3D() ? `${top}
     <div class="bm-stage" id="bmStage">
-      <div class="bm-board" id="bmBoard">${cells}<div class="bm-logo"><b>주사위</b><b>세계여행</b><small>WORLD DICE TOUR</small></div>
+      <div class="bm-board" id="bmBoard">${cells}<div class="bm-logo"><b>부루마블</b></div>
         <div class="bm-toks"><div class="bm-blds" id="bmBlds"></div>${toks}</div></div>
       <div class="bm-hud"><div class="bm-dice" id="bmDice">${bmDieHTML()}${bmDieHTML()}</div><div class="bm-msg" id="bmMsg"></div></div>
       <div class="bm-fx" id="bmFx"></div>
@@ -4387,7 +4387,7 @@ async function bmSaveLog(row){
     const {error} = await ACC.sb.from('seed10k_bmlog').insert(send.map(x => ({user_id:ACC.user.id, ...x})));
     if (error) throw error;
     if (S.bm === b){ b.unsent = (b.unsent || []).filter(x => !send.includes(x)); save(); }
-  } catch(e){ console.warn('[seed10k] 주사위 세계여행 기록을 서버에 남기지 못함', e); }
+  } catch(e){ console.warn('[seed10k] 부루마블 기록을 서버에 남기지 못함', e); }
 }
 function bmLastLog(){
   const L = (S.bm || {}).last; if (!L) return;
@@ -4413,7 +4413,7 @@ function bmFinish(forfeit, run){
   bmSaveLog({at:new Date().toISOString(), mode:S.mode, n:g.n, stake:g.stake, pay, rank, forfeit:!!forfeit, il:!!g.il, rounds:g.round || 0, standings:fin, log:g.rec || []});
   b.last = {at:Date.now(), rank, n:g.n, forfeit:!!forfeit, log:(g.rec || []).slice(-3000)};   // 지난 판 기록 보기용 (이 기기·내 저장에 1판만)
   b.cur = null;
-  altLog('gamble', `주사위 세계여행 ${forfeit ? `기권 (${rank}위)` : rank + '위'}${ran ? ' → 도망' : ''}${g.il ? ' (불법)' : ''}`, pay - g.stake, 'USD');
+  altLog('gamble', `부루마블 ${forfeit ? `기권 (${rank}위)` : rank + '위'}${ran ? ' → 도망' : ''}${g.il ? ' (불법)' : ''}`, pay - g.stake, 'USD');
   commit();
   bmHide();
   police('bm', g.il, pay - g.stake);
@@ -4460,11 +4460,11 @@ document.addEventListener('click', e => {
 });
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && bmOpenNow() && $('#modal').hidden) bmHide(); });
 
-/* ───────── 도박 탭: 불법 모드 · 경찰 단속 · 뱀사다리 · 홀짝 (주사위 세계여행은 bm.js) ───────── */
+/* ───────── 도박 탭: 불법 모드 · 경찰 단속 · 뱀사다리 · 홀짝 (부루마블은 bm.js) ───────── */
 // 판돈 한도(달러): 불법 모드를 끄면 off, 켜면 on. 불법 모드로 한 판을 끝낼 때마다 p의 확률로 경찰 단속
 // 단속되면 벌금 대신, 불법 모드로 번 돈(모든 도박 게임 합산 순이익 누적, 진 판은 빼고 셈)의 seize(50%)를 압류하고 누적을 0으로 되돌린다
 const GAM = {
-  bm:{nm:'주사위 세계여행', min:10, off:100, on:1000, p:0.05},
+  bm:{nm:'부루마블', min:10, off:100, on:1000, p:0.05},
   sl:{nm:'뱀사다리', min:5, off:50, on:500, p:0.025},
   oe:{nm:'홀짝', min:1, off:10, on:100, p:0.05},
   bj:{nm:'블랙잭', min:5, off:100, on:1000, p:0.05},
@@ -4843,7 +4843,7 @@ function bmConfettiIn(fx){
    컴퓨터가 구슬을 1~20개 쥔다. 1~20에는 홀수 10개, 짝수 10개라 한 번에 맞힐 확률 p = 1/2.
    맞힐 때마다 상금이 m배(OE_M)가 되고, 틀리면 상금이 0이 된다. 언제든 그만두고 상금을 받을 수 있다(1번 이상 맞힌 뒤).
    k번 맞히고 그만두면 받는 돈은 판돈 × m^k, 그 확률은 p^k 이므로 기대 배수는 (p·m)^k.
-   다른 게임(뱀사다리 2배·확률 1/2, 주사위 세계여행 순위 배수 평균 1)과 같게 기대 배수를 1로 맞추려면 어떤 k에서도 (p·m)^k = 1 → m = 1/p = 2.
+   다른 게임(뱀사다리 2배·확률 1/2, 부루마블 순위 배수 평균 1)과 같게 기대 배수를 1로 맞추려면 어떤 k에서도 (p·m)^k = 1 → m = 1/p = 2.
    한 판에 최대 OE_MAX번까지 (그때 자동으로 받는다). 상한이 있어도 기대 배수는 1 그대로다 */
 const OE_M = 2, OE_MAX = 10;
 function oeS(){
@@ -4863,7 +4863,7 @@ function oeCardHTML(){
     <li>1~20에는 홀수 10개, 짝수 10개라 한 번에 맞힐 확률은 1/2입니다.</li></ul>
     <div class="eq">기대 배수 = (맞힐 확률 × 배수)<sup><i>k</i></sup> = (½ × ${OE_M})<sup><i>k</i></sup> = 1</div>
     <ul class="defs"><li><span class="sym"><i>k</i></span><span>그만두기 전까지 연속으로 맞힌 횟수 (1 ≤ <i>k</i> ≤ ${OE_MAX})</span></li></ul>
-    <p>몇 번에서 그만두든 평균적으로는 판돈만큼 돌아옵니다(뱀사다리·주사위 세계여행과 같은 기대 배수 1). 판돈 한도: ${fmtUSDn(GAM.oe.off, 0)} (불법 모드 ${fmtUSDn(GAM.oe.on, 0)}).</p>
+    <p>몇 번에서 그만두든 평균적으로는 판돈만큼 돌아옵니다(뱀사다리·부루마블과 같은 기대 배수 1). 판돈 한도: ${fmtUSDn(GAM.oe.off, 0)} (불법 모드 ${fmtUSDn(GAM.oe.on, 0)}).</p>
     <p>불법 모드로 한 판이 끝날 때마다 ${(GAM.oe.p * 100).toFixed(0)}% 확률로 경찰이 옵니다. 지금까지 불법 도박(모든 게임 합산)으로 번 돈의 ${GAM.seize * 100}%를 압류하고 누적을 0으로 되돌립니다. 랭킹 이름에는 영구 빨간 줄이 그어집니다.</p></div>`};
   if (!g){
     const h = s.hist.slice(0, 3).map(x => `<span class="${cls(x.pay - x.stake)}">${x.k === undefined ? (x.win ? '승' : '패') : x.pay > x.stake ? `${x.k}연속` : '실패'} ${signUSD(x.pay - x.stake)}</span>`).join(' · ');
@@ -6285,7 +6285,7 @@ const bsaIcon = () => `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9
    사이트는 Supabase에 요청(seed10k_room_reqs)만 넣고, 라즈베리파이 심판이 규칙대로 처리해 방(seed10k_rooms)을 고친다.
    방이 바뀌면 Supabase 실시간이 알려 주고(놓칠 때를 위해 3초마다도 확인), 끝나면 받을 돈(seed10k_payouts)을 '받기'로 가져온다.
    판돈은 들어갈 때 이 기기 통장에서 내고, 돌려받거나 이긴 돈은 받기로 들어온다 */
-const MP_GAMES = {bm:{nm:'주사위 세계여행', ic:'🎲', ready:true, desc:'2~4명 · 파산할 때까지, 순위 배수'},   // 도박 탭의 혼자 하기 카드와 같은 순서
+const MP_GAMES = {bm:{nm:'부루마블', ic:'🎲', ready:true, desc:'2~4명 · 파산할 때까지, 순위 배수'},   // 도박 탭의 혼자 하기 카드와 같은 순서
                   bs:{nm:'벅샷 룰렛', ic:'💥', ready:true, desc:'2~4명 · 마지막까지 살아남은 사람이 판돈을 모두'},
                   oe:{nm:'홀짝 대결', ic:'✊', ready:true, desc:'2명 · 번갈아 구슬을 쥐고 맞히기, 3점 먼저'},
                   bj:{nm:'블랙잭 대결', ic:'🃏', ready:true, desc:'2~5명 · 딜러 없이, 21에 가장 가까운 사람이 판돈을 모두'},
@@ -6441,7 +6441,7 @@ function mpSet(room){
   if (room.status === 'closed' || (room.status !== 'lobby' && mpMe() < 0 && !(prev && prev.state.seats.some(s => ACC.user && s.uid === ACC.user.id)))) {}
   if (room.game === 'bm') mbmSync(room);
   mpRender();
-  if ((room.status === 'over' || room.status === 'closed') && !MP.view.bmHold) mpClaim();   // 주사위 세계여행은 움직임을 다 보여 준 뒤에 받는다
+  if ((room.status === 'over' || room.status === 'closed') && !MP.view.bmHold) mpClaim();   // 부루마블은 움직임을 다 보여 준 뒤에 받는다
 }
 function mpOnEv(ev, prev){
   if (ev.t === 'bs'){ if (prev && prev.code === MP.room.code && prev.status === 'play'){ (MP.view.bsQ = MP.view.bsQ || []).push(ev); MP.view.bmHold = true; mbsRun(); } return; }
@@ -6737,7 +6737,7 @@ document.addEventListener('click', e => {
   mpAct('act', {a});
 });
 
-// 주사위 세계여행: 혼자 할 때의 보드 화면(bm.js)을 그대로 쓰고, 상태는 심판이 보낸 방 상태(BMV.mp)를 본다
+// 부루마블: 혼자 할 때의 보드 화면(bm.js)을 그대로 쓰고, 상태는 심판이 보낸 방 상태(BMV.mp)를 본다
 function mbmOpen(){
   const ov = $('#mpOv'); if (ov && !ov.hidden){ ov.hidden = true; ov.innerHTML = ''; }
   if (BMV.mp && bmOpenNow()) return bmUpdate();
@@ -6906,7 +6906,7 @@ document.addEventListener('click', e => {
    관리자 여부는 Supabase의 seed10k_admins 표가 정한다 (사이트 코드에 이메일을 넣지 않는다).
    다른 계정의 기록을 읽는 권한도 데이터베이스 정책(seed10k_is_admin)이 막고 연다. 화면을 고쳐도 일반 계정은 읽을 수 없다.
    - 부정행위 의심 알림: 심판(라즈베리파이)이 판이 끝날 때 확인해 seed10k_alerts에 적는다
-   - 유저 검색 → 최근 기록: 저장 기록(주식·기타·환전 내역), 멀티 판 결과, 받은 돈(멀티 누적 순획득), 주사위 세계여행 기록
+   - 유저 검색 → 최근 기록: 저장 기록(주식·기타·환전 내역), 멀티 판 결과, 받은 돈(멀티 누적 순획득), 부루마블 기록
    - 멀티플레이 제한/해제, 멀티로 딴 돈 회수 SQL 만들기 (남의 저장 기록은 사이트에서 고치지 않고 SQL 편집기에서 고친다) */
 const ADM = {on:false, alerts:[], unseen:0, q:'', users:null, uid:null, mode:null, data:null, ch:null};
 const admT = at => at ? new Date(at).toLocaleString('ko-KR', {timeZone:'Asia/Seoul', year:'2-digit', month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit', hour12:false}) : '';
@@ -6945,12 +6945,12 @@ function admBadge(){ $$('[data-tab="admin"]').forEach(b => b.classList.toggle('w
 function renderAdmin(){
   const v = $('#v-admin'); if (!v) return;
   if (!ADM.on){ v.innerHTML = '<p class="empty">관리자만 볼 수 있습니다.</p>'; return; }
-  const al = ADM.alerts.slice(0, 50).map(a => `<li class="adm-al ${a.seen ? 'seen' : ''}"><div><small class="muted">${admT(a.at)} · ${esc(({oe_streak:'홀짝 연승', bj_stand:'블랙잭 계속 스탠드', bm_nobuy:'주사위 세계여행 땅 안 사기'})[a.kind] || a.kind)} · ${a.mode === 'live' ? '실제 시세' : '시뮬'}</small><p>${esc(a.msg)}</p></div>
+  const al = ADM.alerts.slice(0, 50).map(a => `<li class="adm-al ${a.seen ? 'seen' : ''}"><div><small class="muted">${admT(a.at)} · ${esc(({oe_streak:'홀짝 연승', bj_stand:'블랙잭 계속 스탠드', bm_nobuy:'부루마블 땅 안 사기'})[a.kind] || a.kind)} · ${a.mode === 'live' ? '실제 시세' : '시뮬'}</small><p>${esc(a.msg)}</p></div>
       <div class="adm-al-b">${a.uid ? `<button class="btn" data-admu="${a.uid}">이긴/의심 쪽</button>` : ''}${a.other ? `<button class="btn" data-admu="${a.other}">상대</button>` : ''}${a.seen ? '' : `<button class="btn" data-admseen="${a.id}">확인함</button>`}</div></li>`).join('');
   const us = ADM.users === null ? '' : ADM.users.length ? `<ul class="adm-us">${ADM.users.map(u => `<li><button class="adm-u ${u.user_id === ADM.uid ? 'on' : ''}" data-admu="${u.user_id}"><b>${esc(u.nickname || '(닉네임 없음)')}</b><small>${esc(u.email || '')}</small><small class="muted">가입 ${admT(u.joined)}${u.last_save ? ` · 마지막 저장 ${admT(u.last_save)}` : ''}</small></button></li>`).join('')}</ul>` : '<p class="empty">찾은 계정이 없습니다.</p>';
   v.innerHTML = `<div class="stack">
     <section class="card"><div class="card-h"><h2>🚨 부정행위 의심 알림</h2><small>${ADM.unseen ? `<b class="down">확인 안 함 ${ADM.unseen}건</b>` : '모두 확인함'}</small></div>
-      <p class="muted" style="margin:0 0 8px">게임 서버가 판이 끝날 때 확인해 적습니다. 홀짝 대결: 같은 상대에게 ${WATCH_ADM.oe}연승(이후 5판마다). 블랙잭 대결: 버스트할 수 없는 11 이하에서 직접 스탠드한 판이 ${WATCH_ADM.bj}판 연속. 주사위 세계여행: 돈이 있는데 직접 '안 산다'를 고른 것이 한 판에 ${WATCH_ADM.bm}번(이후 5번마다).</p>
+      <p class="muted" style="margin:0 0 8px">게임 서버가 판이 끝날 때 확인해 적습니다. 홀짝 대결: 같은 상대에게 ${WATCH_ADM.oe}연승(이후 5판마다). 블랙잭 대결: 버스트할 수 없는 11 이하에서 직접 스탠드한 판이 ${WATCH_ADM.bj}판 연속. 부루마블: 돈이 있는데 직접 '안 산다'를 고른 것이 한 판에 ${WATCH_ADM.bm}번(이후 5번마다).</p>
       ${al ? `<ul class="adm-als">${al}</ul>` : '<p class="empty">알림이 없습니다.</p>'}
       ${ADM.unseen ? '<div class="mg-foot"><button class="btn" id="admSeenAll">모두 확인함</button></div>' : ''}</section>
     <section class="card" id="admSrv">${admSrvHTML()}</section>
@@ -7058,7 +7058,7 @@ function admUserHTML(){
     <h3 class="adm-h">멀티 받은 돈 (최근 20)</h3>${tbl('<th>시각</th><th>내용</th><th class="r">순손익</th>', pays, '받은 돈 기록이 없습니다.')}
     <h3 class="adm-h">채권·주택·복권·도박 (최근 30)</h3>${tbl('<th>날짜</th><th>내용</th><th class="r">금액</th>', alt, '내역이 없습니다.')}
     <h3 class="adm-h">주식 거래 (최근 20)</h3>${tbl('<th>날짜</th><th>구분</th><th>종목</th><th class="r">금액</th>', trades, '주식 거래 내역이 없습니다.')}
-    <h3 class="adm-h">주사위 세계여행 (최근 10)</h3>${tbl('<th>시각</th><th>결과</th><th class="r">순손익</th>', bm, '기록이 없습니다.')}
+    <h3 class="adm-h">부루마블 (최근 10)</h3>${tbl('<th>시각</th><th>결과</th><th class="r">순손익</th>', bm, '기록이 없습니다.')}
     <h3 class="adm-h">환전 (최근 10)</h3>${tbl('<th>날짜</th><th>방향</th><th class="r">낸 금액</th>', fx, '환전 내역이 없습니다.')}`;
 }
 // 남의 저장 기록은 사이트에서 못 고친다 (정책). SQL 편집기에서 실행할 문장을 만들어 준다.
