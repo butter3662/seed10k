@@ -680,7 +680,7 @@ html.gated body{overflow:hidden}
 .bs-lay i.unk{background:linear-gradient(90deg,#6d6a63,#9b968a 45%,#5c5953) top/100% 72% no-repeat,linear-gradient(#c9a23a,#8a6d22);box-shadow:0 2px 3px rgba(0,0,0,.5)}.bs-lay i.live{background:linear-gradient(#e0473f 72%,#c9a23a 72%)}.bs-lay i.blank{background:linear-gradient(#5d7fa6 72%,#c9a23a 72%)}
 @keyframes bsLayIn{from{opacity:0;transform:translateY(-18px) rotate(var(--r))}}
 .bs-lay.go i{transition:transform .5s,opacity .5s;transform:translate(0,40px) scale(.4);opacity:0}
-.bs-count{position:absolute;left:10px;bottom:8px;display:flex;gap:10px;font-size:12px;color:rgba(230,225,211,.75)}
+.bs-count{position:absolute;left:10px;top:10px;display:flex;gap:10px;font-size:12px;color:rgba(230,225,211,.75)}
 .bs-count i{display:inline-block;width:6px;height:12px;border-radius:1px;margin-right:4px;vertical-align:-1px}.bs-count i.live{background:#e0473f}.bs-count i.blank{background:#5d7fa6}
 .bs-peek{margin:0;height:24px;line-height:24px;text-align:center;font-size:13px}.bs-peek b{color:#7fb0e0}.bs-peek.live b{color:#ff6b5e}
 .bs-msg{margin:0;height:44px;display:flex;align-items:center;justify-content:center;text-align:center;font-weight:700;line-height:1.3}
@@ -727,6 +727,13 @@ html.gated body{overflow:hidden}
 .bs-stage.bs3.bang::after{animation-duration:.25s}
 .bs-stage.bs3 .bs-count{z-index:2;text-shadow:0 1px 2px #000}
 .bs-stage.hitme::after{content:'';position:absolute;inset:0;background:radial-gradient(closest-side,transparent 40%,rgba(200,0,0,.75));animation:bsFlash .7s ease-out forwards;pointer-events:none;z-index:3}
+.bs-stage.aiming .bs-count{top:auto;bottom:20px;left:50%;transform:translateX(-50%);gap:6px;font-size:11px;white-space:nowrap}
+.bs-aimui{position:absolute;inset:0;z-index:6;pointer-events:none}
+.bs-aimui .btn{pointer-events:auto;position:absolute;height:40px;padding:0 14px;font-weight:800;box-shadow:0 4px 14px rgba(0,0,0,.55)}
+.bs-aimui .bs-drop{left:50%;top:10px;transform:translateX(-50%);background:rgba(20,14,12,.8);color:#e6e1d3;border-color:rgba(255,255,255,.25)}
+.bs-aimui .bs-me{left:10px;bottom:10px;background:rgba(20,14,12,.85);color:#fff;border-color:rgba(255,255,255,.35)}
+.bs-aimui .bs-opp{position:absolute;right:10px;bottom:10px;display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.bs-aimui .bs-opp .btn{position:static;pointer-events:auto}
 .bs-snd{position:absolute;right:8px;top:8px;z-index:7;width:34px;height:34px;padding:6px;border-radius:50%;border:1px solid rgba(255,255,255,.18);background:rgba(0,0,0,.45);color:#e6e1d3;cursor:pointer}.bs-snd svg{width:100%;height:100%;display:block}
 .bs-black{position:absolute;inset:0;z-index:6;background:#000;pointer-events:none}
 .bs-ico{display:block;width:24px;height:24px}.bs-ico svg{width:100%;height:100%;display:block}.bs-it.ro .bs-ico{width:20px;height:20px}
@@ -1146,7 +1153,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '2.2.12';
+const VERSION = '2.2.13';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -5237,8 +5244,16 @@ function bsCtlHTML(g, me, myTurn){
   if (W === 'rack') return `<button class="btn solid bs-big" data-bsdo="rack">⬅︎ 펌프 당기기</button>`;
   if (!myTurn) return '';
   if (!BSV.hold) return `<button class="btn solid bs-big" data-bsdo="hold">총 들기</button>`;
-  const t = BSV.aimT;
-  return `${g.pl.map((p, i) => p.out ? '' : `<button class="btn ${i === me ? '' : 'bs-red'}" data-bsaim="${i}">${i === me ? '나 쏘기' : `${esc(p.nm)} 쏘기`}</button>`).join('')}<button class="btn" data-bsdo="drop">내려놓기</button>`;
+  return '';   // 총을 든 뒤의 단추(내려놓기·나에게·상대에게)는 무대 위에 띄운다 (bsAimUI)
+}
+// 총을 들었을 때 무대 위 단추: 가운데 위 '내려놓기', 왼쪽 아래 '👇 나에게', 오른쪽 아래 '👆 상대에게' (상대가 여럿이면 이름별로)
+function bsAimUI(g, me){
+  const opp = g.pl.map((p, i) => i).filter(i => i !== me && !g.pl[i].out);
+  return `<div class="bs-aimui">
+    <button class="btn bs-drop" data-bsdo="drop">내려놓기</button>
+    <button class="btn bs-me" data-bsaim="${me}">👇 나에게</button>
+    <div class="bs-opp">${opp.map(i => `<button class="btn bs-red" data-bsaim="${i}">👆 ${opp.length > 1 ? `${esc(g.pl[i].nm)}에게` : '상대에게'}</button>`).join('')}</div>
+  </div>`;
 }
 // 사람이 할 차례를 기다린다 (장전·펌프). 너무 오래 안 누르면 저절로 넘어간다
 function bsAwait(k, ms, rer){
@@ -5290,12 +5305,12 @@ function bsTableHTML(g, me, o){
   const aim = BSV.aim || (myTurn && BSV.hold && BSV.aimT !== null && BSV.aimT !== undefined ? (BSV.aimT === me ? 'down' : 'up') : 'rest');
   return `${o.solo ? '' : !g.over && o.mine ? '<div class="bs-quit"><button class="btn" data-bsdo="quit">기권</button></div>' : '<div class="bs-quit"></div>'}<div class="bs-table">
     <div class="bs-opps n${g.n - 1}">${opp}</div>
-    <div class="bs-stage ${BSV.fx || ''} ${s3 ? 'bs3' : ''} ${BSV.fx === 'bang' && BSV.flash === 'p' + me ? 'hitme' : ''}">
+    <div class="bs-stage ${BSV.fx || ''} ${s3 ? 'bs3' : ''} ${myTurn && BSV.hold ? 'aiming' : ''} ${BSV.fx === 'bang' && BSV.flash === 'p' + me ? 'hitme' : ''}">
       ${s3 ? `<div class="bs3-slot" ${myTurn && !BSV.hold ? 'data-bsgun="1" role="button" aria-label="총 들기"' : ''}></div>` : `<div class="bs-lamp"></div>
       <div class="bs-dealer ${BSV.lay && BSV.lay.in && BSV.lay.in.length ? 'feed' : ''} ${BSV.fx === 'rack' ? 'racking' : ''}">${BS_DEALER}<i class="bs-hand l">${BS_HAND}</i><i class="bs-hand r">${BS_HAND}</i></div>
       ${bsLayHTML()}
       <div class="bs-gunwrap aim-${aim} ${BSV.hold || BSV.aim === 'up' || BSV.aim === 'down' ? 'held' : ''} ${g.saw ? 'sawed' : ''}" ${myTurn && !BSV.hold ? 'data-bsgun="1" role="button" aria-label="총 들기"' : ''}><div class="bs-kick">${BS_GUN}<i class="bs-muzzle"></i></div></div>
-      `}<button class="bs-snd" data-bsdo="snd" aria-label="${BSA.on ? '소리 끄기' : '소리 켜기'}">${bsaIcon()}</button>${BSV.black && !s3 ? '<div class="bs-black"></div>' : ''}${BSV.banner ? `<div class="bs-banner">${BSV.banner}</div>` : ''}
+      `}${myTurn && BSV.hold ? bsAimUI(g, me) : ''}<button class="bs-snd" data-bsdo="snd" aria-label="${BSA.on ? '소리 끄기' : '소리 켜기'}">${bsaIcon()}</button>${BSV.black && !s3 ? '<div class="bs-black"></div>' : ''}${BSV.banner ? `<div class="bs-banner">${BSV.banner}</div>` : ''}
       ${!s3 && BSV.eject !== undefined && BSV.eject !== null ? `<i class="bs-eject ${BSV.eject ? 'live' : 'blank'}"></i>` : ''}
       <div class="bs-count"><span><i class="live"></i>실탄 <b>${g.live}</b></span><span><i class="blank"></i>공포탄 <b>${g.blank}</b></span>${g.saw ? '<span>🪚 톱</span>' : ''}</div>
     </div>
