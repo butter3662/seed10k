@@ -975,6 +975,18 @@ html.bm-open .top,html.bm-open .tabbar{visibility:hidden}
 .bm-tok.b3t .bm-pawn{display:block;width:100%;height:100%;overflow:visible;filter:drop-shadow(0 1px 0 rgba(0,0,0,.35))}
 .bm-tok.b3t.turn .bm-pawn{filter:drop-shadow(0 0 4px #fff) drop-shadow(0 0 8px var(--pc))}
 .bm-tok.b3t.turn .bm-tok-i{outline:0}
+.bm-ov.b3 .bm-tok.b3t .bm-tok-i.bm-p3{position:absolute;inset:0;transform-style:preserve-3d;background:none;box-shadow:none;border-radius:0}
+.bm-p3 i{position:absolute;left:50%;top:50%;width:calc(var(--r) * 2 * var(--S));height:calc(var(--r) * 2 * var(--S));transform:translate(-50%,-50%) translateZ(calc(var(--z) * 1.5 * var(--S)));border-radius:50%;
+  background:radial-gradient(circle at 34% 32%,color-mix(in srgb,var(--pc) 45%,#fff) 0,var(--pc) 45%,color-mix(in srgb,var(--pc) 50%,#000) 100%)}
+.bm-p3 i.hd{background:radial-gradient(circle at 36% 34%,#fff 0,color-mix(in srgb,var(--pc) 40%,#fff) 18%,var(--pc) 60%,color-mix(in srgb,var(--pc) 55%,#000) 100%)}
+.bm-tok.b3t.turn .bm-tok-sh{background:radial-gradient(closest-side,color-mix(in srgb,var(--pc) 80%,#fff) 0,color-mix(in srgb,var(--pc) 60%,transparent) 55%,transparent);animation:bmglow3 1s ease-in-out infinite alternate}   /* 차례인 말: 발밑이 빛난다 */
+@keyframes bmglow3{to{opacity:.55}}
+.bm-ov.b3 .bm-tok.b3t.turn .bm-tok-i{animation:bmbob3 1s ease-in-out infinite}
+.bm-ov.b3 .bm-tok.b3t .bm-tok-i.hop{animation:bmhop3 .15s ease-out}
+.bm-ov.b3 .bm-tok.b3t .bm-tok-i.fly{animation:bmfly3 .62s ease-in-out}
+@keyframes bmbob3{50%{transform:translateZ(calc(var(--S) * .18))}}
+@keyframes bmhop3{50%{transform:translateZ(calc(var(--S) * .6))}100%{transform:none}}
+@keyframes bmfly3{50%{transform:translateZ(calc(var(--S) * 2.2)) scale(1.15)}100%{transform:none}}
 .bm-tok-sh{position:absolute;left:8%;top:8%;width:84%;height:84%;border-radius:50%;background:radial-gradient(closest-side,rgba(0,0,0,.5),transparent);transform:translate(10%,10%)}
 .bm-tags{position:absolute;inset:0;pointer-events:none;z-index:3}
 .bm-tag.on{background:var(--pc);color:#111}
@@ -1201,7 +1213,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '2.2.24';
+const VERSION = '2.2.25';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -4061,6 +4073,17 @@ function bmDieHTML(){
   const face = (n, cls) => `<div class="bm-f ${cls}">${[1, 2, 3, 4, 5, 6, 7, 8, 9].map(k => `<i${BM_PIPS[n].includes(k) ? ' class="on"' : ''}></i>`).join('')}</div>`;
   return `<div class="bm-die"><div class="bm-cube">${face(1, 'f1')}${face(6, 'f6')}${face(3, 'f3')}${face(4, 'f4')}${face(5, 'f5')}${face(2, 'f2')}</div></div>`;
 }
+// 입체 체스 폰: 판과 나란한 원판을 높이별로 쌓는다 (회전체를 얇게 썬 모양). 반지름 r·높이 z는 말 크기(--S)에 대한 비율
+//   받침(넓고 낮다) → 허리(좁아짐) → 깃 → 목 → 둥근 머리. 비스듬히 보면 쌓인 원판의 가장자리가 옆면처럼 보인다
+const BM_PAWN = (() => {
+  const L = [];
+  for (let z = 0; z <= 0.1; z += 0.012) L.push([z, 0.5 - z * 0.6]);                    // 받침
+  for (let z = 0.12; z <= 0.5; z += 0.018) L.push([z, 0.36 - (z - 0.12) * 0.5]);      // 허리
+  L.push([0.52, 0.31], [0.535, 0.325], [0.55, 0.33], [0.565, 0.322], [0.58, 0.3], [0.595, 0.25], [0.61, 0.19], [0.625, 0.17]);                        // 깃
+  for (let a = -0.97; a <= 0.97; a += 0.07) L.push([0.83 + Math.sin(a * Math.PI / 2) * 0.24, Math.cos(a * Math.PI / 2) * 0.25]);   // 머리 (구)
+  return L.map(([z, r]) => [+z.toFixed(3), +Math.max(0.02, r).toFixed(3)]);
+})();
+const bmPawn3D = () => BM_PAWN.map(([z, r], k) => `<i${k === BM_PAWN.length - 1 ? ' class="hd"' : ''} style="--z:${z};--r:${r}"></i>`).join('');
 // 체스 폰 그림 (40×64): 받침 → 목 → 깃 → 머리. 좌우 그라데이션으로 둥근 몸을 표현
 function bmPawnSVG(i){
   const id = 'bmPg' + i, hl = `color-mix(in srgb,var(--pc) 38%,#fff)`, mid = 'var(--pc)', dk = `color-mix(in srgb,var(--pc) 55%,#000)`;
@@ -4085,7 +4108,7 @@ function bmBuild(){
   }).join('');
   // 말: 평면 판은 동그라미, 입체 판은 플레이어 색의 체스 폰(빛이 왼쪽 위에서 오는 원통 그늘) + 머리 위 이름표 + 판에 드리운 그림자
   const toks = g.pl.map((p, i) => bm3D()
-    ? `<div class="bm-tok b3t" data-tok="${i}" style="--pc:${BM.cols[i]}"><i class="bm-tok-sh"></i><div class="bm-tok-u"><div class="bm-tok-i">${bmPawnSVG(i)}</div></div></div>`
+    ? `<div class="bm-tok b3t" data-tok="${i}" style="--pc:${BM.cols[i]}"><i class="bm-tok-sh"></i><div class="bm-tok-i bm-p3">${bmPawn3D()}</div></div>`
     : `<div class="bm-tok" data-tok="${i}" style="--pc:${BM.cols[i]}"><div class="bm-tok-u"><div class="bm-tok-i"><span>${i === bmMe() ? '나' : esc([...p.nm][0] || '?')}</span></div></div></div>`).join('');
   const top = `<div class="bm-top"><button class="btn" id="bmClose">닫기</button><div class="bm-ttl"><b>🎲 부루마블</b><small id="bmSub"></small></div><div class="bm-tr"><button class="btn bm-spd" id="bm3d"></button><button class="btn bm-spd" id="bmSpd"></button><button class="btn" id="bmQuit">기권</button></div></div>`;
   const pls = `<div class="bm-pls" id="bmPls">${g.pl.map((p, i) => `<div class="bm-pl" data-pl="${i}"><i style="background:${BM.cols[i]}"></i><span class="bm-pn"></span><b class="num bm-pc"></b><small class="num bm-pa"></small></div>`).join('')}</div>`;
@@ -4124,7 +4147,7 @@ function bmTagLoop(){
     const box = $('#bmTags'); if (!box || !bmOpenNow()) return;
     const br = box.getBoundingClientRect(), g = bmG();
     box.querySelectorAll('[data-tag]').forEach(t => {
-      const i = +t.dataset.tag, pw = document.querySelector(`#bmOv [data-tok="${i}"] .bm-pawn`), tok = pw && pw.closest('.bm-tok');
+      const i = +t.dataset.tag, pw = document.querySelector(`#bmOv [data-tok="${i}"] .bm-p3 .hd`), tok = pw && pw.closest('.bm-tok');
       if (!pw || !tok || tok.hidden){ t.hidden = true; return; }
       const r = pw.getBoundingClientRect(); t.hidden = false;
       t.style.transform = `translate(${r.left - br.left + r.width / 2}px, ${r.top - br.top}px) translate(-50%, -100%)`;
@@ -4221,7 +4244,7 @@ function bmPlace(instant){
     const t = document.querySelector(`#bmOv [data-tok="${i}"]`); if (!t) return;
     const [x, y, sz] = bmTokXY(i, pos[i]);
     if (instant) t.style.transition = 'none';
-    t.style.width = t.style.height = sz + 'px';
+    t.style.width = t.style.height = sz + 'px'; t.style.setProperty('--S', sz + 'px');
     t.style.transform = `translate(${x}px, ${y}px)`;
     if (instant){ t.offsetWidth; t.style.transition = ''; }
   });
