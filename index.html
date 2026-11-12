@@ -941,6 +941,43 @@ html.bm-open .top,html.bm-open .tabbar{visibility:hidden}
 .bm-pl i{width:10px;height:10px;border-radius:50%}
 .bm-pl b{font-size:13.5px}
 .bm-pl small{grid-column:2/4;color:var(--ink-3);font-size:11px}
+
+/* ── 주사위 세계여행 입체 판: 판을 45° 돌려 비스듬히 눕힌다 (마름모 모양). 칸에 두께, 말·건물은 세워서 ── */
+.bm-ov.b3{--tilt:56deg}
+.bm-stage{position:relative;width:min(100%,900px);aspect-ratio:1.5;perspective:2000px;perspective-origin:50% 20%;margin:2px auto 0;flex:none}
+.bm-stage.shake{animation:bmshake .45s}
+.bm-ov.b3 .bm-board{position:absolute;left:50%;top:46%;width:61%;aspect-ratio:1;transform:translate(-50%,-50%) rotateX(var(--tilt)) rotateZ(45deg);transform-style:preserve-3d;gap:2.5px;padding:1.4%;border-radius:16px;
+  background:linear-gradient(135deg,#7a4a26,#5a3318 60%,#4a2810);box-shadow:3px 3px 0 #3d210d,6px 6px 0 #33190a,9px 9px 0 #2a1407,12px 12px 0 #211004,16px 16px 26px rgba(0,0,0,.65)}
+.bm-ov.b3 .bm-board.shake{animation:none}
+.bm-ov.b3 .bm-c{border:0;border-radius:5px;background:linear-gradient(135deg,#fbf8f1,#e4ddcf);color:#2a2418;box-shadow:2px 2px 0 #b8ad96,3.5px 3.5px 0 #9b8f77,4px 4px 6px rgba(0,0,0,.35);overflow:hidden}
+.bm-ov.b3 .bm-c.bm-k{background:linear-gradient(135deg,#fff7df,#e9d9a8)}
+.bm-ov.b3 .bm-band{height:34%;opacity:.92}
+.bm-ov.b3 .bm-c .bm-n{position:relative;z-index:1;margin-top:0;font-size:clamp(7px,1.25vw,12px);color:#1f1a10}
+.bm-ov.b3 .bm-c:not(.bm-t-city) .bm-n{color:#7a5a12}
+.bm-ov.b3 .bm-c .bm-p{position:relative;z-index:1;color:#5b5243;font-size:clamp(6px,1.05vw,10px)}
+.bm-ov.b3 .bm-c .bm-bld{display:none}
+.bm-ov.b3 .bm-c.own{background:linear-gradient(135deg,color-mix(in srgb,var(--oc) 32%,#fbf8f1),color-mix(in srgb,var(--oc) 48%,#e4ddcf));box-shadow:inset 0 0 0 2px var(--oc),2px 2px 0 color-mix(in srgb,var(--oc) 55%,#6b604c),3.5px 3.5px 0 color-mix(in srgb,var(--oc) 45%,#4d4535),4px 4px 6px rgba(0,0,0,.35)}
+.bm-ov.b3 .bm-c.own .bm-p{color:color-mix(in srgb,var(--oc) 70%,#000)}
+.bm-ov.b3 .bm-c.sel{outline:3px solid #fff;outline-offset:-2px}
+.bm-ov.b3 .bm-c .bm-ic{font-size:clamp(11px,2.2vw,22px)}
+.bm-logo{grid-row:2/11;grid-column:2/11;margin:4%;border-radius:12px;display:grid;place-content:center;justify-items:center;gap:2px;pointer-events:none;
+  background:radial-gradient(60% 60% at 50% 45%,#1f5f4a,#123b30 70%,#0b2620);box-shadow:inset 0 0 0 3px rgba(226,180,94,.35),inset 0 0 40px rgba(0,0,0,.55)}
+.bm-ov:not(.b3) .bm-logo{display:none}
+.bm-logo>*{transform:translate(16%,16%)}   /* 판 위에서 화면 아래쪽(대각선)으로 비켜 주사위와 겹치지 않게 */
+.bm-logo b{font-size:clamp(14px,3.2vw,36px);font-weight:900;letter-spacing:.06em;color:#f2cb7a;text-shadow:0 2px 0 #7a5212,0 4px 8px rgba(0,0,0,.5);line-height:1.05}
+.bm-logo small{font-size:clamp(7px,1.3vw,12px);letter-spacing:.35em;color:rgba(242,203,122,.65);margin-top:4px}
+.bm-ov.b3 .bm-toks,.bm-ov.b3 .bm-tok{transform-style:preserve-3d}
+.bm-ov.b3 .bm-tok-u{width:100%;height:100%;transform-origin:50% 100%;transform:rotateZ(-45deg) rotateX(calc(var(--tilt) * -1)) translateY(-18%);transform-style:preserve-3d}
+.bm-tok-u{width:100%;height:100%}
+.bm-ov.b3 .bm-tok-i{box-shadow:0 3px 0 color-mix(in srgb,var(--pc) 55%,#000),0 8px 10px rgba(0,0,0,.45)}
+.bm-blds{position:absolute;inset:0;transform-style:preserve-3d;pointer-events:none}
+.bm-b3{position:absolute;transform-style:preserve-3d;width:0;height:0}
+.bm-b3 i{position:absolute;left:0;bottom:0;transform-origin:50% 100%;transform:translateX(-50%) rotateZ(-45deg) rotateX(calc(var(--tilt) * -1));font-style:normal;white-space:nowrap;line-height:1;letter-spacing:-.18em;filter:drop-shadow(0 2px 1px rgba(0,0,0,.5)) drop-shadow(0 0 2px var(--oc))}
+.bm-hud{position:absolute;left:50%;top:36%;transform:translate(-50%,-50%);display:grid;justify-items:center;gap:6px;pointer-events:none;width:44%;z-index:3}
+.bm-ov.b3 .bm-hud .bm-msg{text-align:center;color:#fff;text-shadow:0 1px 3px #000,0 0 8px rgba(0,0,0,.8);font-size:clamp(11px,2vw,15px)}
+.bm-ov.b3 .bm-hud .bm-die{--s:clamp(30px,5.5vw,52px);filter:drop-shadow(0 8px 8px rgba(0,0,0,.55))}
+.bm-ov.b3 .bm-fx{position:absolute;inset:0;z-index:4}
+.bm-under{width:min(100%,620px);display:flex;flex-direction:column;gap:6px;padding:4px 2px 0;overflow:visible}
 @media (prefers-reduced-motion: reduce){.bm-tok.turn .bm-tok-i,.bm-roll,.bm-c.fly{animation:none}}
 html[data-game=live] .c-news{order:3}
 /* ───────── 상세 차트 ───────── */
@@ -1154,7 +1191,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '2.2.20';
+const VERSION = '2.2.21';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -3975,6 +4012,7 @@ const BMV = {busy:false, gen:0, sel:-1, tok:null, view:null, msg:'', built:false
 function bmG(){ return BMV.mp ? (MP.room && MP.room.game === 'bm' && MP.room.state.g) || null : S && S.bm && S.bm.cur; }
 const bmMe = () => BMV.mp ? mpMe() : 0;
 const bmFast = () => !!SET.bmFast;
+const bm3D = () => SET.bm3d === undefined ? window.innerWidth >= 700 : !!SET.bm3d;   // 정하지 않았으면 화면이 넓을 때(태블릿·PC)만 입체   // 입체(비스듬히 눕힌) 판. 끄면 예전 평면 판
 const bmReduce = () => { try { return matchMedia('(prefers-reduced-motion: reduce)').matches; } catch(e){ return false; } };
 // 애니메이션 시간: 빠르게 켜면 절반
 const bmMs = ms => Math.round(ms * (bmFast() ? 0.45 : 1) * (bmReduce() ? 0.5 : 1));
@@ -4023,19 +4061,28 @@ function bmBuild(){
       : `<span class="bm-ic">${BM_ICON[c.t]}</span><span class="bm-n bm-sp">${c.s}</span><span class="bm-p"></span>`;
     return `<button class="bm-c bm-${side}${k % 10 === 0 ? ' bm-k' : ''} bm-t-${c.t}" data-bmsq="${k}" style="grid-row:${r};grid-column:${col}">${body}</button>`;
   }).join('');
-  const toks = g.pl.map((p, i) => `<div class="bm-tok" data-tok="${i}" style="--pc:${BM.cols[i]}"><div class="bm-tok-i"><span>${i === bmMe() ? '나' : esc([...p.nm][0] || '?')}</span></div></div>`).join('');
-  ov.innerHTML = `<div class="bm-top"><button class="btn" id="bmClose">닫기</button><div class="bm-ttl"><b>🎲 주사위 세계여행</b><small id="bmSub"></small></div><div class="bm-tr"><button class="btn bm-spd" id="bmSpd"></button><button class="btn" id="bmQuit">기권</button></div></div>
+  const toks = g.pl.map((p, i) => `<div class="bm-tok" data-tok="${i}" style="--pc:${BM.cols[i]}"><div class="bm-tok-u"><div class="bm-tok-i"><span>${i === bmMe() ? '나' : esc([...p.nm][0] || '?')}</span></div></div></div>`).join('');
+  const top = `<div class="bm-top"><button class="btn" id="bmClose">닫기</button><div class="bm-ttl"><b>🎲 주사위 세계여행</b><small id="bmSub"></small></div><div class="bm-tr"><button class="btn bm-spd" id="bm3d"></button><button class="btn bm-spd" id="bmSpd"></button><button class="btn" id="bmQuit">기권</button></div></div>`;
+  const pls = `<div class="bm-pls" id="bmPls">${g.pl.map((p, i) => `<div class="bm-pl" data-pl="${i}"><i style="background:${BM.cols[i]}"></i><span class="bm-pn"></span><b class="num bm-pc"></b><small class="num bm-pa"></small></div>`).join('')}</div>`;
+  const under = `<div class="bm-act" id="bmActBox"></div><div id="bmInfoBox"></div><ul class="bm-log" id="bmLog"></ul>`;
+  ov.classList.toggle('b3', bm3D());
+  // 입체 판: 판(칸·말·건물)만 비스듬히 눕히고, 주사위·글자·효과는 눕히지 않은 층에 띄운다. 고를 것·기록은 판 아래로
+  ov.innerHTML = bm3D() ? `${top}
+    <div class="bm-stage" id="bmStage">
+      <div class="bm-board" id="bmBoard">${cells}<div class="bm-logo"><b>주사위</b><b>세계여행</b><small>WORLD DICE TOUR</small></div>
+        <div class="bm-toks"><div class="bm-blds" id="bmBlds"></div>${toks}</div></div>
+      <div class="bm-hud"><div class="bm-dice" id="bmDice">${bmDieHTML()}${bmDieHTML()}</div><div class="bm-msg" id="bmMsg"></div></div>
+      <div class="bm-fx" id="bmFx"></div>
+    </div>
+    <div class="bm-mid bm-under">${under}</div>${pls}` : `${top}
     <div class="bm-board" id="bmBoard">${cells}
       <div class="bm-mid">
         <div class="bm-row"><div class="bm-dice" id="bmDice">${bmDieHTML()}${bmDieHTML()}</div><div class="bm-msg" id="bmMsg"></div></div>
-        <div class="bm-act" id="bmActBox"></div>
-        <div id="bmInfoBox"></div>
-        <ul class="bm-log" id="bmLog"></ul>
+        ${under}
       </div>
       <div class="bm-toks">${toks}</div>
       <div class="bm-fx" id="bmFx"></div>
-    </div>
-    <div class="bm-pls" id="bmPls">${g.pl.map((p, i) => `<div class="bm-pl" data-pl="${i}"><i style="background:${BM.cols[i]}"></i><span class="bm-pn"></span><b class="num bm-pc"></b><small class="num bm-pa"></small></div>`).join('')}</div>`;
+    </div>${pls}`;
   BMV.built = true;
   const d = g.dice || [1, 1];
   $$('#bmDice .bm-cube').forEach((c, k) => { c.style.transform = BM_FACE[d[k]]; });
@@ -4052,6 +4099,8 @@ function bmUpdate(){
   if (BMV.mp){ mpSetH($('#bmSub'), `${g.round}바퀴 · 판돈 ${fmtUSD(g.stake)} · <span id="mpTimer"></span>`); }
   else { const sb = $('#bmSub'); sb._h = null; sb.textContent = `${g.round}바퀴 · 판돈 ${fmtUSD(g.stake)}`; }
   $('#bmSpd').textContent = bmFast() ? '빠르게 ✓' : '빠르게';
+  $('#bm3d').textContent = bm3D() ? '3D ✓' : '3D';
+  BMV.lastV = V;
   $('#bmQuit').hidden = g.over;
   BM_SQ.forEach((c, k) => {
     const el = ov.querySelector(`[data-bmsq="${k}"]`); if (!el) return;
@@ -4116,8 +4165,8 @@ function bmInfo(g, k){
 function bmTokXY(i, k){
   const b = $('#bmBoard'), el = b && b.querySelector(`[data-bmsq="${k}"]`); if (!el) return [0, 0];
   // 칸 아래쪽 절반에 2×2로 선다 (이름을 가리지 않게)
-  const w = el.offsetWidth, h = el.offsetHeight, sz = Math.min(w, h) * 0.36;
-  const xy = [[0.3, 0.58], [0.7, 0.58], [0.3, 0.84], [0.7, 0.84]][i];
+  const w = el.offsetWidth, h = el.offsetHeight, b3 = bm3D(), sz = Math.min(w, h) * (b3 ? 0.46 : 0.36);
+  const xy = (b3 ? [[0.3, 0.3], [0.7, 0.3], [0.3, 0.7], [0.7, 0.7]] : [[0.3, 0.58], [0.7, 0.58], [0.3, 0.84], [0.7, 0.84]])[i];
   return [el.offsetLeft + w * xy[0] - sz / 2, el.offsetTop + h * xy[1] - sz / 2, sz];
 }
 function bmPlace(instant){
@@ -4131,10 +4180,22 @@ function bmPlace(instant){
     t.style.transform = `translate(${x}px, ${y}px)`;
     if (instant){ t.offsetWidth; t.style.transition = ''; }
   });
+  bmBldPlace();
+}
+// 입체 판의 건물: 칸 위에 서 있게 (칸은 판과 같이 누워 있으므로 건물만 따로 세운다)
+function bmBldPlace(){
+  const box = $('#bmBlds'), g = bmG(), V = BMV.lastV; if (!box || !g || !V) return;
+  const html = BM_SQ.map((c, k) => {
+    if (c.t !== 'city' || c.sp || !(V.lv[k] > 0)) return '';
+    const el = document.querySelector(`#bmBoard [data-bmsq="${k}"]`); if (!el) return '';
+    const w = el.offsetWidth, h = el.offsetHeight;
+    return `<span class="bm-b3" style="left:${el.offsetLeft + w / 2}px;top:${el.offsetTop + h * 0.5}px;font-size:${Math.max(8, Math.min(w, h) * 0.34)}px;--oc:${V.own[k] >= 0 ? BM.cols[V.own[k]] : '#999'}"><i>${bmBldIcons(V.lv[k])}</i></span>`;
+  }).join('');
+  if (box.dataset.h !== html){ box.innerHTML = html; box.dataset.h = html; }
 }
 // 효과: 떠오르는 글자, 날아가는 동전, 가운데 배너, 칸 튀기기
 function bmCenterOf(el){
-  const b = $('#bmBoard'); if (!b || !el) return [0, 0];
+  const b = $('#bmFx'); if (!b || !el) return [0, 0];
   const r = el.getBoundingClientRect(), br = b.getBoundingClientRect();
   return [r.left - br.left + r.width / 2, r.top - br.top + r.height / 2];
 }
@@ -4171,7 +4232,7 @@ function bmPop(k, cls){
   const el = document.querySelector(`#bmOv [data-bmsq="${k}"]`); if (!el) return;
   el.classList.remove('pop', 'shine'); el.offsetWidth; el.classList.add(cls || 'pop');
 }
-function bmShake(){ const b = $('#bmBoard'); if (!b) return; b.classList.remove('shake'); b.offsetWidth; b.classList.add('shake'); }
+function bmShake(){ const b = $('#bmStage') || $('#bmBoard'); if (!b) return; b.classList.remove('shake'); b.offsetWidth; b.classList.add('shake'); }
 function bmConfetti(){
   const fx = $('#bmFx'); if (!fx) return;
   const cols = ['#E2B45E', '#4C9AFF', '#FF6B6B', '#36C38A', '#C58CFF'];
@@ -4372,6 +4433,10 @@ document.addEventListener('click', e => {
   if (t.id === 'bmClose'){ bmHide(); return; }
   if (BMV.mp && t.id === 'bmQuit'){ mbmQuit(); return; }
   if (t.id === 'bmSpd'){ SET.bmFast = !SET.bmFast; saveSet(); bmUpdate(); return; }
+  if (t.id === 'bm3d'){
+    if (BMV.busy) return toast('움직이는 중에는 바꿀 수 없습니다. 잠시 뒤에 누르세요', true);
+    SET.bm3d = !bm3D(); saveSet(); BMV.built = false; bmBuild(); bmUpdate(); return;
+  }
   if (t.id === 'bmQuit'){
     const qr = bmQuitRank(g), qm = BM.pay[g.n][qr - 1] || 0;
     const c = showModal(`<h2>기권할까요?</h2><p>지금 파산한 것으로 보고 <b>${qr}위 (${g.n}명 중)</b>로 끝납니다. ${qm ? `판돈의 ${qm}배인 ${fmtUSD(Math.round(g.stake * qm * 100) / 100)}을 돌려받습니다.` : `판돈 ${fmtUSD(g.stake)}을 잃습니다.`}</p><div class="acts"><button class="btn" data-close>계속하기</button><button class="btn solid" id="bmQuitYes">기권</button></div>`);
