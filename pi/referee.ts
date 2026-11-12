@@ -99,7 +99,7 @@ async function bjWatch(room: Room, res: any) {   // 블랙잭: 버스트할 수 
     const rows = await rest("GET", `seed10k_mp_results?game=eq.bj&uids=cs.%7B${encodeURIComponent(uid)}%7D&order=id.desc&limit=60&select=uids,summary`) || [];
     const n = bjLowStreak(rows, uid);
     if (streakHit(n, WATCH.bjStand)) await alert({ kind: "bj_stand", game: "bj", code: room.code, mode: room.mode, uid,
-      msg: `블랙잭 테이블: ${room.state.seats[i].nick}이(가) ${n}판 연속 11 이하에서 스탠드 (판돈 $${room.stake}, 방 ${room.code})`, detail: { n } });
+      msg: `블랙잭 대결: ${room.state.seats[i].nick}이(가) ${n}판 연속 11 이하에서 스탠드 (판돈 $${room.stake}, 방 ${room.code})`, detail: { n } });
   }
 }
 async function banned(uid: string) {
