@@ -1144,7 +1144,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '2.2.7';
+const VERSION = '2.2.8';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -5386,8 +5386,9 @@ async function bsPlay(ev, done, rerender){
       } else if (e.t === 'peek'){ bsViewDo(e); BSAU.peek();
         if (BS3.st === 'on'){ BSV.item = {it:'glass', by:e.i === me() ? 'me' : 'op', d:1.5}; BSV.msg = `🔍 ${nm(e.i)} 돋보기로 총을 들여다본다…`; rerender(); await bsWait(700); }
         BSV.fx = 'peek'; BSV.msg = e.i === me() && e.live !== undefined ? `🔍 지금 탄은 ${e.live ? '실탄' : '공포탄'}` : e.i === me() ? '🔍 돋보기로 탄을 확인했다' : `🔍 ${nm(e.i)}이(가) 돋보기로 탄을 확인했다`; rerender(); await bsWait(BS3.st === 'on' ? 900 : 1000); BSV.fx = ''; BSV.item = null;
-      } else if (e.t === 'beer'){ bsViewDo(e); BSAU.beer();
+      } else if (e.t === 'beer'){ BSAU.beer();
         if (BS3.st === 'on'){ BSV.item = {it:'beer', by:e.i === me() ? 'me' : 'op', d:1.3}; BSV.msg = `🍺 ${nm(e.i)} 맥주를 들이켠다…`; rerender(); await bsWait(1300); BSV.item = null; }
+        bsViewDo(e);   // 남은 탄 수는 펌프로 탄이 빠지는 순간에 줄인다 (마시기 전에 줄면 결과가 먼저 보인다)
         BSAU.rack(); BSAU.drop(0.5);
         BSV.fx = 'rack'; BSV.eject = e.live; BSV.msg = `🍺 탄을 빼냈다: ${e.live ? '실탄' : '공포탄'}`; rerender(); await bsWait(1000); BSV.fx = ''; BSV.eject = null;
       } else if (e.t === 'cuff'){ bsViewDo(e);
