@@ -1154,7 +1154,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '2.2.18';
+const VERSION = '2.2.19';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -1251,7 +1251,7 @@ function toDisp(cur, v){
   if (m === 'krw' && cur === 'USD') return {v:v * fxNow(), cur:'KRW'};
   return {v, cur};
 }
-function fmtPct(v, d = 2){ if (!isFinite(v)) return '0.00%'; const s = Math.abs(v * 100).toFixed(d) + '%'; return (v > 0.000005 ? '+' : v < -0.000005 ? MINUS : '') + s; }
+function fmtPct(v, d = 2){ if (v === Infinity) return '∞%'; if (v === -Infinity) return MINUS + '∞%'; if (!isFinite(v)) return '0.00%'; const s = Math.abs(v * 100).toFixed(d) + '%'; return (v > 0.000005 ? '+' : v < -0.000005 ? MINUS : '') + s; }
 function signUSD(v){ return (v > 0.004 ? '+' : '') + fmtUSD(v); }
 function cls(v){ return v > 0.000005 ? 'up' : v < -0.000005 ? 'down' : 'flat'; }
 function fmtCapKRW(krw){
@@ -1553,7 +1553,8 @@ function exQuote(dir, amt){
   const to = Math.floor(amt / r.buy * 100) / 100;
   return {dir, from:amt, to, rate:r.buy, feeUSD:amt / r.base - to, r};
 }
-function spendUSD(x){ if (x <= S.usd + 1e-9){ S.usd -= x; return 0; } const od = x - S.usd; S.usd = 0; addLoan('od', od); return od; }
+function spendUSD(x){ if (ACC.tester) return 0;   // 테스트 계정: 무엇을 사든 돈이 줄지 않는다 (0원 처리)
+  if (x <= S.usd + 1e-9){ S.usd -= x; return 0; } const od = x - S.usd; S.usd = 0; addLoan('od', od); return od; }
 /* 대출 kind에 amt를 빌린다: 빚은 amt × (1 + 수수료)만큼 늘고, 수수료는 낸 이자로 센다 */
 function addLoan(kind, amt){ const fee = amt * META.loanFee; S.loans[kind].bal += amt + fee; S.interestPaid += fee; return fee; }
 function receiveUSD(x){ if (S.loans.od.bal > 0){ const r = Math.min(x, S.loans.od.bal); S.loans.od.bal -= r; x -= r; } S.usd += x; }
@@ -1663,7 +1664,7 @@ function doBuy(id, q, tag, autoFX, fill){
       const x = exchange('u2k', usd, true); if (!x) return false;
       toast(`${fmtUSDn(x.from)}를 ${fmtKRWn(x.to)}으로 환전했습니다`);
     }
-    S.krw -= o.total;
+    if (!ACC.tester) S.krw -= o.total;   // 테스트 계정은 0원 처리
   } else {
     // 달러가 모자라면 원화를 먼저 바꿔 채우고(마이너스통장 상환에 쓰지 않음), 그래도 모자란 만큼만 마이너스통장
     if (o.total > S.usd + 1e-9 && autoFX && S.krw >= 1){
@@ -3314,6 +3315,7 @@ function closeSheet(){
    S.twr.b: 지금 기간이 시작할 때의 순자산 (방금 들어온 포인트 포함)
    수익률 = f × N ÷ b − 1. 포인트가 없으면 f = 1, b = 시드라서 N ÷ 시드 − 1과 같다. */
 function twrRet(N = netWorth()){
+  if (ACC.tester) return Infinity;   // 테스트 계정: 수익률은 ∞로 보여 준다
   const t = S.twr || {f:1, b:META.seed};
   return t.b > 0 ? t.f * N / t.b - 1 : -1;
 }
@@ -7434,11 +7436,13 @@ setInterval(() => { if (!document.hidden) loadExtras(false); }, 5 * 60e3);
 /* 돈 내기·받기 (원화·달러 통장). 모자라면 다른 통화에서 자동 환전한다. 마이너스통장은 쓰지 않는다 */
 function canPayKRW(a){ return S.krw + Math.max(0, S.usd) * fxRates().sell >= a - 1e-6; }
 function payKRW(a){
+  if (ACC.tester) return true;   // 테스트 계정: 0원 처리
   if (S.krw < a){ const need = usdForKRW(a - S.krw); if (need > S.usd + 1e-9) return false; if (!exchange('u2k', need, true)) return false; }
   S.krw -= a; return true;
 }
 function canPayUSD(a){ return S.usd + S.krw / fxRates().buy >= a - 1e-6; }
 function payUSD(a){
+  if (ACC.tester) return true;   // 테스트 계정: 0원 처리
   if (S.usd < a){ const need = fxFromForTarget('k2u', a - S.usd); if (need > S.krw + 1e-9) return false; if (!exchange('k2u', need, true, true)) return false; }
   S.usd -= a; return true;
 }
