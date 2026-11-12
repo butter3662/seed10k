@@ -728,7 +728,7 @@ html.gated body{overflow:hidden}
 .bs-snd{position:absolute;right:8px;top:8px;z-index:7;width:34px;height:34px;padding:6px;border-radius:50%;border:1px solid rgba(255,255,255,.18);background:rgba(0,0,0,.45);color:#e6e1d3;cursor:pointer}.bs-snd svg{width:100%;height:100%;display:block}
 .bs-black{position:absolute;inset:0;z-index:6;background:#000;pointer-events:none}
 .bs-ico{display:block;width:24px;height:24px}.bs-ico svg{width:100%;height:100%;display:block}.bs-it.ro .bs-ico{width:20px;height:20px}
-.bs-quit{display:flex;justify-content:flex-end;margin-bottom:6px}.bs-quit .btn{height:34px;padding:0 14px;font-size:13px;opacity:.85}
+.bs-quit{display:flex;justify-content:flex-end;min-height:34px;margin-bottom:6px}.bs-quit .btn{height:34px;padding:0 14px;font-size:13px;opacity:.85}
 /* 기기의 '동작 줄이기'가 켜져 있어도 이 게임의 연출은 보여 준다 (짧고 깜빡임이 약한 것만) */
 @media (prefers-reduced-motion:reduce){
   .bs-gunwrap,.bs-gunwrap .bs-barrel,.bs-lay i.in,.bs-lay.go i{transition:transform .35s,opacity .35s!important}
@@ -1144,7 +1144,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '2.2.6';
+const VERSION = '2.2.7';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -5285,7 +5285,7 @@ function bsTableHTML(g, me, o){
   const msg = BSV.msg || (g.over ? (g.win === me ? '🏆 살아남았다!' : '💀 졌다') : myTurn ? (BSV.hold ? (BSV.aimT !== null && BSV.aimT !== undefined ? `${BSV.aimT === me ? '나' : esc(g.pl[BSV.aimT].nm)}에게 겨눴다` : '누구를 쏠까? (자리나 버튼을 누르면 바로 쏜다)') : '아이템을 쓰거나 총을 드세요') : `${esc(g.pl[g.turn].nm)} 차례…`);
   const s3 = bs3Want(); BS3.ctx = {g, me};
   const aim = BSV.aim || (myTurn && BSV.hold && BSV.aimT !== null && BSV.aimT !== undefined ? (BSV.aimT === me ? 'down' : 'up') : 'rest');
-  return `<div class="bs-table">
+  return `${!g.over && o.mine ? `<div class="bs-quit"><button class="btn" data-bsdo="quit">${o.foot === undefined && g.pl.length === 2 && bsTn(g) <= BS_QUIT_TN ? `기권 (절반 환불 · ${bsTn(g)}/${BS_QUIT_TN})` : '기권'}</button></div>` : '<div class="bs-quit"></div>'}<div class="bs-table">
     <div class="bs-opps n${g.n - 1}">${opp}</div>
     <div class="bs-stage ${BSV.fx || ''} ${s3 ? 'bs3' : ''} ${BSV.fx === 'bang' && BSV.flash === 'p' + me ? 'hitme' : ''}">
       ${s3 ? `<div class="bs3-slot" ${myTurn && !BSV.hold ? 'data-bsgun="1" role="button" aria-label="총 들기"' : ''}></div>` : `<div class="bs-lamp"></div>
@@ -5301,7 +5301,7 @@ function bsTableHTML(g, me, o){
     <div class="bs-ctl">${bsCtlHTML(g, me, myTurn)}</div>
     ${seat(g.pl[me], me, true)}
   </div>
-  <div class="bs-foot">${!g.over && o.mine ? '<div class="bs-quit"><button class="btn" data-bsdo="quit">기권</button></div>' : ''}${o.foot || (g.over && !BSV.busy && o.mine ? `<div class="bm-acts"><button class="btn solid" id="bsEnd">결과 보기</button>${g.win !== me && !g.quit ? '<button class="btn run-btn" id="bsRun">🏃 도망가기</button>' : ''}</div>` : '')}</div>
+  <div class="bs-foot">${o.foot || (g.over && !BSV.busy && o.mine ? `<div class="bm-acts"><button class="btn solid" id="bsEnd">결과 보기</button>${g.win !== me && !g.quit ? '<button class="btn run-btn" id="bsRun">🏃 도망가기</button>' : ''}</div>` : '')}</div>
   <ul class="bm-log bs-log">${g.log.slice(-5).reverse().map(t => `<li>${esc(t)}</li>`).join('')}</ul>`;
 }
 function bsRender(){ const c = $('#bsCard'); if (c) c.innerHTML = bsCardHTML(); gmSync(); }
@@ -5318,7 +5318,7 @@ function bsStart(){
   betDialog('bs', '💥 벅샷 룰렛', `<p class="muted" style="margin:0 0 8px">딜러와 1:1, 목숨 ${BS.hpMax}. 마지막까지 버티면 판돈 2배</p>`, bet => {
     const first = Math.random() < 0.5 ? 0 : 1;
     const {g, ev} = BSE.newGame(['나', '딜러'], bet, Math.random, first);
-    g.il = gamIl(); s.cur = g; commit(); gmOpen('bs');
+    g.il = gamIl(); g.tn = 1; s.cur = g; commit(); gmOpen('bs');
     BSV.msg = ''; bsRender();
     bsPlay(ev, () => bsTick());
   });
@@ -5384,12 +5384,20 @@ async function bsPlay(ev, done, rerender){
         BSV.fx = 'rack'; BSV.eject = e.live; BSV.aim = 'rest'; rerender(); BSAU.rack(); BSAU.drop(0.5); await bsWait(700); BSV.shooter = null;
         BSV.fx = ''; BSV.eject = null;
       } else if (e.t === 'peek'){ bsViewDo(e); BSAU.peek();
-        BSV.fx = 'peek'; BSV.msg = e.i === me() && e.live !== undefined ? `🔍 지금 탄은 ${e.live ? '실탄' : '공포탄'}` : e.i === me() ? '🔍 돋보기로 탄을 확인했다' : `🔍 ${nm(e.i)}이(가) 돋보기로 탄을 확인했다`; rerender(); await bsWait(1000); BSV.fx = '';
-      } else if (e.t === 'beer'){ bsViewDo(e); BSAU.beer(); BSAU.rack(0.35); BSAU.drop(0.85);
+        if (BS3.st === 'on'){ BSV.item = {it:'glass', by:e.i === me() ? 'me' : 'op', d:1.5}; BSV.msg = `🔍 ${nm(e.i)} 돋보기로 총을 들여다본다…`; rerender(); await bsWait(700); }
+        BSV.fx = 'peek'; BSV.msg = e.i === me() && e.live !== undefined ? `🔍 지금 탄은 ${e.live ? '실탄' : '공포탄'}` : e.i === me() ? '🔍 돋보기로 탄을 확인했다' : `🔍 ${nm(e.i)}이(가) 돋보기로 탄을 확인했다`; rerender(); await bsWait(BS3.st === 'on' ? 900 : 1000); BSV.fx = ''; BSV.item = null;
+      } else if (e.t === 'beer'){ bsViewDo(e); BSAU.beer();
+        if (BS3.st === 'on'){ BSV.item = {it:'beer', by:e.i === me() ? 'me' : 'op', d:1.3}; BSV.msg = `🍺 ${nm(e.i)} 맥주를 들이켠다…`; rerender(); await bsWait(1300); BSV.item = null; }
+        BSAU.rack(); BSAU.drop(0.5);
         BSV.fx = 'rack'; BSV.eject = e.live; BSV.msg = `🍺 탄을 빼냈다: ${e.live ? '실탄' : '공포탄'}`; rerender(); await bsWait(1000); BSV.fx = ''; BSV.eject = null;
-      } else if (e.t === 'cuff'){ bsViewDo(e); BSAU.cuff(); BSV.msg = `⛓️ ${nm(e.target)}에게 수갑`; rerender(); await bsWait(800); }
+      } else if (e.t === 'cuff'){ bsViewDo(e);
+        if (BS3.st === 'on'){ BSV.item = {it:'cuff', by:e.i === me() ? 'me' : 'op', d:1.2}; BSAU.cuff(0.62); } else BSAU.cuff();
+        BSV.msg = `⛓️ ${nm(e.target)}에게 수갑`; rerender(); await bsWait(BS3.st === 'on' ? 1300 : 800); BSV.item = null; }
       else if (e.t === 'saw'){ bsViewDo(e); BSV.sawBy = e.i === me() ? 'me' : 'op'; BSV.fx = 'saw'; BSV.msg = `🪚 ${nm(e.i)} 총신을 자른다…`; rerender(); if (BS3.st === 'on') BSAU.saw(); await bsWait(BS3.st === 'on' ? 1350 : 500); BSV.msg = '🪚 총신을 잘랐다 · 다음 한 발 2배'; rerender(); await bsWait(700); BSV.fx = ''; }
-      else if (e.t === 'heal'){ bsViewDo(e); BSAU.cig(); BSV.msg = `🚬 ${nm(e.i)} 목숨 +1`; rerender(); await bsWait(800); }
+      else if (e.t === 'heal'){
+        if (BS3.st === 'on'){ BSV.item = {it:'cig', by:e.i === me() ? 'me' : 'op', d:1.6}; BSAU.cig(); BSV.msg = `🚬 ${nm(e.i)} 담배를 피운다…`; rerender(); await bsWait(1000); }
+        else BSAU.cig();
+        bsViewDo(e); BSV.msg = `🚬 ${nm(e.i)} 목숨 +1`; rerender(); await bsWait(BS3.st === 'on' ? 700 : 800); BSV.item = null; }
       else if (e.t === 'skip'){ BSV.msg = `⛓️ ${nm(e.i)} 수갑 때문에 한 번 쉼`; rerender(); await bsWait(900); }
       else if (e.t === 'again'){ BSV.msg = '공포탄 · 한 번 더!'; rerender(); await bsWait(700); }
       else if (e.t === 'turn' || e.t === 'win') bsViewDo(e);
@@ -5399,7 +5407,7 @@ async function bsPlay(ev, done, rerender){
       BSV.banner = '네 차례다'; BSV.msg = ''; rerender(); BSAU.turn(); await bsWait(1100); BSV.banner = '';
     }
   } catch(err){ if (err !== 'stop') console.error(err); }
-  BSV.busy = false; BSV.view = null; BSV.shooter = null; BSV.black = false; BSV.msg = ''; BSV.fx = ''; BSV.aim = null; BSV.eject = null; BSV.lay = null; BSV.flash = ''; BSV.want = null; BSV.go = null; BSV.banner = '';
+  BSV.busy = false; BSV.view = null; BSV.shooter = null; BSV.black = false; BSV.item = null; BSV.msg = ''; BSV.fx = ''; BSV.aim = null; BSV.eject = null; BSV.lay = null; BSV.flash = ''; BSV.want = null; BSV.go = null; BSV.banner = '';
   rerender();
   if (done) done();
 }
@@ -5410,31 +5418,38 @@ function bsTick(){
   BSV.t = setTimeout(() => {
     const g2 = bsS().cur; if (!g2 || g2.over || BSV.busy || g2.turn !== 1) return;
     const a = BSE.ai(g2, 1, Math.random), ev = BSE.step(g2, 1, a, Math.random) || BSE.shoot(g2, 1, 0, Math.random) || [];
+    bsTnAdd(g2, ev);
     save();
     bsPlay(ev, () => bsTick());
   }, bmMs(700));
 }
+// 몇 번째 차례인가 (혼자 할 때만 센다): 첫 차례가 1, 차례가 넘어갈 때마다 +1 (공포탄으로 나를 쏴서 한 번 더 하는 것은 같은 차례)
+const BS_QUIT_TN = 6;   // 이 차례까지 기권하면 판돈의 절반을 돌려받는다 (나와 딜러가 3번씩 총을 잡는 동안)
+const bsTn = g => g.tn || (g.shots || 0) + 1;
+function bsTnAdd(g, ev){ g.tn = bsTn(g) + ev.filter(e => e.t === 'turn').length; }
 function bsMine(a){
   const s = bsS(), g = s.cur; if (!g || g.over || BSV.busy || g.turn !== 0) return;
   const ev = BSE.step(g, 0, a, Math.random); if (!ev) return toast('지금 할 수 없습니다', true);
+  bsTnAdd(g, ev);
   save();
   bsPlay(ev, () => bsTick());
 }
 function bsFinish(run){
   const s = bsS(), g = s.cur; if (!g || !g.over || BSV.busy) return;
   const win = g.win === 0, ran = !!run && !win;
-  const pay = win ? Math.round(g.stake * 2 * 100) / 100 : ran ? g.stake : 0;
+  const half = !win && !ran && g.quit && g.quitHalf;
+  const pay = win ? Math.round(g.stake * 2 * 100) / 100 : ran ? g.stake : half ? Math.round(g.stake * 50) / 100 : 0;
   if (pay > 0) receiveUSD(pay);
   s.hist.unshift({at:Date.now(), stake:g.stake, pay, win}); s.hist = s.hist.slice(0, 10);
-  altLog('gamble', `벅샷 룰렛 ${win ? '승리' : ran ? '패배 → 도망' : '패배'}${g.il ? ' (불법)' : ''}`, pay - g.stake, 'USD');
+  altLog('gamble', `벅샷 룰렛 ${win ? '승리' : ran ? '패배 → 도망' : half ? '기권 (절반 환불)' : g.quit ? '기권' : '패배'}${g.il ? ' (불법)' : ''}`, pay - g.stake, 'USD');
   s.cur = null; commit(); gmHide();
   police('bs', g.il, pay - g.stake);
   runCheck(); if (ran) runAdd('bs', g.stake);
-  showModal(`<h2 class="${win ? 'up' : ''}">${win ? '🏆 살아남았습니다' : ran ? '🏃 도망쳤습니다' : '💀 졌습니다'}</h2>${ran ? runNote(g.stake) : ''}<div class="bd"><div><span>판돈</span><b class="num">${fmtUSD(g.stake)}</b></div><div><span>받은 돈</span><b class="num">${fmtUSD(pay)}</b></div><div><span>쏜 횟수</span><b class="num">${g.shots}발 · 장전 ${g.load}번</b></div></div><div class="acts"><button class="btn solid" data-close>확인</button></div>`);
+  showModal(`<h2 class="${win ? 'up' : ''}">${win ? '🏆 살아남았습니다' : ran ? '🏃 도망쳤습니다' : g.quit ? '🏳️ 기권했습니다' : '💀 졌습니다'}</h2>${half ? `<p class="muted">${BS_QUIT_TN}번째 차례 안에 기권해서 판돈의 절반을 돌려받았습니다.</p>` : ''}${ran ? runNote(g.stake) : ''}<div class="bd"><div><span>판돈</span><b class="num">${fmtUSD(g.stake)}</b></div><div><span>받은 돈</span><b class="num">${fmtUSD(pay)}</b></div><div><span>쏜 횟수</span><b class="num">${g.shots}발 · 장전 ${g.load}번</b></div></div><div class="acts"><button class="btn solid" data-close>확인</button></div>`);
 }
 // 직접 조작 (혼자·같이 하기 같이): 탄 넣기, 펌프, 총 들기, 겨누기. 방아쇠만 혼자/같이 하기가 따로 보낸다
 document.addEventListener('click', e => {
-  const el = e.target.closest('[data-bsshell], [data-bsdo], [data-bsaim], [data-bsgun]'); if (!el || !el.closest('.bs-table, .bs-ctl, .bs-foot')) return;
+  const el = e.target.closest('[data-bsshell], [data-bsdo], [data-bsaim], [data-bsgun]'); if (!el || !el.closest('.bs-table, .bs-ctl, .bs-foot, .bs-quit')) return;
   if (el.dataset.bsshell !== undefined && BSV.want === 'load' && BSV.lay){
     const k = +el.dataset.bsshell; if (!BSV.lay.in.includes(k)) BSV.lay.in.push(k);
     el.classList.add('in');
@@ -5448,8 +5463,9 @@ document.addEventListener('click', e => {
   if (d === 'quit'){   // 기권: 혼자면 그 자리에서 진다, 같이 하기면 방에서 나가기(서버가 기권 처리)
     if (!$('#bsCard')){ const b = $('#mpLeave'); if (b) b.click(); return; }
     const g = bsS().cur; if (!g || g.over) return;
-    const c = showModal(`<h2>기권할까요?</h2><p>지금 지는 것으로 끝나고 판돈 <b>${fmtUSD(g.stake)}</b>을 잃습니다. 기권하면 도망갈 수 없습니다.</p><div class="acts"><button class="btn" data-close>계속하기</button><button class="btn solid" id="bsQuitYes">기권</button></div>`);
-    $('#bsQuitYes').onclick = () => { c(); const g2 = bsS().cur; if (!g2 || g2.over) return; BSV.gen++; clearTimeout(BSV.t); BSE.forfeit(g2, 0, []); g2.quit = true; save(); BSV.busy = false; BSV.view = null; BSV.lay = null; BSV.fx = ''; BSV.aim = null; BSV.hold = false; BSV.shooter = null; BSV.banner = ''; BSV.msg = '기권했다'; bsRender(); };
+    const early = bsTn(g) <= BS_QUIT_TN;
+    const c = showModal(`<h2>기권할까요?</h2><p>${early ? `지금은 ${bsTn(g)}번째 차례라 판돈의 절반 <b>${fmtUSD(Math.round(g.stake * 50) / 100)}</b>을 돌려받고 끝납니다.` : `지금 지는 것으로 끝나고 판돈 <b>${fmtUSD(g.stake)}</b>을 잃습니다.`} 기권하면 도망갈 수 없습니다.</p><p class="muted">${BS_QUIT_TN}번째 차례(나와 딜러가 3번씩 총을 잡을 때)까지 기권하면 판돈의 절반을 돌려받습니다.</p><div class="acts"><button class="btn" data-close>계속하기</button><button class="btn solid" id="bsQuitYes">기권</button></div>`);
+    $('#bsQuitYes').onclick = () => { c(); const g2 = bsS().cur; if (!g2 || g2.over) return; BSV.gen++; clearTimeout(BSV.t); g2.quitHalf = bsTn(g2) <= BS_QUIT_TN; BSE.forfeit(g2, 0, []); g2.quit = true; save(); BSV.busy = false; BSV.view = null; BSV.lay = null; BSV.fx = ''; BSV.aim = null; BSV.hold = false; BSV.shooter = null; BSV.banner = ''; BSV.msg = '기권했다'; bsRender(); };
     return;
   }
   if (BSV.busy) return;
@@ -5676,6 +5692,27 @@ function bs3Build(){
   const hdl = new T.Group(); hdl.position.set(0.12, -0.012, 0); saw.add(hdl);
   [[0.0125, 0.04, 0.025, 0.09, 0], [0.068, 0.04, 0.022, 0.1, -0.12], [0.04, 0.083, 0.07, 0.02, 0.06], [0.04, 0.0, 0.07, 0.02, -0.08]].forEach(([x, y, w, h, r]) => { const b = add(hdl, new T.Mesh(new T.BoxGeometry(w, h, 0.022), M.wood)); b.position.set(x, y, 0); b.rotation.z = r; });
   [0.02, 0.05].forEach(y => { const r = add(saw, cyl(0.004, 0.03, M.brass, 8)); r.rotation.x = Math.PI / 2; r.position.set(0.135, y, 0); });
+  // 아이템 모형: 돋보기, 담배, 맥주 캔, 수갑
+  const IT = {};
+  IT.glass = new T.Group();
+  add(IT.glass, new T.Mesh(new T.TorusGeometry(0.045, 0.006, 10, 40), M.steelL));
+  IT.glass.add(new T.Mesh(new T.CircleGeometry(0.044, 32), new T.MeshStandardMaterial({color:0xa8d4ff, transparent:true, opacity:0.28, roughness:0.05, metalness:0, side:T.DoubleSide})));
+  const gh = add(IT.glass, cyl(0.009, 0.11, M.wood, 12)); gh.position.y = -0.1;
+  IT.cig = new T.Group();
+  const cg1 = add(IT.cig, cyl(0.0045, 0.06, new T.MeshStandardMaterial({color:0xefe9dc, roughness:0.8}), 12)); cg1.rotation.z = Math.PI / 2; cg1.position.x = 0.01;
+  const cg2 = add(IT.cig, cyl(0.0046, 0.022, new T.MeshStandardMaterial({color:0xc9893a, roughness:0.7}), 12)); cg2.rotation.z = Math.PI / 2; cg2.position.x = -0.03;
+  const emberM = new T.MeshStandardMaterial({color:0x220000, emissive:0xff4a10, emissiveIntensity:0.5});
+  const ember = new T.Mesh(new T.SphereGeometry(0.0048, 10, 8), emberM); ember.position.x = 0.041; IT.cig.add(ember);
+  const canT = bs3Tex(128, 64, (x, w, h) => { x.fillStyle = '#2f6b3a'; x.fillRect(0, 0, w, h); x.fillStyle = '#d8c27a'; x.fillRect(0, h * 0.35, w, h * 0.3); x.fillStyle = '#7a1712'; x.font = 'bold 14px sans-serif'; x.fillText('LAGER', 40, h * 0.58); });
+  IT.beer = new T.Group();
+  add(IT.beer, new T.Mesh(new T.CylinderGeometry(0.033, 0.033, 0.12, 28), new T.MeshStandardMaterial({map:canT, roughness:0.35, metalness:0.6})));
+  const lid = add(IT.beer, cyl(0.03, 0.006, M.steelL, 28)); lid.position.y = 0.063;
+  IT.cuff = new T.Group();
+  [-1, 1].forEach(sx => { const r = add(IT.cuff, new T.Mesh(new T.TorusGeometry(0.038, 0.0065, 8, 32), M.steelL)); r.position.x = sx * 0.055; r.rotation.x = Math.PI / 2; });
+  for (let k = 0; k < 3; k++){ const l = add(IT.cuff, new T.Mesh(new T.TorusGeometry(0.008, 0.0025, 6, 12), M.steel)); l.position.x = -0.013 + k * 0.013; l.rotation.y = k % 2 ? Math.PI / 2 : 0; }
+  Object.values(IT).forEach(o => { o.visible = false; scene.add(o); });
+  const cuffOn = IT.cuff.clone(); cuffOn.visible = false; scene.add(cuffOn);   // 묶여 있는 동안 손목에 남는 수갑
+  const puffs = Array.from({length:8}, () => { const sp = new T.Sprite(new T.SpriteMaterial({map:smokeT, transparent:true, opacity:0, depthWrite:false})); sp.userData = {v:new T.Vector3(), t:9}; scene.add(sp); return sp; });
   const sparkN = 40, sparkM = new T.MeshBasicMaterial({color:0xffc060, transparent:true, opacity:0.95, blending:T.AdditiveBlending, depthWrite:false});
   const sparks = new T.Group(); scene.add(sparks);
   const sparkG2 = new T.BoxGeometry(0.0025, 0.0025, 0.012);
@@ -5698,7 +5735,7 @@ function bs3Build(){
   const ejects = [];
 
   BS3.R = R; BS3.scene = scene; BS3.cam = cam;
-  BS3.o = {T, M, eyeG, saw, sparks, sparkP, sparkV, gun, gunIn, barrel, pump, peekM, GP, flash, flashL, smokes, lay, ejects, mkShell, arms, dealer, head, eyeM, eyeL, spot, bulb, red, torso};
+  BS3.o = {T, M, IT, cuffOn, emberM, puffs, eyeG, saw, sparks, sparkP, sparkV, gun, gunIn, barrel, pump, peekM, GP, flash, flashL, smokes, lay, ejects, mkShell, arms, dealer, head, eyeM, eyeL, spot, bulb, red, torso};
   const v = () => new T.Vector3();
   BS3.a = {blackT:99, blackD:0, blackF:1, t:0, last:0, gP:new T.Vector3(0, 0.03, 0.05), gQ:new T.Quaternion(), prev:{}, feed:null, rackT:9, bangT:9, clickT:9, sawT:9, hitT:9, hitMe:false, shake:0, saw:1, peek:0, layT:0, tmp:[v(), v(), v(), v()]};
   BS3.a.gQ.copy(bs3Q(new T.Vector3(-1, 0, 0), 'side'));
@@ -5831,6 +5868,50 @@ function bs3Frame(now){
   if (A.bangT > 0.2) A.smoked = false;
   O.smokes.forEach(s => { const u = s.userData; u.t += dt; if (u.t < 0 || u.t > 1.6){ s.material.opacity = 0; return; } s.position.addScaledVector(u.v, dt); u.v.multiplyScalar(0.96); s.scale.setScalar(0.08 + u.t * 0.35); s.material.opacity = 0.5 * (1 - u.t / 1.6); });
 
+  // 아이템 쓰는 동작: 누가(딜러/나) 무엇을. 딜러는 오른손으로 집어 들고, 나는 화면 아래에서 올라온다
+  const I = BSV.item;
+  if (I !== P.item){ A.itT = 0; P.item = I; Object.values(O.IT).forEach(o => { o.visible = false; }); }
+  A.itT = (A.itT || 0) + dt;
+  let itHand = null;
+  if (I && O.IT[I.it]){
+    const m = O.IT[I.it], D = I.d || 1.4, u = Math.min(1, A.itT / D), op = I.by === 'op';
+    const pick = op ? new T.Vector3(0.36, 0.04, -0.52) : new T.Vector3(0.3, 0.35, 1.3);
+    const mouth = op ? new T.Vector3(0, 0.71, -0.9) : new T.Vector3(0.06, 0.86, 1.3);
+    const inn = bs3Ease(u / 0.25), out = bs3Ease((u - 0.78) / 0.22);
+    let p = pick.clone(), q = new T.Quaternion();
+    m.visible = u < 1; m.scale.setScalar(out > 0 ? Math.max(0.001, 1 - out * 0.7) : 1);
+    if (I.it === 'glass'){
+      const over = W(O.GP.eject).add(new T.Vector3(0, 0.11, 0.03));
+      p = pick.clone().lerp(over, inn).lerp(pick, out); p.x += Math.sin(A.t * 3) * 0.006 * (1 - out);
+      q.setFromEuler(new T.Euler(-1.25, 0, 0));   // 렌즈가 위를 보게 눕혀 총을 들여다본다
+    } else if (I.it === 'cig'){
+      p = pick.clone().lerp(mouth, inn).lerp(pick, out);
+      q.setFromEuler(new T.Euler(0, op ? -Math.PI / 2 : Math.PI / 2 + 0.3, 0.15));
+      const drag = u > 0.3 && u < 0.7 ? Math.sin((u - 0.3) / 0.4 * Math.PI) : 0;
+      O.emberM.emissiveIntensity = 0.6 + drag * 4;
+      if (u > 0.55 && !A.puffed){ A.puffed = true; O.puffs.forEach((sp, i) => { sp.position.copy(mouth).add(new T.Vector3(0, 0.01, op ? 0.05 : -0.06)); sp.userData.v.set((Math.random() - .5) * 0.08, 0.1 + Math.random() * 0.08, op ? 0.12 : -0.15); sp.userData.t = -i * 0.07; }); }
+    } else if (I.it === 'beer'){
+      p = pick.clone().lerp(mouth.clone().add(new T.Vector3(0, -0.04, op ? 0.06 : -0.04)), inn).lerp(pick, out);
+      const tilt = bs3Ease((u - 0.25) / 0.15) * (1 - bs3Ease((u - 0.65) / 0.15));
+      q.setFromEuler(new T.Euler(op ? tilt * 1.6 : -tilt * 1.6, 0, 0));
+    } else if (I.it === 'cuff'){
+      const tgt = op ? new T.Vector3(0, 0.06, 0.52) : new T.Vector3(0, 0.07, -0.6);
+      const slide = bs3Ease((u - 0.15) / 0.45);
+      p = pick.clone().lerp(tgt, slide); p.y += Math.sin(Math.PI * slide) * 0.12;
+      q.setFromEuler(new T.Euler(0, A.itT * 6 * (1 - slide), 0));
+      m.scale.setScalar(1);
+      if (u > 0.6 && !A.snapped){ A.snapped = true; A.clickT = 0; }   // 철컥 잠기는 순간 살짝 흔들림
+    }
+    m.position.copy(p); m.quaternion.copy(q);
+    if (op && u < 0.8) itHand = p.clone().add(new T.Vector3(0.02, -0.02, 0.02));
+  }
+  if (!I){ A.puffed = false; A.snapped = false; O.emberM.emissiveIntensity = 0.5; }
+  O.puffs.forEach(sp => { const u2 = sp.userData; u2.t += dt; if (u2.t < 0 || u2.t > 2){ sp.material.opacity = 0; return; } sp.position.addScaledVector(u2.v, dt); sp.scale.setScalar(0.05 + u2.t * 0.16); sp.material.opacity = 0.45 * (1 - u2.t / 2); });
+  // 묶인 사람: 딜러면 두 손목에 수갑, 나면 내 앞 탁자에 수갑이 놓인다
+  const opI = g && g.pl.length === 2 ? (me === 0 ? 1 : 0) : -1, dCuffed = opI >= 0 && g.pl[opI].cuffed && !g.pl[opI].out, meCuffed = g && g.pl[me] && g.pl[me].cuffed;
+  const cuffShow = !(I && I.it === 'cuff' && A.itT < (I.d || 1.4) * 0.6);
+  O.cuffOn.visible = cuffShow && (dCuffed || meCuffed);
+  if (meCuffed && !dCuffed){ O.cuffOn.position.set(0, 0.012, 0.52); O.cuffOn.rotation.set(0, 0.2, 0); }
   // 탁자에 늘어놓은 탄 (장전 중), 손에 쥔 탄
   const n = Lay ? Lay.live + Lay.blank : 0, F = A.feed;
   const slotP = i => new T.Vector3((i - (n - 1) / 2) * 0.075, 0.0125, -0.2 + ((i * 7) % 3) * 0.012);
@@ -5862,6 +5943,9 @@ function bs3Frame(now){
       const s = O.lay[F.k];
       if (t >= 0.32 && t < 0.86){ s.visible = true; s.position.copy(p).add(new T.Vector3(0, -0.02, 0.0)); s.rotation.set(0, 0, Math.PI / 2 * (1 - bs3Ease((t - 0.42) / 0.36))); s.scale.setScalar(1); }
       else if (t >= 0.86) s.visible = false;
+    } else if (itHand && A2.s > 0){ toW(A2, itHand, 18);
+    } else if (dCuffed && !shooter && !Lay){ toW(A2, new T.Vector3(A2.s * 0.075, 0.035, -0.6), 10);
+      if (A2.s > 0){ O.cuffOn.position.set(0, 0.04, -0.6); O.cuffOn.rotation.set(0, 0, 0); }
     } else if (sawing && sawBy === 'op' && A.sawT < CUT + 0.25){   // 톱질: 왼손은 총을 누르고, 오른손은 톱 손잡이
       if (A2.s > 0) toW(A2, W(O.GP.grip).add(new T.Vector3(0, 0.03, 0)), 14);
       else { O.saw.updateMatrixWorld(true); toW(A2, new T.Vector3(0.165, 0.04, 0).applyMatrix4(O.saw.matrixWorld), 30); }
@@ -5893,7 +5977,8 @@ function bs3Frame(now){
   } else { O.dealer.rotation.x *= 0.9; O.dealer.rotation.z *= 0.9; O.dealer.position.y *= 0.9; }
   const dHit = !A.hitMe && A.hitT < 0.6 && BSV.flash && BSV.flash !== 'p' + me && g && g.pl.length === 2 ? Math.exp(-A.hitT * 6) : 0;
   O.torso.scale.y = 1 + Math.sin(A.t * 1.6) * 0.008;
-  const look = Lay ? 0.35 : shooter === 'op' ? 0.1 : 0.05;
+  const iu = I ? Math.min(1, A.itT / (I.d || 1.4)) : 0;
+  const look = Lay ? 0.35 : I && I.by === 'op' && I.it === 'glass' ? 0.45 : I && I.by === 'op' && I.it === 'beer' && iu > 0.3 && iu < 0.75 ? -0.35 : shooter === 'op' ? 0.1 : 0.05;
   O.head.rotation.x += ((dOut ? 0.75 : look + Math.sin(A.t * 0.7) * 0.03 - dHit * 0.6) - O.head.rotation.x) * bs3Damp(8, dt);
   O.head.rotation.y += ((Math.sin(A.t * 0.43) * 0.06) - O.head.rotation.y) * bs3Damp(4, dt);
   O.head.position.z = -dHit * 0.06;
@@ -5910,6 +5995,7 @@ function bs3Frame(now){
   const mf = bs3Ease((A.meFall - 0.6) / 1.0) * (1 - up2), roll = mf * 1.25 + (A.meFall > 1.6 && A.meFall < 1.95 ? Math.sin((A.meFall - 1.6) / 0.35 * Math.PI) * 0.06 : 0);
   if (mf > 0){ BS3.cam.position.lerp(new T.Vector3(0.45, 0.16, 1.05), mf); lookP.lerp(new T.Vector3(-0.5, 0.02, 0.45), mf); }
   BS3.cam.up.set(Math.sin(roll), Math.cos(roll), 0);
+  if (I && I.by === 'me' && I.it === 'beer'){ const tl = bs3Ease((iu - 0.25) / 0.15) * (1 - bs3Ease((iu - 0.65) / 0.15)); lookP.y += tl * 0.35; }
   BS3.cam.lookAt(lookP);
   const bt = A.blackT - 0.07, black = bt < 0 ? 1 : bt < A.blackD ? 0 : bs3Ease((bt - A.blackD) / A.blackF);
   BS3.R.toneMappingExposure = 1.15 * (1 - 0.8 * bs3Ease((A.meFall - 1.4) / 1.6) * (1 - up2)) * black;
@@ -6067,7 +6153,7 @@ const BSAU = {
   peek(){ if (!bsaReady()) return; bsaNoise({type:'bandpass', f:900, f2:2600, fd:0.25, q:1.5, v:0.12, a:0.08, d:0.2}); },
   cig(){ if (!bsaReady()) return; bsaMetal(0, 2100, 0.15, 0.05); bsaNoise({at:0.05, type:'bandpass', f:3500, q:1, v:0.18, d:0.12}); bsaNoise({at:0.2, type:'lowpass', f:1200, v:0.08, a:0.1, d:0.6}); },
   beer(){ if (!bsaReady()) return; bsaMetal(0, 1900, 0.2, 0.04); bsaNoise({at:0.02, type:'highpass', f:2500, f2:5000, fd:0.3, v:0.35, a:0.005, d:0.35}); },
-  cuff(){ if (!bsaReady()) return; for (let k = 0; k < 5; k++) bsaMetal(k * 0.045 + Math.random() * 0.02, 2600 + Math.random() * 900, 0.07, 0.06); bsaMetal(0.32, 1200, 0.14, 0.1); },
+  cuff(at){ if (!bsaReady()) return; at = at || 0; for (let k = 0; k < 5; k++) bsaMetal(Math.max(0, at - 0.3) + k * 0.045 + Math.random() * 0.02, 2600 + Math.random() * 900, 0.07, 0.06); bsaMetal(at + 0.02, 1200, 0.14, 0.1); },
   // '네 차례다' 배너: 낮게 울리는 한 방
   turn(){ if (!bsaReady()) return; bsaTone({f:55, f2:48, fd:0.8, v:0.5, a:0.01, d:0.9}); bsaNoise({type:'lowpass', f:200, v:0.3, a:0.01, d:0.5}); },
   // 배경 화이트 노이즈: 무대가 보이는 동안 낮게 깔린다 (아주 낮은 웅웅거림을 섞어 방처럼)
