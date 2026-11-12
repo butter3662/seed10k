@@ -725,6 +725,7 @@ html.gated body{overflow:hidden}
 .bs-stage.bs3.bang::after{animation-duration:.25s}
 .bs-stage.bs3 .bs-count{z-index:2;text-shadow:0 1px 2px #000}
 .bs-stage.hitme::after{content:'';position:absolute;inset:0;background:radial-gradient(closest-side,transparent 40%,rgba(200,0,0,.75));animation:bsFlash .7s ease-out forwards;pointer-events:none;z-index:3}
+.bs-snd{position:absolute;right:8px;top:8px;z-index:7;width:34px;height:34px;padding:6px;border-radius:50%;border:1px solid rgba(255,255,255,.18);background:rgba(0,0,0,.45);color:#e6e1d3;cursor:pointer}.bs-snd svg{width:100%;height:100%;display:block}
 .bs-black{position:absolute;inset:0;z-index:6;background:#000;pointer-events:none}
 .bs-ico{display:block;width:24px;height:24px}.bs-ico svg{width:100%;height:100%;display:block}.bs-it.ro .bs-ico{width:20px;height:20px}
 .bs-quit{display:flex;justify-content:flex-end;margin-bottom:6px}.bs-quit .btn{height:34px;padding:0 14px;font-size:13px;opacity:.85}
@@ -1143,7 +1144,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '2.2.1';
+const VERSION = '2.2.2';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -5291,7 +5292,7 @@ function bsTableHTML(g, me, o){
       <div class="bs-dealer ${BSV.lay && BSV.lay.in && BSV.lay.in.length ? 'feed' : ''} ${BSV.fx === 'rack' ? 'racking' : ''}">${BS_DEALER}<i class="bs-hand l">${BS_HAND}</i><i class="bs-hand r">${BS_HAND}</i></div>
       ${bsLayHTML()}
       <div class="bs-gunwrap aim-${aim} ${BSV.hold || BSV.aim === 'up' || BSV.aim === 'down' ? 'held' : ''} ${g.saw ? 'sawed' : ''}" ${myTurn && !BSV.hold ? 'data-bsgun="1" role="button" aria-label="총 들기"' : ''}><div class="bs-kick">${BS_GUN}<i class="bs-muzzle"></i></div></div>
-      `}${BSV.black && !s3 ? '<div class="bs-black"></div>' : ''}${BSV.banner ? `<div class="bs-banner">${BSV.banner}</div>` : ''}
+      `}<button class="bs-snd" data-bsdo="snd" aria-label="${BSA.on ? '소리 끄기' : '소리 켜기'}">${bsaIcon()}</button>${BSV.black && !s3 ? '<div class="bs-black"></div>' : ''}${BSV.banner ? `<div class="bs-banner">${BSV.banner}</div>` : ''}
       ${!s3 && BSV.eject !== undefined && BSV.eject !== null ? `<i class="bs-eject ${BSV.eject ? 'live' : 'blank'}"></i>` : ''}
       <div class="bs-count"><span><i class="live"></i>실탄 <b>${g.live}</b></span><span><i class="blank"></i>공포탄 <b>${g.blank}</b></span>${g.saw ? '<span>🪚 톱</span>' : ''}</div>
     </div>
@@ -5361,16 +5362,18 @@ async function bsPlay(ev, done, rerender){
       if (e.t === 'load'){
         BSV.aim = 'rest'; BSV.eject = null;
         BSV.hold = false; BSV.aimT = null; const n = e.live + e.blank;
-        BSV.lay = {live:e.live, blank:e.blank, k:Math.floor(Math.random() * 23), in:[]}; bsViewDo(e); BSV.msg = `실탄 ${e.live} · 공포탄 ${e.blank}`; rerender(); await bsWait(1800);
+        BSV.lay = {live:e.live, blank:e.blank, k:Math.floor(Math.random() * 23), in:[]}; bsViewDo(e); BSV.msg = `실탄 ${e.live} · 공포탄 ${e.blank}`; rerender();
+        for (let k = 0; k < n; k++) BSAU.lay(k * 0.07 + 0.15); await bsWait(1800);
         BSV.msg = '딜러가 장전한다…'; rerender();
-        for (let k = 0; k < n; k++){ BSV.lay.in.push(k); rerender(); await bsWait(560); }   // 딜러가 탄을 하나씩 집어 넣는다 (손 동작 한 번 = 탄 한 발)
-        BSV.lay = null; BSV.fx = 'rack'; BSV.msg = '철컥'; rerender(); await bsWait(800);
+        for (let k = 0; k < n; k++){ BSV.lay.in.push(k); rerender(); BSAU.insert(0.42); await bsWait(560); }   // 딜러가 탄을 하나씩 집어 넣는다 (손 동작 한 번 = 탄 한 발)
+        BSV.lay = null; BSV.fx = 'rack'; BSV.msg = '철컥'; rerender(); BSAU.rack(); await bsWait(800);
         BSV.fx = ''; BSV.msg = e.got && e.got.some(x => x.length) ? '아이템을 나눠 받았다' : '장전 완료'; rerender(); await bsWait(600);
       } else if (e.t === 'shot'){
         const self = e.target === e.i, up = (e.target === me()) ? 'down' : 'up';   // 내 쪽(아래)을 쏘면 총구가 아래로
         const byMe = e.i === me(); BSV.hold = false; BSV.aimT = null; BSV.shooter = byMe ? 'me' : 'op';
         BSV.eject = null; BSV.aim = up; BSV.msg = `${nm(e.i)} → ${self ? (byMe ? '나' : '자기 자신') : nm(e.target)}`; rerender(); await bsWait(byMe ? 250 : 1100);
         bsViewDo(e); BSV.fx = e.live ? 'bang' : 'click'; BSV.flash = e.live ? 'p' + e.target : '';
+        if (e.live){ BSAU.shot(e.dmg > 1); if (e.dmg && e.target === me()) BSAU.ring(e.out ? 3.5 : 2.6); if (e.out) BSAU.thud(e.target === me() ? 1.55 : 0.85); } else BSAU.click();
         BSV.msg = e.live ? `💥 실탄! ${nm(e.target)} 목숨 −${e.dmg}${e.out ? ' · 탈락' : ''}` : '딸깍… 공포탄'; rerender();
         if (e.live && e.dmg){   // 맞으면 암전: 번쩍한 직후 화면이 꺼졌다가 돌아온다 (내가 맞으면 길게). 3D는 장면이 직접 어둡게 한다
           const hitMe = e.target === me(), D = hitMe && !e.out ? 1350 : 550;
@@ -5378,22 +5381,22 @@ async function bsPlay(ev, done, rerender){
           if (BSV.black){ BSV.black = false; rerender(); } await bsWait(hitMe && !e.out ? 650 : 500);
         } else await bsWait(e.live ? 1200 : 900);
         BSV.flash = ''; BSV.fx = '';
-        BSV.fx = 'rack'; BSV.eject = e.live; BSV.aim = 'rest'; rerender(); await bsWait(700); BSV.shooter = null;
+        BSV.fx = 'rack'; BSV.eject = e.live; BSV.aim = 'rest'; rerender(); BSAU.rack(); BSAU.drop(0.5); await bsWait(700); BSV.shooter = null;
         BSV.fx = ''; BSV.eject = null;
-      } else if (e.t === 'peek'){ bsViewDo(e);
+      } else if (e.t === 'peek'){ bsViewDo(e); BSAU.peek();
         BSV.fx = 'peek'; BSV.msg = e.i === me() && e.live !== undefined ? `🔍 지금 탄은 ${e.live ? '실탄' : '공포탄'}` : e.i === me() ? '🔍 돋보기로 탄을 확인했다' : `🔍 ${nm(e.i)}이(가) 돋보기로 탄을 확인했다`; rerender(); await bsWait(1000); BSV.fx = '';
-      } else if (e.t === 'beer'){ bsViewDo(e);
+      } else if (e.t === 'beer'){ bsViewDo(e); BSAU.beer(); BSAU.rack(0.35); BSAU.drop(0.85);
         BSV.fx = 'rack'; BSV.eject = e.live; BSV.msg = `🍺 탄을 빼냈다: ${e.live ? '실탄' : '공포탄'}`; rerender(); await bsWait(1000); BSV.fx = ''; BSV.eject = null;
-      } else if (e.t === 'cuff'){ bsViewDo(e); BSV.msg = `⛓️ ${nm(e.target)}에게 수갑`; rerender(); await bsWait(800); }
-      else if (e.t === 'saw'){ bsViewDo(e); BSV.sawBy = e.i === me() ? 'me' : 'op'; BSV.fx = 'saw'; BSV.msg = `🪚 ${nm(e.i)} 총신을 자른다…`; rerender(); await bsWait(BS3.st === 'on' ? 1350 : 500); BSV.msg = '🪚 총신을 잘랐다 · 다음 한 발 2배'; rerender(); await bsWait(700); BSV.fx = ''; }
-      else if (e.t === 'heal'){ bsViewDo(e); BSV.msg = `🚬 ${nm(e.i)} 목숨 +1`; rerender(); await bsWait(800); }
+      } else if (e.t === 'cuff'){ bsViewDo(e); BSAU.cuff(); BSV.msg = `⛓️ ${nm(e.target)}에게 수갑`; rerender(); await bsWait(800); }
+      else if (e.t === 'saw'){ bsViewDo(e); BSV.sawBy = e.i === me() ? 'me' : 'op'; BSV.fx = 'saw'; BSV.msg = `🪚 ${nm(e.i)} 총신을 자른다…`; rerender(); if (BS3.st === 'on') BSAU.saw(); await bsWait(BS3.st === 'on' ? 1350 : 500); BSV.msg = '🪚 총신을 잘랐다 · 다음 한 발 2배'; rerender(); await bsWait(700); BSV.fx = ''; }
+      else if (e.t === 'heal'){ bsViewDo(e); BSAU.cig(); BSV.msg = `🚬 ${nm(e.i)} 목숨 +1`; rerender(); await bsWait(800); }
       else if (e.t === 'skip'){ BSV.msg = `⛓️ ${nm(e.i)} 수갑 때문에 한 번 쉼`; rerender(); await bsWait(900); }
       else if (e.t === 'again'){ BSV.msg = '공포탄 · 한 번 더!'; rerender(); await bsWait(700); }
       else if (e.t === 'turn' || e.t === 'win') bsViewDo(e);
     }
     const G2 = G();
     if (G2 && !G2.over && G2.turn === me() && ev.some(e => (e.t === 'turn' && e.i === me()) || e.t === 'load') && ev.some(e => e.i !== undefined && e.i !== me() && e.t !== 'skip' && e.t !== 'turn' || e.t === 'load')){
-      BSV.banner = '네 차례다'; BSV.msg = ''; rerender(); await bsWait(1100); BSV.banner = '';
+      BSV.banner = '네 차례다'; BSV.msg = ''; rerender(); BSAU.turn(); await bsWait(1100); BSV.banner = '';
     }
   } catch(err){ if (err !== 'stop') console.error(err); }
   BSV.busy = false; BSV.view = null; BSV.shooter = null; BSV.black = false; BSV.msg = ''; BSV.fx = ''; BSV.aim = null; BSV.eject = null; BSV.lay = null; BSV.flash = ''; BSV.want = null; BSV.go = null; BSV.banner = '';
@@ -5441,6 +5444,7 @@ document.addEventListener('click', e => {
   const d = el.dataset.bsdo;
   if (d === 'loadall' && BSV.want === 'load' && BSV.go){ BSV.go(); return; }
   if (d === 'rack' && BSV.want === 'rack' && BSV.go){ BSV.go(); return; }
+  if (d === 'snd'){ bsaToggle(); return; }
   if (d === 'quit'){   // 기권: 혼자면 그 자리에서 진다, 같이 하기면 방에서 나가기(서버가 기권 처리)
     if (!$('#bsCard')){ const b = $('#mpLeave'); if (b) b.click(); return; }
     const g = bsS().cur; if (!g || g.over) return;
@@ -5931,6 +5935,146 @@ function bs3Eject(live){
   BS3.scene.add(s); O.ejects.push(s);
   if (O.ejects.length > 12) BS3.scene.remove(O.ejects.shift());
 }
+
+/* ───── 벅샷 룰렛 소리 (Web Audio로 그 자리에서 합성: 녹음 파일을 쓰지 않는다) ─────
+   배경: 낮게 깔리는 화이트 노이즈(방 소리). 연출 소리: 총소리, 딸깍, 펌프, 탄 넣기, 탄피 떨어지는 소리, 톱질, 귀울림, 쓰러짐 등.
+   브라우저는 사용자가 한 번 누르기 전에는 소리를 낼 수 없어서, 첫 터치 때 소리 장치를 켠다.
+   켜고 끄기는 무대 오른쪽 위 스피커 단추 (이 기기에만 저장). */
+const BSA = {ctx:null, on:true, amb:null, vol:0.7};
+try { BSA.on = localStorage.getItem('seed10k.bs.sound') !== '0'; } catch(e){}
+function bsaInit(){
+  if (BSA.ctx) return BSA.ctx;
+  const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return null;
+  const c = new AC(); BSA.ctx = c;
+  // 마지막 단: 귀울림 때 소리를 먹먹하게 하는 저역 통과 → 압축기 → 출력
+  BSA.muff = c.createBiquadFilter(); BSA.muff.type = 'lowpass'; BSA.muff.frequency.value = 20000; BSA.muff.Q.value = 0.5;
+  BSA.comp = c.createDynamicsCompressor(); BSA.comp.threshold.value = -6; BSA.comp.knee.value = 6; BSA.comp.ratio.value = 3; BSA.comp.attack.value = 0.002; BSA.comp.release.value = 0.2;
+  BSA.master = c.createGain(); BSA.master.gain.value = BSA.on ? BSA.vol : 0;
+  BSA.muff.connect(BSA.comp); BSA.comp.connect(BSA.master); BSA.master.connect(c.destination);
+  // 방 울림: 지수로 줄어드는 잡음으로 만든 잔향 (작은 콘크리트 방, 약 1.6초)
+  const len = Math.floor(c.sampleRate * 1.6), ir = c.createBuffer(2, len, c.sampleRate);
+  for (let ch = 0; ch < 2; ch++){ const d = ir.getChannelData(ch); for (let i = 0; i < len; i++){ const t = i / c.sampleRate; d[i] = (Math.random() * 2 - 1) * Math.exp(-t * 4.2) * (t < 0.012 ? t / 0.012 : 1); } }
+  BSA.verb = c.createConvolver(); BSA.verb.buffer = ir;
+  BSA.wet = c.createGain(); BSA.wet.gain.value = 0.32; BSA.verb.connect(BSA.wet); BSA.wet.connect(BSA.muff);
+  BSA.dry = c.createGain(); BSA.dry.connect(BSA.muff); BSA.dry.connect(BSA.verb);
+  // 잡음 원본 (2초, 반복해서 쓴다)
+  const nl = c.sampleRate * 2, nb = c.createBuffer(1, nl, c.sampleRate), nd = nb.getChannelData(0);
+  for (let i = 0; i < nl; i++) nd[i] = Math.random() * 2 - 1;
+  BSA.noise = nb;
+  return c;
+}
+// 첫 터치에 소리 장치를 켠다 (iOS는 사용자 동작 안에서 resume해야 한다)
+['pointerdown', 'touchend', 'keydown'].forEach(k => document.addEventListener(k, () => { const c = bsaInit(); if (c && c.state !== 'running') c.resume().catch(() => {}); }, {passive:true}));
+
+const bsaT = () => BSA.ctx.currentTime;
+function bsaReady(){ return BSA.ctx && BSA.ctx.state === 'running' && BSA.on; }
+// 잡음 한 줄기: 필터 종류·주파수·Q, 크기, 시작 시각, 엔벌로프(올라감·유지·줄어듦)
+function bsaNoise(o){
+  const c = BSA.ctx, t0 = bsaT() + (o.at || 0), s = c.createBufferSource(); s.buffer = BSA.noise; s.loop = true;
+  s.playbackRate.value = o.rate || 1;
+  const f = c.createBiquadFilter(); f.type = o.type || 'bandpass'; f.frequency.setValueAtTime(o.f || 1000, t0); f.Q.value = o.q || 1;
+  if (o.f2) f.frequency.exponentialRampToValueAtTime(o.f2, t0 + (o.fd || o.d || 0.2));
+  const g = c.createGain(), a = o.a || 0.002, d = o.d || 0.1, h = o.h || 0;
+  g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(o.v || 0.5, t0 + a);
+  if (h) g.gain.setValueAtTime(o.v || 0.5, t0 + a + h);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + a + h + d);
+  s.connect(f); f.connect(g); g.connect(o.out || BSA.dry);
+  s.start(t0, Math.random() * 1.5); s.stop(t0 + a + h + d + 0.05);
+}
+// 사인·삼각파 한 음: 주파수(끝 주파수로 미끄러짐), 크기, 길이
+function bsaTone(o){
+  const c = BSA.ctx, t0 = bsaT() + (o.at || 0), s = c.createOscillator(); s.type = o.w || 'sine';
+  s.frequency.setValueAtTime(o.f, t0); if (o.f2) s.frequency.exponentialRampToValueAtTime(o.f2, t0 + (o.fd || o.d));
+  const g = c.createGain(), a = o.a || 0.001;
+  g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(o.v || 0.3, t0 + a); g.gain.exponentialRampToValueAtTime(0.0001, t0 + a + o.d);
+  s.connect(g); g.connect(o.out || BSA.dry); s.start(t0); s.stop(t0 + a + o.d + 0.05);
+}
+// 쇠붙이가 부딪는 소리: 서로 배수가 아닌 공명 몇 개를 짧게 (작은 쇠 부품의 울림)
+function bsaMetal(at, base, v, d){
+  [[1, 1], [2.76, 0.6], [5.4, 0.4], [8.93, 0.25]].forEach(([m, k]) => bsaTone({at, f:base * m, v:v * k, d:d / Math.sqrt(m), a:0.0008}));
+  bsaNoise({at, type:'bandpass', f:base * 3, q:2, v:v * 0.8, d:0.012});
+}
+const BSAU = {
+  // 총소리: 날카로운 파열음 + 몸통 잡음 + 낮은 쿵 + 살짝 찌그러짐 + 방 울림
+  shot(saw){
+    if (!bsaReady()) return; const c = BSA.ctx;
+    const sh = c.createWaveShaper(), cv = new Float32Array(1024); for (let i = 0; i < 1024; i++){ const x = i / 512 - 1; cv[i] = Math.tanh(x * 2.6); } sh.curve = cv;
+    const g = c.createGain(); g.gain.value = 1.5; sh.connect(g); g.connect(BSA.dry);
+    bsaNoise({type:'highpass', f:1200, q:0.7, v:1.0, a:0.0005, d:0.035, out:sh});
+    bsaNoise({type:'lowpass', f:saw ? 3200 : 2400, f2:300, fd:0.35, q:0.8, v:0.95, a:0.001, d:0.42, out:sh});
+    bsaTone({f:saw ? 105 : 120, f2:38, fd:0.32, v:0.95, d:0.5, out:sh});
+    bsaTone({f:62, f2:30, fd:0.6, v:0.6, d:0.75});
+    bsaNoise({at:0.03, type:'bandpass', f:600, q:0.6, v:0.25, a:0.01, d:0.9});   // 꼬리
+  },
+  // 공포탄: 공이가 때리는 딸깍
+  click(){ if (!bsaReady()) return; bsaMetal(0, 1350, 0.35, 0.08); bsaNoise({type:'highpass', f:3000, v:0.3, d:0.01}); },
+  // 펌프: 뒤로 '착' → 앞으로 '칵'
+  rack(at){
+    if (!bsaReady()) return; at = at || 0;
+    bsaNoise({at:at + 0.05, type:'bandpass', f:2200, f2:1200, fd:0.08, q:1.2, v:0.35, a:0.005, d:0.09});
+    bsaMetal(at + 0.13, 820, 0.22, 0.12); bsaNoise({at:at + 0.13, type:'lowpass', f:900, v:0.2, d:0.05});
+    bsaNoise({at:at + 0.3, type:'bandpass', f:1500, f2:2600, fd:0.08, q:1.2, v:0.3, a:0.005, d:0.08});
+    bsaMetal(at + 0.4, 700, 0.3, 0.15); bsaNoise({at:at + 0.4, type:'lowpass', f:1100, v:0.28, d:0.06});
+  },
+  // 탄피가 탁자에 떨어져 튀는 소리 (점점 작고 빨라진다)
+  drop(at){ if (!bsaReady()) return; at = at || 0; [[0, 0.32], [0.17, 0.18], [0.28, 0.1], [0.35, 0.05]].forEach(([t, v]) => { bsaMetal(at + t, 2300 + Math.random() * 400, v, 0.09); bsaNoise({at:at + t, type:'lowpass', f:700, v:v * 0.6, d:0.03}); }); },
+  // 탄을 탁자에 내려놓는 소리 (펠트 위라 둔하다)
+  lay(at){ if (!bsaReady()) return; bsaNoise({at, type:'lowpass', f:1100, v:0.5, a:0.001, d:0.05}); bsaTone({at, f:420, f2:300, fd:0.05, v:0.25, d:0.06}); },
+  // 탄을 약실에 밀어 넣는 소리: 스침 + 걸림
+  insert(at){ if (!bsaReady()) return; at = at || 0; bsaNoise({at, type:'bandpass', f:2600, f2:1800, fd:0.07, q:2, v:0.18, a:0.01, d:0.07}); bsaMetal(at + 0.08, 1650, 0.15, 0.06); },
+  // 톱질: 밀고 당길 때마다 쇠를 긁는 소리, 끝에 '딱' 잘리고 조각이 떨어진다
+  saw(){
+    if (!bsaReady()) return;
+    for (let k = 0; k < 6; k++){
+      const at = 0.35 + k * (Math.PI / 19);
+      bsaNoise({at, type:'bandpass', f:k % 2 ? 2400 : 3200, f2:k % 2 ? 3400 : 2200, fd:0.15, q:3, v:0.22, a:0.03, h:0.05, d:0.08});
+      bsaTone({at, f:k % 2 ? 1900 : 2300, f2:k % 2 ? 2300 : 1800, fd:0.15, w:'sawtooth', v:0.025, a:0.03, d:0.13});
+    }
+    bsaMetal(1.3, 520, 0.25, 0.25); bsaNoise({at:1.3, type:'highpass', f:2000, v:0.22, d:0.03});
+    bsaMetal(1.62, 380, 0.22, 0.3); bsaNoise({at:1.62, type:'lowpass', f:500, v:0.4, d:0.08}); bsaMetal(1.8, 400, 0.2, 0.2);
+  },
+  // 귀울림: 맞은 뒤 높은 음이 남고 주변 소리가 먹먹해진다
+  ring(sec){
+    if (!bsaReady()) return; const c = BSA.ctx, t = bsaT(); sec = sec || 2.6;
+    bsaTone({f:4100, v:0.05, a:0.05, d:sec, out:BSA.master});   // 먹먹하게 하는 필터를 거치지 않고 귀에 바로
+    bsaTone({f:4160, v:0.025, a:0.05, d:sec * 0.8, out:BSA.master});
+    BSA.muff.frequency.cancelScheduledValues(t); BSA.muff.frequency.setValueAtTime(20000, t); BSA.muff.frequency.exponentialRampToValueAtTime(380, t + 0.05);
+    BSA.muff.frequency.setValueAtTime(380, t + sec * 0.45); BSA.muff.frequency.exponentialRampToValueAtTime(20000, t + sec);
+  },
+  // 몸이 쓰러지는 둔한 소리
+  thud(at){ if (!bsaReady()) return; at = at || 0; bsaTone({at, f:85, f2:40, fd:0.25, v:0.7, d:0.35}); bsaNoise({at, type:'lowpass', f:380, v:0.6, a:0.004, d:0.22}); bsaNoise({at:at + 0.18, type:'lowpass', f:300, v:0.25, d:0.15}); },
+  // 아이템 소리
+  peek(){ if (!bsaReady()) return; bsaNoise({type:'bandpass', f:900, f2:2600, fd:0.25, q:1.5, v:0.12, a:0.08, d:0.2}); },
+  cig(){ if (!bsaReady()) return; bsaMetal(0, 2100, 0.15, 0.05); bsaNoise({at:0.05, type:'bandpass', f:3500, q:1, v:0.18, d:0.12}); bsaNoise({at:0.2, type:'lowpass', f:1200, v:0.08, a:0.1, d:0.6}); },
+  beer(){ if (!bsaReady()) return; bsaMetal(0, 1900, 0.2, 0.04); bsaNoise({at:0.02, type:'highpass', f:2500, f2:5000, fd:0.3, v:0.35, a:0.005, d:0.35}); },
+  cuff(){ if (!bsaReady()) return; for (let k = 0; k < 5; k++) bsaMetal(k * 0.045 + Math.random() * 0.02, 2600 + Math.random() * 900, 0.12, 0.06); bsaMetal(0.32, 1200, 0.22, 0.1); },
+  // '네 차례다' 배너: 낮게 울리는 한 방
+  turn(){ if (!bsaReady()) return; bsaTone({f:55, f2:48, fd:0.8, v:0.5, a:0.01, d:0.9}); bsaNoise({type:'lowpass', f:200, v:0.3, a:0.01, d:0.5}); },
+  // 배경 화이트 노이즈: 무대가 보이는 동안 낮게 깔린다 (아주 낮은 웅웅거림을 섞어 방처럼)
+  ambient(on){
+    if (!BSA.ctx) return; const c = BSA.ctx, t = bsaT();
+    if (on && !BSA.amb){
+      const s = c.createBufferSource(); s.buffer = BSA.noise; s.loop = true;
+      const f = c.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 7000; f.Q.value = 0.3;
+      const g = c.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.045, t + 1.2);
+      const hum = c.createOscillator(); hum.frequency.value = 60; const hg = c.createGain(); hg.gain.value = 0.012;
+      s.connect(f); f.connect(g); hum.connect(hg); hg.connect(g); g.connect(BSA.muff);
+      s.start(); hum.start(); BSA.amb = {s, hum, g};
+    } else if (!on && BSA.amb){
+      const A = BSA.amb; BSA.amb = null;
+      A.g.gain.cancelScheduledValues(t); A.g.gain.setValueAtTime(A.g.gain.value || 0.0001, t); A.g.gain.exponentialRampToValueAtTime(0.0001, t + 0.4);
+      A.s.stop(t + 0.45); A.hum.stop(t + 0.45);
+    }
+  },
+};
+// 무대가 보이면 배경 소리를 켜고, 사라지면 끈다
+setInterval(() => { if (!BSA.ctx || BSA.ctx.state !== 'running') return; const st = document.querySelector('.bs-stage'); BSAU.ambient(!!(st && st.offsetParent && BSA.on && !document.hidden)); }, 700);
+function bsaToggle(){
+  BSA.on = !BSA.on; try { localStorage.setItem('seed10k.bs.sound', BSA.on ? '1' : '0'); } catch(e){}
+  const c = bsaInit(); if (c){ if (c.state !== 'running') c.resume().catch(() => {}); BSA.master.gain.setTargetAtTime(BSA.on ? BSA.vol : 0, c.currentTime, 0.05); }
+  document.querySelectorAll('.bs-snd').forEach(b => { b.innerHTML = bsaIcon(); b.setAttribute('aria-label', BSA.on ? '소리 끄기' : '소리 켜기'); });
+}
+const bsaIcon = () => `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/>${BSA.on ? '<path d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/>' : '<path d="M16 9l6 6M22 9l-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'}</svg>`;
 
 /* ───────── 멀티플레이 (방 코드로 같이 하기) ─────────
    사이트는 Supabase에 요청(seed10k_room_reqs)만 넣고, 라즈베리파이 심판이 규칙대로 처리해 방(seed10k_rooms)을 고친다.
