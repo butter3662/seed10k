@@ -986,7 +986,7 @@ html.bm-open .top,html.bm-open .tabbar{visibility:hidden}
 .bm-ov.b3 .bm-tok.b3t .bm-tok-i.fly{animation:bmfly3 .62s ease-in-out}
 @keyframes bmbob3{50%{transform:translateZ(calc(var(--S) * .18))}}
 @keyframes bmhop3{50%{transform:translateZ(calc(var(--S) * .6))}100%{transform:none}}
-@keyframes bmfly3{50%{transform:translateZ(calc(var(--S) * 2.2)) scale(1.15)}100%{transform:none}}
+@keyframes bmfly3{0%{transform:none}45%,55%{transform:translateZ(calc(var(--S) * 4.5)) scale(1.12)}100%{transform:none}}   /* 우주여행·이동 카드: 판 안쪽을 가로질러 가므로 높이 날아가는 게 보이게 */
 .bm-tok-sh{position:absolute;left:8%;top:8%;width:84%;height:84%;border-radius:50%;background:radial-gradient(closest-side,rgba(0,0,0,.5),transparent);transform:translate(10%,10%)}
 .bm-tags{position:absolute;inset:0;pointer-events:none;z-index:3}
 .bm-tag.on{background:var(--pc);color:#111}
@@ -1229,7 +1229,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '2.2.28';
+const VERSION = '2.2.29';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
