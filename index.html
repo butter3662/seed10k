@@ -85,6 +85,15 @@ button{cursor:pointer}
 }
 .icon-btn svg{width:18px;height:18px}
 .icon-btn[aria-pressed=true]{background:var(--brass-soft);border-color:var(--brass);color:var(--brass)}
+.who{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--rule);background:var(--surface);color:var(--ink);border-radius:999px;height:40px;padding:0 12px 0 10px;font-weight:700;font-size:13.5px;flex:none;max-width:150px}
+.who[hidden]{display:none}
+@media (max-width:640px){   /* 휴대폰: 위쪽 여백 오른쪽에 작게 */
+  .top-in{position:relative;padding-top:calc(24px + env(safe-area-inset-top))}
+  .who{position:absolute;top:calc(5px + env(safe-area-inset-top));right:16px;height:auto;border:0;background:none;padding:0;font-size:11.5px;font-weight:700;color:var(--ink-2);gap:4px;max-width:60vw;line-height:16px}
+  .who svg{width:12px;height:12px}
+}
+.who svg{width:16px;height:16px;flex:none;color:var(--brass)}
+.who span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 .speed{position:absolute;bottom:-3px;right:-3px;font-size:9.5px;font-weight:800;background:var(--brass);color:#fff;border-radius:6px;padding:0 4px;line-height:14px}
 
 /* ───────── layout ───────── */
@@ -947,6 +956,7 @@ html[data-game=live] .c-news{order:3}
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg>
       </button>
     </div>
+    <button class="who" id="whoBtn" hidden aria-label="계정"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg><span></span></button>
   </div>
 </header>
 
@@ -1001,7 +1011,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '2.1.17';
+const VERSION = '2.1.18';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -3750,7 +3760,7 @@ function bmCardHTML(){
   const lock = g ? 0 : bmLockLeft();
   const label = g ? '이어 하기' : S.over ? '파산해서 할 수 없습니다' : lock ? `${bmLockText(lock)} 뒤부터` : '새 게임';
   const h = b.hist.slice(0, 3).map(x => `<span class="${cls(x.pay - x.stake)}">${x.rank}/${x.n}위 ${signUSD(x.pay - x.stake)}</span>`).join(' · ');
-  return `<div class="card-h"><h2>주사위 세계여행 ${infoBtn('bm')}</h2><small>${isLive() ? '오늘' : '이번 거래일'} ${b.n}판</small></div>
+  return `<div class="card-h"><h2>🎲 주사위 세계여행 ${infoBtn('bm')}</h2><small>${isLive() ? '오늘' : '이번 거래일'} ${b.n}판</small></div>
     ${lock ? `<p class="mg-desc">${ACC.user ? '가입' : '이 기록을 시작'}하고 ${BM.waitDays}일이 지나야 할 수 있습니다.</p>` : g ? `<p class="mg-desc">진행 중: ${g.round}바퀴째, 판돈 ${fmtUSD(g.stake)}</p>` : h ? `<p class="mg-desc">최근 ${h}</p>` : `<p class="mg-desc">판돈을 걸고 컴퓨터와 도시를 사고파는 주사위 보드게임</p>`}
     <div class="mg-foot"><span class="muted">${g ? '' : `달러 통장 <b class="num">${fmtUSDn(S.usd)}</b>`}</span><span style="display:flex;gap:8px">${b.last ? '<button class="btn" id="bmLastLog">지난 판 기록</button>' : ''}<button class="btn solid" id="bmGo" ${!g && (S.over || lock) ? 'disabled' : ''}>${label}</button></span></div>`;
 }
@@ -3760,7 +3770,7 @@ function bmSetup(){
   if (S.over) return toast('파산해서 할 수 없습니다', true);
   if (bmLockLeft()) return toast(`가입하고 ${BM.waitDays}일이 지나야 할 수 있습니다 (${bmLockText(bmLockLeft())} 남음)`, true);
   UI.bmN = UI.bmN || 2; UI.bmBet = UI.bmBet || '';
-  const close = showModal(`<h2>주사위 세계여행</h2><div id="bmSet"></div>
+  const close = showModal(`<h2>🎲 주사위 세계여행</h2><div id="bmSet"></div>
     <div class="acts"><button class="btn" data-close>닫기</button><button class="btn solid" id="bmStart">시작</button></div>`);
   const draw = () => {
     const box = $('#bmSet'); if (!box) return;
@@ -3846,7 +3856,7 @@ function bmBuild(){
     return `<button class="bm-c bm-${side}${k % 10 === 0 ? ' bm-k' : ''} bm-t-${c.t}" data-bmsq="${k}" style="grid-row:${r};grid-column:${col}">${body}</button>`;
   }).join('');
   const toks = g.pl.map((p, i) => `<div class="bm-tok" data-tok="${i}" style="--pc:${BM.cols[i]}"><div class="bm-tok-i"><span>${p.me ? '나' : p.nm[0]}</span></div></div>`).join('');
-  ov.innerHTML = `<div class="bm-top"><button class="btn" id="bmClose">닫기</button><div class="bm-ttl"><b>주사위 세계여행</b><small id="bmSub"></small></div><div class="bm-tr"><button class="btn bm-spd" id="bmSpd"></button><button class="btn" id="bmQuit">기권</button></div></div>
+  ov.innerHTML = `<div class="bm-top"><button class="btn" id="bmClose">닫기</button><div class="bm-ttl"><b>🎲 주사위 세계여행</b><small id="bmSub"></small></div><div class="bm-tr"><button class="btn bm-spd" id="bmSpd"></button><button class="btn" id="bmQuit">기권</button></div></div>
     <div class="bm-board" id="bmBoard">${cells}
       <div class="bm-mid">
         <div class="bm-row"><div class="bm-dice" id="bmDice">${bmDieHTML()}${bmDieHTML()}</div><div class="bm-msg" id="bmMsg"></div></div>
@@ -6591,7 +6601,7 @@ async function handleSession(session){
   const u = session ? session.user : null, newId = u ? u.id : null;
   ACC.ready = true;
   acctRemember(session);   // 토큰이 갱신될 때마다 목록의 토큰도 최신으로
-  if (ACC.loadedFor === newId){ ACC.user = u; if (u) ACC.nick = (u.user_metadata && u.user_metadata.nickname) || ACC.nick; return; }
+  if (ACC.loadedFor === newId){ ACC.user = u; if (u) ACC.nick = (u.user_metadata && u.user_metadata.nickname) || ACC.nick; whoUpdate(); return; }
   // 계정이 바뀌었다 (로그인, 로그아웃, 다른 탭에서 계정 전환)
   clearTimeout(ACC.cloudT); clearTimeout(ACC.rankT);
   ACC.loadedFor = newId;
@@ -6616,6 +6626,7 @@ async function handleSession(session){
   if (S.mode === 'live') startLivePolling(); else stopLivePolling();
   go(UI.tab); renderHeader();
   afterAuthResolved();
+  whoUpdate();
   mpReset(); if (ACC.user) mpWatchPayouts();   // 멀티플레이: 계정이 바뀌면 방 화면을 닫고 그 계정의 받을 돈을 확인
 }
 function afterAuthResolved(){
@@ -6877,6 +6888,13 @@ function rankCardHTML(){
   INFO.rank = {t:'랭킹 기준', h:`<p class="prose">순자산과 수익률 모두 미니게임 포인트를 뺀 값입니다. 수익률은 포인트가 들어올 때마다 기간을 끊어 계산하는 시간가중수익률이라, 같은 매매를 했다면 포인트를 언제 얼마나 받았든 같은 값이 나옵니다.</p><p class="prose">게임 계산이 브라우저에서 이뤄져 조작을 완전히 막을 수는 없으니 재미로 봐주세요.</p>`};
   return head + body + foot + `<p class="muted" style="margin:8px 0 0">포인트를 뺀 투자 실력 기준입니다. ${infoBtn('rank', '랭킹 기준')}</p>`;
 }
+// 오른쪽 위 계정 이름 (누르면 규칙·설정의 계정 칸으로)
+function whoUpdate(){
+  const b = $('#whoBtn'); if (!b) return;
+  const u = ACC.user, nm = u ? (ACC.nick || (u.email || '').split('@')[0] || '계정') : '';
+  b.hidden = !u; b.querySelector('span').textContent = nm; b.title = u ? `${nm} (${u.email || ''}) · 계정 설정` : '';
+}
+document.addEventListener('click', e => { if (e.target.closest('#whoBtn')){ go('info'); setTimeout(() => { const el = $('#btnLogout'); if (el) el.closest('.set-row').scrollIntoView({block:'center', behavior:'smooth'}); }, 60); } });
 function renderRankCard(){ const c = $('#rankCard'); if (c) c.innerHTML = rankCardHTML(); }
 async function saveNickname(v){
   v = String(v || '').trim();
@@ -6885,7 +6903,7 @@ async function saveNickname(v){
   try {
     const {error} = await ACC.sb.auth.updateUser({data:{nickname:v}});
     if (error) throw error;
-    ACC.nick = v;
+    ACC.nick = v; whoUpdate();
     toast('닉네임을 저장했습니다');
     await pushRank();
     refreshRanks(true);
