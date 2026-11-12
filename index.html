@@ -593,7 +593,7 @@ html.gated body{overflow:hidden}
 .siren i{width:34px;height:34px;border-radius:50%;background:#FF3B3B;box-shadow:0 0 18px #FF3B3B;animation:siren .5s infinite alternate}
 .siren i:last-child{background:#3B7BFF;box-shadow:0 0 18px #3B7BFF;animation-delay:.25s}
 @keyframes siren{to{opacity:.2;transform:scale(.85)}}
-.busted{text-decoration:line-through;text-decoration-color:#FF3B3B;text-decoration-thickness:2.5px;color:var(--ink-2)}
+.busted{text-decoration:line-through;text-decoration-color:rgba(255,59,59,.5);text-decoration-thickness:2.5px;color:var(--ink-2)}
 .sl-board{isolation:isolate;transform:translateZ(0);-webkit-transform:translateZ(0);position:relative;width:min(100%,560px);aspect-ratio:1;display:grid;grid-template-columns:repeat(10,minmax(0,1fr));grid-template-rows:repeat(10,minmax(0,1fr));border-radius:10px;overflow:hidden;border:1px solid var(--rule)}
 .sl-c{position:relative;display:flex;align-items:flex-start;justify-content:flex-start;padding:2px 3px}
 .sl-c.a{background:color-mix(in srgb,var(--brass) 10%,var(--surface))}.sl-c.b{background:var(--surface)}
@@ -1144,7 +1144,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '2.2.5';
+const VERSION = '2.2.6';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -6144,7 +6144,7 @@ function mpCardHTML(){
     <li>같은 모드(실제 시세/시뮬레이션)끼리만 같이 할 수 있습니다. 차례에서 정해진 시간 안에 고르지 않으면 서버가 대신 고릅니다.</li></ul></div>`};
   if (!ACC.user) return `<div class="card-h"><h2>👥 같이 하기</h2></div><p class="mg-desc">로그인하면 방 코드로 친구와 같이 할 수 있습니다.</p>`;
   if (MP.banned) return `<div class="card-h"><h2>👥 같이 하기 ${infoBtn('mp')}</h2></div><p class="mg-desc down"><b>🚫 부계정을 이용한 부정행위가 적발되어 이 계정은 멀티플레이가 제한되었습니다.</b></p>`;
-  if (ACC.tester) return `<div class="card-h"><h2>👥 같이 하기 ${infoBtn('mp')}</h2></div><p class="mg-desc"><b>🧪 테스트 계정은 멀티플레이를 할 수 없습니다</b> (돈이 줄지 않아 다른 계정에 돈을 넘길 수 있어서).</p>`;
+  if (ACC.tester) return `<div class="card-h"><h2>👥 같이 하기 ${infoBtn('mp')}</h2></div><p class="mg-desc"><b>🧪 테스트 계정은 멀티플레이를 할 수 없습니다</b></p>`;
   const saved = (() => { try { return localStorage.getItem(mpKey()); } catch(e){ return null; } })();
   return `<div class="card-h"><h2>👥 같이 하기 ${infoBtn('mp')}</h2><small id="mpRef">${MP.ref === false ? '<span class="down">게임 서버 꺼짐</span>' : MP.ref ? '게임 서버 켜짐' : ''}</small></div>
     <p class="mg-desc">방을 만들고 코드를 알려 주면 친구가 들어옵니다. ${Object.values(MP_GAMES).filter(g => g.ready).map(g => g.ic + g.nm).join(' · ')}</p>
