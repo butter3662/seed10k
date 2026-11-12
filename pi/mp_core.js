@@ -248,3 +248,30 @@ GAMES.sl = {
   },
   summary(room) { const g = room.state.g; return g ? {win: g.win, seats: room.state.seats.map((s) => s.nick), pos: g.pos} : null; },
 };
+
+/* ───────── 판 결과 기록 · 악용 의심 확인 ─────────
+   심판은 판이 끝날 때(play → over) resultOf로 결과 한 줄을 seed10k_mp_results에 적고,
+   같은 두 사람의 최근 결과로 연승을 센다(streakOf). 게임 규칙이 판 도중 이상한 행동을 보면
+   room.state.flags에 [{kind, seat, n, msg}]를 쌓고, 심판은 새로 생긴 것(newFlags)을 알림으로 보낸다. */
+export const WATCH = {oeStreak: 5, bjStand: 5, bmNoBuy: 5};
+export function resultOf(room) {
+  const st = room.state, g = st.g || {}, G = GAMES[room.game];
+  const seats = st.seats.map((s) => ({uid: s.uid, nick: s.nick, ...(s.left ? {left: true} : {})})), uids = seats.map((s) => s.uid);
+  const win = Number.isInteger(g.win) && g.win >= 0 && g.win < uids.length ? g.win : null;
+  return {code: room.code, game: room.game, mode: room.mode, stake: room.stake, il: !!room.il, uids, seats, win,
+    winner: win === null ? null : uids[win], pair: uids.length === 2 ? [...uids].sort().join(",") : null,
+    why: g.why || null, summary: G && G.summary ? G.summary(room) : null};
+}
+// rows: 같은 두 사람의 결과, 최근 것부터. 맨 앞 판의 승자가 몇 판 연속 이겼는가
+export function streakOf(rows) {
+  if (!rows.length || !rows[0].winner) return 0;
+  let n = 0;
+  for (const r of rows) { if (r.winner !== rows[0].winner) break; n++; }
+  return n;
+}
+// 연승 알림을 보낼 때: 5연승, 10연승, 15연승 … (같은 연승으로 판마다 울리지 않게)
+export const streakHit = (n, k = WATCH.oeStreak) => n >= k && (n - k) % k === 0;
+export function newFlags(room0, room) {
+  const a = (room0 && room0.state && room0.state.flags || []).length, b = (room && room.state && room.state.flags) || [];
+  return b.length >= a ? b.slice(a) : b;   // 줄었으면 새 판이 시작된 것
+}

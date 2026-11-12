@@ -8,9 +8,13 @@
 // 10초마다 seed10k_rooms의 '__ref' 줄에 시각을 남겨, 사이트가 심판이 켜져 있는지 알 수 있게 한다.
 //
 // 환경 변수 (pi/.env, 시세 수집기와 같은 파일): SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
+//   NTFY_TOPIC (선택): 악용 의심 알림을 휴대폰 ntfy 앱으로도 보낸다. 남이 못 맞힐 긴 이름으로 정한다
+//
+// 판이 끝나면 결과를 seed10k_mp_results에 적고, 악용 의심이면 seed10k_alerts에 적는다 (관리 탭에 뜬다).
+// 멀티플레이가 제한된 계정(seed10k_mp_bans)은 방을 만들거나 들어올 수 없다.
 
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
-import { handle, tick } from "./mp_core.js";
+import { handle, tick, resultOf, streakOf, streakHit, newFlags, WATCH } from "./mp_core.js";
 
 const BASE = (Deno.env.get("SUPABASE_URL") || "").replace(/\/+$/, "");
 const KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
@@ -49,6 +53,38 @@ async function save(out: { room: Room; priv: any; payouts?: any[] }, room0: Room
   await rest("POST", "seed10k_room_priv?on_conflict=code", [{ code: room.code, priv: out.priv || {} }], "resolution=merge-duplicates,return=minimal");
   if (room.status === "closed") { rooms.delete(room.code); privs.delete(room.code); }
   else { rooms.set(room.code, room); privs.set(room.code, out.priv || {}); }
+  // 기록·알림은 실패해도 게임은 계속된다
+  watch(room0, room).catch((e) => console.error("[seed10k-ref] 기록·알림 실패:", String((e as Error)?.message || e).slice(0, 300)));
+}
+
+/* ── 판 결과 기록과 악용 의심 알림 ── */
+const NTFY = (Deno.env.get("NTFY_TOPIC") || "").trim();
+async function alert(a: { kind: string; game: string; code: string; mode: string; uid?: string; other?: string; msg: string; detail?: unknown }) {
+  await rest("POST", "seed10k_alerts", [a], "return=minimal");
+  console.log("[seed10k-ref] 알림:", a.msg);
+  if (NTFY) await fetch("https://ntfy.sh/", { method: "POST", body: JSON.stringify({ topic: NTFY, title: "SEED 10K 부정행위 의심", message: a.msg, tags: ["rotating_light"] }), signal: AbortSignal.timeout(10_000) }).catch(() => {});
+}
+async function watch(room0: Room | undefined, room: Room) {
+  const nick = (i: number) => (room.state.seats[i] || {}).nick || "?";
+  for (const f of newFlags(room0, room)) {
+    await alert({ kind: f.kind, game: room.game, code: room.code, mode: room.mode, uid: room.state.seats[f.seat]?.uid, msg: f.msg, detail: f });
+  }
+  if (!(room0 && room0.status === "play" && room.status === "over")) return;
+  const res = resultOf(room);
+  await rest("POST", "seed10k_mp_results", [res], "return=minimal");
+  if (room.game === "oe" && res.pair && res.winner) {   // 홀짝: 같은 상대에게 계속 이기면 (부계정이 일부러 져 주는지)
+    const rows = await rest("GET", `seed10k_mp_results?game=eq.oe&pair=eq.${encodeURIComponent(res.pair)}&order=id.desc&limit=60&select=winner`) || [];
+    const n = streakOf(rows);
+    if (streakHit(n, WATCH.oeStreak)) {
+      const w = res.win as number, l = 1 - w;
+      await alert({ kind: "oe_streak", game: "oe", code: room.code, mode: room.mode, uid: res.winner, other: res.uids[l],
+        msg: `홀짝 대결: ${nick(w)}이(가) 같은 상대 ${nick(l)}에게 ${n}연승 (판돈 $${room.stake}, 방 ${room.code})`, detail: { n, stake: room.stake } });
+    }
+  }
+}
+async function banned(uid: string) {
+  const r = await rest("GET", `seed10k_mp_bans?user_id=eq.${encodeURIComponent(uid)}&select=user_id`) || [];
+  return r.length > 0;
 }
 
 let busy = false, again = false, handled = 0, failed = 0;
@@ -64,6 +100,10 @@ async function work() {
         try {
           if (q.kind !== "create") await loadRoom(q.code);
           const room0 = rooms.get(q.code);
+          if ((q.kind === "create" || q.kind === "join" || q.kind === "again") && await banned(q.user_id)) {
+            await rest("PATCH", `seed10k_room_reqs?id=eq.${q.id}`, { done: true, ok: false, err: "부정행위로 멀티플레이가 제한된 계정입니다" }, "return=minimal");
+            handled++; continue;
+          }
           const out = handle(room0 || null, privs.get(q.code) || {}, q, Date.now(), Math.random);
           if (out.err) patch = { done: true, ok: false, err: out.err };
           else { if (out.room) await save(out as any, room0); patch = { done: true, ok: true, res: out.res || {} }; }

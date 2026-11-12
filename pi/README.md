@@ -90,3 +90,19 @@ docker compose logs --tail 20 seed10k-referee
 |---|---|
 | 심판 로그 | `docker compose logs -f --tail 50 seed10k-referee` |
 | 심판만 다시 켜기 | `docker compose restart seed10k-referee` |
+
+## 부정행위 감시 (관리 탭)
+
+`supabase/seed10k_admin.sql`을 SQL 편집기에서 한 번 실행하면 판 결과 기록(`seed10k_mp_results`), 알림(`seed10k_alerts`), 멀티플레이 제한(`seed10k_mp_bans`) 표가 생긴다. 관리자 지정은 그 파일에 넣지 않고 SQL 편집기에서 따로 한 줄로 한다.
+
+- 심판은 판이 끝날 때마다 결과를 적고, 홀짝 대결에서 같은 상대에게 5연승(이후 10, 15…)하면 알림을 적는다.
+- 제한된 계정은 방을 만들거나 들어오거나 "한 판 더"를 열 수 없다.
+
+### 휴대폰 알림 (선택, ntfy)
+
+사이트를 안 열어도 휴대폰으로 받고 싶으면 [ntfy](https://docs.ntfy.sh/) 앱을 깔고, 남이 못 맞힐 긴 주제 이름(예: `seed10k-` 뒤에 무작위 글자 20자)을 구독한 뒤 `.env`에 한 줄 넣는다. 주제 이름을 아는 사람은 누구나 구독할 수 있으니 비밀번호처럼 다룬다.
+
+```bash
+echo 'NTFY_TOPIC=seed10k-여기에무작위글자' >> .env
+docker compose up -d --force-recreate seed10k-referee
+```
