@@ -1154,7 +1154,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '2.2.15';
+const VERSION = '2.2.16';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -1234,8 +1234,10 @@ const MINUS = '−';
    krw: 모두 원화로 (달러 × 매매기준율 X)
    환산에는 지금 매매기준율을 쓴다. 이름 끝 n(fmtUSDn, fmtKRWn, fmtPxN)은 설정과 상관없이 원래 통화로 쓴다
    (주문 조건 가격, 환전 화면, 통장처럼 실제 통화가 중요한 곳) */
-function fmtUSDn(v, d = 2){ const s = Math.abs(v).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d}); return (v < 0 ? MINUS : '') + '$' + s; }
-function fmtKRWn(v){ return (v < 0 ? MINUS : '') + Math.round(Math.abs(v)).toLocaleString('ko-KR') + '원'; }
+// 테스트 계정의 돈은 사실상 무한(1천조): 1백조가 넘는 금액은 ∞로 보여 준다 (테스트 계정에서만)
+const bsInf = v => { try { return !!ACC.tester && Math.abs(v) >= 1e14; } catch(e){ return false; } };   // ACC가 아직 없을 때(초기화 전)는 보통대로
+function fmtUSDn(v, d = 2){ if (bsInf(v)) return (v < 0 ? MINUS : '') + '$∞'; const s = Math.abs(v).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d}); return (v < 0 ? MINUS : '') + '$' + s; }
+function fmtKRWn(v){ if (bsInf(v)) return (v < 0 ? MINUS : '') + '∞원'; return (v < 0 ? MINUS : '') + Math.round(Math.abs(v)).toLocaleString('ko-KR') + '원'; }
 const dispMode = () => { try { return SET.disp || 'real'; } catch(e){ return 'real'; } };   // SET이 만들어지기 전이면 실제 통화
 const fxNow = () => { try { const x = FX(); return x > 0 ? x : 1; } catch(e){ return 1; } };
 function fmtUSD(v, d = 2){ return dispMode() === 'krw' ? fmtKRWn(v * fxNow()) : fmtUSDn(v, d); }
@@ -1414,7 +1416,7 @@ function lsSet(k, v){
 // Supabase 로그인 정보도 같은 방식으로 쓴다 (공간이 모자라면 정리하고 다시)
 const SB_STORE = {getItem:k => { try { return localStorage.getItem(k); } catch(e){ return null; } }, setItem:(k, v) => { lsSet(k, v); }, removeItem:k => { try { localStorage.removeItem(k); } catch(e){} }};
 // 테스트 계정 (서버 seed10k_testers 표가 정한다): 돈이 줄지 않게 채우고 랭킹에 올리지 않는다
-const TEST_USD = 1e8, TEST_KRW = 1e11;
+const TEST_USD = 1e15, TEST_KRW = 1e15;   // 사실상 무한: 저장할 때마다 다시 채운다 (Infinity는 JSON에 저장되지 않아 큰 수를 쓴다)
 function testerFill(){ if (!ACC.tester || !S || S._ph) return; if (!(S.usd >= TEST_USD)) S.usd = TEST_USD; if (!(S.krw >= TEST_KRW)) S.krw = TEST_KRW; }
 async function testerCheck(){
   ACC.tester = false;
@@ -7180,11 +7182,37 @@ function spFace(rank){
     return {a, b, amt:k === win ? amts[rank - 1] : amts[Math.floor(Math.random() * amts.length)]};
   });
 }
-const SP_MAXBUY = 500, SP_MAXOPEN = 1000;
+const SP_MAXBUY = 500, SP_MAXOPEN = 1000;   // SP_MAXBUY장 넘게 사면 한 장씩 저장하지 않고 '묶음'으로 산다 (등수별 장수만 저장)
+// 이항분포 표본: n장 중 확률 p로 당첨되는 장수. 적으면 직접, 기댓값이 작으면 푸아송 근사, 크면 정규 근사
+function spBinom(n, p){
+  if (n <= 0 || p <= 0) return 0; if (p >= 1) return n;
+  if (n < 2000){ let k = 0; for (let i = 0; i < n; i++) if (Math.random() < p) k++; return k; }
+  const mu = n * p;
+  if (mu < 30){ const L = Math.exp(-mu); let k = 0, q = Math.random(); while (q > L){ k++; q *= Math.random(); } return Math.min(k, n); }
+  const sd = Math.sqrt(mu * (1 - p)), z = Math.sqrt(-2 * Math.log(1 - Math.random())) * Math.cos(2 * Math.PI * Math.random());
+  return Math.max(0, Math.min(n, Math.round(mu + sd * z)));
+}
+// 묶음 n장의 등수별 장수: 1등은 2장 세트로만 나온다(세트 ⌊n/2⌋개 중 1등 세트 수 ×2, 남는 한 장은 따로). 나머지 장은 1등을 뺀 확률로 2~6등을 차례로 나눈다
+function spBig(n){
+  const P = SP.tiers.map(t => t[1] / SP.total), c = [0, 0, 0, 0, 0, 0];
+  const sets = Math.floor(n / 2), k1 = spBinom(sets, P[0]), odd = n % 2 && Math.random() < P[0] ? 1 : 0;
+  c[0] = k1 * 2 + odd;
+  let left = n - c[0], q = 1 - P[0];
+  for (let i = 1; i < 6; i++){ const k = spBinom(left, P[i] / q); c[i] = k; left -= k; q -= P[i]; }
+  return c;
+}
 function spBuy(n){
   if (S.over) return toast('파산해서 살 수 없습니다', true);
   n = Math.floor(n);
-  if (!(n >= 1 && n <= SP_MAXBUY)) return toast(`한 번에 1~${SP_MAXBUY}장까지 살 수 있습니다`, true);
+  if (!(n >= 1) || !isFinite(n)) return toast('살 장수를 1장 이상으로 적어 주세요', true);
+  if (n > SP_MAXBUY){   // 묶음으로 사기
+    const cost = n * SP.price;
+    if (!canPayKRW(cost) || !payKRW(cost)) return toast('돈이 모자랍니다', true);
+    const s = spS(); s.big = (s.big || []).concat([{id:Math.random().toString(36).slice(2, 9), at:Date.now(), n, c:spBig(n)}]);
+    altLog('sp', `스피또2000 ${n.toLocaleString()}장 (묶음)`, -cost, 'KRW');
+    commit(); toast(`스피또2000 ${n.toLocaleString()}장을 샀습니다`);
+    spOpenAll(s.big[s.big.length - 1].id); return;
+  }
   if (spS().tix.filter(t => !t.done).length + n > SP_MAXOPEN) return toast(`안 긁은 복권은 ${SP_MAXOPEN.toLocaleString()}장까지 둘 수 있습니다. 먼저 긁으세요`, true);
   const cost = n * SP.price;
   if (!canPayKRW(cost) || !payKRW(cost)) return toast('돈이 모자랍니다', true);
@@ -7226,6 +7254,7 @@ function spHTML(){
       <div class="bm-acts"><button class="btn" data-spbuy="1">1장</button><button class="btn" data-spbuy="2">2장 세트</button><button class="btn" data-spbuy="10">10장</button><button class="btn" data-spbuy="50">50장</button><button class="btn" data-spbuy="100">100장</button></div>
       <div class="sp-custom"><label class="amt"><input id="spN" type="text" inputmode="numeric" placeholder="직접 입력" value="${UI.spN || ''}"><span>장</span></label><button class="btn solid" id="spBuyN">사기</button></div>
       <p class="muted" id="spNInfo" style="margin:6px 0 0">${spNInfo()}</p></section>
+    ${(s.big || []).length ? `<section class="card"><div class="card-h"><h2>안 긁은 묶음</h2><small>${s.big.length}묶음</small></div><div class="bm-acts">${s.big.map(b => `<button class="btn solid" data-spbig="${b.id}">🎫 ${b.n.toLocaleString()}장 묶음 긁기</button>`).join('')}</div></section>` : ''}
     ${open.length ? `<section class="card"><div class="card-h"><h2>안 긁은 복권</h2><small>${open.length.toLocaleString()}장</small></div>
       ${open.length >= 2 ? `<button class="btn solid sp-allbtn" data-spall="1">🎫 ${open.length.toLocaleString()}장 한번에 긁기</button>` : ''}
       <div class="sp-list">${open.slice(0, 40).map(t => `<button class="sp-mini" data-spopen="${t.id}">🎫<small>긁기</small></button>`).join('')}${open.length > 40 ? `<span class="sp-more">+${(open.length - 40).toLocaleString()}장</span>` : ''}</div></section>` : ''}
@@ -7263,14 +7292,14 @@ function spOpen(id){
 }
 function spNInfo(){
   const n = Math.floor(parseFloat(String(UI.spN || '').replace(/,/g, '')) || 0);
-  if (!n) return `한 번에 ${SP_MAXBUY}장까지 · 2장씩 연속번호 세트`;
-  if (n > SP_MAXBUY) return `한 번에 ${SP_MAXBUY}장까지 살 수 있습니다`;
-  return `${n.toLocaleString()}장 = ${fmtKRWn(n * SP.price)}`;
+  if (!n) return `2장씩 연속번호 세트 · ${SP_MAXBUY.toLocaleString()}장이 넘으면 묶음으로 한 번에 긁습니다`;
+  return `${n.toLocaleString()}장 = ${fmtKRWn(n * SP.price)}${n > SP_MAXBUY ? ' · 묶음으로 한 번에 긁기' : ''}`;
 }
 /* 안 긁은 복권을 한꺼번에: 은박 한 장을 긁으면(또는 '전부 긁기') 모두 정산하고, 당첨금이 큰 순서로 쌓아 보여 준다 */
-function spOpenAll(){
-  const tix = spS().tix.filter(t => !t.done); if (!tix.length) return;
-  const n = tix.length;
+function spOpenAll(bigId){
+  const big = bigId ? (spS().big || []).find(b => b.id === bigId) : null; if (bigId && !big) return;
+  const tix = big ? [] : spS().tix.filter(t => !t.done); if (!big && !tix.length) return;
+  const n = big ? big.n : tix.length;
   const close = showModal(`<h2>🎫 스피또2000 ${n.toLocaleString()}장 한번에</h2>
     <div class="sp-ticket"><div class="sp-head"><b>SPEETTO 2000 × ${n.toLocaleString()}</b><small>한 번 긁으면 전부</small></div>
       <div class="sp-area sp-bulk" id="spArea"><div class="sp-bulk-c"><b>${n.toLocaleString()}장</b><small>${fmtKRWn(n * SP.price)}어치</small></div><canvas id="spCv"></canvas></div></div>
@@ -7289,9 +7318,20 @@ function spOpenAll(){
   const reveal = () => {
     if (done) return; done = true;
     cv.style.transition = 'opacity .35s'; cv.style.opacity = 0; setTimeout(() => cv.remove(), 360);
-    const net0 = S.krw;
+    const net0 = S.krw, cost = n * SP.price;
+    if (big){
+      const s2 = spS(); if (!(s2.big || []).some(b => b.id === big.id)) return;   // 이미 긁은 묶음
+      big.c.forEach((k, i) => { if (k){ const g = SP.tiers[i][0]; S.krw += k * (g - lotTax(g)); } });
+      s2.big = s2.big.filter(b => b.id !== big.id);
+      const got = S.krw - net0, wonN = big.c.reduce((a, b) => a + b, 0);
+      altLog('sp', `스피또2000 ${n.toLocaleString()}장 묶음 긁기 (당첨 ${wonN.toLocaleString()}장)`, got, 'KRW');
+      commit();
+      const btn = $('#spAll'); if (btn) btn.remove();
+      setTimeout(() => { const tk = $('#modal .sp-ticket'); if (tk) tk.remove(); }, 360);
+      spBulkShowC(big.c, n, got, cost); return;
+    }
     tix.forEach(t => spSettle(t, true));
-    const won = tix.filter(t => t.rank), got = S.krw - net0, cost = n * SP.price;
+    const won = tix.filter(t => t.rank), got = S.krw - net0;
     altLog('sp', `스피또2000 ${n}장 한번에 긁기 (당첨 ${won.length}장)`, got, 'KRW');
     spTrim(); commit();
     const btn = $('#spAll'); if (btn) btn.remove();
@@ -7311,6 +7351,16 @@ function spOpenAll(){
   $('#spAll').onclick = reveal;
 }
 // 결과: 당첨된 장은 당첨금이 큰 순서로 한 장씩 위에서 떨어져 쌓이고, 꽝은 한 줄로 묶는다
+// 묶음 결과: 등수마다 한 줄 (장수와 세후 합계)
+function spBulkShowC(c, n, got, cost){
+  const box = $('#spBulkRes'); if (!box) return;
+  const wonN = c.reduce((a, b) => a + b, 0), lose = n - wonN, pl = got - cost;
+  const rows = c.map((k, i) => { if (!k) return ''; const g = SP.tiers[i][0], net = g - lotTax(g); return `<div class="sp-stk r${Math.min(i + 1, 4)}" style="animation-delay:${i * 90}ms"><b>${i + 1}등 × ${k.toLocaleString()}</b><span class="num">${fmtKRWn(k * net)}</span>${net !== g ? `<small>장당 세후 ${fmtKRWn(net)}</small>` : ''}</div>`; }).join('');
+  box.innerHTML = `<div class="sp-sum"><div><span>산 돈</span><b class="num">${fmtKRWn(cost)}</b></div><div><span>받은 돈 (세후)</span><b class="num up">${fmtKRWn(got)}</b></div><div><span>손익</span><b class="num ${pl > 0 ? 'up' : pl < 0 ? 'down' : ''}">${pl > 0 ? '+' : pl < 0 ? MINUS : ''}${fmtKRWn(Math.abs(pl))}</b></div></div>
+    <p class="muted" style="margin:6px 0">${c.map((k, i) => k ? `${i + 1}등 ${k.toLocaleString()}장` : '').filter(Boolean).join(' · ')}${wonN ? ' · ' : ''}꽝 ${lose.toLocaleString()}장 · 돌려받은 비율 ${(got / cost * 100).toFixed(1)}%</p>
+    <div class="info-body sp-stack">${rows}${lose ? `<div class="sp-stk lose" style="animation-delay:${6 * 90}ms"><b>꽝</b><span class="num">${lose.toLocaleString()}장</span></div>` : ''}</div>`;
+  const top = c.findIndex(k => k > 0); if (top >= 0 && top <= 2) toast(`🎉 ${top + 1}등 당첨! ${fmtKRWn(SP.tiers[top][0])}`);
+}
 function spBulkShow(tix, got, cost){
   const box = $('#spBulkRes'); if (!box) return;
   const win = tix.filter(t => t.rank).sort((a, b) => a.rank - b.rank), lose = tix.length - win.length;
@@ -7343,6 +7393,7 @@ document.addEventListener('click', e => {
   if (t.dataset.spbuy){ spBuy(+t.dataset.spbuy); return; }
   if (t.dataset.spopen){ spOpen(t.dataset.spopen); return; }
   if (t.dataset.spall){ spOpenAll(); return; }
+  if (t.dataset.spbig){ spOpenAll(t.dataset.spbig); return; }
   if (t.id === 'spBuyN'){ spBuy(parseFloat(String(UI.spN || '').replace(/,/g, '')) || 0); return; }
 });
 
