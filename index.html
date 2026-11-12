@@ -1144,7 +1144,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '2.2.2';
+const VERSION = '2.2.3';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -6056,8 +6056,8 @@ const BSAU = {
     if (on && !BSA.amb){
       const s = c.createBufferSource(); s.buffer = BSA.noise; s.loop = true;
       const f = c.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 7000; f.Q.value = 0.3;
-      const g = c.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.045, t + 1.2);
-      const hum = c.createOscillator(); hum.frequency.value = 60; const hg = c.createGain(); hg.gain.value = 0.012;
+      const g = c.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.0225, t + 1.2);   // 배경 크기 (v2.2.3에서 절반으로)
+      const hum = c.createOscillator(); hum.frequency.value = 60; const hg = c.createGain(); hg.gain.value = 0.006;
       s.connect(f); f.connect(g); hum.connect(hg); hg.connect(g); g.connect(BSA.muff);
       s.start(); hum.start(); BSA.amb = {s, hum, g};
     } else if (!on && BSA.amb){
