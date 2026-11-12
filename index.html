@@ -721,6 +721,9 @@ html.gated body{overflow:hidden}
 .bs-layhint{position:absolute;left:0;right:0;top:10px;margin:0;text-align:center;font-size:12px;color:rgba(255,235,210,.85)}
 /* 3D 무대: 캔버스가 무대를 채운다. 글자(남은 탄·배너)는 그 위에 */
 .bs-stage.bs3{background:#060303}
+.bs3-wait{position:absolute;inset:0;display:grid;place-content:center;justify-items:center;gap:10px;color:#a89f8f;font-size:13px;background:radial-gradient(60% 70% at 50% 35%,#1a0f0c,#060303)}
+.bs3-wait i{width:26px;height:26px;border-radius:50%;border:3px solid rgba(255,255,255,.15);border-top-color:#c9a23a;animation:bsSpin .8s linear infinite}
+@keyframes bsSpin{to{transform:rotate(360deg)}}
 .bs3-slot{position:absolute;inset:0;z-index:0}.bs3-slot[data-bsgun]{cursor:pointer}
 .bs3-canvas{display:block;width:100%;height:100%}
 .bs-stage.bs3::before{opacity:.5}
@@ -1229,7 +1232,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '2.2.29';
+const VERSION = '2.2.30';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -5478,7 +5481,7 @@ function bsTableHTML(g, me, o){
   return `${o.solo ? '' : !g.over && o.mine ? '<div class="bs-quit"><button class="btn" data-bsdo="quit">기권</button></div>' : '<div class="bs-quit"></div>'}<div class="bs-table">
     <div class="bs-opps n${g.n - 1}">${opp}</div>
     <div class="bs-stage ${BSV.fx || ''} ${s3 ? 'bs3' : ''} ${myTurn && BSV.hold ? 'aiming' : ''} ${BSV.fx === 'bang' && BSV.flash === 'p' + me ? 'hitme' : ''}">
-      ${s3 ? `<div class="bs3-slot" ${myTurn && !BSV.hold ? 'data-bsgun="1" role="button" aria-label="총 들기"' : ''}></div>` : `<div class="bs-lamp"></div>
+      ${s3 ? `<div class="bs3-slot" ${myTurn && !BSV.hold ? 'data-bsgun="1" role="button" aria-label="총 들기"' : ''}></div>` : BS3.st === 'loading' || BS3.st === 'idle' ? '<div class="bs3-wait"><i></i><span>테이블 준비 중…</span></div>' : `<div class="bs-lamp"></div>
       <div class="bs-dealer ${BSV.lay && BSV.lay.in && BSV.lay.in.length ? 'feed' : ''} ${BSV.fx === 'rack' ? 'racking' : ''}">${BS_DEALER}<i class="bs-hand l">${BS_HAND}</i><i class="bs-hand r">${BS_HAND}</i></div>
       ${bsLayHTML()}
       <div class="bs-gunwrap aim-${aim} ${BSV.hold || BSV.aim === 'up' || BSV.aim === 'down' ? 'held' : ''} ${g.saw ? 'sawed' : ''}" ${myTurn && !BSV.hold ? 'data-bsgun="1" role="button" aria-label="총 들기"' : ''}><div class="bs-kick">${BS_GUN}<i class="bs-muzzle"></i></div></div>
@@ -5502,6 +5505,7 @@ function bsQuitSlot(){
 }
 function bsRender(){ const c = $('#bsCard'); if (c) c.innerHTML = bsCardHTML(); gmSync(); bsQuitSlot(); }
 function bsPaneHTML(){
+  if (window.WebGLRenderingContext) setTimeout(bs3Want, 0);   // 도박 탭에서 카드가 보이면 3D 그림을 미리 받아 둔다
   const g = bsS().cur; bsInfo();
   if (!g) return bsCardHTML().replace('id="bsGo"', 'id="bsOpen"');
   return `<div class="card-h"><h2>💥 벅샷 룰렛 ${infoBtn('bs')}</h2><small>판돈 ${fmtUSD(g.stake)}${g.il ? ' · 🚨 불법' : ''}</small></div>
@@ -5553,6 +5557,7 @@ async function bsPlay(ev, done, rerender){
   const me = () => rerender.me !== undefined ? rerender.me : 0, G = () => rerender.g ? rerender.g() : bsS().cur;
   const nm = i => i === me() ? '나' : esc(G() ? G().pl[i].nm : '?');
   BSV.view = G() ? bsViewOf(G(), ev) : null;
+  for (let w = 0; (BS3.st === 'loading' || BS3.st === 'idle') && w < 80; w++){ bs3Want(); try { await bsWait(100); } catch(e){ break; } }   // 3D 그림을 받는 동안 2D로 시작하지 않게
   try {
     for (const e of ev){
       if (e.t === 'load'){
