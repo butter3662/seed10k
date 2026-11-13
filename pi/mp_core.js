@@ -29,9 +29,16 @@ const clone = (x) => JSON.parse(JSON.stringify(x));
 const seatOf = (room, uid) => room.state.seats.findIndex((s) => s.uid === uid);
 const nick = (s) => String(s || "").replace(/[<>]/g, "").slice(0, 16) || "플레이어";
 function bump(room, ev) { const st = room.state; st.seq = (st.seq || 0) + 1; if (ev) st.ev = {seq: st.seq, ...ev}; }
+// 판돈을 내는 때: 예전 사이트는 들어갈 때 자기 통장에서 미리 뺐다(pay 없음). 새 사이트(arg.payAtStart)는 시작할 때 서버가 '판돈 냄' 줄로 가져간다(pay:"start")
+// 그래서 대기실에서 나가거나 방이 닫힐 때 돌려주는 것은 미리 낸 사람(예전 방식)뿐이다
 function refundAll(room, note) {
-  return room.state.seats.map((s) => ({user_id: s.uid, amount: room.stake, cost: room.stake, il: false, note}));
+  return room.state.seats.filter((s) => s.pay !== "start").map((s) => ({user_id: s.uid, amount: room.stake, cost: room.stake, il: false, note}));
 }
+// 시작할 때 판돈 가져가기: 금액이 음수인 줄 (amount = cost = -판돈 → 순손익 0으로 세고, 끝날 때 줄이 amount − cost로 판 전체 손익이 된다)
+function chargeAll(room) {
+  return room.state.seats.filter((s) => s.pay === "start").map((s) => ({user_id: s.uid, amount: -room.stake, cost: -room.stake, il: false, note: "판돈 냄"}));
+}
+const seatOf2 = (uid, a) => ({uid, nick: nick(a.nick), ...(a.payAtStart ? {pay: "start"} : {})});
 export function gameOf(k) { return GAMES[k]; }
 
 export function handle(room0, priv0, req, now = Date.now(), rnd = Math.random) {
@@ -47,7 +54,7 @@ export function handle(room0, priv0, req, now = Date.now(), rnd = Math.random) {
     if (!(stake >= L.min && stake <= max)) return {err: `판돈은 $${L.min}~$${max}입니다`};
     const maxP = Math.max(L.minP, Math.min(L.maxP, Math.floor(+a.maxP || L.maxP)));
     const room = {code: req.code, game: a.game, mode: a.mode, host: uid, stake, il: !!a.il, status: "lobby",
-      state: {seats: [{uid, nick: nick(a.nick)}], maxP, seq: 0, at: now}};
+      state: {seats: [seatOf2(uid, a)], maxP, seq: 0, at: now}};
     bump(room, {t: "join", who: 0});
     return {room, priv: {}, payouts: [], res: {code: req.code}};
   }
@@ -63,7 +70,7 @@ export function handle(room0, priv0, req, now = Date.now(), rnd = Math.random) {
       if (a.mode !== room.mode) return {err: `이 방은 ${room.mode === "live" ? "실제 시세" : "시뮬레이션"} 모드 방입니다`};
       if (room.il && !a.il) return {err: "불법 모드 방입니다. 불법 모드를 켜고 들어오세요"};
       if (st.seats.length >= st.maxP) return {err: "방이 가득 찼습니다"};
-      st.seats.push({uid, nick: nick(a.nick)});
+      st.seats.push(seatOf2(uid, a));
       bump(room, {t: "join", who: st.seats.length - 1});
       return {room, priv, payouts: [], res: {seat: st.seats.length - 1}};
     }
@@ -75,8 +82,9 @@ export function handle(room0, priv0, req, now = Date.now(), rnd = Math.random) {
           room.status = "closed"; bump(room, {t: "closed"});
           return {room, priv, payouts: p, res: {}};
         }
+        const paid = st.seats[me].pay !== "start";
         st.seats.splice(me, 1); bump(room, {t: "leave"});
-        return {room, priv, payouts: [{user_id: uid, amount: room.stake, cost: room.stake, il: false, note: "대기실에서 나가 판돈 환불"}], res: {}};
+        return {room, priv, payouts: paid ? [{user_id: uid, amount: room.stake, cost: room.stake, il: false, note: "대기실에서 나가 판돈 환불"}] : [], res: {}};
       }
       if (room.status === "play") {                                                // 진행 중에 나가면 게임 규칙대로 기권
         st.seats[me].left = true;
@@ -93,9 +101,10 @@ export function handle(room0, priv0, req, now = Date.now(), rnd = Math.random) {
       const L = LIMITS[room.game];
       if (st.seats.length < L.minP) return {err: `${L.minP}명 이상 있어야 시작할 수 있습니다`};
       room.status = "play";
+      const charge = chargeAll(room);                                             // 시작할 때 판돈을 가져간다 (끝난 판의 줄보다 먼저)
       const r = G.init(room, priv, now, rnd);                                     // 블랙잭은 딜러 블랙잭이면 바로 끝난다
       if (room.status === "play") bump(room, {t: "start"});
-      return {room, priv, payouts: (r && r.payouts) || [], res: {}};
+      return {room, priv, payouts: charge.concat((r && r.payouts) || []), res: {}};
     }
     case "act": {
       if (room.status !== "play") return {err: "진행 중인 판이 아닙니다"};
@@ -109,7 +118,7 @@ export function handle(room0, priv0, req, now = Date.now(), rnd = Math.random) {
       if (room.status !== "over") return {err: "판이 끝난 뒤에 다시 열 수 있습니다"};
       if (a.il !== undefined && !!a.il !== room.il) return {err: "불법 모드 설정이 방과 다릅니다"};
       room.status = "lobby";
-      room.state = {seats: [st.seats[me]], maxP: st.maxP, seq: st.seq, at: now, prev: G.summary ? G.summary(room) : null};
+      room.state = {seats: [seatOf2(uid, {nick: st.seats[me].nick, payAtStart: a.payAtStart})], maxP: st.maxP, seq: st.seq, at: now, prev: G.summary ? G.summary(room) : null};
       for (const k of Object.keys(priv)) delete priv[k];
       bump(room, {t: "again"});
       return {room, priv, payouts: [], res: {}};
