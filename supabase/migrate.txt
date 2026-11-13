@@ -6,3 +6,4 @@ seed10k_multi.sql
 seed10k_admin.sql
 seed10k_admin_cmds.sql
 seed10k_testers.sql
+seed10k_rankbans.sql

@@ -533,6 +533,7 @@ html.gated body{overflow:hidden}
 .ranks li:nth-child(-n+3) .rn{color:var(--brass)}
 .rk-n{font-weight:700;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .rk-n small{font-size:11px;color:var(--brass);font-weight:800}
+.rk-ban{border:0;background:none;padding:0 2px;margin-left:4px;font-size:12px;cursor:pointer;opacity:.55;vertical-align:1px}.rk-ban:hover{opacity:1}
 .rk-d{display:block;font-size:12px;color:var(--ink-3);font-weight:500}
 .rank-foot{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px solid var(--rule);font-size:13.5px;color:var(--ink-2)}
 .rank-foot .amt{flex:1 1 160px}
@@ -1234,7 +1235,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '2.2.33';
+const VERSION = '2.2.34';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -1499,9 +1500,10 @@ const SB_STORE = {getItem:k => { try { return localStorage.getItem(k); } catch(e
 const TEST_USD = 1e15, TEST_KRW = 1e15;   // 사실상 무한: 저장할 때마다 다시 채운다 (Infinity는 JSON에 저장되지 않아 큰 수를 쓴다)
 function testerFill(){ if (!ACC.tester || !S || S._ph) return; if (!(S.usd >= TEST_USD)) S.usd = TEST_USD; if (!(S.krw >= TEST_KRW)) S.krw = TEST_KRW; }
 async function testerCheck(){
-  ACC.tester = false;
+  ACC.tester = false; ACC.rankBan = null;
   if (ACC.user && ACC.sb){
     try { const {data} = await ACC.sb.from('seed10k_testers').select('user_id').eq('user_id', ACC.user.id).maybeSingle(); ACC.tester = !!data; } catch(e){}
+    try { const {data, error} = await ACC.sb.from('seed10k_rank_bans').select('at,reason').eq('user_id', ACC.user.id).maybeSingle(); if (!error) ACC.rankBan = data || null; } catch(e){}
   }
   if (ACC.tester){
     try { await ACC.sb.from('seed10k_ranks').delete().eq('user_id', ACC.user.id); } catch(e){}   // 예전에 올라간 랭킹 줄도 지운다
@@ -7148,7 +7150,7 @@ async function admSearch(q){
 async function admOpenUser(uid){
   ADM.uid = uid; ADM.data = null; renderAdmin();
   const sb = ACC.sb;
-  const [sv, pay, res, bml, ban, tst, who] = await Promise.all([
+  const [sv, pay, res, bml, ban, tst, who, rb] = await Promise.all([
     sb.from('seed10k_saves').select('mode,data,updated_at').eq('user_id', uid),
     sb.from('seed10k_payouts').select('id,at,code,game,mode,amount,cost,il,note,claimed_at').eq('user_id', uid).order('id', {ascending:false}).limit(2000),
     sb.from('seed10k_mp_results').select('*').contains('uids', [uid]).order('id', {ascending:false}).limit(30),
@@ -7156,10 +7158,11 @@ async function admOpenUser(uid){
     sb.from('seed10k_mp_bans').select('*').eq('user_id', uid).maybeSingle(),
     sb.from('seed10k_testers').select('user_id').eq('user_id', uid).maybeSingle(),
     ADM.users && ADM.users.find(u => u.user_id === uid) ? Promise.resolve({data:[ADM.users.find(u => u.user_id === uid)]}) : sb.rpc('seed10k_admin_users', {q:''}).then(r => ({data:(r.data || []).filter(u => u.user_id === uid)})),
+    sb.from('seed10k_rank_bans').select('*').eq('user_id', uid).maybeSingle(),
   ]);
   if (ADM.uid !== uid) return;
   const saves = sv.data || [];
-  ADM.data = {saves, pays:pay.data || [], res:res.data || [], bm:bml.data || [], ban:ban.data || null, tester:!!(tst && tst.data), who:(who.data || [])[0] || null, err:[sv, pay, res, bml].map(r => r.error && r.error.message).filter(Boolean)};
+  ADM.data = {saves, pays:pay.data || [], res:res.data || [], bm:bml.data || [], ban:ban.data || null, tester:!!(tst && tst.data), rban:(rb && rb.data) || null, who:(who.data || [])[0] || null, err:[sv, pay, res, bml].map(r => r.error && r.error.message).filter(Boolean)};
   if (!ADM.mode || !saves.some(s => s.mode === ADM.mode)) ADM.mode = (saves.find(s => s.mode === S.mode) || saves[0] || {}).mode || S.mode;
   renderAdmin();
   const el = $('#admUser'); if (el) el.scrollIntoView({block:'start', behavior:'smooth'});
@@ -7194,6 +7197,7 @@ function admUserHTML(){
     <p class="muted" style="margin:0 0 8px">계정 id ${esc(ADM.uid)}${u.joined ? ` · 가입 ${admT(u.joined)}` : ''}</p>
     ${D.err.length ? `<p class="down">일부를 불러오지 못했습니다: ${esc(D.err.join(' / '))}</p>` : ''}
     <div class="adm-ban ${D.ban ? 'on' : ''}">${D.ban ? `<b>🚫 멀티플레이 제한됨</b> <small class="muted">${admT(D.ban.at)}${D.ban.reason ? ' · ' + esc(D.ban.reason) : ''}</small><button class="btn" id="admUnban">제한 풀기</button>` : `<span>멀티플레이 가능</span><button class="btn" id="admBan">멀티플레이 제한</button>`}</div>
+    <div class="adm-ban ${D.rban ? 'on' : ''}">${D.rban ? `<b>🚫 랭킹 제외됨</b> <small class="muted">${admT(D.rban.at)}${D.rban.reason ? ' · ' + esc(D.rban.reason) : ''}</small><button class="btn" id="admRankUnban">랭킹 복귀</button>` : `<span>랭킹 참여 중</span><button class="btn" id="admRankBan">랭킹에서 제외</button>`}</div>
     <div class="adm-ban ${D.tester ? 'on' : ''}">${D.tester ? '<b>🧪 테스트 계정</b> <small class="muted">돈이 줄지 않음 · 랭킹 제외 · 멀티 불가</small><button class="btn" id="admUntest">해제</button>' : '<span>일반 계정</span><button class="btn" id="admTest">테스트 계정으로</button>'}</div>
     <div class="mv-tools"><div class="seg">${seg('sim', '시뮬레이션')}${seg('live', '실제 시세')}</div></div>
     <dl class="kv adm-kv">
@@ -7251,6 +7255,12 @@ document.addEventListener('click', async e => {
     };
     return;
   }
+  if (t.id === 'admRankBan'){ const u = ADM.data && ADM.data.who || {}; return admRankBanDlg(ADM.uid, u.nickname || u.email || ''); }
+  if (t.id === 'admRankUnban'){
+    const {error} = await ACC.sb.from('seed10k_rank_bans').delete().eq('user_id', ADM.uid);
+    if (error) return toast(`풀지 못했습니다: ${error.message}`, true);
+    toast('랭킹 제외를 풀었습니다 (그 계정이 다시 접속하면 다시 올라갑니다)'); return admOpenUser(ADM.uid);
+  }
   if (t.id === 'admTest' || t.id === 'admUntest'){
     const q = t.id === 'admTest' ? ACC.sb.from('seed10k_testers').insert({user_id:ADM.uid}) : ACC.sb.from('seed10k_testers').delete().eq('user_id', ADM.uid);
     const {error} = await q;
@@ -7271,6 +7281,26 @@ document.addEventListener('click', async e => {
     $('#admSqlCopy').onclick = async () => { try { await navigator.clipboard.writeText(sql); toast('복사했습니다'); } catch(err){ toast('복사하지 못했습니다. 직접 선택해 복사하세요', true); } };
   }
 });
+
+// 랭킹 제외: 관리 탭의 계정 화면이나 랭킹 표의 🚫 버튼에서
+function admRankBanDlg(uid, nick){
+  const c = showModal(`<h2>🚫 랭킹에서 제외할까요?</h2><p><b>${esc(nick || uid)}</b> 계정의 랭킹 줄(실제 시세·시뮬레이션 모두)을 지우고, 다시 오르지 못하게 막습니다. 게임 기록과 돈은 그대로입니다.</p>
+    <label class="amt"><input id="admRbWhy" type="text" maxlength="100" placeholder="사유 (그 계정에도 보입니다)"></label>
+    <div class="acts"><button class="btn" data-close>취소</button><button class="btn solid" id="admRbGo">제외</button></div>`);
+  $('#admRbGo').onclick = async () => {
+    $('#admRbGo').disabled = true;
+    const {error} = await ACC.sb.from('seed10k_rank_bans').insert({user_id:uid, reason:$('#admRbWhy').value.trim() || null});
+    c(); if (error) return toast(/duplicate/i.test(error.message) ? '이미 제외된 계정입니다' : `제외하지 못했습니다: ${error.message}`, true);
+    toast('랭킹에서 제외했습니다');
+    ACC.ranksAt = {}; refreshRanks(true);
+    if (ADM.uid === uid) admOpenUser(uid);
+  };
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-rankban]'); if (!b || !ADM.on) return;
+  e.preventDefault(); e.stopPropagation();
+  admRankBanDlg(b.dataset.rankban, b.dataset.nick);
+}, true);
 
 /* ───────── 복권 탭: 로또6/45 (실제 추첨 결과로 정산) · 스피또2000 (긁는 즉석복권) ─────────
    로또 규칙 출처: 동행복권 '로또6/45 소개' (1게임 1,000원, 1~45 중 6개, 판매 일~금 06:00~24:00·토 06:00~20:00, 토 20:35경 추첨,
@@ -8911,7 +8941,7 @@ function myRankValues(){
   return {N, ret:clamp(Math.round(twrRet(N) * 10000) / 100, -100, 100000)};
 }
 async function pushRank(){
-  if (!ACC.user || !ACC.sb || !S || S._ph || !ACC.nick || ACC.tester) return;   // 테스트 계정은 랭킹에 올리지 않는다
+  if (!ACC.user || !ACC.sb || !S || S._ph || !ACC.nick || ACC.tester || ACC.rankBan) return;   // 테스트 계정·랭킹 제외 계정은 올리지 않는다
   if (isLive() && !LIVE.ok) return;                 // 시세를 받기 전 값으로 올리지 않는다
   if (S.syncBase === undefined || S.syncBase === null) return;   // 서버 기록과 맞춰진 기록만 올린다
   const {N, ret} = myRankValues();
@@ -8985,10 +9015,11 @@ function rankCardHTML(){
   else body = `<ol class="ranks">${rows.map((r, i) => {
       const me = ACC.user && r.user_id === ACC.user.id;
       return `<li class="${me ? 'me' : ''}"><span class="rn num">${i + 1}</span><span class="rk-n">${(() => { const n = ACC.busted instanceof Map ? ACC.busted.get(r.user_id) || 0 : 0;
-          return n ? `<span class="busted" title="불법 도박 단속 ${n}회">${esc(r.nickname)}</span><b class="bust-n" title="불법 도박 단속 ${n}회">X${n}</b>` : `<span>${esc(r.nickname)}</span>`; })()}${me ? ' <small>나</small>' : ''}<span class="rk-d">${r.days}${mode === 'live' ? '일째' : '거래일째'} · ${fmtUSD(+r.net_worth, 0)}</span></span><b class="num ${cls(+r.return_pct)}">${fmtPct(+r.return_pct / 100)}</b></li>`;
+          return n ? `<span class="busted" title="불법 도박 단속 ${n}회">${esc(r.nickname)}</span><b class="bust-n" title="불법 도박 단속 ${n}회">X${n}</b>` : `<span>${esc(r.nickname)}</span>`; })()}${me ? ' <small>나</small>' : ''}${!me && (() => { try { return ADM.on; } catch(e){ return false; } })() ? `<button class="rk-ban" data-rankban="${esc(r.user_id)}" data-nick="${esc(r.nickname)}" title="랭킹에서 제외">🚫</button>` : ''}<span class="rk-d">${r.days}${mode === 'live' ? '일째' : '거래일째'} · ${fmtUSD(+r.net_worth, 0)}</span></span><b class="num ${cls(+r.return_pct)}">${fmtPct(+r.return_pct / 100)}</b></li>`;
     }).join('')}</ol>`;
   let foot = '';
   if (!ACC.user) foot = `<div class="rank-foot"><span>로그인하면 랭킹에 참여할 수 있습니다.</span><button class="btn" id="btnLoginOpen">로그인</button></div>`;
+  else if (ACC.rankBan) foot = `<div class="rank-foot"><span class="down">🚫 이 계정은 랭킹에서 제외되었습니다.${ACC.rankBan.reason ? ' (사유: ' + esc(ACC.rankBan.reason) + ')' : ''}</span></div>`;
   else if (!ACC.nick) foot = `<div class="rank-foot"><label class="amt"><input id="rankNickIn" maxlength="12" placeholder="닉네임 (2~12자)" aria-label="닉네임"></label><button class="btn solid" id="btnRankNick">랭킹 참여</button></div>`;
   else if (ACC.myRank[mode]) foot = `<div class="rank-foot"><span>내 순위 <b>${ACC.myRank[mode]}위</b> (${esc(ACC.nick)})</span></div>`;
   else if (mode !== S.mode) foot = `<div class="rank-foot"><span>이 모드는 아직 플레이 기록이 올라가지 않았습니다.</span></div>`;
