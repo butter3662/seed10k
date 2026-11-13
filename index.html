@@ -1085,6 +1085,8 @@ html[data-game=live] .c-news{order:3}
 .adm-al-b .btn,.adm-ban .btn{padding:6px 10px;font-size:12.5px}
 .adm-q{display:flex;gap:8px;margin-bottom:10px}.adm-q .amt{flex:1}
 .adm-u{width:100%;text-align:left;border:1px solid var(--rule);background:var(--surface-2);color:var(--ink);border-radius:10px;padding:9px 12px;display:grid;gap:2px}
+.adm-bn{color:#E5484D;font-size:12px}
+.adm-ur{display:flex;gap:8px;align-items:center}.adm-ur .adm-u{flex:1;min-width:0}.adm-ur>.btn{flex:none}
 .adm-u.on{border-color:var(--brass)}.adm-u small{font-size:12px;color:var(--ink-2)}
 .adm-ban{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:var(--surface-2);border-radius:10px;padding:8px 12px;margin-bottom:10px}
 .adm-ban .btn{margin-left:auto}.adm-ban.on{background:color-mix(in srgb,var(--danger) 12%,var(--surface-2))}
@@ -1234,7 +1236,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '2.2.35';
+const VERSION = '2.2.36';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -7098,13 +7100,13 @@ function renderAdmin(){
   if (!ADM.on){ v.innerHTML = '<p class="empty">관리자만 볼 수 있습니다.</p>'; return; }
   const al = ADM.alerts.slice(0, 50).map(a => `<li class="adm-al ${a.seen ? 'seen' : ''}"><div><small class="muted">${admT(a.at)} · ${esc(({oe_streak:'홀짝 연승', bj_stand:'블랙잭 계속 스탠드', bm_nobuy:'부루마블 땅 안 사기'})[a.kind] || a.kind)} · ${a.mode === 'live' ? '실제 시세' : '시뮬'}</small><p>${esc(a.msg)}</p></div>
       <div class="adm-al-b">${a.uid ? `<button class="btn" data-admu="${a.uid}">이긴/의심 쪽</button>` : ''}${a.other ? `<button class="btn" data-admu="${a.other}">상대</button>` : ''}${a.seen ? '' : `<button class="btn" data-admseen="${a.id}">확인함</button>`}</div></li>`).join('');
-  const us = ADM.users === null ? '' : ADM.users.length ? `<ul class="adm-us">${ADM.users.map(u => `<li><button class="adm-u ${u.user_id === ADM.uid ? 'on' : ''}" data-admu="${u.user_id}"><b>${esc(u.nickname || '(닉네임 없음)')}</b><small>${esc(u.email || '')}</small><small class="muted">가입 ${admT(u.joined)}${u.last_save ? ` · 마지막 저장 ${admT(u.last_save)}` : ''}</small></button></li>`).join('')}</ul>` : '<p class="empty">찾은 계정이 없습니다.</p>';
+  const us = ADM.users === null ? '' : ADM.users.length ? `<ul class="adm-us">${ADM.users.map(u => { const bn = ADM.bans && ADM.bans.get(u.user_id);
+      return `<li class="adm-ur"><button class="adm-u ${u.user_id === ADM.uid ? 'on' : ''}" data-admu="${u.user_id}"><b>${esc(u.nickname || '(닉네임 없음)')}${bn ? ' <span class="adm-bn">🚫 랭킹 밴</span>' : ''}</b><small>${esc(u.email || '')}</small><small class="muted">가입 ${admT(u.joined)}${u.last_save ? ` · 마지막 저장 ${admT(u.last_save)}` : ''}${bn && bn.reason ? ` · 사유: ${esc(bn.reason)}` : ''}</small></button>${bn ? `<button class="btn" data-admrkunban="${u.user_id}">밴 풀기</button>` : `<button class="btn" data-admrkban="${u.user_id}" data-nick="${esc(u.nickname || u.email || '')}">밴</button>`}</li>`; }).join('')}</ul>` : '<p class="empty">찾은 계정이 없습니다.</p>';
   v.innerHTML = `<div class="stack">
     <section class="card"><div class="card-h"><h2>🚨 부정행위 의심 알림</h2><small>${ADM.unseen ? `<b class="down">확인 안 함 ${ADM.unseen}건</b>` : '모두 확인함'}</small></div>
       <p class="muted" style="margin:0 0 8px">게임 서버가 판이 끝날 때 확인해 적습니다. 홀짝 대결: 같은 상대에게 ${WATCH_ADM.oe}연승(이후 5판마다). 블랙잭 대결: 버스트할 수 없는 11 이하에서 직접 스탠드한 판이 ${WATCH_ADM.bj}판 연속. 부루마블: 돈이 있는데 직접 '안 산다'를 고른 것이 한 판에 ${WATCH_ADM.bm}번(이후 5번마다).</p>
       ${al ? `<ul class="adm-als">${al}</ul>` : '<p class="empty">알림이 없습니다.</p>'}
       ${ADM.unseen ? '<div class="mg-foot"><button class="btn" id="admSeenAll">모두 확인함</button></div>' : ''}</section>
-    <section class="card" id="admRk">${admRkHTML()}</section>
     <section class="card" id="admSrv">${admSrvHTML()}</section>
     <section class="card"><div class="card-h"><h2>🔎 유저 검색</h2><small>이메일이나 닉네임 일부</small></div>
       <form id="admQF" class="adm-q"><label class="amt"><input id="admQ" type="search" autocomplete="off" placeholder="비우고 검색하면 최근 저장 순 40명" value="${esc(ADM.q)}"></label><button class="btn solid" type="submit">검색</button></form>
@@ -7143,8 +7145,9 @@ function admSrvHTML(){
 
 async function admSearch(q){
   ADM.q = q;
-  const {data, error} = await ACC.sb.rpc('seed10k_admin_users', {q});
+  const [{data, error}, b] = await Promise.all([ACC.sb.rpc('seed10k_admin_users', {q}), ACC.sb.from('seed10k_rank_bans').select('user_id,reason,at')]);
   if (error){ toast(`검색하지 못했습니다: ${error.message}`, true); return; }
+  ADM.bans = new Map((b.data || []).map(x => [x.user_id, x]));
   ADM.users = data || []; renderAdmin();
 }
 async function admOpenUser(uid){
@@ -7259,7 +7262,7 @@ document.addEventListener('click', async e => {
   if (t.id === 'admRankUnban'){
     const {error} = await ACC.sb.from('seed10k_rank_bans').delete().eq('user_id', ADM.uid);
     if (error) return toast(`풀지 못했습니다: ${error.message}`, true);
-    toast('랭킹 밴을 풀었습니다 (그 계정이 다시 접속하면 다시 올라갑니다)'); admRkLoad(); return admOpenUser(ADM.uid);
+    toast('랭킹 밴을 풀었습니다 (그 계정이 다시 접속하면 다시 올라갑니다)'); admSearch(ADM.q); return admOpenUser(ADM.uid);
   }
   if (t.id === 'admTest' || t.id === 'admUntest'){
     const q = t.id === 'admTest' ? ACC.sb.from('seed10k_testers').insert({user_id:ADM.uid}) : ACC.sb.from('seed10k_testers').delete().eq('user_id', ADM.uid);
@@ -7292,42 +7295,18 @@ function admRankBanDlg(uid, nick){
     const {error} = await ACC.sb.from('seed10k_rank_bans').insert({user_id:uid, nick:nick || null, reason:$('#admRbWhy').value.trim() || null});
     c(); if (error) return toast(/duplicate/i.test(error.message) ? '이미 제외된 계정입니다' : `제외하지 못했습니다: ${error.message}`, true);
     toast('랭킹에서 밴했습니다');
-    ACC.ranksAt = {}; refreshRanks(true); admRkLoad();
+    ACC.ranksAt = {}; refreshRanks(true); admSearch(ADM.q);
     if (ADM.uid === uid) admOpenUser(uid);
   };
 }
-/* 관리 탭 '랭킹 관리' 칸: 지금 랭킹(모드별 상위 50)과 제외된 계정 목록 */
-ADM.rk = null; ADM.rkMode = 'sim';
-async function admRkLoad(){
-  const [r, b] = await Promise.all([
-    ACC.sb.from('seed10k_ranks').select('user_id,nickname,return_pct,net_worth,days').eq('mode', ADM.rkMode).order('return_pct', {ascending:false}).limit(50),
-    ACC.sb.from('seed10k_rank_bans').select('*').order('at', {ascending:false}),
-  ]);
-  ADM.rk = {rows:r.data || [], bans:b.data || [], err:[r, b].map(x => x.error && x.error.message).filter(Boolean)};
-  const el = $('#admRk'); if (el) el.innerHTML = admRkHTML();
-}
-function admRkHTML(){
-  if (!ADM.rk){ setTimeout(admRkLoad, 0); return '<div class="card-h"><h2>🏆 랭킹 관리</h2></div><p class="muted">불러오는 중…</p>'; }
-  const R = ADM.rk, m = ADM.rkMode;
-  const seg = (v, l) => `<button data-admrkmode="${v}" aria-pressed="${m === v}">${l}</button>`;
-  const rows = R.rows.map((r, i) => `<tr><td class="num">${i + 1}</td><td><button class="linkbtn" data-admu="${r.user_id}">${esc(r.nickname)}</button><br><span class="muted">${r.days}${m === 'live' ? '일째' : '거래일째'} · ${fmtUSD(+r.net_worth, 0)}</span></td><td class="r num ${cls(+r.return_pct)}">${fmtPct(+r.return_pct / 100)}</td><td class="r"><button class="btn" data-admrkban="${r.user_id}" data-nick="${esc(r.nickname)}">밴</button></td></tr>`).join('');
-  const bans = R.bans.map(b => `<tr><td><button class="linkbtn" data-admu="${b.user_id}">${esc(b.nick || b.user_id.slice(0, 8))}</button><br><span class="muted">${admT(b.at)}${b.reason ? ' · ' + esc(b.reason) : ''}</span></td><td class="r"><button class="btn" data-admrkunban="${b.user_id}">복귀</button></td></tr>`).join('');
-  return `<div class="card-h"><h2>🏆 랭킹 관리</h2><div class="seg seg-s">${seg('live', '실제 시세')}${seg('sim', '시뮬레이션')}</div></div>
-    ${R.err.length ? `<p class="down">일부를 불러오지 못했습니다: ${esc(R.err.join(' / '))}</p>` : ''}
-    <p class="muted" style="margin:0 0 8px">밴하면 그 계정의 랭킹 줄(두 모드 모두)이 지워지고 다시 오르지 못합니다. 게임 기록과 돈은 그대로입니다.</p>
-    ${rows ? `<table class="trades"><thead><tr><th>#</th><th>닉네임</th><th class="r">수익률</th><th></th></tr></thead><tbody>${rows}</tbody></table>` : '<p class="empty">랭킹에 오른 계정이 없습니다.</p>'}
-    <h3 class="adm-h">밴된 계정 ${R.bans.length}명</h3>
-    ${bans ? `<table class="trades"><tbody>${bans}</tbody></table>` : '<p class="empty">밴된 계정이 없습니다.</p>'}`;
-}
 document.addEventListener('click', async e => {
   const t = e.target.closest('button'); if (!t || !ADM.on) return;
-  if (t.dataset.admrkmode){ ADM.rkMode = t.dataset.admrkmode; ADM.rk = null; const el = $('#admRk'); if (el) el.innerHTML = admRkHTML(); return; }
   if (t.dataset.admrkban) return admRankBanDlg(t.dataset.admrkban, t.dataset.nick);
   if (t.dataset.admrkunban){
     t.disabled = true;
     const {error} = await ACC.sb.from('seed10k_rank_bans').delete().eq('user_id', t.dataset.admrkunban);
     if (error){ t.disabled = false; return toast(`풀지 못했습니다: ${error.message}`, true); }
-    toast('랭킹 밴을 풀었습니다 (그 계정이 다시 접속하면 다시 올라갑니다)'); admRkLoad();
+    toast('랭킹 밴을 풀었습니다 (그 계정이 다시 접속하면 다시 올라갑니다)'); admSearch(ADM.q);
     if (ADM.uid === t.dataset.admrkunban) admOpenUser(ADM.uid);
   }
 });
