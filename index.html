@@ -1255,7 +1255,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '2.2.48';
+const VERSION = '2.2.49';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -6065,7 +6065,9 @@ function bs3Frame(now){
   let actI = BSV.shooter === 'op' && BSV.si !== undefined && BSV.si !== null ? BSV.si : I0 && I0.by === 'op' && I0.i !== undefined ? I0.i : BSV.fx === 'saw' && BSV.sawBy === 'op' && BSV.sawI !== undefined ? BSV.sawI : g && !g.over && g.turn !== me ? g.turn : A.actI;
   if (!fOf(actI)) actI = figs[0].i;
   A.actI = actI;
-  const Fa = fOf(actI), Fl = figs[Math.floor((figs.length - 1) / 2)];   // Fa: 움직이는 상대, Fl: 장전하는 사람
+  // Fa: 움직이는 상대, Fl: 장전하는 사람 = 살아 있는 사람 중 가운데에 가장 가까운 사람 (탈락한 사람은 장전하지 않는다)
+  const alive = f => !(g && g.pl[f.i] && g.pl[f.i].out);
+  const Fa = fOf(actI), Fl = figs.filter(alive).sort((a, b) => Math.abs(a.seat.position.x) - Math.abs(b.seat.position.x))[0] || figs[Math.floor((figs.length - 1) / 2)];
   const headOf = f => f.head.getWorldPosition(new T.Vector3());
   // 상태가 바뀐 순간을 잡는다
   if (fx !== P.fx){ if (fx === 'bang') { A.bangT = 0; A.hitMe = BSV.flash === 'p' + me; A.hitT = 0;
