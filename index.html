@@ -738,6 +738,7 @@ html.gated body{overflow:hidden}
 .bs-aimui .bs-me{left:10px;bottom:10px;background:rgba(20,14,12,.85);color:#fff;border-color:rgba(255,255,255,.35)}
 .bs-aimui .bs-opp{position:absolute;right:10px;bottom:10px;display:flex;flex-direction:column;align-items:flex-end;gap:6px}
 .bs-aimui .bs-opp .btn{position:static;pointer-events:auto}
+.bm-snd{width:40px;padding:0 9px}.bm-snd svg{width:20px;height:20px;display:block}
 .bs-snd{position:absolute;right:8px;top:8px;z-index:7;width:34px;height:34px;padding:6px;border-radius:50%;border:1px solid rgba(255,255,255,.18);background:rgba(0,0,0,.45);color:#e6e1d3;cursor:pointer}.bs-snd svg{width:100%;height:100%;display:block}
 .bs-black{position:absolute;inset:0;z-index:6;background:#000;pointer-events:none}
 .bs-ico{display:block;width:24px;height:24px}.bs-ico svg{width:100%;height:100%;display:block}.bs-it.ro .bs-ico{width:20px;height:20px}
@@ -1232,7 +1233,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '2.2.30';
+const VERSION = '2.2.31';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -4129,7 +4130,7 @@ function bmBuild(){
   const toks = g.pl.map((p, i) => bm3D()
     ? `<div class="bm-tok b3t" data-tok="${i}" style="--pc:${BM.cols[i]}"><i class="bm-tok-sh"></i><div class="bm-tok-i bm-p3">${bmPawn3D()}</div></div>`
     : `<div class="bm-tok" data-tok="${i}" style="--pc:${BM.cols[i]}"><div class="bm-tok-u"><div class="bm-tok-i"><span>${i === bmMe() ? '나' : esc([...p.nm][0] || '?')}</span></div></div></div>`).join('');
-  const top = `<div class="bm-top"><button class="btn" id="bmClose">닫기</button><div class="bm-ttl"><b>🎲 부루마블</b><small id="bmSub"></small></div><div class="bm-tr"><button class="btn bm-spd" id="bm3d"></button><button class="btn bm-spd" id="bmSpd"></button><button class="btn" id="bmQuit">기권</button></div></div>`;
+  const top = `<div class="bm-top"><button class="btn" id="bmClose">닫기</button><div class="bm-ttl"><b>🎲 부루마블</b><small id="bmSub"></small></div><div class="bm-tr"><button class="btn bm-spd bm-snd" id="bmSnd" aria-label="${BSA.on ? '소리 끄기' : '소리 켜기'}">${bsaIcon()}</button><button class="btn bm-spd" id="bm3d"></button><button class="btn bm-spd" id="bmSpd"></button><button class="btn" id="bmQuit">기권</button></div></div>`;
   const pls = `<div class="bm-pls" id="bmPls">${g.pl.map((p, i) => `<div class="bm-pl" data-pl="${i}"><i style="background:${BM.cols[i]}"></i><span class="bm-pn"></span><b class="num bm-pc"></b><small class="num bm-pa"></small></div>`).join('')}</div>`;
   const under = `<div class="bm-act" id="bmActBox"></div><div id="bmInfoBox"></div><ul class="bm-log" id="bmLog"></ul>`;
   ov.classList.toggle('b3', bm3D());
@@ -4384,16 +4385,16 @@ async function bmPlay(ev, v0, done){
     for (const e of ev){
       if (e.t === 'dice'){
         BMV.msg = `${g.pl[e.i].nm} 굴리는 중…`; bmUpdate();
-        await bmRollDice(e.a, e.b);
+        BMAU.dice(); await bmRollDice(e.a, e.b);
         BMV.msg = `${g.pl[e.i].nm}: ${e.a} + ${e.b} = ${e.a + e.b}`; bmUpdate();
         if (e.a === e.b) bmBanner('같은 눈! 🎲', 'gold', 750);
         await bmWait(e.a === e.b ? 450 : 200);
       } else if (e.t === 'move'){
-        if (e.jump){ await bmHopTo(e.i, e.path[0], true); continue; }
-        for (const k of e.path) await bmHopTo(e.i, k, false);
+        if (e.jump){ BMAU.fly(); await bmHopTo(e.i, e.path[0], true); continue; }
+        for (const k of e.path){ BMAU.hop(); await bmHopTo(e.i, k, false); }
         await bmWait(90);
       } else if (e.t === 'card'){
-        await bmCard(e.s);
+        BMAU.card(); await bmCard(e.s);
       } else if (e.t === 'snap'){
         const old = BMV.view; BMV.view = e.v;
         // 돈이 움직인 사람: 떠오르는 숫자, 준 사람 → 받은 사람 동전
@@ -4410,18 +4411,18 @@ async function bmPlay(ev, v0, done){
       } else if (e.t === 'msg'){
         BMV.msg = e.s; bmUpdate();
         const me = e.i === bmMe(), k = e.k;
-        if (k === 'buy'){ bmBanner(`🚩 ${e.s}`, me ? 'gold' : '', 800); await bmWait(500); }
-        else if (k === 'build'){ bmBanner(`${BM_BI[e.v] || '🏗️'} ${e.s}`, me ? 'gold' : '', 850); await bmWait(550); }
+        if (k === 'buy'){ BMAU.buy(); bmBanner(`🚩 ${e.s}`, me ? 'gold' : '', 800); await bmWait(500); }
+        else if (k === 'build'){ BMAU.build(); bmBanner(`${BM_BI[e.v] || '🏗️'} ${e.s}`, me ? 'gold' : '', 850); await bmWait(550); }
         else if (k === 'coupon'){ bmBanner('🎟️ 우대권 사용', me ? 'green' : '', 800); await bmWait(450); }
-        else if (k === 'rent'){ bmBanner(`💸 ${e.s}`, e.to === bmMe() ? 'green' : me ? 'red' : '', 900); if (e.v >= 40) bmShake(); await bmWait(520); }
-        else if (k === 'tax'){ bmBanner(`💸 ${e.s}`, '', 750); await bmWait(420); }
-        else if (k === 'fund'){ bmBanner(`💰 ${e.s}`, me ? 'green' : '', 900); await bmWait(500); }
-        else if (k === 'salary'){ bmFloat(bmTokEl(e.i), `+${bmW(BM.salary)}`, 'up'); await bmWait(120); }
-        else if (k === 'jail'){ bmBanner('🏝️ 무인도!', me ? 'red' : '', 900); await bmWait(550); }
+        else if (k === 'rent'){ BMAU.rent(e.v >= 40); bmBanner(`💸 ${e.s}`, e.to === bmMe() ? 'green' : me ? 'red' : '', 900); if (e.v >= 40) bmShake(); await bmWait(520); }
+        else if (k === 'tax'){ BMAU.coins(4); bmBanner(`💸 ${e.s}`, '', 750); await bmWait(420); }
+        else if (k === 'fund'){ BMAU.coins(7); bmBanner(`💰 ${e.s}`, me ? 'green' : '', 900); await bmWait(500); }
+        else if (k === 'salary'){ BMAU.salary(); bmFloat(bmTokEl(e.i), `+${bmW(BM.salary)}`, 'up'); await bmWait(120); }
+        else if (k === 'jail'){ BMAU.jail(); bmBanner('🏝️ 무인도!', me ? 'red' : '', 900); await bmWait(550); }
         else if (k === 'stuck'){ bmBanner('🏝️ 탈출 실패', '', 700); await bmWait(400); }
         else if (k === 'escape'){ bmBanner('🚤 무인도 탈출!', me ? 'green' : '', 800); await bmWait(450); }
         else if (k === 'fly'){ bmBanner(`🚀 ${e.s}`, '', 800); await bmWait(450); }
-        else if (k === 'bankrupt'){ bmBanner(`💥 ${e.s}`, 'red', 1200); bmShake(); await bmWait(800); }
+        else if (k === 'bankrupt'){ BMAU.bankrupt(); bmBanner(`💥 ${e.s}`, 'red', 1200); bmShake(); await bmWait(800); }
         else if (k === 'sell' || (k === 'sold' && e.sq === undefined)){ bmBanner(`🏚️ ${e.s}`, me ? 'red' : '', 1400); await bmWait(800); }   // 무엇이 팔렸는지 보이게
         else if (k === 'short'){ bmBanner('💸 돈이 모자랍니다!', 'red', 1000); bmShake(); await bmWait(600); }
         else if (k === 'sold'){ await bmWait(300); }
@@ -4435,8 +4436,8 @@ async function bmPlay(ev, v0, done){
   if (g.over){
     const ME = bmMe(), rank = g.rank ? g.rank[ME] : BME.ranking(g).indexOf(ME) + 1;
     bmBanner(rank === 1 ? '🏆 1위!' : g.pl[ME].out ? '💥 파산' : `${rank}위`, rank === 1 ? 'gold' : '', 1600);
-    if (rank === 1) bmConfetti();
-  } else if (v0.turn !== undefined && g.turn !== v0.turn) bmBanner(g.turn === bmMe() ? '내 차례!' : `${g.pl[g.turn].nm} 차례`, 'small ' + (g.turn === bmMe() ? 'gold' : ''), 750);
+    if (rank === 1){ bmConfetti(); BMAU.win(); } else if (g.pl[ME].out) BMAU.bankrupt();
+  } else if (v0.turn !== undefined && g.turn !== v0.turn && (g.turn !== bmMe() || !BMAU.turn())) bmBanner(g.turn === bmMe() ? '내 차례!' : `${g.pl[g.turn].nm} 차례`, 'small ' + (g.turn === bmMe() ? 'gold' : ''), 750);
   done && done();
 }
 // 황금열쇠 카드: 뒤집어서 보여 준다
@@ -4535,6 +4536,7 @@ document.addEventListener('click', e => {
   const g = bmG(); if (!g) return;
   if (t.id === 'bmClose'){ bmHide(); return; }
   if (BMV.mp && t.id === 'bmQuit'){ mbmQuit(); return; }
+  if (t.id === 'bmSnd' || t.closest && t.closest('#bmSnd')){ bsaToggle(); return; }
   if (t.id === 'bmSpd'){ SET.bmFast = !SET.bmFast; saveSet(); bmUpdate(); return; }
   if (t.id === 'bm3d'){
     if (BMV.busy) return toast('움직이는 중에는 바꿀 수 없습니다. 잠시 뒤에 누르세요', true);
@@ -6379,12 +6381,52 @@ const BSAU = {
     }
   },
 };
+// ───── 부루마블 소리 (같은 합성 장치·같은 켜고 끄기) ─────
+const BMAU = {
+  // 주사위: 두 개가 판에 떨어져 몇 번 튀고 구르다 선다 (딱딱한 플라스틱이 나무 판에 부딪는 짧은 '톡' 소리를 간격을 줄여 가며)
+  dice(){
+    if (!bsaReady()) return;
+    [0, 0.05].forEach(off => {
+      let t = off, gap = 0.16, v = 0.5;
+      for (let k = 0; k < 9 && t < 0.8; k++){
+        bsaNoise({at:t, type:'bandpass', f:1800 + Math.random() * 1600, q:3, v:v * 0.5, a:0.0005, d:0.018});
+        bsaTone({at:t, f:700 + Math.random() * 500, f2:500, fd:0.03, v:v * 0.35, d:0.035});
+        bsaNoise({at:t, pink:true, type:'lowpass', f:500, v:v * 0.5, a:0.0008, d:0.03});
+        t += gap; gap *= 0.72; v *= 0.78;
+      }
+    });
+  },
+  // 말이 한 칸 갈 때 판을 '톡'
+  hop(){ if (!bsaReady()) return; bsaTone({f:540 + Math.random() * 60, f2:420, fd:0.04, v:0.4, d:0.05}); bsaNoise({pink:true, type:'lowpass', f:1100, v:0.45, a:0.0006, d:0.03}); },
+  // 멀리 날아갈 때: 바람 소리가 올라갔다 내려온다
+  fly(){ if (!bsaReady()) return; bsaNoise({type:'bandpass', f:350, f2:2600, fd:0.32, q:1.4, v:0.22, a:0.08, d:0.22}); bsaNoise({at:0.32, type:'bandpass', f:2600, f2:500, fd:0.3, q:1.4, v:0.18, a:0.01, d:0.3}); bsaNoise({at:0.62, pink:true, type:'lowpass', f:600, v:0.3, d:0.05}); },
+  // 동전 짤랑 (n개)
+  coins(n){ if (!bsaReady()) return; n = Math.min(10, n || 4); for (let k = 0; k < n; k++) bsaMetal(0.05 * k + Math.random() * 0.03, 3200 + Math.random() * 1600, 0.09, 0.12, 0); },
+  // 땅 사기: 금전등록기 '땡' + 동전
+  buy(){ if (!bsaReady()) return; bsaMetal(0, 1760, 0.2, 0.5, 0); bsaMetal(0.09, 2350, 0.16, 0.45, 0); this.coins(4); },
+  // 짓기: 망치질 세 번
+  build(){ if (!bsaReady()) return; [0, 0.13, 0.26].forEach((t, k) => { bsaNoise({at:t, pink:true, type:'lowpass', f:700, v:0.45 - k * 0.08, a:0.0008, d:0.05}); bsaTone({at:t, f:190, f2:120, fd:0.06, v:0.3, d:0.08}); bsaMetal(t, 900, 0.05, 0.06, 0); }); },
+  // 통행료: 동전이 쏟아지고 낮게 '쿵'
+  rent(big){ if (!bsaReady()) return; this.coins(big ? 9 : 5); bsaTone({f:110, f2:70, fd:0.2, v:big ? 0.45 : 0.25, d:0.3}); },
+  // 월급: 밝게 올라가는 세 음 (C6·E6·G6)
+  salary(){ if (!bsaReady()) return; [1047, 1319, 1568].forEach((f, k) => { bsaTone({at:k * 0.07, f, v:0.12, d:0.35, w:'triangle'}); bsaTone({at:k * 0.07, f:f * 2, v:0.03, d:0.2}); }); },
+  // 황금열쇠: 카드 뒤집는 '착'
+  card(){ if (!bsaReady()) return; bsaNoise({type:'highpass', f:2500, v:0.22, a:0.002, d:0.05}); bsaNoise({at:0.12, type:'bandpass', f:3500, f2:1800, fd:0.08, q:1, v:0.18, a:0.004, d:0.08}); },
+  // 무인도: 쇠문이 닫힌다
+  jail(){ if (!bsaReady()) return; bsaMetal(0, 210, 0.45, 0.6, 1.5); bsaMetal(0.02, 640, 0.15, 0.3, 0); },
+  // 파산: 내려가는 음
+  bankrupt(){ if (!bsaReady()) return; [523, 440, 349, 262].forEach((f, k) => bsaTone({at:k * 0.16, f, f2:f * 0.97, fd:0.15, v:0.2, d:0.3, w:'triangle'})); BSAU.thud(0.6); },
+  // 1위: 짧은 팡파르 (C5·E5·G5·C6)
+  win(){ if (!bsaReady()) return; [523, 659, 784, 1047].forEach((f, k) => { bsaTone({at:k * 0.11, f, v:0.16, d:k === 3 ? 0.9 : 0.25, w:'triangle'}); bsaTone({at:k * 0.11, f:f * 1.5, v:0.04, d:0.25}); }); },
+  // 내 차례: 부드러운 두 음
+  turn(){ if (!bsaReady()) return; bsaTone({f:880, v:0.09, d:0.25, w:'triangle'}); bsaTone({at:0.12, f:1175, v:0.09, d:0.4, w:'triangle'}); },
+};
 // 무대가 보이면 배경 소리를 켜고, 사라지면 끈다
 setInterval(() => { if (!BSA.ctx || BSA.ctx.state !== 'running') return; const st = document.querySelector('.bs-stage'); BSAU.ambient(!!(st && st.offsetParent && BSA.on && !document.hidden)); }, 700);
 function bsaToggle(){
   BSA.on = !BSA.on; try { localStorage.setItem('seed10k.bs.sound', BSA.on ? '1' : '0'); } catch(e){}
   const c = bsaInit(); if (c){ if (c.state !== 'running') c.resume().catch(() => {}); BSA.master.gain.setTargetAtTime(BSA.on ? BSA.vol : 0, c.currentTime, 0.05); }
-  document.querySelectorAll('.bs-snd').forEach(b => { b.innerHTML = bsaIcon(); b.setAttribute('aria-label', BSA.on ? '소리 끄기' : '소리 켜기'); });
+  document.querySelectorAll('.bs-snd, .bm-snd').forEach(b => { b.innerHTML = bsaIcon(); b.setAttribute('aria-label', BSA.on ? '소리 끄기' : '소리 켜기'); });
 }
 const bsaIcon = () => `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/>${BSA.on ? '<path d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/>' : '<path d="M16 9l6 6M22 9l-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'}</svg>`;
 
