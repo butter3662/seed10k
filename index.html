@@ -1246,7 +1246,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '2.2.41';
+const VERSION = '2.2.42';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -6517,7 +6517,7 @@ async function mpReq(code, kind, arg = {}){
     const id = ++MPW.seq;
     const r = await new Promise(res => {
       MPW.pend.set(id, res);
-      setTimeout(() => { if (MPW.pend.delete(id)) res({ok:false, err:'게임 서버가 응답하지 않습니다', timeout:true}); }, 15000);
+      setTimeout(() => { if (MPW.pend.delete(id)){ mpWsClose(); MP.refAt = 0; res({ok:false, err:'게임 서버가 응답하지 않습니다', timeout:true}); } }, 15000);   // 답이 없는 연결은 끊고 다음에 새로 붙는다
       try { MPW.ws.send(JSON.stringify({t:'req', id, code, kind, arg})); } catch(e){ MPW.pend.delete(id); res({ok:false, err:'게임 서버에 보내지 못했습니다', timeout:true}); }
     });
     return r;
@@ -6591,8 +6591,13 @@ async function mpNew(to){   // to: 대결을 신청할 사람 {uid, nick} (없�
     betDialog(k, `👥 ${MP_GAMES[k].nm} 방`, `<p class="muted" style="margin:0 0 8px">방에 들어오는 사람 모두 같은 판돈을 냅니다. ${gamIl() ? '🚨 불법 모드 방이 됩니다' : ''}</p>`, async bet => {
       const code = mpCode();
       toast('방을 만드는 중…');
+      const pid = mpPendAdd(code, bet);
       const r = await mpReq(code, 'create', {game:k, mode:S.mode, stake:bet, il:gamIl(), nick:mpNick()});
-      if (!r.ok){ if (!r.timeout){ receiveUSD(bet); commit(); } return toast(`방을 만들지 못했습니다: ${r.err}${r.timeout ? ' (판돈은 서버가 처리하면 돌려받거나 방에 들어갑니다)' : ''}`, true); }
+      if (!r.ok){
+        if (!r.timeout){ mpPendDone(pid); receiveUSD(bet); commit(); }
+        return toast(`방을 만들지 못했습니다: ${r.err}${r.timeout ? ' (1~2분 안에 방에 들어가 있는지 확인해, 없으면 판돈을 자동으로 돌려드립니다)' : ''}`, true);
+      }
+      mpPendDone(pid);
       mpEnter(code);
       if (to) onlSend(to, code, k, bet);
     });
@@ -6627,8 +6632,10 @@ async function mpJoin(pre, auto){   // auto: 대결 신청을 받아 바로 방�
       if (room.il && !gamIl()){ gamS().il = true; }
       S.usd = Math.round((S.usd - room.stake) * 100) / 100; commit(); c();
       toast('참가하는 중…');
+      const pid = mpPendAdd(code, room.stake);
       const r = await mpReq(code, 'join', {mode:S.mode, il:gamIl(), nick:mpNick()});
-      if (!r.ok){ if (!r.timeout){ S.usd = Math.round((S.usd + room.stake) * 100) / 100; commit(); } return toast(`참가하지 못했습니다: ${r.err}`, true); }
+      if (!r.ok){ if (!r.timeout){ mpPendDone(pid); S.usd = Math.round((S.usd + room.stake) * 100) / 100; commit(); } return toast(`참가하지 못했습니다: ${r.err}`, true); }
+      mpPendDone(pid);
       mpEnter(code);
     };
   };
@@ -6657,6 +6664,7 @@ function mpSet(room){
   const prev = MP.room;
   if (prev && prev.code === room.code && (room.ver || 0) < (prev.ver || 0)) return;   // 늦게 온 옛 상태는 버린다 (웹소켓과 Supabase 양쪽에서 온다)
   MP.room = room;
+  if (mpMe() >= 0) mpPendSeated(room.code);
   if (room.status === 'lobby') MP.view.bjV = null;   // 새 판이면 카드를 처음부터 날아오게
   const ev = room.state.ev;
   if (ev && ev.seq > MP.lastSeq){ MP.lastSeq = ev.seq; mpOnEv(ev, prev); }
@@ -6719,7 +6727,9 @@ function mpLobbyHTML(R){
 async function mpAct(kind, arg, spent){
   if (MP.busy) return; MP.busy = true; mpRender();
   try {
+    const pid = spent ? mpPendAdd(MP.code, spent) : null;
     const r = await mpReq(MP.code, kind, arg);
+    if (pid && (r.ok || !r.timeout)) mpPendDone(pid);
     if (!r.ok){ if (spent && !r.timeout){ receiveUSD(spent); commit(); } toast(r.err, true); }
     await mpFetch();
   } finally { MP.busy = false; mpRender(); }
@@ -6791,7 +6801,7 @@ function mpWatchPayouts(){
   mpBanCheck();
   if (MP.payCh){ try { ACC.sb.removeChannel(MP.payCh); } catch(e){} }
   try { MP.payCh = ACC.sb.channel('pay-' + ACC.user.id).on('postgres_changes', {event:'INSERT', schema:'public', table:'seed10k_payouts', filter:`user_id=eq.${ACC.user.id}`}, () => mpClaim()).subscribe(); } catch(e){}
-  setTimeout(mpClaim, 2500);
+  setTimeout(mpClaim, 2500); setTimeout(mpPendCheck, 3000);
 }
 setInterval(() => { if (!document.hidden && ACC.user) mpClaim(); }, 30000);
 setInterval(() => { if (!document.hidden && ACC.user && UI.tab === 'market' && $('#mpRef')) mpRefAlive().then(() => { const el = $('#mpRef'); if (el) el.innerHTML = MP.ref === false ? '<span class="down">게임 서버 꺼짐</span>' : MP.ref ? '게임 서버 켜짐' : ''; }); }, 15000);
@@ -7225,6 +7235,43 @@ function mpBubDraw(){
   have.forEach(el => el.remove());
   MPC.raf = requestAnimationFrame(mpBubDraw);
 }
+
+/* ── 판돈을 낸 뒤 답을 못 받은 요청 (방 만들기·참가·한 판 더) ──
+   판돈은 요청을 보내기 전에 이 기기 통장에서 뺀다. 답이 늦거나(시간 초과) 그사이 창을 닫으면 돈이 어디로 갔는지 모르게 되므로
+   여기 적어 두고, 90초가 지나면 그 방에 내 자리가 있는지 본다: 있으면 판돈은 방에 들어간 것, 없으면 돌려준다.
+   심판은 60초가 넘게 늦게 도착한 방 만들기·참가 요청을 처리하지 않으므로, 돌려준 뒤에 방이 생기는 일은 없다 */
+const mpPendKey = () => ACC.user ? `seed10k.mppend.${ACC.user.id}` : null;
+function mpPends(){ try { return JSON.parse(localStorage.getItem(mpPendKey()) || '[]') || []; } catch(e){ return []; } }
+function mpPendSave(a){ try { a.length ? localStorage.setItem(mpPendKey(), JSON.stringify(a)) : localStorage.removeItem(mpPendKey()); } catch(e){} }
+function mpPendAdd(code, stake){
+  const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  mpPendSave([...mpPends(), {id, code, stake:+stake, mode:S.mode, at:Date.now()}]);
+  return id;
+}
+function mpPendDone(id){ mpPendSave(mpPends().filter(p => p.id !== id)); }
+function mpPendSeated(code){ const a = mpPends(); if (a.some(p => p.code === code)) mpPendSave(a.filter(p => p.code !== code)); }
+async function mpPendCheck(){
+  if (!ACC.sb || !ACC.user || MP.pendBusy) return;
+  const due = mpPends().filter(p => p.mode === S.mode && Date.now() - p.at > 90000);
+  if (!due.length) return;
+  MP.pendBusy = true;
+  try {
+    for (const p of due){
+      const {data:room, error} = await ACC.sb.from('seed10k_rooms').select('code,status,state').eq('code', p.code).maybeSingle();
+      if (error) continue;   // 확인하지 못하면 다음에 다시
+      if (!mpPends().some(x => x.id === p.id)) continue;
+      if (room && room.state && (room.state.seats || []).some(s => s.uid === ACC.user.id)){   // 방에 들어가 있다 → '이어가기'로 찾을 수 있게
+        mpPendDone(p.id);
+        if (room.status !== 'closed' && !MP.code){ try { localStorage.setItem(mpKey(), p.code); } catch(e){} toast(`👥 방 ${p.code}에 들어가 있습니다. 도박 탭의 '이어가기'로 돌아갈 수 있습니다`); if ($('#mpCard')) $('#mpCard').innerHTML = mpCardHTML(); }
+        continue;
+      }
+      try { if (localStorage.getItem(mpKey()) === p.code) localStorage.removeItem(mpKey()); } catch(e){}
+      mpPendDone(p.id); receiveUSD(p.stake); commit();
+      toast(`👥 방 ${p.code}: 서버가 처리하지 못한 판돈 ${fmtUSD(p.stake)}을 돌려받았습니다`);
+    }
+  } finally { MP.pendBusy = false; }
+}
+setInterval(() => { if (!document.hidden) mpPendCheck(); }, 20000);
 
 /* ───────── 관리 탭 (관리자 계정에만 보인다) ─────────
    관리자 여부는 Supabase의 seed10k_admins 표가 정한다 (사이트 코드에 이메일을 넣지 않는다).

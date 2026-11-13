@@ -135,6 +135,9 @@ async function processReq(q: any, shown?: (r: { ok: boolean; err?: string; res?:
     if (q.kind !== "create") await loadRoom(q.code);
     const room0 = rooms.get(q.code);
     if (q.kind === "create" || q.kind === "join" || q.kind === "again") {
+      // 판돈이 걸린 요청이 60초 넘게 늦게 도착하면 처리하지 않는다 (사이트는 90초 뒤 방에 자리가 없으면 판돈을 돌려준다 → 돌려준 뒤에 방이 생기지 않게)
+      const at = Date.parse(q.at || "");
+      if (at && Date.now() - at > 60_000) { r = { ok: false, err: "요청이 너무 늦게 도착해 처리하지 않았습니다. 판돈은 곧 돌려받습니다" }; shown?.(r); return r; }
       const why = await banned(q.user_id) ? "부정행위로 멀티플레이가 제한된 계정입니다" : await tester(q.user_id) ? "테스트 계정은 멀티플레이를 할 수 없습니다" : "";
       if (why) { handled++; r = { ok: false, err: why }; shown?.(r); return r; }
     }
