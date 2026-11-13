@@ -622,7 +622,7 @@ html.gated body{overflow:hidden}
 .gm-ov .gm-body{width:min(100%,560px);margin:0}
 .gm-ov .gm-sp{width:64px;display:flex;justify-content:flex-end}
 .gm-sp .bs-quit{margin:0;min-height:0}.bs-qbtn{display:grid;justify-items:center;line-height:1.1;padding:4px 10px;min-width:64px}.bs-qbtn small{font-size:9.5px;opacity:.75;font-weight:600;white-space:nowrap}
-.mp-games{display:grid;gap:8px}
+.mp-games,.mp-watch{display:grid;gap:8px}
 .mp-g{height:auto;padding:10px 12px;display:grid;justify-items:start;gap:2px;text-align:left}
 .mp-g small{color:var(--ink-3);font-weight:600}
 .mp-code{display:flex;align-items:center;gap:10px;background:var(--surface-2);border-radius:12px;padding:10px 14px;margin-bottom:10px}
@@ -1250,7 +1250,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '2.2.44';
+const VERSION = '2.2.46';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -4203,12 +4203,12 @@ function bmUpdate(){
   if (!BMV.built) bmBuild();
   const ME = bmMe(), V = bmVw(g), pd = g.pending, myTurn = g.turn === ME && !BMV.busy && !g.over;
   const cur = BMV.busy && BMV.actor !== undefined ? BMV.actor : g.turn;   // 애니메이션 중에는 움직이는 사람
-  if (BMV.mp){ mpSetH($('#bmSub'), `${g.round}바퀴 · 판돈 ${fmtUSD(g.stake)} · <span id="mpTimer"></span>`); }
+  if (BMV.mp){ mpSetH($('#bmSub'), `${ME < 0 ? '👀 관전 중 · ' : ''}${g.round}바퀴 · 판돈 ${fmtUSD(g.stake)} · <span id="mpTimer"></span>`); }
   else { const sb = $('#bmSub'); sb._h = null; sb.textContent = `${g.round}바퀴 · 판돈 ${fmtUSD(g.stake)}`; }
   $('#bmSpd').textContent = bmFast() ? '빠르게 ✓' : '빠르게';
   $('#bm3d').textContent = bm3D() ? '3D ✓' : '3D';
   BMV.lastV = V;
-  $('#bmQuit').hidden = g.over;
+  $('#bmQuit').hidden = g.over; $('#bmQuit').textContent = BMV.mp && ME < 0 ? '관전 끝' : '기권';
   BM_SQ.forEach((c, k) => {
     const el = ov.querySelector(`[data-bmsq="${k}"]`); if (!el) return;
     const o = V.own[k];
@@ -4453,6 +4453,7 @@ async function bmPlay(ev, v0, done){
   bmUpdate();
   if (g.over){
     const ME = bmMe(), rank = g.rank ? g.rank[ME] : BME.ranking(g).indexOf(ME) + 1;
+    if (ME < 0){ const w = g.rank ? g.rank.indexOf(1) : BME.ranking(g)[0]; bmBanner(`🏆 ${g.pl[w] ? g.pl[w].nm : '?'} 1위`, 'gold', 1600); done && done(); return; }   // 관전
     bmBanner(rank === 1 ? '🏆 1위!' : g.pl[ME].out ? '💥 파산' : `${rank}위`, rank === 1 ? 'gold' : '', 1600);
     if (rank === 1){ bmConfetti(); BMAU.win(); } else if (g.pl[ME].out) BMAU.bankrupt();
   } else if (v0.turn !== undefined && g.turn !== v0.turn && (g.turn !== bmMe() || !BMAU.turn())) bmBanner(g.turn === bmMe() ? '내 차례!' : `${g.pl[g.turn].nm} 차례`, 'small ' + (g.turn === bmMe() ? 'gold' : ''), 750);
@@ -4552,7 +4553,7 @@ document.addEventListener('click', e => {
   const t = e.target.closest('#bmOv button, #bmGo'); if (!t) return;
   if (t.id === 'bmGo'){ bmSetup(); return; }
   const g = bmG(); if (!g) return;
-  if (t.id === 'bmClose'){ bmHide(); return; }
+  if (t.id === 'bmClose'){ const spec = BMV.mp && bmMe() < 0; bmHide(); if (spec && typeof mpForget === 'function'){ BMV.mp = false; mpForget(); } return; }   // 관전은 닫으면 끝
   if (BMV.mp && t.id === 'bmQuit'){ mbmQuit(); return; }
   if (t.id === 'bmSnd' || t.closest && t.closest('#bmSnd')){ bsaToggle(); return; }
   if (t.id === 'bmSpd'){ SET.bmFast = !SET.bmFast; saveSet(); bmUpdate(); return; }
@@ -5490,12 +5491,12 @@ function bsTableHTML(g, me, o){
     }).join('') : p.items.map(it => `<span class="bs-it ro" title="${BS_IT[it].nm}"><span class="bs-ico">${bsIco(it)}</span></span>`).join('');
     const can = myTurn && !p.out;
     return `<div class="bs-p ${mine ? 'me' : ''} ${g.turn === i && !g.over ? 'turn' : ''} ${p.out ? 'out' : ''} ${BSV.flash === 'p' + i ? 'shot' : ''} ${can && BSV.hold && !mine ? 'aimable' : ''} ${BSV.aimT === i && can ? 'aimed' : ''}" data-bsi="${i}" ${can && BSV.hold && !mine ? `data-bsaim="${i}"` : ''}>
-      <div class="bs-pn"><b>${mine ? '나' : esc(p.nm)}</b><span class="bs-tag">${p.out ? '탈락' : p.cuffed ? '⛓️ 묶임' : g.turn === i && !g.over ? '차례' : ''}</span>${bsHP(p.hp, BSV.flash === 'p' + i)}</div>
+      <div class="bs-pn"><b>${mine && !o.spec ? '나' : esc(p.nm)}</b><span class="bs-tag">${p.out ? '탈락' : p.cuffed ? '⛓️ 묶임' : g.turn === i && !g.over ? '차례' : ''}</span>${bsHP(p.hp, BSV.flash === 'p' + i)}</div>
       <div class="bs-items ${mine ? 'mine' : ''}">${items || '<span class="bs-none">아이템 없음</span>'}</div>
     </div>`;
   };
   const opp = g.pl.map((p, k) => (me + 1 + k) % g.pl.length).filter(i => i !== me).map(i => seat(g.pl[i], i, false)).join('');   // 내 다음 자리부터: 3D 탁자의 왼쪽 → 오른쪽 순서와 같다
-  const msg = BSV.msg || (g.over ? (g.win === me ? '🏆 WIN!' : g.quit && g.quitHalf ? '🏃 기권하고 자리를 떴다' : g.quit ? '🏳️ 기권했다' : '💀 졌다') : myTurn ? (BSV.hold ? (BSV.aimT !== null && BSV.aimT !== undefined ? `${BSV.aimT === me ? '나' : esc(g.pl[BSV.aimT].nm)}에게 겨눴다` : '누구를 쏠까? (아이템은 총을 내려놓고 쓸 수 있다)') : '아이템을 쓰거나 총을 드세요') : `${esc(g.pl[g.turn].nm)} 차례…`);
+  const msg = BSV.msg || (g.over && o.spec ? `🏆 ${esc(g.pl[g.win] ? g.pl[g.win].nm : '?')} 승리` : g.over ? (g.win === me ? '🏆 WIN!' : g.quit && g.quitHalf ? '🏃 기권하고 자리를 떴다' : g.quit ? '🏳️ 기권했다' : '💀 졌다') : myTurn ? (BSV.hold ? (BSV.aimT !== null && BSV.aimT !== undefined ? `${BSV.aimT === me ? '나' : esc(g.pl[BSV.aimT].nm)}에게 겨눴다` : '누구를 쏠까? (아이템은 총을 내려놓고 쓸 수 있다)') : '아이템을 쓰거나 총을 드세요') : `${esc(g.pl[g.turn].nm)} 차례…`);
   const s3 = bs3Want(); BS3.ctx = {g, me, solo:!!o.solo};
   const aim = BSV.aim || (myTurn && BSV.hold && BSV.aimT !== null && BSV.aimT !== undefined ? (BSV.aimT === me ? 'down' : 'up') : 'rest');
   return `${o.solo ? '' : !g.over && o.mine ? '<div class="bs-quit"><button class="btn" data-bsdo="quit">기권</button></div>' : '<div class="bs-quit"></div>'}<div class="bs-table">
@@ -5575,7 +5576,7 @@ async function bsPlay(ev, done, rerender){
   rerender = rerender || bsRender;
   BSV.busy = true; BSV.gen++;
   const me = () => rerender.me !== undefined ? rerender.me : 0, G = () => rerender.g ? rerender.g() : bsS().cur;
-  const nm = i => i === me() ? '나' : esc(G() ? G().pl[i].nm : '?');
+  const nm = i => i === me() && !rerender.spec ? '나' : esc(G() ? G().pl[i].nm : '?');
   BSV.view = G() ? bsViewOf(G(), ev) : null;
   for (let w = 0; (BS3.st === 'loading' || BS3.st === 'idle') && w < 80; w++){ bs3Want(); try { await bsWait(100); } catch(e){ break; } }   // 3D 그림을 받는 동안 2D로 시작하지 않게
   try {
@@ -6632,6 +6633,7 @@ function mpCardHTML(){
     <li>들어갈 때 판돈을 냅니다. 대기실에서 나가거나 방이 닫히면 판돈을 돌려받습니다.</li>
     <li>주사위·카드·숨긴 값은 게임 서버(라즈베리파이)가 정하고 판정해서, 누구도 결과를 조작할 수 없습니다.</li>
     <li>끝나면 이긴 돈이 자동으로 들어옵니다. 불법 모드 방이면 받을 때 혼자 할 때와 같은 확률로 경찰 단속이 있습니다.</li>
+    <li>👀 관전: 진행 중인 방을 골라 구경할 수 있습니다 (돈이 들지 않고, 숨긴 값은 관전자에게도 보이지 않습니다). 코드로 참가에서 이미 시작한 방 코드를 넣어도 관전할 수 있습니다.</li>
     <li>같은 모드(실제 시세/시뮬레이션)끼리만 같이 할 수 있습니다. 차례에서 정해진 시간 안에 고르지 않으면 서버가 대신 고릅니다.</li></ul></div>`};
   if (!ACC.user) return `<div class="card-h"><h2>👥 같이 하기</h2></div><p class="mg-desc">로그인하면 방 코드로 친구와 같이 할 수 있습니다.</p>`;
   if (MP.banned) return `<div class="card-h"><h2>👥 같이 하기 ${infoBtn('mp')}</h2></div><p class="mg-desc down"><b>🚫 부계정을 이용한 부정행위가 적발되어 이 계정은 멀티플레이가 제한되었습니다.</b></p>`;
@@ -6640,7 +6642,7 @@ function mpCardHTML(){
   return `<div class="card-h"><h2>👥 같이 하기 ${infoBtn('mp')}</h2><small id="mpRef">${MP.ref === false ? '<span class="down">게임 서버 꺼짐</span>' : MP.ref ? '게임 서버 켜짐' : ''}</small></div>
     <p class="mg-desc">방을 만들고 코드를 알려 주면 친구가 들어옵니다. ${Object.values(MP_GAMES).filter(g => g.ready).map(g => g.ic + g.nm).join(' · ')}</p>
     ${saved ? `<p class="mg-desc">들어가 있는 방 <b class="num">${esc(saved)}</b> <button class="btn" id="mpResume" style="margin-left:6px">이어가기</button></p>` : ''}
-    <div class="mg-foot"><button class="btn" id="onlBtn">🟢 접속 중 <span class="num" id="onlN">${ONL.list.length}</span>명</button><span class="mg-btns"><button class="btn" id="mpJoinBtn">코드로 참가</button><button class="btn solid" id="mpNewBtn">방 만들기</button></span></div>`;
+    <div class="mg-foot"><button class="btn" id="onlBtn">🟢 접속 중 <span class="num" id="onlN">${ONL.list.length}</span>명</button><span class="mg-btns"><button class="btn" id="mpWatchBtn">👀 관전</button><button class="btn" id="mpJoinBtn">코드로 참가</button><button class="btn solid" id="mpNewBtn">방 만들기</button></span></div>`;
 }
 
 
@@ -6705,7 +6707,8 @@ async function mpJoin(pre, auto){   // auto: 대결 신청을 받아 바로 방�
     const {data:room} = await ACC.sb.from('seed10k_rooms').select('*').eq('code', code).maybeSingle();
     if (!room || room.status === 'sys') return msg('없는 방 코드입니다');
     if (room.state.seats.some(s => s.uid === ACC.user.id)){ c(); return mpEnter(code); }   // 이미 들어가 있음
-    if (room.status !== 'lobby') return msg(room.status === 'closed' ? '닫힌 방입니다' : '이미 시작한 방입니다');
+    if (room.status === 'closed') return msg('닫힌 방입니다');
+    if (room.status !== 'lobby'){ c(); return mpEnter(code, true); }   // 이미 시작한 방은 관전
     if (room.mode !== S.mode) return msg(`이 방은 ${room.mode === 'live' ? '실제 시세' : '시뮬레이션'} 모드 방입니다. 규칙·설정에서 모드를 바꾼 뒤 참가하세요`);
     const g = MP_GAMES[room.game] || {nm:room.game, ic:''};
     $('#modal').innerHTML = `<h2>${g.ic} ${g.nm} · 방 ${code}</h2>
@@ -6728,10 +6731,12 @@ async function mpJoin(pre, auto){   // auto: 대결 신청을 받아 바로 방�
 }
 
 /* ── 방 화면 ── */
-function mpEnter(code){
-  MP.code = code; try { localStorage.setItem(mpKey(), code); } catch(e){}
+function mpEnter(code, spec){
+  MP.spec = !!spec; MP.code = code;
+  if (!spec) try { localStorage.setItem(mpKey(), code); } catch(e){}   // 관전은 '이어가기'에 남기지 않는다
   mpSub(code); mpOpen(); mpFetch();
 }
+const mpSpec = () => !!(MP.spec && MP.room && mpMe() < 0);   // 관전 중 (자리가 없는 채로 방을 보는 중)
 function mpSub(code){
   if (MP.ch){ try { ACC.sb.removeChannel(MP.ch); } catch(e){} MP.ch = null; }
   try {
@@ -6775,22 +6780,22 @@ function mpHide(){
   const ov = $('#mpOv'); if (ov && !ov.hidden){ ov.hidden = true; ov.innerHTML = ''; document.documentElement.classList.remove('bm-open'); }
   if (UI.tab === 'market') renderInvest();
 }
-function mpReset(){ mpHide(); MP.code = null; MP.room = null; MP.lastSeq = 0; MP.view = {}; clearInterval(MP.poll); if (MP.ch){ try { ACC.sb.removeChannel(MP.ch); } catch(e){} MP.ch = null; } }
+function mpReset(){ mpHide(); MP.spec = false; MP.code = null; MP.room = null; MP.lastSeq = 0; MP.view = {}; clearInterval(MP.poll); if (MP.ch){ try { ACC.sb.removeChannel(MP.ch); } catch(e){} MP.ch = null; } }
 function mpForget(){
-  MP.code = null; MP.room = null; MP.lastSeq = 0; MP.view = {};
+  MP.spec = false; MP.code = null; MP.room = null; MP.lastSeq = 0; MP.view = {};
   clearInterval(MP.poll); if (MP.ch){ try { ACC.sb.removeChannel(MP.ch); } catch(e){} MP.ch = null; }
   try { localStorage.removeItem(mpKey()); } catch(e){}
 }
 function mpRender(){
   const ov = $('#mpOv'); if (!ov || ov.hidden) return;
   const R = MP.room, g = R ? MP_GAMES[R.game] : null;
-  if (R && R.game === 'bm' && (R.status === 'play' || R.status === 'over') && mpMe() >= 0){ mbmOpen(); return; }
+  if (R && R.game === 'bm' && (R.status === 'play' || R.status === 'over') && (mpMe() >= 0 || MP.spec)){ mbmOpen(); return; }
   if (R && MP_UPD[R.game] && (R.status === 'play' || R.status === 'over') && MP_UPD[R.game](R)){
-    const sm = ov.querySelector('.bm-ttl small'); if (sm) sm.textContent = `방 ${MP.code || ''} · 달러 통장 ${fmtUSD(S.usd)}`;
+    const sm = ov.querySelector('.bm-ttl small'); if (sm) sm.textContent = `${mpSpec() ? '👀 관전 중 · ' : ''}방 ${MP.code || ''} · 달러 통장 ${fmtUSD(S.usd)}`;
     return;
   }
   const body = !R ? '<p class="muted">방을 불러오는 중…</p>' : R.status === 'closed' ? `<p>방이 닫혔습니다.</p><p class="muted">대기실에서 닫힌 방은 판돈을 돌려받습니다.</p>` : R.status === 'lobby' ? mpLobbyHTML(R) : (MP_VIEW[R.game] || (() => ''))(R);
-  ov.innerHTML = `<div class="bm-top"><button class="btn" id="mpClose">닫기</button><div class="bm-ttl"><b>${g ? g.ic + ' ' + g.nm : '👥 같이 하기'}</b><small>방 ${esc(MP.code || '')} · 달러 통장 ${fmtUSD(S.usd)}</small></div><button class="btn" id="mpLeave">나가기</button></div>
+  ov.innerHTML = `<div class="bm-top"><button class="btn" id="mpClose">닫기</button><div class="bm-ttl"><b>${g ? g.ic + ' ' + g.nm : '👥 같이 하기'}</b><small>${mpSpec() ? '👀 관전 중 · ' : ''}방 ${esc(MP.code || '')} · 달러 통장 ${fmtUSD(S.usd)}</small></div><button class="btn" id="mpLeave">${mpSpec() ? '관전 끝' : '나가기'}</button></div>
     <section class="card c-mg gm-body">${body}</section>`;
   mpTick();
   if (R && MP_UPD[R.game] && (R.status === 'play' || R.status === 'over')) MP_UPD[R.game](R);
@@ -6826,6 +6831,7 @@ document.addEventListener('click', async e => {
   if (t.id === 'onlBtn') return onlOpen(null);
   if (t.id === 'onlInv') return onlOpen(MP.room);
   if (t.id === 'mpJoinBtn') return mpJoin();
+  if (t.id === 'mpWatchBtn') return mpWatchList();
   if (t.id === 'mpResume'){ let c = null; try { c = localStorage.getItem(mpKey()); } catch(e){} if (c) mpEnter(c); return; }
   if (t.id === 'mpClose'){
     // 대기실에서 닫으면 나가기와 같다: 자리를 비우고 판돈을 바로 돌려받는다 (예전에는 자리를 둔 채 창만 닫혀, 20분 뒤에야 환불이 들어왔다)
@@ -6837,6 +6843,7 @@ document.addEventListener('click', async e => {
       mpForget(); mpHide(); setTimeout(mpClaim, 800); toast('대기실에서 나왔습니다. 판돈은 바로 돌려받습니다');
       return;
     }
+    if (MP.spec && mpMe() < 0){ mpForget(); }   // 관전은 닫으면 끝
     return mpHide();
   }
   if (t.id === 'mpCopy'){ try { await navigator.clipboard.writeText(MP.code); toast('방 코드를 복사했습니다'); } catch(e){ toast(`방 코드: ${MP.code}`); } return; }
@@ -6900,6 +6907,7 @@ setInterval(mpTick, 500);
 
 // 홀짝 대결
 MP_VIEW.oe = R => {
+  if (mpMe() < 0) return moeSpecHTML(R);
   const st = R.state, g = st.g || {}, me = mpMe(), opp = 1 - me, seats = st.seats;
   const show = MP.view.oeShow && MP.view.oeShow.seq <= st.seq ? MP.view.oeShow : null;
   const over = R.status === 'over';
@@ -7039,9 +7047,9 @@ function mbjBody(R){
   let msg, acts = '';
   if (over){
     const mine = me >= 0 && g.pay ? g.pay[me] : 0, net = Math.round((mine - R.stake) * 100) / 100;
-    msg = me >= 0 ? `<p class="oe-res ${cls(net)}">${st.seats[me].left ? '기권' : g.players[me].res === 'refund' ? '모두 버스트 · 판돈을 돌려받습니다' : net > 0 ? `이겼다! ${fmtUSD(mine)}을 받습니다` : g.players[me].res === 'tie' ? `동점 · ${fmtUSD(mine)}을 나눠 받습니다` : '졌다'}</p>` : '';
+    msg = me < 0 ? `<p class="oe-res">${(() => { const w = st.seats.map((s, i) => i).filter(i => g.pay && g.pay[i] > 0); return w.length ? `🏆 ${w.map(i => esc(st.seats[i].nick)).join(', ')} ${w.length > 1 ? '나눠 가짐' : '승리'}` : '모두 버스트 · 환불'; })()}</p>` : me >= 0 ? `<p class="oe-res ${cls(net)}">${st.seats[me].left ? '기권' : g.players[me].res === 'refund' ? '모두 버스트 · 판돈을 돌려받습니다' : net > 0 ? `이겼다! ${fmtUSD(mine)}을 받습니다` : g.players[me].res === 'tie' ? `동점 · ${fmtUSD(mine)}을 나눠 받습니다` : '졌다'}</p>` : '';
     const host = ACC.user && R.host === ACC.user.id;
-    acts = host ? `<button class="btn solid" id="mpAgain">한 판 더 (${fmtUSD(R.stake)})</button>` : '<p class="bm-wait">방장이 한 판 더 열면 다시 참가할 수 있습니다</p>';
+    acts = host ? `<button class="btn solid" id="mpAgain">한 판 더 (${fmtUSD(R.stake)})</button>` : me < 0 ? '' : '<p class="bm-wait">방장이 한 판 더 열면 다시 참가할 수 있습니다</p>';
   } else if (g.turn === me){
     msg = `<p class="oe-res">할 행동을 고르세요 <span class="muted" id="mpTimer"></span></p>`;
     acts = ['hit', 'stand'].map(a => `<button class="btn ${a === 'stand' ? 'solid' : ''}" data-mpbj="${a}" ${MP.busy ? 'disabled' : ''}>${BJ_ACT[a]}</button>`).join('');
@@ -7090,6 +7098,7 @@ function mbmSend(a){
   mpAct('act', a);
 }
 function mbmQuit(){
+  if (bmMe() < 0){ bmHide(); BMV.mp = false; mpForget(); return; }   // 관전 끝
   const g = bmG(); if (!g || g.over) return;
   const left = g.pl.filter((p, i) => i !== bmMe() && !p.out).length, n = g.n, m = BM.pay[n][left] || 0;
   const c = showModal(`<h2>기권할까요?</h2><p>지금 파산한 것으로 보고 <b>${left + 1}위 (${n}명 중)</b>로 끝납니다. ${m ? `판돈의 ${m}배인 ${fmtUSD(Math.round(g.stake * m * 100) / 100)}을 받습니다.` : `판돈 ${fmtUSD(g.stake)}을 잃습니다.`} 남은 사람들은 계속합니다.</p>
@@ -7100,6 +7109,7 @@ function mbmOverHTML(g){
   const R = MP.room, me = bmMe(), n = g.n, host = ACC.user && R && R.host === ACC.user.id;
   const order = g.pl.map((p, i) => i).sort((a, b) => (g.rank ? g.rank[a] - g.rank[b] : 0));
   const rows = order.map(i => { const rk = g.rank ? g.rank[i] : 0, m = BM.pay[n][rk - 1] || 0; return `<div><span>${rk}위 ${esc(i === me ? '나' : g.pl[i].nm)}${R && R.state.seats[i] && R.state.seats[i].left ? ' (기권)' : ''}</span><b class="num">${g.pl[i].out ? '파산' : '자산 ' + bmW(BME.assets(g, i))} · ${m}배</b></div>`; }).join('');
+  if (me < 0) return `<p class="bm-q">🏆 ${esc(g.rank ? g.pl[order[0]].nm : '?')} 1위</p><div class="bd">${rows}</div>`;
   const myM = g.rank ? BM.pay[n][g.rank[me] - 1] || 0 : 0;
   return `<p class="bm-q">${g.rank && g.rank[me] === 1 ? '🏆 ' : ''}${g.rank ? g.rank[me] : '?'}위 · ${fmtUSD(Math.round(g.stake * myM * 100) / 100)}을 받습니다 (판돈 ${fmtUSD(g.stake)})</p><div class="bd">${rows}</div>
     <div class="bm-acts">${host ? `<button class="btn solid" id="mpAgain">한 판 더 (${fmtUSD(R.stake)})</button>` : '<p class="bm-wait">방장이 한 판 더 열면 다시 참가할 수 있습니다</p>'}</div>`;
@@ -7194,14 +7204,14 @@ function onlGot(p){
 const mbsPeek = g => { const p = MP.view.bsPeek; return p && p.load === g.load && p.left === g.live + g.blank ? p.peek : null; };
 function mbsBody(R){
   const g = R.state.g, me = mpMe(), host = ACC.user && R.host === ACC.user.id;
-  const foot = R.status === 'over' && !BSV.busy ? `<p class="oe-res ${g.win === me ? 'up' : 'down'}">${g.win === me ? `🏆 WIN! ${fmtUSD(R.stake * g.n)}을 받습니다` : `💀 ${esc(g.pl[g.win] ? g.pl[g.win].nm : '?')} 승리`}</p>
-    <div class="bm-acts">${host ? `<button class="btn solid" id="mpAgain">한 판 더 (${fmtUSD(R.stake)})</button>` : '<p class="bm-wait">방장이 한 판 더 열면 다시 참가할 수 있습니다</p>'}</div>` : R.status === 'over' ? ' ' : '';
-  return bsTableHTML(g, me < 0 ? 0 : me, {mine:me >= 0, peek:mbsPeek(g), wait:MP.busy || me < 0, timer:R.status === 'play', foot});
+  const foot = R.status === 'over' && !BSV.busy ? (me < 0 ? `<p class="oe-res">🏆 ${esc(g.pl[g.win] ? g.pl[g.win].nm : '?')} 승리 · ${fmtUSD(R.stake * g.n)}</p>` : `<p class="oe-res ${g.win === me ? 'up' : 'down'}">${g.win === me ? `🏆 WIN! ${fmtUSD(R.stake * g.n)}을 받습니다` : `💀 ${esc(g.pl[g.win] ? g.pl[g.win].nm : '?')} 승리`}</p>
+    <div class="bm-acts">${host ? `<button class="btn solid" id="mpAgain">한 판 더 (${fmtUSD(R.stake)})</button>` : '<p class="bm-wait">방장이 한 판 더 열면 다시 참가할 수 있습니다</p>'}</div>`) : R.status === 'over' ? ' ' : '';
+  return bsTableHTML(g, me < 0 ? 0 : me, {mine:me >= 0, spec:me < 0, peek:me < 0 ? null : mbsPeek(g), wait:MP.busy || me < 0, timer:R.status === 'play', foot});
 }
 MP_VIEW.bs = R => `<div class="card-h"><h2>💥 벅샷 룰렛</h2><small>판돈 ${fmtUSD(R.stake)} · ${R.state.seats.length}명 · 1등 ${fmtUSD(R.stake * R.state.seats.length)}${R.il ? ' · 🚨 불법' : ''}</small></div><div id="mbsBody"></div>`;
 MP_UPD.bs = R => { const b = $('#mbsBody'); if (!b || !R.state.g) return false; mpSetH(b, mbsBody(R)); return true; };
 const mbsRer = () => { const R = MP.room; if (R && R.game === 'bs') MP_UPD.bs(R); };
-mbsRer.g = () => MP.room && MP.room.state.g; Object.defineProperty(mbsRer, 'me', {get:() => mpMe()});
+mbsRer.g = () => MP.room && MP.room.state.g; Object.defineProperty(mbsRer, 'me', {get:() => mpMe() < 0 ? 0 : mpMe()}); Object.defineProperty(mbsRer, 'spec', {get:() => mpMe() < 0});   // 관전은 첫 자리 눈으로 본다
 function mbsRun(){
   if (BSV.busy) return;
   const ev = (MP.view.bsQ || []).shift();
@@ -7237,6 +7247,11 @@ document.addEventListener('click', e => {
    기록은 남기지 않는다 */
 const MPC = {seen:new Set(), bub:[], raf:0, last:0};
 const MPC_MAX = 60, MPC_MS = 5000;
+function mpChatView(){   // 방 화면이 보이는 중 (관전 포함)
+  if (!MP.code || !MP.room || MP.room.status === 'closed') return false;
+  const ov = $('#mpOv'); if (ov && !ov.hidden) return true;
+  return typeof BMV !== 'undefined' && BMV.mp && bmOpenNow();
+}
 function mpChatOn(){
   if (!MP.code || !MP.room || mpMe() < 0 || MP.room.status === 'closed') return false;
   const ov = $('#mpOv'); if (ov && !ov.hidden) return true;
@@ -7253,7 +7268,7 @@ function mpChatSync(){
   }
   if (bar) bar.hidden = !on;
   document.documentElement.classList.toggle('mpc-on', on);
-  if (!on && MPC.bub.length){ MPC.bub = []; mpBubDraw(); }
+  if (!mpChatView() && MPC.bub.length){ MPC.bub = []; mpBubDraw(); }
 }
 setInterval(mpChatSync, 300);
 function mpChatSend(){
@@ -7358,6 +7373,39 @@ async function mpPendCheck(){
   } finally { MP.pendBusy = false; }
 }
 setInterval(() => { if (!document.hidden) mpPendCheck(); }, 20000);
+
+/* ── 관전 ──
+   진행 중인 방 목록에서 골라 자리 없이 방을 본다. 방 상태(seed10k_rooms)는 원래 누구나 읽을 수 있는 값만 담고, 숨긴 값(손에 쥔 구슬·탄 순서 등)은 심판만 안다 */
+async function mpWatchList(){
+  if (!ACC.user) return toast('로그인해야 합니다', true);
+  const c = showModal(`<h2>👀 관전할 방</h2><div id="mpWatchL"><p class="muted">불러오는 중…</p></div><div class="acts"><button class="btn" data-close>닫기</button></div>`);
+  const {data, error} = await ACC.sb.from('seed10k_rooms').select('code,game,mode,stake,il,status,state,updated_at').eq('status', 'play').order('updated_at', {ascending:false}).limit(30);
+  const box = $('#mpWatchL'); if (!box) return;
+  if (error){ box.innerHTML = `<p class="down">불러오지 못했습니다: ${esc(errText(error))}</p>`; return; }
+  const fresh = (data || []).filter(r => Date.now() - Date.parse(r.updated_at) < 30 * 60000 && MP_GAMES[r.game]);   // 30분 넘게 멈춘 방은 뺀다
+  box.innerHTML = fresh.length ? `<div class="mp-watch">${fresh.map(r => { const g = MP_GAMES[r.game];
+      return `<button class="btn mp-g" data-mpwatch="${esc(r.code)}"><b>${g.ic} ${g.nm} <small class="muted">${r.mode === 'live' ? '실제 시세' : '시뮬'}${r.il ? ' · 🚨' : ''}</small></b><small>${r.state.seats.map(x => esc(x.nick)).join(' · ')} · 판돈 ${fmtUSD(r.stake)}</small></button>`; }).join('')}</div>`
+    : '<p class="empty">지금 진행 중인 방이 없습니다.</p>';
+  box.querySelectorAll('[data-mpwatch]').forEach(b => b.onclick = () => {
+    const code = b.dataset.mpwatch; c();
+    if (MP.code && MP.code !== code && !MP.spec) return toast('들어가 있는 방이 있어서 관전할 수 없습니다. 먼저 그 방에서 나가세요', true);
+    mpEnter(code, true);
+  });
+}
+// 홀짝 관전: 두 사람 이름으로 (나/상대 대신)
+function moeSpecHTML(R){
+  const st = R.state, g = st.g || {}, seats = st.seats, nm = i => esc(seats[i] ? seats[i].nick : '?');
+  const show = MP.view.oeShow && MP.view.oeShow.seq <= st.seq ? MP.view.oeShow : null, over = R.status === 'over';
+  const sc = `<div class="oe-score"><span><b data-seatnm="0">${nm(0)}</b> <b class="num">${g.score ? g.score[0] : 0}</b></span><span class="muted">${over ? '끝' : `${g.round || 1}판 · 3점 먼저`}</span><span><b class="num">${g.score ? g.score[1] : 0}</b> <b data-seatnm="1">${nm(1)}</b></span></div>`;
+  let hand = `<div class="oe-hand"><span class="fist">✊</span></div>`, msg;
+  if (show){
+    hand = `<div class="oe-hand open"><div class="oe-marbles">${Array.from({length:show.n}, (_, k) => `<i style="--d:${k * 25}ms"></i>`).join('')}</div><b class="num">${show.n}개 · ${show.n % 2 ? '홀' : '짝'}</b></div>`;
+    msg = `<p class="oe-res">${nm(show.guesser)}이(가) ${show.pick === 'odd' ? '홀' : '짝'}을 골라 ${show.ok ? '맞혔다' : '틀렸다'} · ${nm(show.pt)} 1점</p>`;
+  } else if (over){ hand = `<div class="oe-hand"><span class="fist">🏆</span></div>`; msg = `<p class="oe-res">${nm(g.win)} 승리 (${g.score ? g.score[g.win] + ':' + g.score[1 - g.win] : ''}${g.why && g.why !== '3점 먼저' ? ', ' + esc(g.why) : ''})</p>`; }
+  else if (g.phase === 'hide') msg = `<p class="oe-res muted">${nm(g.hider)}이(가) 구슬을 쥐는 중… <span id="mpTimer"></span></p>`;
+  else msg = `<p class="oe-res muted">${nm(1 - g.hider)}이(가) 홀짝을 고르는 중… <span id="mpTimer"></span></p>`;
+  return `<div class="card-h"><h2>✊ 홀짝 대결</h2><small>판돈 ${fmtUSD(R.stake)}${R.il ? ' · 🚨 불법' : ''}</small></div>${sc}${hand}${msg}<div class="bm-acts"></div>`;
+}
 
 /* ───────── 관리 탭 (관리자 계정에만 보인다) ─────────
    관리자 여부는 Supabase의 seed10k_admins 표가 정한다 (사이트 코드에 이메일을 넣지 않는다).
@@ -9639,8 +9687,10 @@ async function checkUpdate(){
       UPD.want = m[1];
     }
     const a = document.activeElement;
-    const idle = !UI.sheet && $('#modal').hidden && !(a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) && !ACC.pushing && !mgBusy;
-    if (!idle) return;   // 지금은 미루고 다음 확인 때 다시 시도
+    // 게임 화면(혼자 하는 도박·부루마블·같이 하기 방, 모두 .bm-ov)이 열려 있거나 같이 하기 판이 진행 중이면 미룬다: 새로고침하면 판이 화면에서 꺼진다
+    const inGame = !!document.querySelector('.bm-ov:not([hidden])') || (typeof MP !== 'undefined' && MP.code && MP.room && (MP.room.status === 'play' || MP.room.status === 'lobby'));
+    const idle = !UI.sheet && $('#modal').hidden && !(a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) && !ACC.pushing && !mgBusy && !inGame;
+    if (!idle){ if (inGame && !UPD.told){ UPD.told = true; toast(`새 버전(v${UPD.want})이 있습니다. 게임 화면을 닫으면 적용됩니다`); } return; }   // 지금은 미루고 다음 확인 때 다시 시도
     if (ACC.user && S && S.dirty){ clearTimeout(ACC.cloudT); await pushCloud(); }
     try { sessionStorage.setItem('seed10k.reloadedFor', UPD.want); } catch(e){}
     location.reload();
