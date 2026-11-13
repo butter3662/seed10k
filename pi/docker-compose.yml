@@ -26,6 +26,14 @@ services:
       - deno-cache:/deno-dir           # 처음 받은 라이브러리(supabase-js)를 다시 켤 때도 쓰게 둔다
     working_dir: /app
     command: ["run", "--allow-net", "--allow-env", "--allow-sys", "--allow-read=/app", "pi/referee.ts"]
-    # 밖에서 접속할 포트는 열지 않는다 (Supabase로 나가는 연결만)
+    # 웹소켓은 8787번에서 기다리지만 파이 밖(공유기)으로는 열지 않는다. 아래 터널 컨테이너만 이 안쪽 망으로 붙는다
+
+  # Cloudflare 임시 터널: 계정 없이 https 주소(xxx.trycloudflare.com)를 받아 심판의 웹소켓을 사이트에 이어 준다.
+  # 파이에서 Cloudflare로 '나가는' 연결이라 공유기 포트를 열 필요가 없다. 주소는 켤 때마다 바뀌고, 심판이 metrics(2000번)에서 읽어 Supabase에 적는다
+  seed10k-tunnel:
+    image: cloudflare/cloudflared:2026.10.7
+    restart: unless-stopped
+    command: ["tunnel", "--no-autoupdate", "--metrics", "0.0.0.0:2000", "--url", "http://seed10k-referee:8787"]
+    depends_on: [seed10k-referee]
 volumes:
   deno-cache:
