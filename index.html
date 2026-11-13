@@ -852,6 +852,11 @@ html.bm-open .top,html.bm-open .tabbar{visibility:hidden}
 .mpc-bar .btn{flex:none}.mpc-bar[hidden]{display:none}
 .mpc-on #mpOv,.mpc-on #bmOv{padding-bottom:calc(70px + env(safe-area-inset-bottom))}
 #mpBubs{position:fixed;inset:0;z-index:77;pointer-events:none}
+.mpc-log{position:fixed;right:10px;bottom:calc(66px + env(safe-area-inset-bottom));z-index:77;width:min(300px,62vw);display:flex;flex-direction:column;align-items:flex-end;gap:5px;pointer-events:none}
+.mpc-log[hidden]{display:none}
+.mpc-l{max-width:100%;padding:6px 10px;border-radius:12px;background:rgba(8,10,16,.82);border:1px solid rgba(255,255,255,.12);color:#eef0f4;font-size:13.5px;line-height:1.35;word-break:break-word;box-shadow:0 6px 16px -8px rgba(0,0,0,.6);transition:opacity .6s;animation:tin .2s ease}
+.mpc-l b{color:#e8c46a;font-weight:800;margin-right:2px}.mpc-l.me b{color:#8fd0ff}
+.mpc-l.fade{opacity:0}
 .mpc-bub{position:absolute;left:0;top:0;max-width:min(240px,70vw);padding:7px 11px;border-radius:14px;background:#fff;color:#14181f;font-size:13.5px;font-weight:600;line-height:1.35;box-shadow:0 6px 18px -6px rgba(0,0,0,.45);word-break:break-word;transition:opacity .2s;--tx:50%}
 .mpc-bub::after{content:"";position:absolute;left:var(--tx);bottom:-6px;margin-left:-6px;border:6px solid transparent;border-bottom:0;border-top-color:#fff}
 .mpc-bub.dn::after{bottom:auto;top:-6px;border:6px solid transparent;border-top:0;border-bottom-color:#fff}
@@ -1250,7 +1255,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '2.2.47';
+const VERSION = '2.2.48';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -5558,7 +5563,8 @@ function bsViewOf(g, ev){
     else if (e.t === 'shot'){ v.hp[e.target] = e.pre !== undefined ? e.pre : Math.min(BS.hpMax, e.hp + e.dmg); v.out[e.target] = false; if (e.live) v.live++; else v.blank++; v.saw = e.sw !== undefined ? e.sw : e.dmg > 1; v.turn = e.i; }
     else if (e.t === 'load'){ v.load--; v.live -= e.live; v.blank -= e.blank; (e.got || []).forEach((a, i) => a.forEach(it => rm(v.items[i], it))); }
     else if (e.t === 'turn' || e.t === 'skip'){ const a = ev.slice(0, k).reverse().find(x => x.i !== undefined && x.t !== 'skip' && x.t !== 'turn'); if (a) v.turn = a.i; }
-    else if (BS_EVIT[e.t]){ v.items[e.i].push(BS_EVIT[e.t]); v.turn = e.i; if (e.t === 'heal') v.hp[e.i]--; if (e.t === 'beer'){ if (e.live) v.live++; else v.blank++; } if (e.t === 'saw') v.saw = false; }
+    else if (BS_EVIT[e.t]){ v.turn = e.i;   // 쓴 아이템은 되살리지 않는다: 누르는 순간 인벤토리에서 사라진다
+      if (e.t === 'heal') v.hp[e.i]--; if (e.t === 'beer'){ if (e.live) v.live++; else v.blank++; } if (e.t === 'saw') v.saw = false; }
   }
   v.live = Math.max(0, v.live); v.blank = Math.max(0, v.blank);
   return v;
@@ -5570,14 +5576,15 @@ function bsViewDo(e){
   else if (e.t === 'load'){ v.load++; v.live += e.live; v.blank += e.blank; (e.got || []).forEach((a, i) => a.forEach(it => v.items[i] && v.items[i].push(it))); }
   else if (e.t === 'turn') v.turn = e.i;
   else if (e.t === 'win') v.over = true;
-  else if (BS_EVIT[e.t]){ rm(v.items[e.i], BS_EVIT[e.t]); if (e.t === 'heal') v.hp[e.i] = e.hp; if (e.t === 'beer'){ if (e.live) v.live = Math.max(0, v.live - 1); else v.blank = Math.max(0, v.blank - 1); } if (e.t === 'saw') v.saw = true; }
+  else if (BS_EVIT[e.t]){ if (e.t === 'heal') v.hp[e.i] = e.hp; if (e.t === 'beer'){ if (e.live) v.live = Math.max(0, v.live - 1); else v.blank = Math.max(0, v.blank - 1); } if (e.t === 'saw') v.saw = true; }
 }
-async function bsPlay(ev, done, rerender){
+// after: 이 묶음 뒤에 이미 받아 둔(아직 안 보여 준) 이벤트들. 지금 상태에서 그것까지 거꾸로 되돌려야 이 묶음 직전 모습이 된다
+async function bsPlay(ev, done, rerender, after){
   rerender = rerender || bsRender;
   BSV.busy = true; BSV.gen++;
   const me = () => rerender.me !== undefined ? rerender.me : 0, G = () => rerender.g ? rerender.g() : bsS().cur;
   const nm = i => i === me() && !rerender.spec ? '나' : esc(G() ? G().pl[i].nm : '?');
-  BSV.view = G() ? bsViewOf(G(), ev) : null;
+  BSV.view = G() ? bsViewOf(G(), ev.concat(after || [])) : null;
   for (let w = 0; (BS3.st === 'loading' || BS3.st === 'idle') && w < 80; w++){ bs3Want(); try { await bsWait(100); } catch(e){ break; } }   // 3D 그림을 받는 동안 2D로 시작하지 않게
   try {
     for (const e of ev){
@@ -5631,7 +5638,7 @@ async function bsPlay(ev, done, rerender){
     }
   } catch(err){ if (err !== 'stop') console.error(err); }
   BSV.busy = false; BSV.view = null; BSV.shooter = null; BSV.si = null; BSV.ti = null; BSV.black = false; BSV.item = null; BSV.msg = ''; BSV.fx = ''; BSV.aim = null; BSV.eject = null; BSV.lay = null; BSV.flash = ''; BSV.want = null; BSV.go = null; BSV.banner = '';
-  rerender();
+  if (!(rerender.pending && rerender.pending())) rerender();   // 다음 묶음이 기다리면 최신 상태를 미리 그리지 않는다 (결과가 잠깐 보였다 되돌아가는 깜빡임)
   if (done) done();
 }
 // 컴퓨터 딜러 차례: 한 수씩 둔다
@@ -7216,12 +7223,14 @@ function mbsBody(R){
 MP_VIEW.bs = R => `<div class="card-h"><h2>💥 벅샷 룰렛</h2><small>판돈 ${fmtUSD(R.stake)} · ${R.state.seats.length}명 · 1등 ${fmtUSD(R.stake * R.state.seats.length)}${R.il ? ' · 🚨 불법' : ''}</small></div><div id="mbsBody"></div>`;
 MP_UPD.bs = R => { const b = $('#mbsBody'); if (!b || !R.state.g) return false; mpSetH(b, mbsBody(R)); return true; };
 const mbsRer = () => { const R = MP.room; if (R && R.game === 'bs') MP_UPD.bs(R); };
+mbsRer.pending = () => (MP.view.bsQ || []).length > 0;   // 받아 두고 아직 안 보여 준 이벤트가 있나
 mbsRer.g = () => MP.room && MP.room.state.g; Object.defineProperty(mbsRer, 'me', {get:() => mpMe() < 0 ? 0 : mpMe()}); Object.defineProperty(mbsRer, 'spec', {get:() => mpMe() < 0});   // 관전은 첫 자리 눈으로 본다
 function mbsRun(){
   if (BSV.busy) return;
   const ev = (MP.view.bsQ || []).shift();
   if (!ev){ MP.view.bmHold = false; if (MP.room && MP.room.status === 'over') setTimeout(mpClaim, 300); mbsRer(); return; }
-  bsPlay(ev.list || [], () => setTimeout(mbsRun, 150), mbsRer);
+  const after = (MP.view.bsQ || []).flatMap(x => x.list || []);
+  bsPlay(ev.list || [], () => mbsRer.pending() ? mbsRun() : setTimeout(mbsRun, 150), mbsRer, after);
 }
 async function mbsSend(a){
   if (MP.busy || BSV.busy) return;
@@ -7250,7 +7259,7 @@ document.addEventListener('click', e => {
    화면 아래 입력칸에서 보내면, 보낸 사람 이름이 보이는 곳(대기실 자리, 점수판, 말 이름표 등)에 말풍선으로 5초 동안 뜬다.
    보내는 길: 심판 웹소켓(보낸 사람을 서버가 확인해 자리 번호를 붙인다) + Supabase 방 채널 방송(웹소켓이 없는 사람용). 같은 말은 id로 한 번만 보인다.
    기록은 남기지 않는다 */
-const MPC = {seen:new Set(), bub:[], raf:0, last:0};
+const MPC = {seen:new Set(), bub:[], raf:0, last:0, log:[]};
 const MPC_MAX = 60, MPC_MS = 5000;
 function mpChatView(){   // 방 화면이 보이는 중 (관전 포함)
   if (!MP.code || !MP.room || MP.room.status === 'closed') return false;
@@ -7274,6 +7283,7 @@ function mpChatSync(){
   if (bar) bar.hidden = !on;
   document.documentElement.classList.toggle('mpc-on', on);
   if (!mpChatView() && MPC.bub.length){ MPC.bub = []; mpBubDraw(); }
+  mpLogDraw();
 }
 setInterval(mpChatSync, 300);
 function mpChatSend(){
@@ -7297,6 +7307,9 @@ function mpChatGot(m){
   MPC.bub = MPC.bub.filter(b => !(seat >= 0 && b.seat === seat));   // 같은 사람의 앞 말풍선은 바꾼다
   MPC.bub.push({id:m.id, seat, nick:(seat < 0 ? '👀 ' : '') + String(m.nick || '?').slice(0, 12), text:m.text.slice(0, MPC_MAX), until:Date.now() + MPC_MS});   // 관전자 말은 입력칸 위에 '👀 이름'으로
   if (MPC.bub.length > 8) MPC.bub.shift();
+  MPC.log.push({id:m.id, nick:String(m.nick || '?').slice(0, 12), spec:seat < 0, me:ACC.user && m.seat >= 0 && R.state.seats[m.seat] && R.state.seats[m.seat].uid === ACC.user.id, text:m.text.slice(0, MPC_MAX), at:Date.now()});
+  if (MPC.log.length > 30) MPC.log.shift();
+  mpLogDraw();
   mpBubDraw();
 }
 // 말풍선을 붙일 이름 자리: 대기실·홀짝·블랙잭은 data-seatnm, 부루마블은 말 이름표(3D) 또는 패널, 벅샷은 이름
@@ -7332,10 +7345,7 @@ function mpBubDraw(){
       el.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px)`;
       el.classList.toggle('dn', !up);
       el.style.setProperty('--tx', `${Math.round(Math.max(10, Math.min(w - 10, r.left + r.width / 2 - x)))}px`);
-    } else {   // 이름이 화면에 없으면 입력칸 바로 위에 쌓는다
-      stack += el.offsetHeight + 6;
-      el.style.transform = `translate(10px, ${Math.round(barTop - stack - 4)}px)`;
-    }
+    } else { el.style.opacity = '0'; continue; }   // 이름이 화면에 없으면(관전자 등) 말풍선 없이 오른쪽 채팅 목록에만
     el.style.opacity = b.until - now < 400 ? String(Math.max(0, (b.until - now) / 400)) : '1';
   }
   have.forEach(el => el.remove());
@@ -7431,6 +7441,20 @@ function mpWatchShow(){   // 방 화면 제목 줄만 고친다 (판을 다시 �
   if (sm) sm.textContent = `${mpSpec() ? '👀 관전 중 · ' : ''}방 ${MP.code || ''} · 달러 통장 ${fmtUSD(S.usd)}${mpWatchTxt()}`;
   if (typeof BMV !== 'undefined' && BMV.mp && bmOpenNow()) bmUpdate();
 }
+
+// 화면 오른쪽 채팅 목록: 최근 6줄, 20초 지나면 흐려져 사라진다 (말풍선과 함께 보인다)
+const MPC_LOG_MS = 20000;
+function mpLogDraw(){
+  let box = $('#mpChatLog');
+  const on = mpChatView(), now = Date.now(), rows = on ? MPC.log.filter(x => now - x.at < MPC_LOG_MS).slice(-6) : [];
+  if (!rows.length){ if (box) box.hidden = true; return; }
+  if (!box){ box = document.createElement('div'); box.id = 'mpChatLog'; box.className = 'mpc-log'; document.body.appendChild(box); }
+  box.hidden = false;
+  const k = rows.map(x => x.id + (now - x.at > MPC_LOG_MS - 3000 ? 'f' : '')).join(',');
+  if (box._k === k) return; box._k = k;
+  box.innerHTML = rows.map(x => `<div class="mpc-l ${now - x.at > MPC_LOG_MS - 3000 ? 'fade' : ''} ${x.me ? 'me' : ''}"><b>${x.spec ? '👀 ' : ''}${esc(x.nick)}</b> ${esc(x.text)}</div>`).join('');
+}
+setInterval(mpLogDraw, 1000);
 
 /* ───────── 관리 탭 (관리자 계정에만 보인다) ─────────
    관리자 여부는 Supabase의 seed10k_admins 표가 정한다 (사이트 코드에 이메일을 넣지 않는다).
