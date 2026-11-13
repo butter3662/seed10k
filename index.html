@@ -1246,7 +1246,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '2.2.42';
+const VERSION = '2.2.43';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -5439,7 +5439,7 @@ function bsCtlHTML(g, me, myTurn){
 }
 // 총을 들었을 때 무대 위 단추: 가운데 위 '내려놓기', 왼쪽 아래 '👇 나에게', 오른쪽 아래 '👆 상대에게' (상대가 여럿이면 이름별로)
 function bsAimUI(g, me){
-  const opp = g.pl.map((p, i) => i).filter(i => i !== me && !g.pl[i].out);
+  const opp = g.pl.map((p, k) => (me + 1 + k) % g.pl.length).filter(i => i !== me && !g.pl[i].out);
   return `<div class="bs-aimui">
     <button class="btn bs-drop" data-bsdo="drop">내려놓기</button>
     <button class="btn bs-me" data-bsaim="${me}">👇 나에게</button>
@@ -5490,7 +5490,7 @@ function bsTableHTML(g, me, o){
       <div class="bs-items ${mine ? 'mine' : ''}">${items || '<span class="bs-none">아이템 없음</span>'}</div>
     </div>`;
   };
-  const opp = g.pl.map((p, i) => i === me ? '' : seat(p, i, false)).join('');
+  const opp = g.pl.map((p, k) => (me + 1 + k) % g.pl.length).filter(i => i !== me).map(i => seat(g.pl[i], i, false)).join('');   // 내 다음 자리부터: 3D 탁자의 왼쪽 → 오른쪽 순서와 같다
   const msg = BSV.msg || (g.over ? (g.win === me ? '🏆 WIN!' : g.quit && g.quitHalf ? '🏃 기권하고 자리를 떴다' : g.quit ? '🏳️ 기권했다' : '💀 졌다') : myTurn ? (BSV.hold ? (BSV.aimT !== null && BSV.aimT !== undefined ? `${BSV.aimT === me ? '나' : esc(g.pl[BSV.aimT].nm)}에게 겨눴다` : '누구를 쏠까? (아이템은 총을 내려놓고 쓸 수 있다)') : '아이템을 쓰거나 총을 드세요') : `${esc(g.pl[g.turn].nm)} 차례…`);
   const s3 = bs3Want(); BS3.ctx = {g, me};
   const aim = BSV.aim || (myTurn && BSV.hold && BSV.aimT !== null && BSV.aimT !== undefined ? (BSV.aimT === me ? 'down' : 'up') : 'rest');
@@ -5587,7 +5587,7 @@ async function bsPlay(ev, done, rerender){
         BSV.fx = ''; BSV.msg = e.got && e.got.some(x => x.length) ? '아이템을 나눠 받았다' : '장전 완료'; rerender(); await bsWait(600);
       } else if (e.t === 'shot'){
         const self = e.target === e.i, up = (e.target === me()) ? 'down' : 'up';   // 내 쪽(아래)을 쏘면 총구가 아래로
-        const byMe = e.i === me(); BSV.hold = false; BSV.aimT = null; BSV.shooter = byMe ? 'me' : 'op';
+        const byMe = e.i === me(); BSV.hold = false; BSV.aimT = null; BSV.shooter = byMe ? 'me' : 'op'; BSV.si = e.i; BSV.ti = e.target;
         BSV.eject = null; BSV.aim = up; BSV.msg = `${nm(e.i)} → ${self ? (byMe ? '나' : '자기 자신') : nm(e.target)}`; rerender(); await bsWait(byMe ? (BS3.st === 'on' ? (e.target === me() ? 850 : 650) : 250) : 1100);   // 3D는 총이 겨누는 자세까지 다 움직인 뒤에 쏜다 (나를 겨눌 때 움직임이 가장 크다)
         bsViewDo(e); BSV.fx = e.live ? 'bang' : 'click'; BSV.flash = e.live ? 'p' + e.target : '';
         if (e.live){ BSAU.shot(e.dmg > 1); if (e.dmg && e.target === me()) BSAU.ring(e.out ? 3.5 : 2.6); if (e.out) BSAU.thud(e.target === me() ? 1.55 : 0.85); } else BSAU.click();
@@ -5598,22 +5598,22 @@ async function bsPlay(ev, done, rerender){
           if (BSV.black){ BSV.black = false; rerender(); } await bsWait(hitMe && !e.out ? 650 : 500);
         } else await bsWait(e.live ? 1200 : 900);
         BSV.flash = ''; BSV.fx = '';
-        BSV.fx = 'rack'; BSV.eject = e.live; BSV.aim = 'rest'; rerender(); BSAU.rack(); BSAU.drop(0.5); await bsWait(700); BSV.shooter = null;
+        BSV.fx = 'rack'; BSV.eject = e.live; BSV.aim = 'rest'; rerender(); BSAU.rack(); BSAU.drop(0.5); await bsWait(700); BSV.shooter = null; BSV.si = null; BSV.ti = null;
         BSV.fx = ''; BSV.eject = null;
       } else if (e.t === 'peek'){ bsViewDo(e); BSAU.peek();
-        if (BS3.st === 'on'){ BSV.item = {it:'glass', by:e.i === me() ? 'me' : 'op', d:1.5}; BSV.msg = `🔍 ${nm(e.i)} 돋보기로 총을 들여다본다…`; rerender(); await bsWait(700); }
+        if (BS3.st === 'on'){ BSV.item = {it:'glass', by:e.i === me() ? 'me' : 'op', i:e.i, d:1.5}; BSV.msg = `🔍 ${nm(e.i)} 돋보기로 총을 들여다본다…`; rerender(); await bsWait(700); }
         BSV.fx = 'peek'; BSV.msg = e.i === me() && e.live !== undefined ? `🔍 지금 탄은 ${e.live ? '실탄' : '공포탄'}` : e.i === me() ? '🔍 돋보기로 탄을 확인했다' : `🔍 ${nm(e.i)}이(가) 돋보기로 탄을 확인했다`; rerender(); await bsWait(BS3.st === 'on' ? 900 : 1000); BSV.fx = ''; BSV.item = null;
       } else if (e.t === 'beer'){ BSAU.beer();
-        if (BS3.st === 'on'){ BSV.item = {it:'beer', by:e.i === me() ? 'me' : 'op', d:1.3}; BSV.msg = `🍺 ${nm(e.i)} 맥주를 들이켠다…`; rerender(); await bsWait(1300); BSV.item = null; }
+        if (BS3.st === 'on'){ BSV.item = {it:'beer', by:e.i === me() ? 'me' : 'op', i:e.i, d:1.3}; BSV.msg = `🍺 ${nm(e.i)} 맥주를 들이켠다…`; rerender(); await bsWait(1300); BSV.item = null; }
         bsViewDo(e);   // 남은 탄 수는 펌프로 탄이 빠지는 순간에 줄인다 (마시기 전에 줄면 결과가 먼저 보인다)
         BSAU.rack(); BSAU.drop(0.5);
         BSV.fx = 'rack'; BSV.eject = e.live; BSV.msg = `🍺 탄을 빼냈다: ${e.live ? '실탄' : '공포탄'}`; rerender(); await bsWait(1000); BSV.fx = ''; BSV.eject = null;
       } else if (e.t === 'cuff'){ bsViewDo(e);
-        if (BS3.st === 'on'){ BSV.item = {it:'cuff', by:e.i === me() ? 'me' : 'op', d:1.2}; BSAU.cuff(0.62); } else BSAU.cuff();
+        if (BS3.st === 'on'){ BSV.item = {it:'cuff', by:e.i === me() ? 'me' : 'op', i:e.i, t:e.target, d:1.2}; BSAU.cuff(0.62); } else BSAU.cuff();
         BSV.msg = `⛓️ ${nm(e.target)}에게 수갑`; rerender(); await bsWait(BS3.st === 'on' ? 1300 : 800); BSV.item = null; }
-      else if (e.t === 'saw'){ bsViewDo(e); BSV.sawBy = e.i === me() ? 'me' : 'op'; BSV.fx = 'saw'; BSV.msg = `🪚 ${nm(e.i)} 총신을 자른다…`; rerender(); if (BS3.st === 'on') BSAU.saw(); await bsWait(BS3.st === 'on' ? 1350 : 500); BSV.msg = '🪚 총신을 잘랐다 · 다음 한 발 2배'; rerender(); await bsWait(700); BSV.fx = ''; }
+      else if (e.t === 'saw'){ bsViewDo(e); BSV.sawBy = e.i === me() ? 'me' : 'op'; BSV.sawI = e.i; BSV.fx = 'saw'; BSV.msg = `🪚 ${nm(e.i)} 총신을 자른다…`; rerender(); if (BS3.st === 'on') BSAU.saw(); await bsWait(BS3.st === 'on' ? 1350 : 500); BSV.msg = '🪚 총신을 잘랐다 · 다음 한 발 2배'; rerender(); await bsWait(700); BSV.fx = ''; }
       else if (e.t === 'heal'){
-        if (BS3.st === 'on'){ BSV.item = {it:'cig', by:e.i === me() ? 'me' : 'op', d:1.6}; BSAU.cig(); BSV.msg = `🚬 ${nm(e.i)} 담배를 피운다…`; rerender(); await bsWait(1000); }
+        if (BS3.st === 'on'){ BSV.item = {it:'cig', by:e.i === me() ? 'me' : 'op', i:e.i, d:1.6}; BSAU.cig(); BSV.msg = `🚬 ${nm(e.i)} 담배를 피운다…`; rerender(); await bsWait(1000); }
         else BSAU.cig();
         bsViewDo(e); BSV.msg = `🚬 ${nm(e.i)} 목숨 +1`; rerender(); await bsWait(BS3.st === 'on' ? 700 : 800); BSV.item = null; }
       else if (e.t === 'skip'){ BSV.msg = `⛓️ ${nm(e.i)} 수갑 때문에 한 번 쉼`; rerender(); await bsWait(900); }
@@ -5625,7 +5625,7 @@ async function bsPlay(ev, done, rerender){
       BSV.banner = 'YOUR TURN'; BSV.msg = ''; rerender(); BSAU.turn(); await bsWait(1100); BSV.banner = '';
     }
   } catch(err){ if (err !== 'stop') console.error(err); }
-  BSV.busy = false; BSV.view = null; BSV.shooter = null; BSV.black = false; BSV.item = null; BSV.msg = ''; BSV.fx = ''; BSV.aim = null; BSV.eject = null; BSV.lay = null; BSV.flash = ''; BSV.want = null; BSV.go = null; BSV.banner = '';
+  BSV.busy = false; BSV.view = null; BSV.shooter = null; BSV.si = null; BSV.ti = null; BSV.black = false; BSV.item = null; BSV.msg = ''; BSV.fx = ''; BSV.aim = null; BSV.eject = null; BSV.lay = null; BSV.flash = ''; BSV.want = null; BSV.go = null; BSV.banner = '';
   rerender();
   if (done) done();
 }
@@ -5828,7 +5828,9 @@ function bs3Build(){
   const fill = new T.PointLight(0xffd6b0, 0.9, 3.2, 1.8); fill.position.set(0.5, 0.9, 0.6); scene.add(fill);   // 앞에서 딜러를 살짝 비추는 빛
 
   // ── 딜러 (이 게임만의 인물: 낡은 용접 가면, 검은 코트, 가죽 장갑) ──
-  const dealer = new T.Group(); dealer.position.set(0, 0, -1.08); scene.add(dealer);
+  // 자리(seat)는 탁자 둘레의 고정 위치·방향, 그 안의 몸(dealer)이 젖히고 쓰러진다. 여럿이 하면 상대마다 자리를 하나씩 더 만든다 (bs3Figs)
+  const seat0 = new T.Group(); seat0.position.set(0, 0, -1.08); scene.add(seat0);
+  const dealer = new T.Group(); seat0.add(dealer);
   const torsoG = new T.LatheGeometry([[0, -0.3], [0.33, -0.3], [0.36, 0.05], [0.37, 0.28], [0.33, 0.44], [0.22, 0.53], [0.09, 0.57], [0, 0.58]].map(([r, y]) => new T.Vector2(r, y)), 40);
   const torso = add(dealer, new T.Mesh(torsoG, M.cloth)); torso.scale.z = 0.62;
   const lapG = new T.BoxGeometry(0.075, 0.34, 0.015);
@@ -5869,6 +5871,7 @@ function bs3Build(){
     return {s, up, fo, hand, j1, j2, shL:new T.Vector3(s * 0.29, 0.46, 0.03), sh:new T.Vector3(s * 0.29, 0.46, -1.05), p:new T.Vector3(s * 0.3, 0.03, -0.62), a:0.44, b:0.43};
   };
   const arms = [mkArm(-1), mkArm(1)];
+  const fig0 = {seat:seat0, body:dealer, head, torso:null, arms, eyeM, eyeG, eyeL};
 
   // ── 산탄총 (펌프식, 직접 만든 모형) ──
   const gun = new T.Group(); scene.add(gun);
@@ -5954,7 +5957,9 @@ function bs3Build(){
   const ejects = [];
 
   BS3.R = R; BS3.scene = scene; BS3.cam = cam;
-  BS3.o = {T, M, IT, cuffOn, emberM, puffs, eyeG, saw, sparks, sparkP, sparkV, gun, gunIn, barrel, pump, peekM, GP, flash, flashL, smokes, lay, ejects, mkShell, arms, dealer, head, eyeM, eyeL, spot, bulb, red, torso};
+  fig0.torso = torso;
+  BS3.o = {T, M, IT, cuffOn, emberM, puffs, eyeG, saw, sparks, sparkP, sparkV, gun, gunIn, barrel, pump, peekM, GP, flash, flashL, smokes, lay, ejects, mkShell, arms, dealer, head, eyeM, eyeL, spot, bulb, red, torso,
+    figs:[fig0], mkArm, scene, headIdx:dealer.children.indexOf(head), torsoIdx:dealer.children.indexOf(torso)};
   const v = () => new T.Vector3();
   BS3.a = {blackT:99, blackD:0, blackF:1, t:0, last:0, gP:new T.Vector3(0, 0.03, 0.05), gQ:new T.Quaternion(), prev:{}, feed:null, rackT:9, bangT:9, clickT:9, sawT:9, hitT:9, hitMe:false, shake:0, saw:1, peek:0, layT:0, tmp:[v(), v(), v(), v()]};
   BS3.a.gQ.copy(bs3Q(new T.Vector3(-1, 0, 0), 'side'));
@@ -5987,6 +5992,31 @@ function bs3Q(dir, mode){
   if (mode === 'side') q.multiply(new T.Quaternion().setFromAxisAngle(new T.Vector3(1, 0, 0), -Math.PI / 2));
   return q;
 }
+/* 여럿이 하는 판: 상대마다 탁자 둘레에 인물을 앉힌다. 나는 앞(카메라), 상대는 내 다음 자리부터 왼쪽 → 앞 → 오른쪽.
+   둘이면 딜러 하나가 상대. 각 인물은 자리(seat: 고정 위치·방향)와 몸(body: 젖힘·쓰러짐), 머리, 두 팔을 가진다 */
+// 자리: [x, z, 돌림(y축), 크기]. 모두 탁자 건너편에 앉아 화면 안에 들어오게 하고, 바깥 사람은 가운데 쪽으로 살짝 돌아앉는다
+const BS3_SEATS = {1:[[0, -1.08, 0, 1]], 2:[[-0.6, -1.08, 0.22, 0.9], [0.6, -1.08, -0.22, 0.9]], 3:[[-0.92, -0.98, 0.42, 0.84], [0, -1.12, 0, 0.84], [0.92, -0.98, -0.42, 0.84]]};
+function bs3Figs(g, me){
+  const O = BS3.o, T = O.T, n = g ? g.pl.length : 2, k = Math.max(1, Math.min(3, n - 1)), seats = BS3_SEATS[k];
+  while (O.figs.length < k){   // 첫 인물을 복제해 자리를 늘린다 (눈 재질은 따로: 한 사람이 탈락해도 다른 사람 눈은 켜져 있게)
+    const seat = new T.Group(); O.scene.add(seat);
+    const body = O.dealer.clone(true); body.position.set(0, 0, 0); body.rotation.set(0, 0, 0); seat.add(body);
+    const eyeM = O.eyeM.clone(); let eyeG = null;
+    body.traverse(o => { if (o.material === O.eyeM) o.material = eyeM; if (o.isSprite && o.material === O.eyeG.material){ o.material = o.material.clone(); eyeG = o; } if (o.isPointLight){ o.intensity = 0; o.visible = false; } });
+    O.figs.push({seat, body, head:body.children[O.headIdx], torso:body.children[O.torsoIdx], arms:[O.mkArm(-1), O.mkArm(1)], eyeM, eyeG, eyeL:null});
+  }
+  O.figs.forEach((f, j) => {
+    const on = j < k; f.seat.visible = on; f.arms.forEach(a => [a.up, a.fo, a.hand, a.j1, a.j2].forEach(m => { m.visible = on; }));
+    if (!on) return;
+    const [x, z, r, sc] = seats[j];
+    f.i = (me + 1 + j) % n;
+    f.seat.position.set(x, 0, z); f.seat.rotation.set(0, r, 0); f.seat.scale.setScalar(sc); f.seat.updateMatrixWorld(true);
+  });
+  return O.figs.slice(0, k);
+}
+// 둘이 할 때의 딜러 기준 좌표(세계 좌표, 딜러가 z=-1.08)를 인물 f 자리 기준으로 옮긴다
+function bs3S(f, x, y, z){ return new BS3.T.Vector3(x, y, z + 1.08).applyMatrix4(f.seat.matrixWorld); }
+function bs3D(f, x, y, z){ return new BS3.T.Vector3(x, y, z).applyQuaternion(f.seat.quaternion); }
 // 두 마디 팔: 어깨 S에서 손 H까지, 팔꿈치는 바깥·아래쪽으로 굽힌다
 function bs3Arm(A){
   const T = BS3.T, S = A.sh, H = A.p, d0 = H.clone().sub(S), dist = Math.min(d0.length(), A.a + A.b - 0.002), u = d0.normalize();
@@ -6013,6 +6043,16 @@ function bs3Frame(now){
   if (w && h && (c.width !== Math.round(w * BS3.R.getPixelRatio()) || c.height !== Math.round(h * BS3.R.getPixelRatio()))){ BS3.R.setSize(w, h, false); BS3.cam.aspect = w / h; BS3.cam.updateProjectionMatrix(); }
   const ctx = BS3.ctx || {}, g = ctx.g, me = ctx.me || 0;
   const Lay = BSV.lay, fx = BSV.fx || '', P = A.prev;
+  // 인물들 (둘이면 딜러 하나). 지금 움직이는 사람: 쏘는 사람 → 아이템 쓰는 사람 → 톱질하는 사람 → 그 사람 차례. 장전은 가운데(가장 앞) 사람
+  const figs = bs3Figs(g, me), fOf = i => figs.find(f => f.i === i) || null;
+  const multi = figs.length > 1;
+  const fovT = multi ? 47 : 40; if (BS3.cam.fov !== fovT){ BS3.cam.fov = fovT; BS3.cam.updateProjectionMatrix(); }
+  const I0 = BSV.item;
+  let actI = BSV.shooter === 'op' && BSV.si !== undefined && BSV.si !== null ? BSV.si : I0 && I0.by === 'op' && I0.i !== undefined ? I0.i : BSV.fx === 'saw' && BSV.sawBy === 'op' && BSV.sawI !== undefined ? BSV.sawI : g && !g.over && g.turn !== me ? g.turn : A.actI;
+  if (!fOf(actI)) actI = figs[0].i;
+  A.actI = actI;
+  const Fa = fOf(actI), Fl = figs[Math.floor((figs.length - 1) / 2)];   // Fa: 움직이는 상대, Fl: 장전하는 사람
+  const headOf = f => f.head.getWorldPosition(new T.Vector3());
   // 상태가 바뀐 순간을 잡는다
   if (fx !== P.fx){ if (fx === 'bang') { A.bangT = 0; A.hitMe = BSV.flash === 'p' + me; A.hitT = 0;
     // 암전: 누가 실탄에 맞았으면 번쩍한 직후 꺼진다. 내가 맞으면 1.35초(탈락이면 짧게 끊고 쓰러지는 모습을 보여 준다), 상대면 0.55초
@@ -6031,16 +6071,19 @@ function bs3Frame(now){
   const shooter = BSV.hold ? 'me' : BSV.shooter || null, aim = BSV.aim || 'rest';
   let gp, gq;
   const SAW_D = 1.6, CUT = 1.3, sawing = A.sawT < SAW_D, sawBy = BSV.sawBy || 'op';
-  if (Lay){ gp = new T.Vector3(0.02, 0.05, -0.5); gq = bs3Q(new T.Vector3(-1, 0, 0.18), 'flip'); }
-  else if (sawing && sawBy === 'op'){ gp = new T.Vector3(0.16, 0.07, -0.42); gq = bs3Q(new T.Vector3(-1, 0, 0.85), 'up'); }   // 딜러가 탁자에 총을 눕혀 누르고 자른다
+  if (Lay){ gp = bs3S(Fl, 0.02, 0.05, -0.5); gq = bs3Q(bs3D(Fl, -1, 0, 0.18), 'flip'); }
+  else if (sawing && sawBy === 'op'){ gp = bs3S(Fa, 0.16, 0.07, -0.42); gq = bs3Q(bs3D(Fa, -1, 0, 0.85), 'up'); }   // 딜러가 탁자에 총을 눕혀 누르고 자른다
   else if (sawing){ gp = new T.Vector3(0.18, 0.42, 0.62); gq = bs3Q(new T.Vector3(-1, -0.25, -0.9), 'up'); }   // 내가 자를 때는 눈앞에서
   else if (shooter === 'me'){
     const atMe = aim === 'down' || (BSV.hold && BSV.aimT === me);
+    const tI = BSV.hold ? BSV.aimT : BSV.ti, fT = tI !== undefined && tI !== null ? fOf(tI) : null;
     if (atMe){ gp = new T.Vector3(0.03, 0.82, 0.72); gq = bs3Q(camP.clone().sub(gp).add(new T.Vector3(0, 0.05, 0)), 'up'); }
-    else { gp = new T.Vector3(0.16, 0.42, 0.92); gq = bs3Q(headW.clone().sub(gp), 'up'); }
+    else { gp = new T.Vector3(0.16, 0.42, 0.92); gq = bs3Q((fT ? headOf(fT) : multi ? new T.Vector3(0, 0.6, -1.0) : headW.clone()).sub(gp), 'up'); }   // 여럿이면 겨눈 사람 쪽으로 (아직 안 골랐으면 가운데)
   } else if (shooter === 'op'){
-    if (aim === 'down'){ gp = new T.Vector3(0.0, 0.55, -0.52); gq = bs3Q(camP.clone().sub(gp), 'up'); }
-    else { gp = new T.Vector3(0.2, 0.6, -0.6); gq = bs3Q(headW.clone().add(new T.Vector3(0, -0.05, 0)).sub(gp), 'up'); }
+    const fT = BSV.ti !== undefined && BSV.ti !== null ? fOf(BSV.ti) : null;
+    if (aim === 'down'){ gp = bs3S(Fa, 0.0, 0.55, -0.52); gq = bs3Q(camP.clone().sub(gp), 'up'); }
+    else if (fT && fT !== Fa){ gp = bs3S(Fa, 0.0, 0.58, -0.58); gq = bs3Q(headOf(fT).sub(gp), 'up'); }   // 다른 상대를 쏜다
+    else { gp = bs3S(Fa, 0.2, 0.6, -0.6); gq = bs3Q(headOf(Fa).add(new T.Vector3(0, -0.05, 0)).sub(gp), 'up'); }
   } else { gp = new T.Vector3(0.0, 0.031, 0.08); gq = bs3Q(new T.Vector3(-1, 0, -0.12), 'side'); }
   const k = bs3Damp(shooter || sawing ? 9 : 7, dt);
   A.gP.lerp(gp, k); A.gQ.slerp(gq, k);
@@ -6097,8 +6140,8 @@ function bs3Frame(now){
   let itHand = null;
   if (I && O.IT[I.it]){
     const m = O.IT[I.it], D = I.d || 1.4, u = Math.min(1, A.itT / D), op = I.by === 'op';
-    const pick = op ? new T.Vector3(0.36, 0.04, -0.52) : new T.Vector3(0.3, 0.35, 1.3);
-    const mouth = op ? new T.Vector3(0, 0.71, -0.9) : new T.Vector3(0.06, 0.86, 1.3);
+    const pick = op ? bs3S(Fa, 0.36, 0.04, -0.52) : new T.Vector3(0.3, 0.35, 1.3);
+    const mouth = op ? bs3S(Fa, 0, 0.71, -0.9) : new T.Vector3(0.06, 0.86, 1.3);
     const inn = bs3Ease(u / 0.25), out = bs3Ease((u - 0.78) / 0.22);
     let p = pick.clone(), q = new T.Quaternion();
     m.visible = u < 1; m.scale.setScalar(out > 0 ? Math.max(0.001, 1 - out * 0.7) : 1);
@@ -6108,16 +6151,17 @@ function bs3Frame(now){
       q.setFromEuler(new T.Euler(-1.25, 0, 0));   // 렌즈가 위를 보게 눕혀 총을 들여다본다
     } else if (I.it === 'cig'){
       p = pick.clone().lerp(mouth, inn).lerp(pick, out);
-      q.setFromEuler(new T.Euler(0, op ? -Math.PI / 2 : Math.PI / 2 + 0.3, 0.15));
+      q.setFromEuler(new T.Euler(0, op ? -Math.PI / 2 + Fa.seat.rotation.y : Math.PI / 2 + 0.3, 0.15));
       const drag = u > 0.3 && u < 0.7 ? Math.sin((u - 0.3) / 0.4 * Math.PI) : 0;
       O.emberM.emissiveIntensity = 0.6 + drag * 4;
-      if (u > 0.55 && !A.puffed){ A.puffed = true; O.puffs.forEach((sp, i) => { sp.position.copy(mouth).add(new T.Vector3(0, 0.01, op ? 0.05 : -0.06)); sp.userData.v.set((Math.random() - .5) * 0.08, 0.1 + Math.random() * 0.08, op ? 0.12 : -0.15); sp.userData.t = -i * 0.07; }); }
+      if (u > 0.55 && !A.puffed){ A.puffed = true; O.puffs.forEach((sp, i) => { sp.position.copy(mouth).add(op ? bs3D(Fa, 0, 0.01, 0.05) : new T.Vector3(0, 0.01, -0.06)); sp.userData.v.copy(op ? bs3D(Fa, (Math.random() - .5) * 0.08, 0.1 + Math.random() * 0.08, 0.12) : new T.Vector3((Math.random() - .5) * 0.08, 0.1 + Math.random() * 0.08, -0.15)); sp.userData.t = -i * 0.07; }); }
     } else if (I.it === 'beer'){
-      p = pick.clone().lerp(mouth.clone().add(new T.Vector3(0, -0.04, op ? 0.06 : -0.04)), inn).lerp(pick, out);
+      p = pick.clone().lerp(mouth.clone().add(op ? bs3D(Fa, 0, -0.04, 0.06) : new T.Vector3(0, -0.04, -0.04)), inn).lerp(pick, out);
       const tilt = bs3Ease((u - 0.25) / 0.15) * (1 - bs3Ease((u - 0.65) / 0.15));
-      q.setFromEuler(new T.Euler(op ? tilt * 1.6 : -tilt * 1.6, 0, 0));
+      q.setFromEuler(new T.Euler(op ? tilt * 1.6 : -tilt * 1.6, op ? Fa.seat.rotation.y : 0, 0, 'YXZ'));
     } else if (I.it === 'cuff'){
-      const tgt = op ? new T.Vector3(0, 0.06, 0.52) : new T.Vector3(0, 0.07, -0.6);
+      const ct = I.t !== undefined && I.t !== null ? I.t : op ? me : actI, cf = ct === me ? null : fOf(ct);
+      const tgt = !cf ? new T.Vector3(0, 0.06, 0.52) : bs3S(cf, 0, 0.07, -0.6);   // 수갑은 묶일 사람 앞으로 미끄러진다
       const slide = bs3Ease((u - 0.15) / 0.45);
       p = pick.clone().lerp(tgt, slide); p.y += Math.sin(Math.PI * slide) * 0.12;
       q.setFromEuler(new T.Euler(0, A.itT * 6 * (1 - slide), 0));
@@ -6130,52 +6174,56 @@ function bs3Frame(now){
   if (!I){ A.puffed = false; A.snapped = false; O.emberM.emissiveIntensity = 0.5; }
   O.puffs.forEach(sp => { const u2 = sp.userData; u2.t += dt; if (u2.t < 0 || u2.t > 2){ sp.material.opacity = 0; return; } sp.position.addScaledVector(u2.v, dt); sp.scale.setScalar(0.05 + u2.t * 0.16); sp.material.opacity = 0.45 * (1 - u2.t / 2); });
   // 묶인 사람: 딜러면 두 손목에 수갑, 나면 내 앞 탁자에 수갑이 놓인다
-  const opI = g && g.pl.length === 2 ? (me === 0 ? 1 : 0) : -1, dCuffed = opI >= 0 && g.pl[opI].cuffed && !g.pl[opI].out, meCuffed = g && g.pl[me] && g.pl[me].cuffed;
+  const cuffedF = g ? figs.find(f => g.pl[f.i] && g.pl[f.i].cuffed && !g.pl[f.i].out) : null, dCuffed = !!cuffedF, meCuffed = g && g.pl[me] && g.pl[me].cuffed;
   const cuffShow = !(I && I.it === 'cuff' && A.itT < (I.d || 1.4) * 0.6);
   O.cuffOn.visible = cuffShow && (dCuffed || meCuffed);
   if (meCuffed && !dCuffed){ O.cuffOn.position.set(0, 0.012, 0.52); O.cuffOn.rotation.set(0, 0.2, 0); }
   // 탁자에 늘어놓은 탄 (장전 중), 손에 쥔 탄
   const n = Lay ? Lay.live + Lay.blank : 0, F = A.feed;
-  const slotP = i => new T.Vector3((i - (n - 1) / 2) * 0.075, 0.0125, -0.2 + ((i * 7) % 3) * 0.012);
+  const slotP = i => bs3S(Fl, (i - (n - 1) / 2) * 0.075, 0.0125, -0.2 + ((i * 7) % 3) * 0.012);
+  const slotX = i => i - (n - 1) / 2;   // 왼쪽 탄은 왼손, 오른쪽 탄은 오른손
   O.lay.forEach((s, i) => {
     if (i >= n){ s.visible = false; return; }
     const inside = Lay.in && Lay.in.includes(i), held = F && F.k === i && F.t < 0.42;
     s.visible = !inside || held;
     const appear = bs3Ease((A.layT - i * 0.07) / 0.3);
-    if (!held){ const p = slotP(i); s.position.set(p.x, p.y + (1 - appear) * 0.12, p.z); s.rotation.set(0, (i * 0.7) % 0.5 - 0.25, Math.PI / 2); s.scale.setScalar(Math.max(0.001, appear)); }
+    if (!held){ const p = slotP(i); s.position.set(p.x, p.y + (1 - appear) * 0.12, p.z); s.rotation.set(0, (i * 0.7) % 0.5 - 0.25 + Fl.seat.rotation.y, Math.PI / 2); s.scale.setScalar(Math.max(0.001, appear)); }
   });
-  // 딜러 손: 장전(탄 집기 → 넣기), 들고 쏘기(펌프·손잡이), 쉬기
-  const rest = (A2, i) => A2.p.lerp(new T.Vector3(A2.s * 0.3, 0.03 + Math.sin(A.t * 1.3 + i) * 0.006, -0.62), bs3Damp(8, dt));
+  // 딜러 손: 장전(탄 집기 → 넣기), 들고 쏘기(펌프·손잡이), 쉬기. 여럿이면 움직이는 사람(Fa)·장전하는 사람(Fl)만 동작하고 나머지는 손을 탁자에 둔다
+  const rest = (f, A2, i) => A2.p.lerp(bs3S(f, A2.s * 0.3, 0.03 + Math.sin(A.t * 1.3 + i + f.i) * 0.006, -0.62), bs3Damp(8, dt));
   const toW = (A2, p, kk) => A2.p.lerp(p, bs3Damp(kk || 14, dt));
-  const dealerHolds = shooter === 'op';   // 상대가 쏠 때는 딜러 모형이 총을 든다 (여럿이면 딜러가 대신 들어 준다)
-  O.dealer.updateMatrixWorld(true);
-  O.arms.forEach((A2, i) => {
-    A2.sh.copy(A2.shL).applyMatrix4(O.dealer.matrixWorld);
-    if (Lay && F && F.t < 0.6 && ((slotP(F.k).x >= 0) === (A2.s > 0))){
-      // 탄 하나 넣기 (0.56초): 집으러 가기 → 쥐기 → 약실로 → 밀어 넣기 → 돌아오기
-      const sp = slotP(F.k).add(new T.Vector3(0, 0.02, 0)), lp = W(O.GP.load).add(new T.Vector3(0, 0.025, 0)), hov = new T.Vector3(A2.s * 0.22, 0.12, -0.45);
-      const t = F.t / 0.56;
-      let p;
-      if (t < 0.32) p = hov.clone().lerp(sp, bs3Ease(t / 0.32));
-      else if (t < 0.42) p = sp.clone();
-      else if (t < 0.78) p = sp.clone().lerp(lp, bs3Ease((t - 0.42) / 0.36)).add(new T.Vector3(0, Math.sin(Math.PI * (t - 0.42) / 0.36) * 0.06, 0));
-      else if (t < 0.86) p = lp.clone().add(new T.Vector3(0, -0.012 * Math.sin(Math.PI * (t - 0.78) / 0.08), 0));
-      else p = lp.clone().lerp(hov, bs3Ease((t - 0.86) / 0.14));
-      A2.p.copy(p);
-      const s = O.lay[F.k];
-      if (t >= 0.32 && t < 0.86){ s.visible = true; s.position.copy(p).add(new T.Vector3(0, -0.02, 0.0)); s.rotation.set(0, 0, Math.PI / 2 * (1 - bs3Ease((t - 0.42) / 0.36))); s.scale.setScalar(1); }
-      else if (t >= 0.86) s.visible = false;
-    } else if (itHand && A2.s > 0){ toW(A2, itHand, 18);
-    } else if (dCuffed && !shooter && !Lay){ toW(A2, new T.Vector3(A2.s * 0.075, 0.035, -0.6), 10);
-      if (A2.s > 0){ O.cuffOn.position.set(0, 0.04, -0.6); O.cuffOn.rotation.set(0, 0, 0); }
-    } else if (sawing && sawBy === 'op' && A.sawT < CUT + 0.25){   // 톱질: 왼손은 총을 누르고, 오른손은 톱 손잡이
-      if (A2.s > 0) toW(A2, W(O.GP.grip).add(new T.Vector3(0, 0.03, 0)), 14);
-      else { O.saw.updateMatrixWorld(true); toW(A2, new T.Vector3(0.165, 0.04, 0).applyMatrix4(O.saw.matrixWorld), 30); }
-    } else if (Lay && n){ toW(A2, W(A2.s < 0 ? O.GP.pump : O.GP.grip).add(new T.Vector3(0, 0.02, 0)), 10); }   // 다른 손은 총을 붙잡는다
-    else if (dealerHolds){ toW(A2, W(A2.s < 0 ? O.GP.pump : O.GP.grip), 16); }
-    else if (A.rackT < 0.6 && !shooter && A2.s > 0){ toW(A2, W(O.GP.pump).add(new T.Vector3(0, 0.03, 0)), 18); }
-    else rest(A2, i);
-    bs3Arm(A2);
+  const dealerHolds = shooter === 'op';   // 상대가 쏠 때는 쏘는 사람이 총을 든다
+  figs.forEach(f => {
+    f.body.updateMatrixWorld(true);
+    const fc = g && g.pl[f.i] && g.pl[f.i].cuffed && !g.pl[f.i].out;
+    f.arms.forEach((A2, i) => {
+      A2.sh.copy(A2.shL).applyMatrix4(f.body.matrixWorld);
+      if (Lay && f === Fl && F && F.t < 0.6 && ((slotX(F.k) >= 0) === (A2.s > 0))){
+        // 탄 하나 넣기 (0.56초): 집으러 가기 → 쥐기 → 약실로 → 밀어 넣기 → 돌아오기
+        const sp = slotP(F.k).add(new T.Vector3(0, 0.02, 0)), lp = W(O.GP.load).add(new T.Vector3(0, 0.025, 0)), hov = bs3S(Fl, A2.s * 0.22, 0.12, -0.45);
+        const t = F.t / 0.56;
+        let p;
+        if (t < 0.32) p = hov.clone().lerp(sp, bs3Ease(t / 0.32));
+        else if (t < 0.42) p = sp.clone();
+        else if (t < 0.78) p = sp.clone().lerp(lp, bs3Ease((t - 0.42) / 0.36)).add(new T.Vector3(0, Math.sin(Math.PI * (t - 0.42) / 0.36) * 0.06, 0));
+        else if (t < 0.86) p = lp.clone().add(new T.Vector3(0, -0.012 * Math.sin(Math.PI * (t - 0.78) / 0.08), 0));
+        else p = lp.clone().lerp(hov, bs3Ease((t - 0.86) / 0.14));
+        A2.p.copy(p);
+        const s = O.lay[F.k];
+        if (t >= 0.32 && t < 0.86){ s.visible = true; s.position.copy(p).add(new T.Vector3(0, -0.02, 0.0)); s.rotation.set(0, 0, Math.PI / 2 * (1 - bs3Ease((t - 0.42) / 0.36))); s.scale.setScalar(1); }
+        else if (t >= 0.86) s.visible = false;
+      } else if (itHand && f === Fa && A2.s > 0){ toW(A2, itHand, 18);
+      } else if (fc && !(f === Fa && shooter) && !(Lay && f === Fl)){ toW(A2, bs3S(f, A2.s * 0.075, 0.035, -0.6), 10);
+        if (A2.s > 0 && f === cuffedF){ O.cuffOn.position.copy(bs3S(f, 0, 0.04, -0.6)); O.cuffOn.rotation.set(0, f.seat.rotation.y, 0); }
+      } else if (f === Fa && sawing && sawBy === 'op' && A.sawT < CUT + 0.25){   // 톱질: 왼손은 총을 누르고, 오른손은 톱 손잡이
+        if (A2.s > 0) toW(A2, W(O.GP.grip).add(new T.Vector3(0, 0.03, 0)), 14);
+        else { O.saw.updateMatrixWorld(true); toW(A2, new T.Vector3(0.165, 0.04, 0).applyMatrix4(O.saw.matrixWorld), 30); }
+      } else if (Lay && n && f === Fl){ toW(A2, W(A2.s < 0 ? O.GP.pump : O.GP.grip).add(new T.Vector3(0, 0.02, 0)), 10); }   // 다른 손은 총을 붙잡는다
+      else if (dealerHolds && f === Fa){ toW(A2, W(A2.s < 0 ? O.GP.pump : O.GP.grip), 16); }
+      else if (A.rackT < 0.6 && !shooter && A2.s > 0 && f === Fl){ toW(A2, W(O.GP.pump).add(new T.Vector3(0, 0.03, 0)), 18); }
+      else rest(f, A2, i);
+      bs3Arm(A2);
+    });
   });
   if (F){ F.t += dt; if (F.t > 0.6) A.feed = null; }
 
@@ -6187,25 +6235,31 @@ function bs3Frame(now){
     if (s.position.y < -1) u.rest = true;
   });
 
-  // 딜러: 숨쉬기, 고개, 눈빛, 맞으면 뒤로 젖힘, 지면 고개를 떨군다
-  const dOut = g && g.pl.length === 2 && g.pl[me === 0 ? 1 : 0] && g.pl[me === 0 ? 1 : 0].out;
+  // 인물: 숨쉬기, 고개, 눈빛, 맞으면 뒤로 젖힘, 지면 앞으로 고꾸라진다 (사람마다 따로)
   const meOut = g && g.pl[me] && g.pl[me].out;
-  A.dFall = dOut ? (A.dFall || 0) + dt : 0; A.meFall = meOut ? (A.meFall || 0) + dt : 0;
-  // 딜러가 지면: 맞은 충격에 뒤로 젖혀졌다가 앞으로 고꾸라져 탁자에 엎어진다
-  if (dOut){
-    const t = A.dFall, back = t < 0.25 ? Math.sin(Math.PI * t / 0.5) * 0.35 : Math.max(0, 0.35 - (t - 0.25) * 2.5);
-    const fwd = bs3Ease((t - 0.3) / 0.6), bounce = t > 0.9 && t < 1.3 ? Math.sin((t - 0.9) / 0.4 * Math.PI) * 0.06 : 0;
-    O.dealer.rotation.x = -back + fwd * 1.05 - bounce; O.dealer.position.y = -fwd * 0.12; O.dealer.rotation.z = fwd * 0.12;
-  } else { O.dealer.rotation.x *= 0.9; O.dealer.rotation.z *= 0.9; O.dealer.position.y *= 0.9; }
-  const dHit = !A.hitMe && A.hitT < 0.6 && BSV.flash && BSV.flash !== 'p' + me && g && g.pl.length === 2 ? Math.exp(-A.hitT * 6) : 0;
-  O.torso.scale.y = 1 + Math.sin(A.t * 1.6) * 0.008;
+  A.meFall = meOut ? (A.meFall || 0) + dt : 0;
   const iu = I ? Math.min(1, A.itT / (I.d || 1.4)) : 0;
-  const look = Lay ? 0.35 : I && I.by === 'op' && I.it === 'glass' ? 0.45 : I && I.by === 'op' && I.it === 'beer' && iu > 0.3 && iu < 0.75 ? -0.35 : shooter === 'op' ? 0.1 : 0.05;
-  O.head.rotation.x += ((dOut ? 0.75 : look + Math.sin(A.t * 0.7) * 0.03 - dHit * 0.6) - O.head.rotation.x) * bs3Damp(8, dt);
-  O.head.rotation.y += ((Math.sin(A.t * 0.43) * 0.06) - O.head.rotation.y) * bs3Damp(4, dt);
-  O.head.position.z = -dHit * 0.06;
-  const fl2 = dOut ? 0.15 : 3 + Math.sin(A.t * 23) * 0.25 + (Math.random() < 0.01 ? -2 : 0);
-  O.eyeM.emissiveIntensity = fl2 * 0.5; O.eyeG.material.opacity = dOut ? 0 : 0.55 + (fl2 - 3) * 0.3; O.eyeL.intensity = dOut ? 0.01 : fl2 * 0.05;
+  figs.forEach(f => {
+    const out = !!(g && g.pl[f.i] && g.pl[f.i].out);
+    f.fall = out ? (f.fall || 0) + dt : 0;
+    const B = f.body;
+    if (out){
+      const t = f.fall, back = t < 0.25 ? Math.sin(Math.PI * t / 0.5) * 0.35 : Math.max(0, 0.35 - (t - 0.25) * 2.5);
+      const fwd = bs3Ease((t - 0.3) / 0.6), bounce = t > 0.9 && t < 1.3 ? Math.sin((t - 0.9) / 0.4 * Math.PI) * 0.06 : 0;
+      B.rotation.x = -back + fwd * 1.05 - bounce; B.position.y = -fwd * 0.12; B.rotation.z = fwd * 0.12;
+    } else { B.rotation.x *= 0.9; B.rotation.z *= 0.9; B.position.y *= 0.9; }
+    const hit = !A.hitMe && A.hitT < 0.6 && BSV.flash === 'p' + f.i ? Math.exp(-A.hitT * 6) : 0;
+    if (f.torso) f.torso.scale.y = 1 + Math.sin(A.t * 1.6 + f.i) * 0.008;
+    const act = f === Fa;
+    const look = Lay && f === Fl ? 0.35 : act && I && I.by === 'op' && I.it === 'glass' ? 0.45 : act && I && I.by === 'op' && I.it === 'beer' && iu > 0.3 && iu < 0.75 ? -0.35 : act && shooter === 'op' ? 0.1 : 0.05;
+    f.head.rotation.x += ((out ? 0.75 : look + Math.sin(A.t * 0.7 + f.i * 2) * 0.03 - hit * 0.6) - f.head.rotation.x) * bs3Damp(8, dt);
+    // 여럿이면 지금 움직이는 사람 쪽을 본다 (나 자신이면 앞을)
+    const yaw = multi && !act && Fa && !out ? Math.atan2(Fa.seat.position.x - f.seat.position.x, 0.6) * 0.5 - f.seat.rotation.y * 0.5 : 0;
+    f.head.rotation.y += ((Math.sin(A.t * 0.43 + f.i) * 0.06 + yaw) - f.head.rotation.y) * bs3Damp(4, dt);
+    f.head.position.z = -hit * 0.06;
+    const fl2 = out ? 0.15 : 3 + Math.sin(A.t * 23 + f.i * 5) * 0.25 + (Math.random() < 0.01 ? -2 : 0);
+    f.eyeM.emissiveIntensity = fl2 * 0.5; if (f.eyeG) f.eyeG.material.opacity = out ? 0 : 0.55 + (fl2 - 3) * 0.3; if (f.eyeL) f.eyeL.intensity = out ? 0.01 : fl2 * 0.05;
+  });
   // 전등이 가끔 깜빡인다
   const lf = Math.random() < 0.006 ? 0.55 : 1; O.spot.intensity += (22 * lf - O.spot.intensity) * bs3Damp(20, dt); O.bulb.material.emissiveIntensity = 3 * O.spot.intensity / 22;
   // 카메라: 살짝 흔들림, 쏠 때 떨림 (내가 맞으면 크게)
@@ -6481,6 +6535,9 @@ async function mpWs(){
   if (!ACC.user || !ACC.sb || typeof WebSocket === 'undefined') return false;
   if (!MP.wsUrl && !(await mpRefAlive(), MP.wsUrl)) return false;
   if (MPW.uid !== ACC.user.id){ mpWsClose(); MPW.uid = ACC.user.id; MPW.fail = 0; }   // 계정을 바꾸면 새로 로그인 확인
+  // 살아 있는지: 10초마다 핑을 보내고 무엇이든 답이 오면 시각을 적는다. 25초 넘게 아무 답이 없으면 죽은 연결로 보고 새로 붙는다
+  // (터널이 끊겨도 브라우저가 한참 동안 '열림'으로 알고 있어, 그 사이 보낸 요청이 '응답하지 않습니다'로 끝나던 문제)
+  if (MPW.ok && MPW.ws && MPW.ws.readyState === 1 && MPW.url === MP.wsUrl && Date.now() - (MPW.seenAt || 0) > 25000) mpWsClose();
   if (MPW.ok && MPW.ws && MPW.ws.readyState === 1 && MPW.url === MP.wsUrl) return true;
   if (MPW.fail >= 3 && Date.now() - MPW.failAt < 60000) return false;   // 연달아 실패하면 1분 동안은 느린 길만
   if (MPW.wait && MPW.url === MP.wsUrl) return MPW.wait;
@@ -6496,11 +6553,12 @@ async function mpWs(){
       ws.send(JSON.stringify({t:'auth', token:tok}));
     };
     ws.onmessage = e => {
+      MPW.seenAt = Date.now();
       let m; try { m = JSON.parse(e.data); } catch(x){ return; }
       if (m.t === 'auth'){
         if (!m.ok) return end(false);
         MPW.ok = true; end(true);
-        clearInterval(MPW.ping); MPW.ping = setInterval(() => { try { ws.readyState === 1 && ws.send('{"t":"ping"}'); } catch(x){} }, 25000);
+        clearInterval(MPW.ping); MPW.ping = setInterval(() => { try { ws.readyState === 1 && ws.send('{"t":"ping"}'); } catch(x){} }, 10000);
         if (MP.code) ws.send(JSON.stringify({t:'sub', code:MP.code}));
       } else if (m.t === 'res'){ const f = MPW.pend.get(m.id); if (f){ MPW.pend.delete(m.id); f({ok:!!m.ok, err:m.err, res:m.res || {}}); } }
       else if (m.t === 'room' && m.row && m.row.code === MP.code) mpSet(m.row);
