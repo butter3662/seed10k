@@ -1255,7 +1255,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '2.2.50';
+const VERSION = '2.2.51';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -9537,13 +9537,15 @@ async function gateSubmit(){
       const nick = $('#gNick').value.trim();
       const {data, error} = await ACC.sb.auth.signUp({email, password:pw, options:{emailRedirectTo:location.origin + location.pathname, data:nick ? {nickname:nick} : {}}});
       if (error) return gateMsg('가입하지 못했습니다: ' + error.message, true);
-      if (!(data && data.session)){
+      if (!(data && data.session)){   // 이메일 인증을 켜 두면 세션 없이 돌아온다 → 메일의 코드(또는 링크)로 확인
         ACC.gateMode = 'login'; renderGate(true);
-        return gateMsg('가입했습니다. 메일함의 확인 링크를 누른 뒤 여기서 로그인하세요.');
+        gateMsg(`가입했습니다. ${email}로 보낸 인증 메일의 코드를 입력하세요. (메일의 링크를 눌러도 됩니다)`);
+        return signupCodeDialog(email);
       }
     } else {
       gateMsg('로그인하는 중입니다.');
       const {error} = await ACC.sb.auth.signInWithPassword({email, password:pw});
+      if (error && /not confirmed/i.test(error.message || '')){ gateMsg('아직 이메일 인증을 하지 않은 계정입니다. 메일의 코드를 입력하세요.', true); return signupCodeDialog(email); }
       if (error) return gateMsg('로그인하지 못했습니다: ' + (error.message === 'Invalid login credentials' ? '이메일이나 비밀번호가 맞지 않습니다.' : error.message), true);
     }
     gateMsg(''); $('#gPw').value = ''; $('#gPw2').value = '';
@@ -9570,6 +9572,33 @@ $('#gForgot').addEventListener('click', async () => {
   } catch(e){ gateMsg('메일을 보내지 못했습니다: ' + errText(e), true); }
   finally { ACC.busy = false; }
 });
+// 가입 이메일 인증: 메일의 숫자 코드를 넣으면 인증되고 바로 로그인된다. 코드가 안 왔으면 다시 보내기 (Supabase 기본 제한: 같은 주소 60초에 한 번)
+function signupCodeDialog(email){
+  const c = showModal(`<h2>📧 이메일 인증</h2><p class="muted">${esc(email)}로 보낸 인증 메일의 숫자 코드를 입력하세요. 메일이 안 보이면 스팸함도 확인하세요.</p>
+    <input id="scode" inputmode="numeric" autocomplete="one-time-code" maxlength="10" placeholder="인증 코드" style="width:100%;margin:6px 0;letter-spacing:.2em">
+    <p class="gate-msg" id="scMsg"></p>
+    <div class="acts"><button class="btn" data-close>닫기</button><button class="btn" id="scAgain">다시 보내기</button><button class="btn solid" id="scGo">인증</button></div>`);
+  const msg = t => { const m = $('#scMsg'); if (m) m.textContent = t; };
+  $('#scGo').onclick = async () => {
+    const code = $('#scode').value.replace(/\s/g, '');
+    if (!/^\d{6,10}$/.test(code)) return msg('메일에 적힌 숫자 코드를 그대로 입력하세요.');
+    $('#scGo').disabled = true; msg('확인하는 중입니다.');
+    try {
+      const {error} = await ACC.sb.auth.verifyOtp({email, token:code, type:'signup'});
+      if (error) return msg(/expired|invalid/i.test(error.message) ? '코드가 틀렸거나 만료됐습니다. 다시 보내기를 눌러 새 코드를 받으세요.' : '인증하지 못했습니다: ' + error.message);
+      c(); gateMsg(''); toast('이메일 인증을 마쳤습니다');   // 로그인은 onAuthStateChange가 이어서 처리한다
+    } catch(e){ msg('인증하지 못했습니다: ' + errText(e)); }
+    finally { const g = $('#scGo'); if (g) g.disabled = false; }
+  };
+  $('#scAgain').onclick = async () => {
+    $('#scAgain').disabled = true;
+    try {
+      const {error} = await ACC.sb.auth.resend({type:'signup', email, options:{emailRedirectTo:location.origin + location.pathname}});
+      msg(error ? (/security purposes|rate|seconds/i.test(error.message) ? '잠시 뒤에 다시 누르세요 (1분에 한 번).' : '보내지 못했습니다: ' + error.message) : '새 인증 메일을 보냈습니다.');
+    } catch(e){ msg('보내지 못했습니다: ' + errText(e)); }
+    finally { setTimeout(() => { const b = $('#scAgain'); if (b) b.disabled = false; }, 3000); }
+  };
+}
 // 메일의 인증 코드로 재설정: 코드 확인 → 그 계정으로 로그인됨 → 새 비밀번호 저장
 let PW_CODE_ON = false;
 function pwCodeDialog(email){
