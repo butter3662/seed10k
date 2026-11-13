@@ -1246,7 +1246,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '2.2.39';
+const VERSION = '2.2.40';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -7141,7 +7141,7 @@ function mpChatSync(){
   if (on && !bar){
     bar = document.createElement('form'); bar.id = 'mpChat'; bar.className = 'mpc-bar'; bar.autocomplete = 'off';
     bar.innerHTML = `<input id="mpChatIn" type="text" maxlength="${MPC_MAX}" enterkeyhint="send" placeholder="채팅 (${MPC_MAX}자까지)" aria-label="채팅"><button class="btn solid" type="submit">보내기</button>`;
-    bar.addEventListener('submit', e => { e.preventDefault(); mpChatSend(); });
+    bar.addEventListener('submit', e => { e.preventDefault(); mpChatSend(); const i = $('#mpChatIn'); if (i) i.blur(); });   // 키보드의 엔터(파란 화살표)로 보내도 키보드를 내린다
     document.body.appendChild(bar);
   }
   if (bar) bar.hidden = !on;
