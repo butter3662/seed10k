@@ -1,9 +1,15 @@
 // SEED 10K 멀티플레이 심판 — 라즈베리파이 상시 실행판
 //
-// 사이트는 Supabase하고만 통신하고, 이 프로그램도 Supabase로 '나가는' 연결만 쓴다 (포트를 열지 않는다).
+// 빠른 길(기본): 사이트가 이 프로그램에 웹소켓으로 바로 붙는다.
+//   사이트 ──웹소켓──> Cloudflare 임시 터널(seed10k-tunnel, https 주소) ──> 심판(여기, 8787번)
+//   요청을 받으면 바로 처리해 방 안 모든 웹소켓에 새 상태를 보내고, 그 뒤에 Supabase에 저장한다.
+//   터널 주소는 켤 때마다 바뀌어서, '__ref' 줄(아래 beat)에 적어 두면 사이트가 거기서 읽어 접속한다 (Supabase는 다리 역할).
+//   로그인 확인은 사이트가 보낸 Supabase 로그인 토큰을 Supabase에 물어 한 번만 한다.
+// 느린 길(예비): 터널이 안 될 때는 예전처럼 Supabase 표를 거친다.
 //   사이트 ──요청 넣기──> seed10k_room_reqs ──실시간 알림──> 심판(여기)
 //   심판 ──규칙 처리(mp_core.js)──> seed10k_rooms(모두에게 보이는 상태) / seed10k_room_priv(숨긴 상태) / seed10k_payouts(받을 돈)
 //   seed10k_rooms가 바뀌면 Supabase 실시간이 방 안 모든 화면에 바로 알린다
+// 모든 처리(웹소켓 요청, 표 요청, 시간 초과)는 한 줄로 차례차례 한다 (serial).
 // 실시간 알림을 놓쳐도 5초마다 남은 요청을 다시 확인하고, 1초마다 시간 초과(자동 행동)를 본다.
 // 10초마다 seed10k_rooms의 '__ref' 줄에 시각을 남겨, 사이트가 심판이 켜져 있는지 알 수 있게 한다.
 //
@@ -43,17 +49,19 @@ async function loadRoom(code: string) {
   const [p] = await rest("GET", `seed10k_room_priv?code=eq.${encodeURIComponent(code)}&select=priv`) || [];
   privs.set(code, p ? p.priv : {});
 }
-async function save(out: { room: Room; priv: any; payouts?: any[] }, room0: Room | undefined) {
+async function save(out: { room: Room; priv: any; payouts?: any[] }, room0: Room | undefined, shown?: () => void) {
   const room = out.room;
   room.ver = (room0?.ver || 0) + 1;
   // 받을 돈을 먼저 적고 방을 고친다 (방이 '끝'으로 보이는데 돈이 없는 일이 없게)
   const pays = (out.payouts || []).map((p) => ({ ...p, code: room.code, game: room.game, mode: room.mode }));
   if (pays.length) await rest("POST", "seed10k_payouts", pays, "return=minimal");
+  // 메모리를 먼저 바꾸고 웹소켓으로 바로 보낸 뒤 데이터베이스에 저장한다 (화면은 저장을 기다리지 않는다)
+  if (room.status === "closed") { rooms.delete(room.code); privs.delete(room.code); }
+  else { rooms.set(room.code, room); privs.set(room.code, out.priv || {}); }
+  broadcast(room); shown?.();
   const row = { code: room.code, game: room.game, mode: room.mode, host: room.host, stake: room.stake, il: room.il, status: room.status, state: room.state, ver: room.ver, updated_at: new Date().toISOString() };
   await rest("POST", "seed10k_rooms?on_conflict=code", [row], "resolution=merge-duplicates,return=minimal");
   await rest("POST", "seed10k_room_priv?on_conflict=code", [{ code: room.code, priv: out.priv || {} }], "resolution=merge-duplicates,return=minimal");
-  if (room.status === "closed") { rooms.delete(room.code); privs.delete(room.code); }
-  else { rooms.set(room.code, room); privs.set(room.code, out.priv || {}); }
   // 기록·알림은 실패해도 게임은 계속된다
   watch(room0, room, out.priv || {}).catch((e) => console.error("[seed10k-ref] 기록·알림 실패:", String((e as Error)?.message || e).slice(0, 300)));
 }
@@ -111,48 +119,143 @@ async function banned(uid: string) {
   return r.length > 0;
 }
 
-let busy = false, again = false, handled = 0, failed = 0;
-async function work() {
-  if (busy) { again = true; return; }
-  busy = true;
+// 한 줄로 차례차례: 앞의 일이 끝나야 다음 일을 한다 (방 상태를 동시에 고치지 않게).
+// 예전에는 '바쁘면 다시 하라고 표시만 하고 돌아가는' 방식이라, 시간 처리 중에 들어온 요청이 5초 확인 때까지 밀릴 수 있었다
+let chain: Promise<unknown> = Promise.resolve();
+function serial<T>(fn: () => Promise<T>): Promise<T> {
+  const p = chain.then(fn, fn);
+  chain = p.catch(() => {});
+  return p;
+}
+let handled = 0, failed = 0;
+// 요청 하나 처리. shown: 새 상태를 웹소켓으로 보낸 직후(데이터베이스 저장 전)에 부른다 → 누른 사람에게 결과를 먼저 알린다
+async function processReq(q: any, shown?: (r: { ok: boolean; err?: string; res?: unknown }) => void) {
+  let r: { ok: boolean; err?: string; res?: unknown };
   try {
-    do {
-      again = false;
+    if (q.kind !== "create") await loadRoom(q.code);
+    const room0 = rooms.get(q.code);
+    if (q.kind === "create" || q.kind === "join" || q.kind === "again") {
+      const why = await banned(q.user_id) ? "부정행위로 멀티플레이가 제한된 계정입니다" : await tester(q.user_id) ? "테스트 계정은 멀티플레이를 할 수 없습니다" : "";
+      if (why) { handled++; r = { ok: false, err: why }; shown?.(r); return r; }
+    }
+    const out = handle(room0 || null, privs.get(q.code) || {}, q, Date.now(), Math.random);
+    handled++;
+    if (out.err) { r = { ok: false, err: out.err }; shown?.(r); return r; }
+    r = { ok: true, res: out.res || {} };
+    if (out.room) await save(out as any, room0, () => shown?.(r));
+    else shown?.(r);
+    return r;
+  } catch (e) {
+    failed++;
+    console.error("[seed10k-ref] 요청 처리 실패", q.id, q.kind, e);
+    r = { ok: false, err: "서버 오류로 처리하지 못했습니다. 다시 시도하세요" };
+    shown?.(r);
+    return r;
+  }
+}
+// 느린 길: Supabase 표에 들어온 요청
+let workQueued = false;
+function work() {
+  if (workQueued) return chain;
+  workQueued = true;
+  return serial(async () => {
+    workQueued = false;
+    try {
       const reqs = await rest("GET", "seed10k_room_reqs?done=eq.false&order=id.asc&limit=100&select=*") || [];
       for (const q of reqs) {
-        let patch: Record<string, unknown>;
-        try {
-          if (q.kind !== "create") await loadRoom(q.code);
-          const room0 = rooms.get(q.code);
-          if (q.kind === "create" || q.kind === "join" || q.kind === "again") {
-            const why = await banned(q.user_id) ? "부정행위로 멀티플레이가 제한된 계정입니다" : await tester(q.user_id) ? "테스트 계정은 멀티플레이를 할 수 없습니다" : "";
-            if (why) { await rest("PATCH", `seed10k_room_reqs?id=eq.${q.id}`, { done: true, ok: false, err: why }, "return=minimal"); handled++; continue; }
-          }
-          const out = handle(room0 || null, privs.get(q.code) || {}, q, Date.now(), Math.random);
-          if (out.err) patch = { done: true, ok: false, err: out.err };
-          else { if (out.room) await save(out as any, room0); patch = { done: true, ok: true, res: out.res || {} }; }
-          handled++;
-        } catch (e) {
-          failed++;
-          console.error("[seed10k-ref] 요청 처리 실패", q.id, q.kind, e);
-          patch = { done: true, ok: false, err: "서버 오류로 처리하지 못했습니다. 다시 시도하세요" };
-        }
-        await rest("PATCH", `seed10k_room_reqs?id=eq.${q.id}`, patch, "return=minimal");
+        const r = await processReq(q);
+        await rest("PATCH", `seed10k_room_reqs?id=eq.${q.id}`, { done: true, ok: r.ok, err: r.err ?? null, res: r.ok ? r.res : null }, "return=minimal");
       }
-    } while (again);
-  } catch (e) { console.error("[seed10k-ref] 요청 확인 실패:", String((e as Error)?.message || e).slice(0, 300)); }
-  finally { busy = false; }
+    } catch (e) { console.error("[seed10k-ref] 요청 확인 실패:", String((e as Error)?.message || e).slice(0, 300)); }
+  });
 }
-async function ticks() {
-  if (busy) return;
-  busy = true;
+function ticks() {
+  return serial(async () => {
+    try {
+      for (const [code, room] of [...rooms]) {
+        const out = tick(room, privs.get(code) || {}, Date.now(), Math.random);
+        if (out && out.room) await save(out as any, room);
+      }
+    } catch (e) { console.error("[seed10k-ref] 시간 처리 실패:", String((e as Error)?.message || e).slice(0, 300)); }
+  });
+}
+
+/* ── 빠른 길: 웹소켓 ──
+   사이트 → {t:'auth', token} → {t:'auth', ok}
+          → {t:'sub', code}  방 구독 (지금 상태를 바로 받는다)
+          → {t:'req', id, code, kind, arg} → {t:'res', id, ok, err, res}
+   심판 → {t:'room', row}  구독한 방이 바뀔 때마다 (seed10k_rooms 한 줄과 같은 모양) */
+type Sock = { ws: WebSocket; uid: string | null; codes: Set<string> };
+const socks = new Set<Sock>();
+const roomRow = (room: Room) => ({ code: room.code, game: room.game, mode: room.mode, host: room.host, stake: room.stake, il: room.il, status: room.status, state: room.state, ver: room.ver, updated_at: new Date().toISOString() });
+function broadcast(room: Room) {
+  let msg = "";
+  for (const k of socks) {
+    if (!k.codes.has(room.code) || k.ws.readyState !== WebSocket.OPEN) continue;
+    if (!msg) msg = JSON.stringify({ t: "room", row: roomRow(room) });
+    try { k.ws.send(msg); } catch { /* 끊긴 연결 */ }
+  }
+}
+const send = (k: Sock, m: unknown) => { if (k.ws.readyState === WebSocket.OPEN) try { k.ws.send(JSON.stringify(m)); } catch { /* */ } };
+async function whoIs(token: string): Promise<string | null> {   // Supabase 로그인 토큰 → 계정 id
   try {
-    for (const [code, room] of [...rooms]) {
-      const out = tick(room, privs.get(code) || {}, Date.now(), Math.random);
-      if (out && out.room) await save(out as any, room);
+    const r = await fetch(`${BASE}/auth/v1/user`, { headers: { apikey: KEY, Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(10_000) });
+    if (!r.ok) return null;
+    const u = await r.json();
+    return typeof u?.id === "string" ? u.id : null;
+  } catch { return null; }
+}
+let wsReq = 0;
+function onSock(ws: WebSocket) {
+  const k: Sock = { ws, uid: null, codes: new Set() };
+  ws.onopen = () => socks.add(k);
+  ws.onclose = () => socks.delete(k);
+  ws.onerror = () => socks.delete(k);
+  ws.onmessage = async (e) => {
+    let m: any;
+    try { if (typeof e.data !== "string" || e.data.length > 20_000) return; m = JSON.parse(e.data); } catch { return; }
+    if (m.t === "ping") return send(k, { t: "pong" });
+    if (m.t === "auth") { k.uid = typeof m.token === "string" ? await whoIs(m.token) : null; return send(k, { t: "auth", ok: !!k.uid }); }
+    if (!k.uid) return send(k, { t: "res", id: m.id, ok: false, err: "로그인 확인이 안 됐습니다" });
+    if (m.t === "sub" && typeof m.code === "string" && /^[A-Z0-9]{6}$/.test(m.code)) {
+      if (k.codes.size > 20) k.codes.clear();
+      k.codes.add(m.code);
+      await serial(() => loadRoom(m.code)).catch(() => {});
+      const room = rooms.get(m.code);
+      if (room) send(k, { t: "room", row: roomRow(room) });
+      return;
     }
-  } catch (e) { console.error("[seed10k-ref] 시간 처리 실패:", String((e as Error)?.message || e).slice(0, 300)); }
-  finally { busy = false; }
+    if (m.t === "req" && typeof m.code === "string" && typeof m.kind === "string") {
+      const q = { id: `ws${++wsReq}`, user_id: k.uid, code: m.code, kind: m.kind, arg: m.arg && typeof m.arg === "object" ? m.arg : {}, at: new Date().toISOString() };
+      k.codes.add(m.code);
+      let sent = false;
+      const reply = (r: any) => { if (sent) return; sent = true; send(k, { t: "res", id: m.id, ok: r.ok, err: r.err, res: r.res }); };
+      const r = await serial(() => processReq(q, reply));
+      reply(r);
+    }
+  };
+}
+const PORT = 8787;
+Deno.serve({ port: PORT, hostname: "0.0.0.0", onListen: () => console.log(`[seed10k-ref] 웹소켓 대기: ${PORT}번`) }, (req) => {
+  const u = new URL(req.url);
+  if (u.pathname === "/ws" && req.headers.get("upgrade")?.toLowerCase() === "websocket") {
+    const { socket, response } = Deno.upgradeWebSocket(req, { idleTimeout: 60 });
+    onSock(socket);
+    return response;
+  }
+  return new Response("seed10k referee", { headers: { "access-control-allow-origin": "*" } });
+});
+// Cloudflare 임시 터널의 주소를 알아낸다 (seed10k-tunnel 컨테이너의 metrics 서버). 바뀌면 바로 '__ref'에 적는다
+const TUNNEL = Deno.env.get("SEED10K_TUNNEL_METRICS") || "http://seed10k-tunnel:2000";
+let WS_URL = "";
+async function tunnel() {
+  let host = "";
+  try {
+    const r = await fetch(`${TUNNEL}/quicktunnel`, { signal: AbortSignal.timeout(5_000) });
+    if (r.ok) host = String((await r.json())?.hostname || "");
+  } catch { /* 터널이 아직 안 켜짐 */ }
+  const url = /^[a-z0-9-]+\.trycloudflare\.com$/.test(host) ? `wss://${host}/ws` : "";
+  if (url !== WS_URL) { WS_URL = url; console.log("[seed10k-ref] 터널 주소:", url || "(없음 → Supabase 길만)"); await beat().catch(() => {}); }
 }
 // 지금 돌고 있는 코드의 커밋 (관리 탭에 보인다). 저장소가 /app에 읽기 전용으로 붙어 있다
 function commit(): string {
@@ -166,7 +269,7 @@ function commit(): string {
 }
 const STARTED = Date.now(), VER = commit();
 async function beat() {
-  await rest("POST", "seed10k_rooms?on_conflict=code", [{ code: "__ref", game: "-", mode: "-", status: "sys", state: { at: Date.now(), rooms: rooms.size, ver: VER, started: STARTED }, updated_at: new Date().toISOString() }], "resolution=merge-duplicates,return=minimal");
+  await rest("POST", "seed10k_rooms?on_conflict=code", [{ code: "__ref", game: "-", mode: "-", status: "sys", state: { at: Date.now(), rooms: rooms.size, ver: VER, started: STARTED, ws: WS_URL, socks: socks.size }, updated_at: new Date().toISOString() }], "resolution=merge-duplicates,return=minimal");
 }
 async function cleanup() {   // 하루 지난 처리된 요청과 닫힌 방을 지운다
   const day = new Date(Date.now() - 864e5).toISOString();
@@ -184,9 +287,10 @@ const sb = createClient(BASE, KEY, { auth: { persistSession: false, autoRefreshT
 sb.channel("seed10k-ref").on("postgres_changes", { event: "INSERT", schema: "public", table: "seed10k_room_reqs" }, () => work())
   .subscribe((s: string) => console.log("[seed10k-ref] 실시간 연결:", s));
 
-await work(); await beat().catch(() => {});
+await tunnel(); await work(); await beat().catch(() => {});
+setInterval(() => tunnel().catch(() => {}), 15_000);                 // 터널이 다시 켜져 주소가 바뀌면 알아챈다
 setInterval(work, 5_000);                                             // 실시간을 놓쳤을 때를 위한 확인
 setInterval(ticks, 1_000);                                            // 시간 초과 → 자동 행동
 setInterval(() => beat().catch((e) => console.error("[seed10k-ref] 신호 실패:", e.message)), 10_000);
 setInterval(() => cleanup().catch(() => {}), 60 * 60_000);
-setInterval(() => { console.log(`[seed10k-ref] 최근 10분: 요청 ${handled}건 처리, 실패 ${failed}건, 진행 중인 방 ${rooms.size}개`); handled = 0; failed = 0; }, 10 * 60_000);
+setInterval(() => { console.log(`[seed10k-ref] 최근 10분: 요청 ${handled}건 처리, 실패 ${failed}건, 진행 중인 방 ${rooms.size}개, 웹소켓 ${socks.size}개`); handled = 0; failed = 0; }, 10 * 60_000);

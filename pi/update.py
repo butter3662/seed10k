@@ -115,7 +115,8 @@ def main():
     if "pi/docker-compose.yml" in changed:
         c, o = compose("up", "-d")
         did.append("docker compose up -d" if not c else f"compose 실패: {o[-200:]}")
-    else:
+    # 설정이 그대로인 컨테이너는 up -d가 다시 켜지 않으므로, 코드가 바뀐 것은 따로 다시 켠다
+    if True:
         ref = cmds or any(x in REFEREE for x in changed)
         quo = any(x == "pi/runner.ts" or x.startswith("supabase/functions/") for x in changed)
         if ref:

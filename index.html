@@ -1236,7 +1236,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '2.2.36';
+const VERSION = '2.2.37';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -6435,7 +6435,8 @@ function bsaToggle(){
 const bsaIcon = () => `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/>${BSA.on ? '<path d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/>' : '<path d="M16 9l6 6M22 9l-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'}</svg>`;
 
 /* ───────── 멀티플레이 (방 코드로 같이 하기) ─────────
-   사이트는 Supabase에 요청(seed10k_room_reqs)만 넣고, 라즈베리파이 심판이 규칙대로 처리해 방(seed10k_rooms)을 고친다.
+   빠른 길: 라즈베리파이 심판에 웹소켓으로 바로 붙어 요청을 보내고 방 상태를 받는다 (주소는 Supabase '__ref' 줄의 state.ws).
+   느린 길(웹소켓이 안 될 때): Supabase에 요청(seed10k_room_reqs)을 넣고, 심판이 처리해 방(seed10k_rooms)을 고친다.
    방이 바뀌면 Supabase 실시간이 알려 주고(놓칠 때를 위해 3초마다도 확인), 끝나면 받을 돈(seed10k_payouts)을 '받기'로 가져온다.
    판돈은 들어갈 때 이 기기 통장에서 내고, 돌려받거나 이긴 돈은 받기로 들어온다 */
 const MP_GAMES = {bm:{nm:'부루마블', ic:'🎲', ready:true, desc:'2~4명 · 파산할 때까지, 순위 배수'},   // 도박 탭의 혼자 하기 카드와 같은 순서
@@ -6453,12 +6454,67 @@ const mpNick = () => (ACC.user && ((ACC.user.user_metadata || {}).nickname || (a
 async function mpRefAlive(force){
   if (!ACC.sb) return false;
   if (!force && Date.now() - MP.refAt < 15000) return MP.ref;
-  try { const {data} = await ACC.sb.from('seed10k_rooms').select('state').eq('code', '__ref').maybeSingle(); MP.ref = !!(data && data.state && Date.now() - data.state.at < 30000); }
+  try { const {data} = await ACC.sb.from('seed10k_rooms').select('state').eq('code', '__ref').maybeSingle(); MP.ref = !!(data && data.state && Date.now() - data.state.at < 30000); MP.wsUrl = MP.ref && /^wss?:\/\//.test(data.state.ws || '') ? data.state.ws : ''; }
   catch(e){ MP.ref = false; }
   MP.refAt = Date.now(); return MP.ref;
 }
-// 요청을 넣고 심판이 처리할 때까지 기다린다 (최대 60초)
+/* ── 웹소켓 (빠른 길) ── */
+const MPW = {ws:null, url:'', ok:false, wait:null, seq:0, pend:new Map(), ping:null, fail:0, failAt:0};
+function mpWsClose(){
+  clearInterval(MPW.ping); MPW.ok = false;
+  if (MPW.ws){ try { MPW.ws.onclose = null; MPW.ws.close(); } catch(e){} }
+  MPW.ws = null; MPW.wait = null;
+  MPW.pend.forEach(f => f({ok:false, err:'게임 서버 연결이 끊겼습니다', timeout:true})); MPW.pend.clear();
+}
+// 연결하고 로그인 확인까지 (최대 5초). 안 되면 false → 느린 길로
+async function mpWs(){
+  if (!ACC.user || !ACC.sb || typeof WebSocket === 'undefined') return false;
+  if (!MP.wsUrl && !(await mpRefAlive(), MP.wsUrl)) return false;
+  if (MPW.uid !== ACC.user.id){ mpWsClose(); MPW.uid = ACC.user.id; MPW.fail = 0; }   // 계정을 바꾸면 새로 로그인 확인
+  if (MPW.ok && MPW.ws && MPW.ws.readyState === 1 && MPW.url === MP.wsUrl) return true;
+  if (MPW.fail >= 3 && Date.now() - MPW.failAt < 60000) return false;   // 연달아 실패하면 1분 동안은 느린 길만
+  if (MPW.wait && MPW.url === MP.wsUrl) return MPW.wait;
+  mpWsClose();
+  const url = MPW.url = MP.wsUrl;
+  MPW.wait = new Promise(done => {
+    let fin = false; const end = v => { if (fin) return; fin = true; clearTimeout(to); if (!v){ MPW.fail++; MPW.failAt = Date.now(); MP.refAt = 0; mpWsClose(); } else MPW.fail = 0; done(v); };
+    const to = setTimeout(() => end(false), 5000);
+    let ws; try { ws = MPW.ws = new WebSocket(url); } catch(e){ return end(false); }
+    ws.onopen = async () => {
+      let tok = null; try { tok = (await ACC.sb.auth.getSession()).data.session.access_token; } catch(e){}
+      if (!tok) return end(false);
+      ws.send(JSON.stringify({t:'auth', token:tok}));
+    };
+    ws.onmessage = e => {
+      let m; try { m = JSON.parse(e.data); } catch(x){ return; }
+      if (m.t === 'auth'){
+        if (!m.ok) return end(false);
+        MPW.ok = true; end(true);
+        clearInterval(MPW.ping); MPW.ping = setInterval(() => { try { ws.readyState === 1 && ws.send('{"t":"ping"}'); } catch(x){} }, 25000);
+        if (MP.code) ws.send(JSON.stringify({t:'sub', code:MP.code}));
+      } else if (m.t === 'res'){ const f = MPW.pend.get(m.id); if (f){ MPW.pend.delete(m.id); f({ok:!!m.ok, err:m.err, res:m.res || {}}); } }
+      else if (m.t === 'room' && m.row && m.row.code === MP.code) mpSet(m.row);
+    };
+    ws.onclose = ws.onerror = () => { if (MPW.ws !== ws) return; const was = MPW.ok; end(false); if (was && MP.code) setTimeout(() => mpWs(), 1000); };
+  });
+  return MPW.wait;
+}
+function mpWsSub(code){ if (MPW.ok && MPW.ws && MPW.ws.readyState === 1) try { MPW.ws.send(JSON.stringify({t:'sub', code})); } catch(e){} else mpWs(); }
+// 요청: 웹소켓이 되면 바로 보내고 답을 기다린다 (최대 15초). 안 되면 Supabase 표로
 async function mpReq(code, kind, arg = {}){
+  if (await mpWs()){
+    const id = ++MPW.seq;
+    const r = await new Promise(res => {
+      MPW.pend.set(id, res);
+      setTimeout(() => { if (MPW.pend.delete(id)) res({ok:false, err:'게임 서버가 응답하지 않습니다', timeout:true}); }, 15000);
+      try { MPW.ws.send(JSON.stringify({t:'req', id, code, kind, arg})); } catch(e){ MPW.pend.delete(id); res({ok:false, err:'게임 서버에 보내지 못했습니다', timeout:true}); }
+    });
+    return r;
+  }
+  return mpReqDb(code, kind, arg);
+}
+// 느린 길: 요청을 넣고 심판이 처리할 때까지 기다린다 (최대 60초)
+async function mpReqDb(code, kind, arg = {}){
   const {data, error} = await ACC.sb.from('seed10k_room_reqs').insert({user_id:ACC.user.id, code, kind, arg}).select('id').single();
   if (error) return {ok:false, err:errText(error)};
   const t0 = Date.now();
@@ -6577,6 +6633,7 @@ function mpSub(code){
   try {
     MP.ch = ACC.sb.channel('room-' + code).on('postgres_changes', {event:'*', schema:'public', table:'seed10k_rooms', filter:`code=eq.${code}`}, p => { if (p.new && p.new.code === MP.code) mpSet(p.new); }).subscribe();
   } catch(e){}
+  mpWsSub(code);
   clearInterval(MP.poll); MP.poll = setInterval(() => { if (!document.hidden && MP.code) mpFetch(); }, 3000);   // 실시간을 놓칠 때를 위해
 }
 async function mpFetch(){
@@ -6586,7 +6643,7 @@ async function mpFetch(){
 }
 function mpSet(room){
   const prev = MP.room;
-  if (prev && prev.code === room.code && (room.ver || 0) < (prev.ver || 0)) return;   // 늦게 온 옛 상태는 버린다
+  if (prev && prev.code === room.code && (room.ver || 0) < (prev.ver || 0)) return;   // 늦게 온 옛 상태는 버린다 (웹소켓과 Supabase 양쪽에서 온다)
   MP.room = room;
   if (room.status === 'lobby') MP.view.bjV = null;   // 새 판이면 카드를 처음부터 날아오게
   const ev = room.state.ev;
@@ -9264,7 +9321,17 @@ document.addEventListener('click', e => {
   }
   if (t.id === 'goBtn'){
     const id = UI.sheet, s = BY_ID[id], q = UI.qty;
-    if (UI.side === 'buy'){ if (doBuy(id, q, '', true)){ toast(`${s.n} ${q.toLocaleString()}주를 매수했습니다`); UI.qty = 1; commit(); } }
+    if (UI.side === 'buy'){
+      const buyNow = () => { if (doBuy(id, q, '', true)){ toast(`${s.n} ${q.toLocaleString()}주를 매수했습니다`); UI.qty = 1; commit(); } };
+      const pl = !ACC.tester && q >= 1 && canTrade(s, 'buy').ok ? buyPlan(id, Math.floor(q)) : null;
+      if (pl && pl.ok && pl.od > 0){   // 통장 잔액이 모자라 마이너스통장을 쓰게 되면 먼저 묻는다
+        const c = showModal(`<h2>⚠️ 마이너스통장 사용</h2><p>잔액이 부족합니다. 더 매수하기 위해 마이너스통장을 사용하시겠습니까?</p>
+          <dl class="kv"><div><dt>마이너스통장에서 빌리는 금액</dt><dd class="num" style="color:var(--warn)">${fmtUSD(pl.od)}</dd></div><div><dt>빌릴 때 붙는 수수료 (3%)</dt><dd class="num">${fmtUSD(pl.od * META.loanFee)}</dd></div></dl>
+          <p class="muted">빌린 돈에는 날마다 이자가 붙고, 달러가 들어오면 먼저 갚습니다.</p>
+          <div class="acts"><button class="btn" data-close>취소</button><button class="btn solid" id="odGo">사용하고 매수</button></div>`);
+        $('#odGo').onclick = () => { c(); buyNow(); };
+      } else buyNow();
+    }
     else { const r = doSell(id, q); if (r){ toast(`${s.n} ${q.toLocaleString()}주를 매도했습니다 (${fmtPx(s, r)})`); UI.qty = 1; if (!S.pos[id]) UI.side = 'buy'; commit(); } }
     return;
   }
