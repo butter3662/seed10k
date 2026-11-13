@@ -1246,7 +1246,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '2.2.40';
+const VERSION = '2.2.41';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -6731,7 +6731,18 @@ document.addEventListener('click', async e => {
   if (t.id === 'onlInv') return onlOpen(MP.room);
   if (t.id === 'mpJoinBtn') return mpJoin();
   if (t.id === 'mpResume'){ let c = null; try { c = localStorage.getItem(mpKey()); } catch(e){} if (c) mpEnter(c); return; }
-  if (t.id === 'mpClose') return mpHide();
+  if (t.id === 'mpClose'){
+    // 대기실에서 닫으면 나가기와 같다: 자리를 비우고 판돈을 바로 돌려받는다 (예전에는 자리를 둔 채 창만 닫혀, 20분 뒤에야 환불이 들어왔다)
+    const R = MP.room;
+    if (R && R.status === 'lobby' && mpMe() >= 0){
+      t.disabled = true;
+      const r = await mpReq(MP.code, 'leave');
+      if (!r.ok){ t.disabled = false; return toast(r.err, true); }
+      mpForget(); mpHide(); setTimeout(mpClaim, 800); toast('대기실에서 나왔습니다. 판돈은 바로 돌려받습니다');
+      return;
+    }
+    return mpHide();
+  }
   if (t.id === 'mpCopy'){ try { await navigator.clipboard.writeText(MP.code); toast('방 코드를 복사했습니다'); } catch(e){ toast(`방 코드: ${MP.code}`); } return; }
   if (t.id === 'mpStart') return mpAct('start');
   if (t.id === 'mpLeave'){
