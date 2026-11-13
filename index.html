@@ -1218,6 +1218,7 @@ html[data-game=live] .c-news{order:3}
         <input id="gPw2" type="password" placeholder="비밀번호 확인" autocomplete="new-password" aria-label="비밀번호 확인" hidden>
         <input id="gNick" type="text" maxlength="12" placeholder="랭킹 닉네임 (2~12자, 나중에 정해도 됨)" aria-label="닉네임" hidden>
         <button class="gate-go" id="gSubmit">로그인</button>
+        <div class="gate-sw" id="gForgotRow"><button class="linkbtn" id="gForgot">비밀번호를 잊었나요?</button></div>
         <div class="gate-sw"><span id="gSwitchText">계정이 없나요?</span> <button class="linkbtn" id="gSwitch">회원가입</button></div>
       </div>
       <div class="gate-msg" id="gMsg" role="status"></div>
@@ -1233,7 +1234,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '2.2.31';
+const VERSION = '2.2.32';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -8697,7 +8698,7 @@ function initAccount(){
   }
   try { ACC.sb = window.supabase.createClient(SB_URL, SB_KEY, {auth:{storage:SB_STORE}}); }
   catch(e){ ACC.err = '로그인 서버 설정이 올바르지 않습니다.'; ACC.ready = true; afterAuthResolved(); return; }
-  ACC.sb.auth.onAuthStateChange((_ev, session) => { handleSession(session); });
+  ACC.sb.auth.onAuthStateChange((ev, session) => { if (ev === 'PASSWORD_RECOVERY') setTimeout(pwRecoverDialog, 600); handleSession(session); });
   ACC.sb.auth.getSession().then(({data}) => handleSession(data && data.session)).catch(() => { ACC.ready = true; afterAuthResolved(); });
 }
 async function handleSession(session){
@@ -9066,6 +9067,7 @@ function renderGate(forceOpen){
   $('#gPw2').hidden = !signup; $('#gNick').hidden = !signup;
   $('#gPw').setAttribute('autocomplete', signup ? 'new-password' : 'current-password');
   $('#gSubmit').textContent = signup ? '회원가입' : '로그인';
+  $('#gForgotRow').hidden = signup;
   $('#gSwitchText').textContent = signup ? '이미 계정이 있나요?' : '계정이 없나요?';
   $('#gSwitch').textContent = signup ? '로그인' : '회원가입';
   // 이 기기에서 로그인했던 다른 계정: 누르면 바로 그 계정으로
@@ -9111,6 +9113,40 @@ async function gateSubmit(){
   } finally { ACC.busy = false; $('#gSubmit').disabled = false; }
 }
 $('#gSubmit').addEventListener('click', gateSubmit);
+// 비밀번호 찾기: 가입한 메일로 재설정 링크를 보낸다 (Supabase가 보내고, 링크를 누르면 이 사이트로 돌아와 새 비밀번호를 정한다)
+$('#gForgot').addEventListener('click', async () => {
+  if (!ACC.sb || ACC.busy) return;
+  const email = $('#gEmail').value.trim();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return gateMsg('위 칸에 가입한 이메일을 적고 다시 누르세요.', true);
+  ACC.busy = true; gateMsg('재설정 메일을 보내는 중입니다.');
+  try {
+    const {error} = await ACC.sb.auth.resetPasswordForEmail(email, {redirectTo:location.origin + location.pathname});
+    if (error){
+      const m = String(error.message || '');
+      return gateMsg(/not authorized/i.test(m) ? '아직 메일 발송 설정이 끝나지 않아 보낼 수 없습니다. 관리자에게 알려 주세요.' : /rate|security purposes|seconds/i.test(m) ? '잠시 뒤에 다시 시도하세요 (메일을 너무 자주 보냈습니다).' : '메일을 보내지 못했습니다: ' + m, true);
+    }
+    gateMsg(`${email}로 재설정 메일을 보냈습니다. 메일의 링크를 누르면 여기서 새 비밀번호를 정할 수 있습니다. (가입한 주소가 아니면 메일이 가지 않습니다)`);
+  } catch(e){ gateMsg('메일을 보내지 못했습니다: ' + errText(e), true); }
+  finally { ACC.busy = false; }
+});
+// 재설정 링크로 들어왔을 때: 새 비밀번호 정하기
+function pwRecoverDialog(){
+  const c = showModal(`<h2>🔑 새 비밀번호 정하기</h2><p class="muted">재설정 링크로 들어왔습니다. 새 비밀번호를 정하세요 (6자 이상).</p>
+    <input id="rpw1" type="password" placeholder="새 비밀번호" autocomplete="new-password" style="width:100%;margin:6px 0">
+    <input id="rpw2" type="password" placeholder="새 비밀번호 확인" autocomplete="new-password" style="width:100%;margin:6px 0">
+    <p class="gate-msg" id="rpwMsg"></p>
+    <div class="acts"><button class="btn" data-close>나중에</button><button class="btn solid" id="rpwGo">바꾸기</button></div>`);
+  $('#rpwGo').onclick = async () => {
+    const a = $('#rpw1').value, b = $('#rpw2').value, msg = $('#rpwMsg');
+    if (a.length < 6){ msg.textContent = '6자 이상으로 정하세요.'; return; }
+    if (a !== b){ msg.textContent = '두 칸이 서로 다릅니다.'; return; }
+    $('#rpwGo').disabled = true; msg.textContent = '바꾸는 중입니다.';
+    const {error} = await ACC.sb.auth.updateUser({password:a});
+    $('#rpwGo').disabled = false;
+    if (error){ msg.textContent = '바꾸지 못했습니다: ' + error.message; return; }
+    c(); toast('비밀번호를 바꿨습니다');
+  };
+}
 ['#gEmail', '#gPw', '#gPw2', '#gNick'].forEach(sel => $(sel).addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); gateSubmit(); } }));
 $('#gSwitch').addEventListener('click', () => { ACC.gateMode = ACC.gateMode === 'signup' ? 'login' : 'signup'; gateMsg(''); renderGate(true); });
 $('#gGuest').addEventListener('click', () => {
