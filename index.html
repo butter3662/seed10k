@@ -843,6 +843,16 @@ table.mini{border-collapse:collapse;margin:6px 0}table.mini td,table.mini th{pad
 html.bm-open,html.bm-open body{overflow:hidden}
 /* iOS Safari에서 흐림 효과(backdrop-filter)가 걸린 머리글·탭 막대가 위 레이어를 뚫고 비쳐 보이는 문제: 게임 화면을 연 동안 아예 숨긴다 */
 html.bm-open .top,html.bm-open .tabbar{visibility:hidden}
+.mpc-bar{position:fixed;left:0;right:0;bottom:0;z-index:76;display:flex;gap:8px;padding:8px 10px calc(8px + env(safe-area-inset-bottom));background:color-mix(in srgb,var(--paper) 88%,transparent);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-top:1px solid var(--rule)}
+.mpc-bar input{flex:1;min-width:0;font:inherit;font-size:16px;padding:9px 12px;border-radius:12px;border:1px solid var(--rule);background:var(--surface-2);color:var(--ink)}
+.mpc-bar .btn{flex:none}.mpc-bar[hidden]{display:none}
+.mpc-on #mpOv,.mpc-on #bmOv{padding-bottom:calc(70px + env(safe-area-inset-bottom))}
+#mpBubs{position:fixed;inset:0;z-index:77;pointer-events:none}
+.mpc-bub{position:absolute;left:0;top:0;max-width:min(240px,70vw);padding:7px 11px;border-radius:14px;background:#fff;color:#14181f;font-size:13.5px;font-weight:600;line-height:1.35;box-shadow:0 6px 18px -6px rgba(0,0,0,.45);word-break:break-word;transition:opacity .2s;--tx:50%}
+.mpc-bub::after{content:"";position:absolute;left:var(--tx);bottom:-6px;margin-left:-6px;border:6px solid transparent;border-bottom:0;border-top-color:#fff}
+.mpc-bub.dn::after{bottom:auto;top:-6px;border:6px solid transparent;border-top:0;border-bottom-color:#fff}
+.mpc-bub.free::after{display:none}
+.mpc-bub b{font-weight:800;margin-right:6px;color:#8a6a1f}.mpc-bub b:empty{display:none}
 .bm-ov{position:fixed;inset:0;z-index:70;background:radial-gradient(120% 80% at 50% 0%,color-mix(in srgb,var(--brass) 10%,var(--paper)),var(--paper) 60%);overflow:auto;-webkit-overflow-scrolling:touch;padding:calc(10px + env(safe-area-inset-top)) 8px calc(16px + env(safe-area-inset-bottom));display:flex;flex-direction:column;align-items:center;gap:10px}
 .bm-ov[hidden]{display:none}
 .bm-top{width:min(100%,620px);display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:8px}
@@ -1236,7 +1246,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '2.2.38';
+const VERSION = '2.2.39';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -6494,6 +6504,7 @@ async function mpWs(){
         if (MP.code) ws.send(JSON.stringify({t:'sub', code:MP.code}));
       } else if (m.t === 'res'){ const f = MPW.pend.get(m.id); if (f){ MPW.pend.delete(m.id); f({ok:!!m.ok, err:m.err, res:m.res || {}}); } }
       else if (m.t === 'room' && m.row && m.row.code === MP.code) mpSet(m.row);
+      else if (m.t === 'chat' && m.code === MP.code) mpChatGot(m);
     };
     ws.onclose = ws.onerror = () => { if (MPW.ws !== ws) return; const was = MPW.ok; end(false); if (was && MP.code) setTimeout(() => mpWs(), 1000); };
   });
@@ -6631,7 +6642,8 @@ function mpEnter(code){
 function mpSub(code){
   if (MP.ch){ try { ACC.sb.removeChannel(MP.ch); } catch(e){} MP.ch = null; }
   try {
-    MP.ch = ACC.sb.channel('room-' + code).on('postgres_changes', {event:'*', schema:'public', table:'seed10k_rooms', filter:`code=eq.${code}`}, p => { if (p.new && p.new.code === MP.code) mpSet(p.new); }).subscribe();
+    MP.ch = ACC.sb.channel('room-' + code).on('postgres_changes', {event:'*', schema:'public', table:'seed10k_rooms', filter:`code=eq.${code}`}, p => { if (p.new && p.new.code === MP.code) mpSet(p.new); })
+      .on('broadcast', {event:'chat'}, m => { const p = m && m.payload; if (p && p.code === MP.code) mpChatGot(p); }).subscribe();
   } catch(e){}
   mpWsSub(code);
   clearInterval(MP.poll); MP.poll = setInterval(() => { if (!document.hidden && MP.code) mpFetch(); }, 3000);   // 실시간을 놓칠 때를 위해
@@ -6691,7 +6703,7 @@ function mpRender(){
 }
 function mpSeatsHTML(R, extra){
   const me = mpMe();
-  return `<div class="mp-seats">${R.state.seats.map((s, i) => `<div class="mp-seat ${i === me ? 'me' : ''} ${s.left ? 'left' : ''}"><b>${esc(s.nick)}</b><small>${s.uid === R.host ? '방장' : ''}${i === me ? (s.uid === R.host ? ' · 나' : '나') : ''}${s.left ? ' · 나감' : ''}${extra ? extra(s, i) : ''}</small></div>`).join('')}</div>`;
+  return `<div class="mp-seats">${R.state.seats.map((s, i) => `<div class="mp-seat ${i === me ? 'me' : ''} ${s.left ? 'left' : ''}"><b data-seatnm="${i}">${esc(s.nick)}</b><small>${s.uid === R.host ? '방장' : ''}${i === me ? (s.uid === R.host ? ' · 나' : '나') : ''}${s.left ? ' · 나감' : ''}${extra ? extra(s, i) : ''}</small></div>`).join('')}</div>`;
 }
 function mpLobbyHTML(R){
   const me = mpMe(), host = ACC.user && R.host === ACC.user.id, n = R.state.seats.length, min = MP_MIN[R.game] || 2;
@@ -6784,7 +6796,7 @@ MP_VIEW.oe = R => {
   const st = R.state, g = st.g || {}, me = mpMe(), opp = 1 - me, seats = st.seats;
   const show = MP.view.oeShow && MP.view.oeShow.seq <= st.seq ? MP.view.oeShow : null;
   const over = R.status === 'over';
-  const sc = `<div class="oe-score"><span><b>${esc(seats[me] ? seats[me].nick : '')}</b> (나) <b class="num up">${g.score ? g.score[me] : 0}</b></span><span class="muted">${over ? '끝' : `${g.round}판 · 3점 먼저`}</span><span><b class="num">${g.score ? g.score[opp] : 0}</b> <b>${esc(seats[opp] ? seats[opp].nick : '')}</b></span></div>`;
+  const sc = `<div class="oe-score"><span><b data-seatnm="${me}">${esc(seats[me] ? seats[me].nick : '')}</b> (나) <b class="num up">${g.score ? g.score[me] : 0}</b></span><span class="muted">${over ? '끝' : `${g.round}판 · 3점 먼저`}</span><span><b class="num">${g.score ? g.score[opp] : 0}</b> <b data-seatnm="${opp}">${esc(seats[opp] ? seats[opp].nick : '')}</b></span></div>`;
   let hand, msg, acts = '';
   if (show){
     const iWon = show.pt === me;
@@ -6913,7 +6925,7 @@ function mbjBody(R){
   const over = R.status === 'over';
   const rows = g.order.map(i => {
     const s = st.seats[i], P = g.players[i], turn = !over && g.turn === i, t = BJE.total(P.cards).t, bj = P.cards.length === 2 && t === 21;
-    return `<div class="bj-row mbj-row ${i === me ? 'me' : ''} ${s.left ? 'left' : ''}"><span class="bj-who">${esc(i === me ? '나' : s.nick)}${turn ? '<small>차례</small>' : ''}${s.left ? '<small>나감</small>' : ''}</span><div class="bj-hands">
+    return `<div class="bj-row mbj-row ${i === me ? 'me' : ''} ${s.left ? 'left' : ''}"><span class="bj-who" data-seatnm="${i}">${esc(i === me ? '나' : s.nick)}${turn ? '<small>차례</small>' : ''}${s.left ? '<small>나감</small>' : ''}</span><div class="bj-hands">
       <div class="bj-hand ${turn ? 'cur' : ''}"><div class="bj-cards">${P.cards.map((c, j) => bjCardHTML(c, false, j, `p${i}-${j}-${c}`, V)).join('')}</div>
       <div class="bj-meta"><b class="num">${t > 21 ? `${t} 버스트` : bj ? '블랙잭' : P.done || over ? t : bjTot(P.cards)}</b>${over && P.res ? `<em class="${RES[P.res][1]}">${RES[P.res][0]}${g.pay && g.pay[i] ? ` ${fmtUSD(g.pay[i])}` : ''}</em>` : ''}</div></div></div></div>`;
   }).join('');
@@ -7111,6 +7123,97 @@ document.addEventListener('click', e => {
     $$('#modal [data-bscuff]').forEach(b => b.onclick = () => { c(); mbsSend({op:'use', it, target:+b.dataset.bscuff}); });
   }
 });
+
+/* ── 방 채팅 ──
+   화면 아래 입력칸에서 보내면, 보낸 사람 이름이 보이는 곳(대기실 자리, 점수판, 말 이름표 등)에 말풍선으로 5초 동안 뜬다.
+   보내는 길: 심판 웹소켓(보낸 사람을 서버가 확인해 자리 번호를 붙인다) + Supabase 방 채널 방송(웹소켓이 없는 사람용). 같은 말은 id로 한 번만 보인다.
+   기록은 남기지 않는다 */
+const MPC = {seen:new Set(), bub:[], raf:0, last:0};
+const MPC_MAX = 60, MPC_MS = 5000;
+function mpChatOn(){
+  if (!MP.code || !MP.room || mpMe() < 0 || MP.room.status === 'closed') return false;
+  const ov = $('#mpOv'); if (ov && !ov.hidden) return true;
+  return typeof BMV !== 'undefined' && BMV.mp && bmOpenNow();
+}
+function mpChatSync(){
+  const on = mpChatOn();
+  let bar = $('#mpChat');
+  if (on && !bar){
+    bar = document.createElement('form'); bar.id = 'mpChat'; bar.className = 'mpc-bar'; bar.autocomplete = 'off';
+    bar.innerHTML = `<input id="mpChatIn" type="text" maxlength="${MPC_MAX}" enterkeyhint="send" placeholder="채팅 (${MPC_MAX}자까지)" aria-label="채팅"><button class="btn solid" type="submit">보내기</button>`;
+    bar.addEventListener('submit', e => { e.preventDefault(); mpChatSend(); });
+    document.body.appendChild(bar);
+  }
+  if (bar) bar.hidden = !on;
+  document.documentElement.classList.toggle('mpc-on', on);
+  if (!on && MPC.bub.length){ MPC.bub = []; mpBubDraw(); }
+}
+setInterval(mpChatSync, 300);
+function mpChatSend(){
+  const inp = $('#mpChatIn'); if (!inp) return;
+  const text = inp.value.replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, MPC_MAX);
+  if (!text || !MP.code || mpMe() < 0) return;
+  if (Date.now() - MPC.last < 700) return toast('조금 천천히 보내세요', true);
+  MPC.last = Date.now(); inp.value = '';
+  const me = mpMe(), msg = {id:Date.now().toString(36) + Math.random().toString(36).slice(2, 7), code:MP.code, seat:me, nick:MP.room.state.seats[me].nick, text};
+  mpChatGot(msg);   // 내 말풍선은 바로
+  if (MPW.ok && MPW.ws && MPW.ws.readyState === 1) try { MPW.ws.send(JSON.stringify({t:'chat', code:msg.code, id:msg.id, text})); } catch(e){}
+  try { MP.ch && MP.ch.send({type:'broadcast', event:'chat', payload:msg}); } catch(e){}
+}
+function mpChatGot(m){
+  if (!m || typeof m.text !== 'string' || !m.id || MPC.seen.has(m.id)) return;
+  MPC.seen.add(m.id); if (MPC.seen.size > 300) MPC.seen = new Set([...MPC.seen].slice(-150));
+  const R = MP.room; if (!R) return;
+  let seat = +m.seat;
+  // 웹소켓 길은 서버가 자리를 정해 준다. 방송 길은 보낸 사람이 적은 자리라, 이름이 그 자리와 맞을 때만 그 자리로
+  if (!(seat >= 0 && R.state.seats[seat] && (m.v || R.state.seats[seat].nick === m.nick))) seat = -1;
+  MPC.bub = MPC.bub.filter(b => !(seat >= 0 && b.seat === seat));   // 같은 사람의 앞 말풍선은 바꾼다
+  MPC.bub.push({id:m.id, seat, nick:String(m.nick || '?').slice(0, 12), text:m.text.slice(0, MPC_MAX), until:Date.now() + MPC_MS});
+  if (MPC.bub.length > 8) MPC.bub.shift();
+  mpBubDraw();
+}
+// 말풍선을 붙일 이름 자리: 대기실·홀짝·블랙잭은 data-seatnm, 부루마블은 말 이름표(3D) 또는 패널, 벅샷은 이름
+function mpSeatEl(i){
+  const vis = el => { if (!el) return null; const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0 && r.bottom > 0 && r.top < innerHeight ? el : null; };
+  return vis(document.querySelector(`#mpOv [data-seatnm="${i}"]`)) || vis(document.querySelector(`#bmOv .bm-tag[data-tag="${i}"]`))
+    || vis(document.querySelector(`#bmOv .bm-pl[data-pl="${i}"]`)) || vis(document.querySelector(`#mpOv .bs-p[data-bsi="${i}"] .bs-pn`))
+    || vis(document.querySelector(`#mpOv .bs-p[data-bsi="${i}"]`));
+}
+function mpBubDraw(){
+  cancelAnimationFrame(MPC.raf);
+  const now = Date.now(); MPC.bub = MPC.bub.filter(b => b.until > now);
+  let lay = $('#mpBubs');
+  if (!MPC.bub.length){ if (lay) lay.innerHTML = ''; return; }
+  if (!lay){ lay = document.createElement('div'); lay.id = 'mpBubs'; lay.setAttribute('aria-live', 'polite'); document.body.appendChild(lay); }
+  // 이미 있는 말풍선은 위치만 바꾼다 (깜빡이지 않게)
+  const have = new Map([...lay.children].map(el => [el.dataset.id, el]));
+  const bar = $('#mpChat'), barTop = bar && !bar.hidden ? bar.getBoundingClientRect().top : innerHeight;
+  let stack = 0; const placed = [];
+  for (const b of MPC.bub){
+    let el = have.get(b.id); have.delete(b.id);
+    if (!el){ el = document.createElement('div'); el.className = 'mpc-bub'; el.dataset.id = b.id; el.innerHTML = `<b></b><span></span>`; el.querySelector('span').textContent = b.text; lay.appendChild(el); }
+    const a = b.seat >= 0 ? mpSeatEl(b.seat) : null;
+    el.querySelector('b').textContent = a ? '' : b.nick;
+    el.classList.toggle('free', !a);
+    if (a){
+      const r = a.getBoundingClientRect(), w = el.offsetWidth, h = el.offsetHeight;
+      const x = Math.max(6, Math.min(innerWidth - w - 6, r.left + r.width / 2 - w / 2));
+      const up = r.top - h - 8 > 4;   // 위에 자리가 없으면 아래로
+      let y = up ? r.top - h - 8 : r.bottom + 8;
+      for (let k = 0; k < 6 && placed.some(p => x < p.x + p.w && p.x < x + w && y < p.y + p.h + 4 && p.y < y + h + 4); k++) y += up ? -(h + 4) : h + 4;   // 이름이 겹치면(말이 같은 칸) 말풍선을 쌓는다
+      placed.push({x, y, w, h});
+      el.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px)`;
+      el.classList.toggle('dn', !up);
+      el.style.setProperty('--tx', `${Math.round(Math.max(10, Math.min(w - 10, r.left + r.width / 2 - x)))}px`);
+    } else {   // 이름이 화면에 없으면 입력칸 바로 위에 쌓는다
+      stack += el.offsetHeight + 6;
+      el.style.transform = `translate(10px, ${Math.round(barTop - stack - 4)}px)`;
+    }
+    el.style.opacity = b.until - now < 400 ? String(Math.max(0, (b.until - now) / 400)) : '1';
+  }
+  have.forEach(el => el.remove());
+  MPC.raf = requestAnimationFrame(mpBubDraw);
+}
 
 /* ───────── 관리 탭 (관리자 계정에만 보인다) ─────────
    관리자 여부는 Supabase의 seed10k_admins 표가 정한다 (사이트 코드에 이메일을 넣지 않는다).

@@ -184,8 +184,10 @@ function ticks() {
    사이트 → {t:'auth', token} → {t:'auth', ok}
           → {t:'sub', code}  방 구독 (지금 상태를 바로 받는다)
           → {t:'req', id, code, kind, arg} → {t:'res', id, ok, err, res}
-   심판 → {t:'room', row}  구독한 방이 바뀔 때마다 (seed10k_rooms 한 줄과 같은 모양) */
-type Sock = { ws: WebSocket; uid: string | null; codes: Set<string> };
+          → {t:'chat', code, id, text}  방 채팅 (그 방에 앉은 사람만, 0.6초에 한 번, 60자)
+   심판 → {t:'room', row}  구독한 방이 바뀔 때마다 (seed10k_rooms 한 줄과 같은 모양)
+        → {t:'chat', code, id, seat, nick, text, v:true}  서버가 보낸 사람을 확인한 채팅 */
+type Sock = { ws: WebSocket; uid: string | null; codes: Set<string>; chatAt?: number };
 const socks = new Set<Sock>();
 const roomRow = (room: Room) => ({ code: room.code, game: room.game, mode: room.mode, host: room.host, stake: room.stake, il: room.il, status: room.status, state: room.state, ver: room.ver, updated_at: new Date().toISOString() });
 function broadcast(room: Room) {
@@ -223,6 +225,18 @@ function onSock(ws: WebSocket) {
       await serial(() => loadRoom(m.code)).catch(() => {});
       const room = rooms.get(m.code);
       if (room) send(k, { t: "room", row: roomRow(room) });
+      return;
+    }
+    if (m.t === "chat" && typeof m.code === "string" && typeof m.text === "string") {   // 방 채팅: 저장하지 않고 방 안에만 보낸다
+      const now = Date.now();
+      if (now - (k.chatAt || 0) < 600) return;
+      k.chatAt = now;
+      const room = rooms.get(m.code); if (!room) return;
+      const seat = room.state.seats.findIndex((x: any) => x.uid === k.uid); if (seat < 0) return;
+      const text = m.text.replace(/[\u0000-\u001f\u007f]/g, " ").trim().slice(0, 60); if (!text) return;
+      const id = typeof m.id === "string" && /^[a-z0-9]{4,20}$/.test(m.id) ? m.id : now.toString(36);
+      const msg = JSON.stringify({ t: "chat", code: m.code, id, seat, nick: room.state.seats[seat].nick, text, v: true });
+      for (const o of socks) if (o.codes.has(m.code) && o.ws.readyState === WebSocket.OPEN) try { o.ws.send(msg); } catch { /* */ }
       return;
     }
     if (m.t === "req" && typeof m.code === "string" && typeof m.kind === "string") {
