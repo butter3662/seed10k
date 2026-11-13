@@ -187,7 +187,7 @@ function ticks() {
    사이트 → {t:'auth', token} → {t:'auth', ok}
           → {t:'sub', code}  방 구독 (지금 상태를 바로 받는다)
           → {t:'req', id, code, kind, arg} → {t:'res', id, ok, err, res}
-          → {t:'chat', code, id, text}  방 채팅 (그 방에 앉은 사람만, 0.6초에 한 번, 60자)
+          → {t:'chat', code, id, text, nick}  방 채팅 (앉은 사람과 관전자, 0.6초에 한 번, 60자)
    심판 → {t:'room', row}  구독한 방이 바뀔 때마다 (seed10k_rooms 한 줄과 같은 모양)
         → {t:'chat', code, id, seat, nick, text, v:true}  서버가 보낸 사람을 확인한 채팅 */
 type Sock = { ws: WebSocket; uid: string | null; codes: Set<string>; chatAt?: number };
@@ -235,10 +235,11 @@ function onSock(ws: WebSocket) {
       if (now - (k.chatAt || 0) < 600) return;
       k.chatAt = now;
       const room = rooms.get(m.code); if (!room) return;
-      const seat = room.state.seats.findIndex((x: any) => x.uid === k.uid); if (seat < 0) return;
+      const seat = room.state.seats.findIndex((x: any) => x.uid === k.uid);   // -1이면 관전자 (이름은 보낸 사람이 적은 것)
       const text = m.text.replace(/[\u0000-\u001f\u007f]/g, " ").trim().slice(0, 60); if (!text) return;
       const id = typeof m.id === "string" && /^[a-z0-9]{4,20}$/.test(m.id) ? m.id : now.toString(36);
-      const msg = JSON.stringify({ t: "chat", code: m.code, id, seat, nick: room.state.seats[seat].nick, text, v: true });
+      const nick = seat >= 0 ? room.state.seats[seat].nick : String(m.nick || "관전자").replace(/[<>]/g, "").slice(0, 16);
+      const msg = JSON.stringify({ t: "chat", code: m.code, id, seat, nick, text, v: seat >= 0, spec: seat < 0 });
       for (const o of socks) if (o.codes.has(m.code) && o.ws.readyState === WebSocket.OPEN) try { o.ws.send(msg); } catch { /* */ }
       return;
     }

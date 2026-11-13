@@ -1250,7 +1250,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '2.2.46';
+const VERSION = '2.2.47';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -4203,12 +4203,12 @@ function bmUpdate(){
   if (!BMV.built) bmBuild();
   const ME = bmMe(), V = bmVw(g), pd = g.pending, myTurn = g.turn === ME && !BMV.busy && !g.over;
   const cur = BMV.busy && BMV.actor !== undefined ? BMV.actor : g.turn;   // 애니메이션 중에는 움직이는 사람
-  if (BMV.mp){ mpSetH($('#bmSub'), `${ME < 0 ? '👀 관전 중 · ' : ''}${g.round}바퀴 · 판돈 ${fmtUSD(g.stake)} · <span id="mpTimer"></span>`); }
+  if (BMV.mp){ mpSetH($('#bmSub'), `${ME < 0 ? '👀 관전 중 · ' : ''}${g.round}바퀴 · 판돈 ${fmtUSD(g.stake)} · <span id="mpTimer"></span>${esc(mpWatchTxt())}`); }
   else { const sb = $('#bmSub'); sb._h = null; sb.textContent = `${g.round}바퀴 · 판돈 ${fmtUSD(g.stake)}`; }
   $('#bmSpd').textContent = bmFast() ? '빠르게 ✓' : '빠르게';
   $('#bm3d').textContent = bm3D() ? '3D ✓' : '3D';
   BMV.lastV = V;
-  $('#bmQuit').hidden = g.over; $('#bmQuit').textContent = BMV.mp && ME < 0 ? '관전 끝' : '기권';
+  $('#bmQuit').hidden = g.over || (BMV.mp && ME < 0);   // 관전은 '닫기'로 끝낸다
   BM_SQ.forEach((c, k) => {
     const el = ov.querySelector(`[data-bmsq="${k}"]`); if (!el) return;
     const o = V.own[k];
@@ -6740,8 +6740,12 @@ const mpSpec = () => !!(MP.spec && MP.room && mpMe() < 0);   // 관전 중 (자�
 function mpSub(code){
   if (MP.ch){ try { ACC.sb.removeChannel(MP.ch); } catch(e){} MP.ch = null; }
   try {
-    MP.ch = ACC.sb.channel('room-' + code).on('postgres_changes', {event:'*', schema:'public', table:'seed10k_rooms', filter:`code=eq.${code}`}, p => { if (p.new && p.new.code === MP.code) mpSet(p.new); })
-      .on('broadcast', {event:'chat'}, m => { const p = m && m.payload; if (p && p.code === MP.code) mpChatGot(p); }).subscribe();
+    // 방 채널: 방 상태 변경 + 채팅 방송 + 접속(Presence: 이 방 화면을 보고 있는 사람. 자리에 없는 사람이 관전자)
+    MP.watch = [];
+    const ch = MP.ch = ACC.sb.channel('room-' + code, {config:{presence:{key:ACC.user ? ACC.user.id : 'anon'}}}).on('postgres_changes', {event:'*', schema:'public', table:'seed10k_rooms', filter:`code=eq.${code}`}, p => { if (p.new && p.new.code === MP.code) mpSet(p.new); })
+      .on('broadcast', {event:'chat'}, m => { const p = m && m.payload; if (p && p.code === MP.code) mpChatGot(p); })
+      .on('presence', {event:'sync'}, () => { if (MP.ch === ch) mpWatchSync(ch); })
+      .subscribe(st => { if (st === 'SUBSCRIBED' && ACC.user) try { ch.track({uid:ACC.user.id, nick:mpNick()}); } catch(e){} });
   } catch(e){}
   mpWsSub(code);
   clearInterval(MP.poll); MP.poll = setInterval(() => { if (!document.hidden && MP.code) mpFetch(); }, 3000);   // 실시간을 놓칠 때를 위해
@@ -6756,6 +6760,7 @@ function mpSet(room){
   if (prev && prev.code === room.code && (room.ver || 0) < (prev.ver || 0)) return;   // 늦게 온 옛 상태는 버린다 (웹소켓과 Supabase 양쪽에서 온다)
   MP.room = room;
   if (mpMe() >= 0) mpPendSeated(room.code);
+  if (MP.ch && MP.ch.presenceState && (!prev || prev.state.seats.length !== room.state.seats.length)) try { mpWatchSync(MP.ch); } catch(e){}   // 자리가 바뀌면 관전자 목록도
   if (room.status === 'lobby') MP.view.bjV = null;   // 새 판이면 카드를 처음부터 날아오게
   const ev = room.state.ev;
   if (ev && ev.seq > MP.lastSeq){ MP.lastSeq = ev.seq; mpOnEv(ev, prev); }
@@ -6791,11 +6796,11 @@ function mpRender(){
   const R = MP.room, g = R ? MP_GAMES[R.game] : null;
   if (R && R.game === 'bm' && (R.status === 'play' || R.status === 'over') && (mpMe() >= 0 || MP.spec)){ mbmOpen(); return; }
   if (R && MP_UPD[R.game] && (R.status === 'play' || R.status === 'over') && MP_UPD[R.game](R)){
-    const sm = ov.querySelector('.bm-ttl small'); if (sm) sm.textContent = `${mpSpec() ? '👀 관전 중 · ' : ''}방 ${MP.code || ''} · 달러 통장 ${fmtUSD(S.usd)}`;
+    const sm = ov.querySelector('.bm-ttl small'); if (sm) sm.textContent = `${mpSpec() ? '👀 관전 중 · ' : ''}방 ${MP.code || ''} · 달러 통장 ${fmtUSD(S.usd)}${mpWatchTxt()}`;
     return;
   }
   const body = !R ? '<p class="muted">방을 불러오는 중…</p>' : R.status === 'closed' ? `<p>방이 닫혔습니다.</p><p class="muted">대기실에서 닫힌 방은 판돈을 돌려받습니다.</p>` : R.status === 'lobby' ? mpLobbyHTML(R) : (MP_VIEW[R.game] || (() => ''))(R);
-  ov.innerHTML = `<div class="bm-top"><button class="btn" id="mpClose">닫기</button><div class="bm-ttl"><b>${g ? g.ic + ' ' + g.nm : '👥 같이 하기'}</b><small>${mpSpec() ? '👀 관전 중 · ' : ''}방 ${esc(MP.code || '')} · 달러 통장 ${fmtUSD(S.usd)}</small></div><button class="btn" id="mpLeave">${mpSpec() ? '관전 끝' : '나가기'}</button></div>
+  ov.innerHTML = `<div class="bm-top"><button class="btn" id="mpClose">닫기</button><div class="bm-ttl"><b>${g ? g.ic + ' ' + g.nm : '👥 같이 하기'}</b><small>${mpSpec() ? '👀 관전 중 · ' : ''}방 ${esc(MP.code || '')} · 달러 통장 ${fmtUSD(S.usd)}${esc(mpWatchTxt())}</small></div>${mpSpec() ? '<span class="gm-sp"></span>' : '<button class="btn" id="mpLeave">나가기</button>'}</div>
     <section class="card c-mg gm-body">${body}</section>`;
   mpTick();
   if (R && MP_UPD[R.game] && (R.status === 'play' || R.status === 'over')) MP_UPD[R.game](R);
@@ -7252,8 +7257,8 @@ function mpChatView(){   // 방 화면이 보이는 중 (관전 포함)
   const ov = $('#mpOv'); if (ov && !ov.hidden) return true;
   return typeof BMV !== 'undefined' && BMV.mp && bmOpenNow();
 }
-function mpChatOn(){
-  if (!MP.code || !MP.room || mpMe() < 0 || MP.room.status === 'closed') return false;
+function mpChatOn(){   // 관전자도 칠 수 있다
+  if (!MP.code || !MP.room || MP.room.status === 'closed' || !ACC.user) return false;
   const ov = $('#mpOv'); if (ov && !ov.hidden) return true;
   return typeof BMV !== 'undefined' && BMV.mp && bmOpenNow();
 }
@@ -7274,12 +7279,12 @@ setInterval(mpChatSync, 300);
 function mpChatSend(){
   const inp = $('#mpChatIn'); if (!inp) return;
   const text = inp.value.replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, MPC_MAX);
-  if (!text || !MP.code || mpMe() < 0) return;
+  if (!text || !MP.code || !MP.room) return;
   if (Date.now() - MPC.last < 700) return toast('조금 천천히 보내세요', true);
   MPC.last = Date.now(); inp.value = '';
-  const me = mpMe(), msg = {id:Date.now().toString(36) + Math.random().toString(36).slice(2, 7), code:MP.code, seat:me, nick:MP.room.state.seats[me].nick, text};
+  const me = mpMe(), msg = {id:Date.now().toString(36) + Math.random().toString(36).slice(2, 7), code:MP.code, seat:me, nick:me >= 0 ? MP.room.state.seats[me].nick : mpNick(), text, spec:me < 0};
   mpChatGot(msg);   // 내 말풍선은 바로
-  if (MPW.ok && MPW.ws && MPW.ws.readyState === 1) try { MPW.ws.send(JSON.stringify({t:'chat', code:msg.code, id:msg.id, text})); } catch(e){}
+  if (MPW.ok && MPW.ws && MPW.ws.readyState === 1) try { MPW.ws.send(JSON.stringify({t:'chat', code:msg.code, id:msg.id, text, nick:msg.nick})); } catch(e){}
   try { MP.ch && MP.ch.send({type:'broadcast', event:'chat', payload:msg}); } catch(e){}
 }
 function mpChatGot(m){
@@ -7290,7 +7295,7 @@ function mpChatGot(m){
   // 웹소켓 길은 서버가 자리를 정해 준다. 방송 길은 보낸 사람이 적은 자리라, 이름이 그 자리와 맞을 때만 그 자리로
   if (!(seat >= 0 && R.state.seats[seat] && (m.v || R.state.seats[seat].nick === m.nick))) seat = -1;
   MPC.bub = MPC.bub.filter(b => !(seat >= 0 && b.seat === seat));   // 같은 사람의 앞 말풍선은 바꾼다
-  MPC.bub.push({id:m.id, seat, nick:String(m.nick || '?').slice(0, 12), text:m.text.slice(0, MPC_MAX), until:Date.now() + MPC_MS});
+  MPC.bub.push({id:m.id, seat, nick:(seat < 0 ? '👀 ' : '') + String(m.nick || '?').slice(0, 12), text:m.text.slice(0, MPC_MAX), until:Date.now() + MPC_MS});   // 관전자 말은 입력칸 위에 '👀 이름'으로
   if (MPC.bub.length > 8) MPC.bub.shift();
   mpBubDraw();
 }
@@ -7405,6 +7410,26 @@ function moeSpecHTML(R){
   else if (g.phase === 'hide') msg = `<p class="oe-res muted">${nm(g.hider)}이(가) 구슬을 쥐는 중… <span id="mpTimer"></span></p>`;
   else msg = `<p class="oe-res muted">${nm(1 - g.hider)}이(가) 홀짝을 고르는 중… <span id="mpTimer"></span></p>`;
   return `<div class="card-h"><h2>✊ 홀짝 대결</h2><small>판돈 ${fmtUSD(R.stake)}${R.il ? ' · 🚨 불법' : ''}</small></div>${sc}${hand}${msg}<div class="bm-acts"></div>`;
+}
+
+// 관전자 목록: 방 채널에 접속해 있는데 자리가 없는 사람 (나 빼고)
+function mpWatchSync(ch){
+  const st = ch.presenceState() || {}, R = MP.room, seated = new Set(R ? R.state.seats.map(x => x.uid) : []);
+  const me = ACC.user ? ACC.user.id : '';
+  const list = Object.values(st).map(a => a[a.length - 1]).filter(p => p && p.uid && p.uid !== me && !seated.has(p.uid));
+  const k = list.map(p => p.uid).join(',');
+  if (k === (MP.watchK || '')) return;
+  const before = new Set((MP.watch || []).map(p => p.uid));
+  MP.watch = list; MP.watchK = k;
+  const fresh = list.filter(p => !before.has(p.uid));
+  if (fresh.length && mpMe() >= 0) toast(`👀 ${fresh.map(p => p.nick).join(', ')}님이 관전을 시작했습니다`);
+  mpWatchShow();
+}
+function mpWatchTxt(){ const w = MP.watch || []; return w.length ? ` · 👀 관전 ${w.length}명: ${w.slice(0, 3).map(p => p.nick).join(', ')}${w.length > 3 ? ' 외' : ''}` : ''; }
+function mpWatchShow(){   // 방 화면 제목 줄만 고친다 (판을 다시 그리지 않게)
+  const sm = document.querySelector('#mpOv:not([hidden]) .bm-ttl small');
+  if (sm) sm.textContent = `${mpSpec() ? '👀 관전 중 · ' : ''}방 ${MP.code || ''} · 달러 통장 ${fmtUSD(S.usd)}${mpWatchTxt()}`;
+  if (typeof BMV !== 'undefined' && BMV.mp && bmOpenNow()) bmUpdate();
 }
 
 /* ───────── 관리 탭 (관리자 계정에만 보인다) ─────────
