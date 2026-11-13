@@ -1255,7 +1255,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '2.2.51';
+const VERSION = '2.2.52';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -6211,10 +6211,12 @@ function bs3Frame(now){
   const dealerHolds = shooter === 'op';   // 상대가 쏠 때는 쏘는 사람이 총을 든다
   figs.forEach(f => {
     f.body.updateMatrixWorld(true);
-    const fc = g && g.pl[f.i] && g.pl[f.i].cuffed && !g.pl[f.i].out;
+    const fc = g && g.pl[f.i] && g.pl[f.i].cuffed && !g.pl[f.i].out, dead = !alive(f);
     f.arms.forEach((A2, i) => {
       A2.sh.copy(A2.shL).applyMatrix4(f.body.matrixWorld);
-      if (Lay && f === Fl && F && F.t < 0.6 && ((slotX(F.k) >= 0) === (A2.s > 0))){
+      if (dead){   // 탈락한 사람: 손을 탁자 위에 축 늘어뜨린 채 움직이지 않는다 (숨쉬기·흔들림 없음)
+        A2.p.lerp(bs3S(f, A2.s * 0.24, 0.02, -0.5), bs3Damp(6, dt));
+      } else if (Lay && f === Fl && F && F.t < 0.6 && ((slotX(F.k) >= 0) === (A2.s > 0))){
         // 탄 하나 넣기 (0.56초): 집으러 가기 → 쥐기 → 약실로 → 밀어 넣기 → 돌아오기
         const sp = slotP(F.k).add(new T.Vector3(0, 0.02, 0)), lp = W(O.GP.load).add(new T.Vector3(0, 0.025, 0)), hov = bs3S(Fl, A2.s * 0.22, 0.12, -0.45);
         const t = F.t / 0.56;
@@ -6265,13 +6267,13 @@ function bs3Frame(now){
       B.rotation.x = -back + fwd * 1.05 - bounce; B.position.y = -fwd * 0.12; B.rotation.z = fwd * 0.12;
     } else { B.rotation.x *= 0.9; B.rotation.z *= 0.9; B.position.y *= 0.9; }
     const hit = !A.hitMe && A.hitT < 0.6 && BSV.flash === 'p' + f.i ? Math.exp(-A.hitT * 6) : 0;
-    if (f.torso) f.torso.scale.y = 1 + Math.sin(A.t * 1.6 + f.i) * 0.008;
+    if (f.torso) f.torso.scale.y = out ? 1 : 1 + Math.sin(A.t * 1.6 + f.i) * 0.008;   // 탈락하면 숨쉬기도 멈춘다
     const act = f === Fa;
     const look = Lay && f === Fl ? 0.35 : act && I && I.by === 'op' && I.it === 'glass' ? 0.45 : act && I && I.by === 'op' && I.it === 'beer' && iu > 0.3 && iu < 0.75 ? -0.35 : act && shooter === 'op' ? 0.1 : 0.05;
     f.head.rotation.x += ((out ? 0.75 : look + Math.sin(A.t * 0.7 + f.i * 2) * 0.03 - hit * 0.6) - f.head.rotation.x) * bs3Damp(8, dt);
     // 여럿이면 지금 움직이는 사람 쪽을 본다 (나 자신이면 앞을)
     const yaw = multi && !act && Fa && !out ? Math.atan2(Fa.seat.position.x - f.seat.position.x, 0.6) * 0.5 - f.seat.rotation.y * 0.5 : 0;
-    f.head.rotation.y += ((Math.sin(A.t * 0.43 + f.i) * 0.06 + yaw) - f.head.rotation.y) * bs3Damp(4, dt);
+    f.head.rotation.y += ((out ? 0 : Math.sin(A.t * 0.43 + f.i) * 0.06 + yaw) - f.head.rotation.y) * bs3Damp(4, dt);
     f.head.position.z = -hit * 0.06;
     const fl2 = out ? 0.15 : 3 + Math.sin(A.t * 23 + f.i * 5) * 0.25 + (Math.random() < 0.01 ? -2 : 0);
     f.eyeM.emissiveIntensity = fl2 * 0.5; if (f.eyeG) f.eyeG.material.opacity = out ? 0 : 0.55 + (fl2 - 3) * 0.3; if (f.eyeL) f.eyeL.intensity = out ? 0.01 : fl2 * 0.05;
