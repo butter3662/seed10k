@@ -1234,7 +1234,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '2.2.32';
+const VERSION = '2.2.33';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -9125,12 +9125,40 @@ $('#gForgot').addEventListener('click', async () => {
       const m = String(error.message || '');
       return gateMsg(/not authorized/i.test(m) ? '아직 메일 발송 설정이 끝나지 않아 보낼 수 없습니다. 관리자에게 알려 주세요.' : /rate|security purposes|seconds/i.test(m) ? '잠시 뒤에 다시 시도하세요 (메일을 너무 자주 보냈습니다).' : '메일을 보내지 못했습니다: ' + m, true);
     }
-    gateMsg(`${email}로 재설정 메일을 보냈습니다. 메일의 링크를 누르면 여기서 새 비밀번호를 정할 수 있습니다. (가입한 주소가 아니면 메일이 가지 않습니다)`);
+    gateMsg(`${email}로 재설정 메일을 보냈습니다. 메일에 적힌 인증 코드를 입력하세요. (가입한 주소가 아니면 메일이 가지 않습니다)`);
+    pwCodeDialog(email);
   } catch(e){ gateMsg('메일을 보내지 못했습니다: ' + errText(e), true); }
   finally { ACC.busy = false; }
 });
+// 메일의 인증 코드로 재설정: 코드 확인 → 그 계정으로 로그인됨 → 새 비밀번호 저장
+let PW_CODE_ON = false;
+function pwCodeDialog(email){
+  PW_CODE_ON = true;
+  const c = showModal(`<h2>🔑 비밀번호 재설정</h2><p class="muted">${esc(email)}로 보낸 메일의 인증 코드와 새 비밀번호를 입력하세요. 메일이 안 보이면 스팸함도 확인하세요.</p>
+    <input id="rcode" inputmode="numeric" autocomplete="one-time-code" maxlength="10" placeholder="인증 코드" style="width:100%;margin:6px 0;letter-spacing:.2em">
+    <input id="rpw1" type="password" placeholder="새 비밀번호 (6자 이상)" autocomplete="new-password" style="width:100%;margin:6px 0">
+    <input id="rpw2" type="password" placeholder="새 비밀번호 확인" autocomplete="new-password" style="width:100%;margin:6px 0">
+    <p class="gate-msg" id="rpwMsg"></p>
+    <div class="acts"><button class="btn" data-close>닫기</button><button class="btn solid" id="rpwGo">바꾸기</button></div>`);
+  $('#rpwGo').onclick = async () => {
+    const code = $('#rcode').value.replace(/\s/g, ''), a = $('#rpw1').value, b = $('#rpw2').value, msg = $('#rpwMsg');
+    if (!/^\d{6,10}$/.test(code)){ msg.textContent = '메일에 적힌 숫자 코드를 그대로 입력하세요.'; return; }
+    if (a.length < 6){ msg.textContent = '새 비밀번호는 6자 이상으로 정하세요.'; return; }
+    if (a !== b){ msg.textContent = '두 비밀번호 칸이 서로 다릅니다.'; return; }
+    $('#rpwGo').disabled = true; msg.textContent = '확인하는 중입니다.';
+    try {
+      const v = await ACC.sb.auth.verifyOtp({email, token:code, type:'recovery'});
+      if (v.error){ msg.textContent = /expired|invalid/i.test(v.error.message) ? '코드가 틀렸거나 만료됐습니다. 최근 메일의 코드인지 확인하세요.' : '확인하지 못했습니다: ' + v.error.message; return; }
+      const {error} = await ACC.sb.auth.updateUser({password:a});
+      if (error){ msg.textContent = '바꾸지 못했습니다: ' + error.message; return; }
+      c(); toast('비밀번호를 바꿨습니다');
+    } catch(e){ msg.textContent = '바꾸지 못했습니다: ' + errText(e); }
+    finally { const g = $('#rpwGo'); if (g) g.disabled = false; setTimeout(() => { PW_CODE_ON = false; }, 3000); }
+  };
+}
 // 재설정 링크로 들어왔을 때: 새 비밀번호 정하기
 function pwRecoverDialog(){
+  if (PW_CODE_ON) return;
   const c = showModal(`<h2>🔑 새 비밀번호 정하기</h2><p class="muted">재설정 링크로 들어왔습니다. 새 비밀번호를 정하세요 (6자 이상).</p>
     <input id="rpw1" type="password" placeholder="새 비밀번호" autocomplete="new-password" style="width:100%;margin:6px 0">
     <input id="rpw2" type="password" placeholder="새 비밀번호 확인" autocomplete="new-password" style="width:100%;margin:6px 0">
