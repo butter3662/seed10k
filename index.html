@@ -726,6 +726,10 @@ html.gated body{overflow:hidden}
 @keyframes bsSpin{to{transform:rotate(360deg)}}
 .bs3-slot{position:absolute;inset:0;z-index:0}.bs3-slot[data-bsgun]{cursor:pointer}
 .bs3-canvas{display:block;width:100%;height:100%}
+.bs3-tags{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.bs3-tag{position:absolute;left:0;top:0;padding:3px 9px;border-radius:999px;background:rgba(10,8,8,.72);border:1px solid rgba(255,255,255,.18);color:#f2e9dc;font-size:12px;font-weight:800;white-space:nowrap;max-width:40%;overflow:hidden;text-overflow:ellipsis;transition:opacity .2s}
+.bs3-tag.turn{background:var(--brass);color:#1a1208;border-color:transparent}
+.bs3-tag.out{opacity:.4;text-decoration:line-through}
 .bs-stage.bs3::before{opacity:.5}
 .bs-stage.bs3.bang::after{animation-duration:.25s}
 .bs-stage.bs3 .bs-count{z-index:2;text-shadow:0 1px 2px #000}
@@ -1246,7 +1250,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '2.2.43';
+const VERSION = '2.2.44';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -5492,7 +5496,7 @@ function bsTableHTML(g, me, o){
   };
   const opp = g.pl.map((p, k) => (me + 1 + k) % g.pl.length).filter(i => i !== me).map(i => seat(g.pl[i], i, false)).join('');   // 내 다음 자리부터: 3D 탁자의 왼쪽 → 오른쪽 순서와 같다
   const msg = BSV.msg || (g.over ? (g.win === me ? '🏆 WIN!' : g.quit && g.quitHalf ? '🏃 기권하고 자리를 떴다' : g.quit ? '🏳️ 기권했다' : '💀 졌다') : myTurn ? (BSV.hold ? (BSV.aimT !== null && BSV.aimT !== undefined ? `${BSV.aimT === me ? '나' : esc(g.pl[BSV.aimT].nm)}에게 겨눴다` : '누구를 쏠까? (아이템은 총을 내려놓고 쓸 수 있다)') : '아이템을 쓰거나 총을 드세요') : `${esc(g.pl[g.turn].nm)} 차례…`);
-  const s3 = bs3Want(); BS3.ctx = {g, me};
+  const s3 = bs3Want(); BS3.ctx = {g, me, solo:!!o.solo};
   const aim = BSV.aim || (myTurn && BSV.hold && BSV.aimT !== null && BSV.aimT !== undefined ? (BSV.aimT === me ? 'down' : 'up') : 'rest');
   return `${o.solo ? '' : !g.over && o.mine ? '<div class="bs-quit"><button class="btn" data-bsdo="quit">기권</button></div>' : '<div class="bs-quit"></div>'}<div class="bs-table">
     <div class="bs-opps n${g.n - 1}">${opp}</div>
@@ -5978,6 +5982,8 @@ function bs3Mount(){
   if (!slot) return;
   const c = BS3.R.domElement;
   if (c.parentNode !== slot) slot.appendChild(c);
+  if (!BS3.tags){ BS3.tags = document.createElement('div'); BS3.tags.className = 'bs3-tags'; }
+  if (BS3.tags.parentNode !== slot) slot.appendChild(BS3.tags);
   if (!BS3.raf){ BS3.a.last = performance.now(); BS3.raf = requestAnimationFrame(bs3Frame); }
 }
 // 총 방향: 총구(모형의 −x)가 dir을 보게. mode 'side'는 탁자에 옆으로 눕힘, 'flip'은 뒤집어 탄 넣는 곳이 위로
@@ -6277,6 +6283,28 @@ function bs3Frame(now){
   BS3.R.toneMappingExposure = 1.15 * (1 - 0.8 * bs3Ease((A.meFall - 1.4) / 1.6) * (1 - up2)) * black;
   BS3.black = black;
   BS3.R.render(BS3.scene, BS3.cam);
+  bs3Tags(figs, g, me, w, h);
+}
+// 인물 머리 위 이름표: 머리 위치를 화면 좌표로 옮겨 HTML로 띄운다 (글자가 또렷하게). 차례인 사람은 밝게, 탈락하면 흐리게
+function bs3Tags(figs, g, me, w, h){
+  const box = BS3.tags; if (!box) return;
+  box.hidden = !g || (BS3.ctx && BS3.ctx.solo);   // 혼자 할 때 상대는 딜러뿐이라 이름표를 달지 않는다
+  if (box.hidden) return;
+  const T = BS3.T;
+  while (box.children.length < figs.length){ const el = document.createElement('span'); el.className = 'bs3-tag'; box.appendChild(el); }
+  [...box.children].forEach((el, j) => {
+    const f = figs[j]; if (!f){ el.hidden = true; return; }
+    const p = g.pl[f.i]; if (!p){ el.hidden = true; return; }
+    const v = f.head.getWorldPosition(new T.Vector3()); v.y += 0.24 * f.seat.scale.y; v.project(BS3.cam);
+    if (v.z > 1 || BS3.black < 0.2){ el.hidden = true; return; }
+    el.hidden = false;
+    const nm = p.nm || '?'; if (el.textContent !== nm) el.textContent = nm;
+    el.dataset.tagi = f.i;
+    el.classList.toggle('turn', !g.over && g.turn === f.i && !p.out);
+    el.classList.toggle('out', !!p.out);
+    const y = Math.max(52, Math.round((1 - v.y) / 2 * h));   // 위로 잘리지 않게, 왼쪽 위 탄 개수 줄 아래로
+    el.style.transform = `translate(${Math.round((v.x + 1) / 2 * w)}px, ${y}px) translate(-50%, -100%)`;
+  });
 }
 // 잘린 총신 조각: 탁자로 떨어져 구른다 (탄피와 같이 다음 장전 때 치운다)
 function bs3Chop(){
@@ -7255,7 +7283,7 @@ function mpChatGot(m){
 function mpSeatEl(i){
   const vis = el => { if (!el) return null; const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0 && r.bottom > 0 && r.top < innerHeight ? el : null; };
   return vis(document.querySelector(`#mpOv [data-seatnm="${i}"]`)) || vis(document.querySelector(`#bmOv .bm-tag[data-tag="${i}"]`))
-    || vis(document.querySelector(`#bmOv .bm-pl[data-pl="${i}"]`)) || vis(document.querySelector(`#mpOv .bs-p[data-bsi="${i}"] .bs-pn`))
+    || vis(document.querySelector(`#bmOv .bm-pl[data-pl="${i}"]`)) || vis(document.querySelector(`#mpOv .bs3-tag[data-tagi="${i}"]:not([hidden])`)) || vis(document.querySelector(`#mpOv .bs-p[data-bsi="${i}"] .bs-pn`))
     || vis(document.querySelector(`#mpOv .bs-p[data-bsi="${i}"]`));
 }
 function mpBubDraw(){
