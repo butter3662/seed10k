@@ -1236,7 +1236,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '2.2.37';
+const VERSION = '2.2.38';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -7195,6 +7195,7 @@ function admSrvHTML(){
   const rows = Array.isArray(ADM.cmds) ? ADM.cmds.map(x => `<li><small class="muted">${admT(x.at)}</small> ${x.done ? (x.ok ? '✅' : '⚠️') + ' ' + esc(x.result || '') : '⏳ 파이가 처리하기를 기다리는 중 (1분 안)'}</li>`).join('') : '';
   return `<div class="card-h"><h2>🖥️ 게임 서버</h2><small>${alive ? '<b class="srv-on">● 켜짐</b>' : '<b class="srv-off">● 꺼짐</b>'}</small></div>
     <p class="muted" style="margin:0 0 8px">${s ? `마지막 신호 ${age}초 전 · 진행 중인 방 ${s.rooms || 0}개${s.ver ? ` · 코드 ${esc(s.ver)}` : ''}${s.started ? ` · ${admT(s.started)}에 켜짐` : ''}` : '신호 없음'}</p>
+    ${s ? `<p style="margin:0 0 8px">직통 연결(웹소켓): ${s.ws ? `<b class="srv-on">● 켜짐</b> <small class="muted">접속 ${s.socks || 0}개</small>` : '<b class="srv-off">● 꺼짐</b> <small class="muted">Supabase를 거쳐 처리 중 (느림)</small>'}</p>` : ''}
     ${ADM.cmds && ADM.cmds.err ? `<p class="down">버튼을 쓰려면 SQL(supabase/seed10k_admin_cmds.sql)을 먼저 실행하세요 (${esc(ADM.cmds.err)})</p>` : ''}
     ${rows ? `<ul class="adm-cmds">${rows}</ul>` : ''}
     <div class="mg-foot"><span class="muted">새 커밋이 있으면 파이가 1분 안에 알아서 받습니다</span><button class="btn solid" id="admUpd" ${pend || (ADM.cmds && ADM.cmds.err) ? 'disabled' : ''}>서버 업데이트</button></div>`;
