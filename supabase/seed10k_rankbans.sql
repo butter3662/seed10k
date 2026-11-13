@@ -5,6 +5,7 @@ create table if not exists public.seed10k_rank_bans (
   at timestamptz not null default now(),
   reason text
 );
+alter table public.seed10k_rank_bans add column if not exists nick text;   -- 밴할 때의 닉네임 (관리 탭 목록용)
 alter table public.seed10k_rank_bans enable row level security;
 drop policy if exists "seed10k_rank_bans_select" on public.seed10k_rank_bans;
 drop policy if exists "seed10k_rank_bans_insert_admin" on public.seed10k_rank_bans;
