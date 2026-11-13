@@ -1255,7 +1255,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '2.3.0';
+const VERSION = '2.3.1';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -4064,11 +4064,13 @@ function bmSetup(){
     const bet = Math.round((parseFloat(UI.bmBet) || 0) * 100) / 100, max = gamMax('bm');
     const b2 = bmToday();
     if (b2.cur || bmLockLeft() || !(bet >= BM.minBet && bet <= max)) return;
-    S.usd = Math.round((S.usd - bet) * 100) / 100;
+    const key = `bm:${Date.now().toString(36)}`;
+    S.usd = Math.round((S.usd - bet) * 100) / 100; betPaid(key, bet);
     b2.n++; b2.cur = BME.newGame(UI.bmN + 1, bet, Math.random); b2.cur.il = gamIl();
     UI.bmBet = '';
     commit(); close();
     setTimeout(bmOpen, 200);
+    setTimeout(() => betAudit(key, bet, '부루마블'), 200 + BET_AUDIT_MS);   // 시작 3초 뒤 판돈이 정확히 한 번 빠졌는지
   };
 }
 
@@ -4610,6 +4612,31 @@ const ilAcc = () => gamS().ilAcc || 0;   // 불법 도박 누적 순이익 (달�
 const gamIl = () => !!gamS().il;
 const gamMax = k => Math.min(gamIl() ? GAM[k].on : GAM[k].off, Math.floor(Math.max(0, S.usd)));
 // 판돈 고르기 공통 화면. onStart(bet)
+/* ── 판돈 장부 ──
+   판돈이 실제로 빠질 때마다 판 열쇠(key)와 금액을 한 줄씩 적고, 판이 시작하고 3초 뒤 그 판의 줄이 정확히 하나인지 확인한다.
+   0줄이면(안 빠졌으면) 지금 청구하고, 2줄 이상이면(두 번 빠졌으면) 남는 만큼 돌려준다. 혼자 하기·같이 하기 모두 */
+function betBook(){ const G = gamS(); if (!Array.isArray(G.bets)) G.bets = []; return G.bets; }
+function betPaid(key, amt){ const L = betBook(); L.push({k:key, a:Math.round(+amt * 100) / 100, t:Date.now()}); if (L.length > 300) L.splice(0, L.length - 300); }
+const betHas = key => betBook().some(x => x.k === key);
+function betAudit(key, amt, nm){
+  const L = betBook(), mine = L.filter(x => x.k === key), n = mine.length;
+  amt = Math.round(+amt * 100) / 100;
+  if (n === 1 || !(amt > 0)) return n;
+  if (n === 0){
+    const od = spendUSD(amt); betPaid(key, amt);
+    altLog('gamble', `🧾 ${nm} 판돈 확인: 빠지지 않아 청구`, -amt, 'USD');
+    toast(`🧾 ${nm}: 판돈 ${fmtUSDn(amt)}이 빠지지 않아 지금 냈습니다${od > 0 ? ` (마이너스통장 ${fmtUSDn(od)})` : ''}`);
+  } else {
+    const extra = Math.round(amt * (n - 1) * 100) / 100;
+    let keep = false; for (let i = 0; i < L.length; i++) if (L[i].k === key){ if (keep){ L.splice(i, 1); i--; } else keep = true; }
+    receiveUSD(extra);
+    altLog('gamble', `🧾 ${nm} 판돈 확인: ${n}번 빠져 ${n - 1}번분 돌려줌`, extra, 'USD');
+    toast(`🧾 ${nm}: 판돈이 ${n}번 빠져 ${fmtUSDn(extra)}을 돌려받았습니다`);
+  }
+  commit();
+  return n;
+}
+const BET_AUDIT_MS = 3000;
 function betDialog(k, title, extraHTML, onStart, noPay){   // noPay: 판돈을 여기서 빼지 않는다 (같이 하기: 판이 시작할 때 서버가 가져간다)
   const G = GAM[k];
   if (typeof gmHide === 'function') gmHide();   // 판이 끝난 게임 화면에서 '새 게임'을 누르면 그 화면을 닫고 판돈 창만 띄운다 (창 두 겹 방지). 시작하면 onStart가 다시 연다
@@ -4635,10 +4662,12 @@ function betDialog(k, title, extraHTML, onStart, noPay){   // noPay: 판돈을 �
   $('#betGo').onclick = () => {
     const bet = Math.round((parseFloat(UI.betIn[k]) || 0) * 100) / 100;
     if (!(bet >= G.min && bet <= gamMax(k))) return;
-    if (!noPay) S.usd = Math.round((S.usd - bet) * 100) / 100;
+    const key = `${k}:${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
+    if (!noPay){ S.usd = Math.round((S.usd - bet) * 100) / 100; betPaid(key, bet); }
     UI.betIn[k] = '';
     close();
     setTimeout(() => onStart(bet), 180);
+    if (!noPay) setTimeout(() => betAudit(key, bet, G.nm), 180 + BET_AUDIT_MS);   // 같이 하기(noPay)는 시작할 때 따로 확인한다
   };
 }
 // 판이 끝날 때. il: 그 판을 불법 모드로 시작했는지. 단속되면 true
@@ -6782,6 +6811,13 @@ function mpSet(room){
   if (prev && prev.code === room.code && (room.ver || 0) < (prev.ver || 0)) return;   // 늦게 온 옛 상태는 버린다 (웹소켓과 Supabase 양쪽에서 온다)
   MP.room = room;
   if (mpMe() >= 0) mpPendSeated(room.code);
+  // 판이 시작했다 → 3초 뒤 판돈 장부 확인 (시작 번호가 바뀐 것을 처음 본 때 한 번)
+  const meS = mpMe() >= 0 ? room.state.seats[mpMe()] : null;
+  if (meS && meS.pay === 'start' && room.state.startN && room.status !== 'lobby'){
+    const bk = `mp:${room.code}:${room.state.startN}`;
+    if (!MP.audited) MP.audited = new Set();
+    if (!MP.audited.has(bk)){ MP.audited.add(bk); setTimeout(() => mpBetAudit(room, bk), BET_AUDIT_MS); }
+  }
   if (MP.ch && MP.ch.presenceState && (!prev || prev.state.seats.length !== room.state.seats.length)) try { mpWatchSync(MP.ch); } catch(e){}   // 자리가 바뀌면 관전자 목록도
   if (room.status === 'lobby') MP.view.bjV = null;   // 새 판이면 카드를 처음부터 날아오게
   const ev = room.state.ev;
@@ -6905,8 +6941,10 @@ async function mpClaim(){
       const {data:got} = await ACC.sb.from('seed10k_payouts').update({claimed_at:new Date().toISOString()}).eq('id', p.id).is('claimed_at', null).select('id');
       if (!got || !got.length) continue;
       const amt = +p.amount || 0, net = Math.round((amt - (+p.cost || 0)) * 100) / 100;
+      const bk = amt < 0 ? mpBetKey(p.code, p.note) : null;
+      if (bk && betHas(bk)) continue;   // 이 판의 판돈은 이미 장부에 있다 (시작 확인 때 먼저 청구했거나 이미 냄) → 두 번 빼지 않는다
       if (amt > 0) receiveUSD(amt);
-      else if (amt < 0) spendUSD(-amt);   // 판이 시작할 때 서버가 가져가는 판돈 (모자라면 마이너스통장)
+      else if (amt < 0){ spendUSD(-amt); if (bk) betPaid(bk, -amt); }   // 판이 시작할 때 서버가 가져가는 판돈 (모자라면 마이너스통장)
       const gnm = (MP_GAMES[p.game] || {}).nm || '같이 하기';
       altLog('gamble', amt < 0 ? `👥 ${gnm} 판돈 냄` : `👥 ${p.note || gnm}${p.il ? ' (불법)' : ''}`, amt < 0 ? amt : net, 'USD');
       commit();
@@ -7472,6 +7510,24 @@ function mpLogDraw(){
   box.innerHTML = rows.map(x => `<div class="mpc-l ${now - x.at > MPC_LOG_MS - 3000 ? 'fade' : ''} ${x.me ? 'me' : ''}"><b>${x.spec ? '👀 ' : ''}${esc(x.nick)}</b> ${esc(x.text)}</div>`).join('');
 }
 setInterval(mpLogDraw, 1000);
+
+// 판돈 장부 열쇠: 방 코드 + 서버가 적은 시작 번호 ('판돈 냄 #3'). 번호가 없는 예전 줄은 장부에 넣지 않는다
+function mpBetKey(code, note){ const m = /#(\d+)/.exec(note || ''); return code && m ? `mp:${code}:${m[1]}` : null; }
+// 같이 하기 판이 시작하고 3초 뒤: 서버가 낸 '판돈 냄' 줄을 받았는지 보고, 장부에 이 판 줄이 정확히 하나인지 맞춘다
+async function mpBetAudit(room, bk){
+  if (!ACC.user || !ACC.sb) return;
+  const nm = (MP_GAMES[room.game] || {}).nm || '같이 하기', n = room.state.startN;
+  if (room.mode !== S.mode) return;   // 다른 모드 판은 그 모드 통장에서
+  await mpClaim();
+  if (betHas(bk)) return betAudit(bk, room.stake, nm);   // 1줄이면 그대로, 2줄 이상이면 남는 만큼 돌려준다
+  // 장부에 없다: 서버 줄을 찾아본다
+  const {data, error} = await ACC.sb.from('seed10k_payouts').select('id,amount,claimed_at,note').eq('user_id', ACC.user.id).eq('code', room.code).lt('amount', 0).like('note', `%#${n}`).limit(5);
+  if (error) return;   // 확인하지 못하면 다음 받기 때 (서버 줄이 있으면 그때 빠진다)
+  const row = (data || [])[0];
+  if (row && !row.claimed_at){ await mpClaim(); if (betHas(bk)) return; }
+  if (row && row.claimed_at) return;   // 다른 기기(탭)가 이미 받아 그쪽 통장에서 빠졌다
+  betAudit(bk, room.stake, nm);   // 서버가 줄을 안 만들었다 → 지금 청구 (나중에 줄이 생겨도 장부에 있으니 두 번 빼지 않는다)
+}
 
 /* ───────── 관리 탭 (관리자 계정에만 보인다) ─────────
    관리자 여부는 Supabase의 seed10k_admins 표가 정한다 (사이트 코드에 이메일을 넣지 않는다).

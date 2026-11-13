@@ -35,8 +35,10 @@ function refundAll(room, note) {
   return room.state.seats.filter((s) => s.pay !== "start").map((s) => ({user_id: s.uid, amount: room.stake, cost: room.stake, il: false, note}));
 }
 // 시작할 때 판돈 가져가기: 금액이 음수인 줄 (amount = cost = -판돈 → 순손익 0으로 세고, 끝날 때 줄이 amount − cost로 판 전체 손익이 된다)
+// note의 '#번호'는 이 방에서 몇 번째 시작인지: 사이트가 판돈 장부의 열쇠(방 코드 + 번호)로 써서, 같은 판의 판돈을 두 번 빼지 않고 빠졌는지 확인한다
 function chargeAll(room) {
-  return room.state.seats.filter((s) => s.pay === "start").map((s) => ({user_id: s.uid, amount: -room.stake, cost: -room.stake, il: false, note: "판돈 냄"}));
+  const n = room.state.startN = (room.state.startN || 0) + 1;
+  return room.state.seats.filter((s) => s.pay === "start").map((s) => ({user_id: s.uid, amount: -room.stake, cost: -room.stake, il: false, note: `판돈 냄 #${n}`}));
 }
 const seatOf2 = (uid, a) => ({uid, nick: nick(a.nick), ...(a.payAtStart ? {pay: "start"} : {})});
 export function gameOf(k) { return GAMES[k]; }
@@ -118,7 +120,7 @@ export function handle(room0, priv0, req, now = Date.now(), rnd = Math.random) {
       if (room.status !== "over") return {err: "판이 끝난 뒤에 다시 열 수 있습니다"};
       if (a.il !== undefined && !!a.il !== room.il) return {err: "불법 모드 설정이 방과 다릅니다"};
       room.status = "lobby";
-      room.state = {seats: [seatOf2(uid, {nick: st.seats[me].nick, payAtStart: a.payAtStart})], maxP: st.maxP, seq: st.seq, at: now, prev: G.summary ? G.summary(room) : null};
+      room.state = {seats: [seatOf2(uid, {nick: st.seats[me].nick, payAtStart: a.payAtStart})], maxP: st.maxP, seq: st.seq, startN: st.startN || 0, at: now, prev: G.summary ? G.summary(room) : null};
       for (const k of Object.keys(priv)) delete priv[k];
       bump(room, {t: "again"});
       return {room, priv, payouts: [], res: {}};
