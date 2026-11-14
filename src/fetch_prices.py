@@ -1,0 +1,308 @@
+"""SEED 10K 실제 시세 수집 스크립트 (GitHub Actions 안에서 실행된다).
+
+만드는 파일
+  data/prices.json      2026-10-23부터의 일별 종가 + 장중 최신가, 원/달러 환율 (게임 전체가 1분마다 읽는다)
+  data/c/<종목>.json     종목 상세 차트용: 5분 봉(5거래일), 1시간 봉(1개월), 일봉(2년, 거래량 포함), 주봉(10년), 월봉(전체)
+  data/hist.json        일·주·월봉 묶음. 하루 한 번만 새로 받고, 나머지 실행에서는 직전 배포본을 재사용한다.
+
+날짜는 1970-01-01부터의 일수(정수), 장중 시각은 유닉스 초(정수)로 저장해 파일 크기를 줄인다.
+인자: --out _site/data --prev prev   (prev 폴더에 직전 prices.json, hist.json 이 있으면 사용)
+"""
+import argparse
+import datetime as dt
+import json
+import math
+import os
+import pathlib
+import re
+import sys
+import time
+
+import pandas as pd
+import yfinance as yf
+
+START = "2026-10-23"
+FX_SYMBOL = "KRW=X"  # 1달러당 원
+
+_html = pathlib.Path("index.html").read_text(encoding="utf-8")
+_data = json.loads(re.search(r"const DATA = (\{.*?\});\n", _html, re.S).group(1))
+SYMBOLS = {}
+for _s in _data["kr"]:
+    SYMBOLS[_s["id"]] = {"y": _s["t"] + (".KQ" if _s["x"] == "KOSDAQ" else ".KS"), "m": "KR"}
+for _s in _data["us"]:
+    SYMBOLS[_s["id"]] = {"y": _s["t"], "m": "US"}
+EPOCH = dt.date(1970, 1, 1)
+EXCH_TZ = {"KR": "Asia/Seoul", "US": "America/New_York"}
+
+
+def is_weekday(d):
+    return dt.date.fromisoformat(d).weekday() < 5
+
+
+def drop_weekends(dates, rows):
+    """토·일요일 날짜는 거래일이 아니므로 뺀다 (시간대 착오로 끼어든 날짜 정리)."""
+    keep = [k for k, d in enumerate(dates) if is_weekday(d)]
+    if len(keep) == len(dates):
+        return dates, rows
+    print(f"주말 날짜 제거: {[d for d in dates if not is_weekday(d)]}")
+    return [dates[k] for k in keep], {sid: [vals[k] for k in keep] for sid, vals in rows.items()}
+
+
+def download(symbols, tries=3, vols=None, lows=None, highs=None, **kw):
+    """여러 종목을 한 번에 받아 {야후심볼: 종가 Series} 로 돌려준다.
+    vols에 dict를 넘기면 같은 요청의 거래량도 {야후심볼: 거래량 Series}로 채운다 (요청을 늘리지 않는다)."""
+    out = {}
+    pending = list(symbols)
+    for attempt in range(tries):
+        if not pending:
+            break
+        try:
+            df = yf.download(pending, group_by="ticker", auto_adjust=False, actions=False,
+                             progress=False, threads=True, timeout=30, **kw)
+        except Exception as e:
+            print(f"download error {kw} (try {attempt + 1}): {e}", file=sys.stderr)
+            time.sleep(5)
+            continue
+        for sym in pending:
+            try:
+                col = df[sym]["Close"] if isinstance(df.columns, pd.MultiIndex) else df["Close"]
+            except KeyError:
+                continue
+            col = col.dropna()
+            if len(col):
+                out[sym] = col
+                for dst, field in ((vols, "Volume"), (lows, "Low"), (highs, "High")):
+                    if dst is None:
+                        continue
+                    try:
+                        dst[sym] = df[sym][field] if isinstance(df.columns, pd.MultiIndex) else df[field]
+                    except KeyError:
+                        pass
+        pending = [s for s in pending if s not in out]
+        if pending:
+            time.sleep(3)
+    return out
+
+
+def to_date(idx):
+    return pd.Timestamp(idx).strftime("%Y-%m-%d")
+
+
+def day_num(idx):
+    return (pd.Timestamp(idx).date() - EPOCH).days
+
+
+def rnd(m, v):
+    return round(float(v)) if m == "KR" else round(float(v), 2)
+
+
+def series_days(m, s, vol=None):
+    s = s[~s.index.duplicated(keep="last")]
+    out = {"d": [day_num(i) for i in s.index], "c": [rnd(m, v) for v in s.values]}
+    if vol is not None:
+        # 종가와 같은 날짜에 맞춘 거래량(주). 값이 없는 날은 0
+        v = vol[~vol.index.duplicated(keep="last")].reindex(s.index).fillna(0)
+        out["v"] = [int(round(float(x))) for x in v.values]
+    return out
+
+
+def series_secs(m, s, lo=None, hi=None):
+    s = s[~s.index.duplicated(keep="last")]
+    out = {"t": [int(pd.Timestamp(i).timestamp()) for i in s.index], "c": [rnd(m, v) for v in s.values]}
+    if lo is not None and hi is not None:
+        # 봉의 저가·고가 (예약 주문 판정용). 값이 없으면 종가로 채운다
+        l = lo[~lo.index.duplicated(keep="last")].reindex(s.index)
+        h = hi[~hi.index.duplicated(keep="last")].reindex(s.index)
+        out["l"] = [rnd(m, min(a, c) if a == a else c) for a, c in zip(l.values, s.values)]
+        out["h"] = [rnd(m, max(b, c) if b == b else c) for b, c in zip(h.values, s.values)]
+    return out
+
+
+def build_market(m, series_by_id):
+    """시장(KR/US)별 거래일 목록과 종목별 종가 배열 (prices.json 용)."""
+    counts = {}
+    for s in series_by_id.values():
+        for d in s.index:
+            k = to_date(d)
+            counts[k] = counts.get(k, 0) + 1
+    n = max(1, len(series_by_id))
+    dates = sorted(d for d, c in counts.items() if c >= 0.3 * n)
+    rows = {}
+    for sid, s in series_by_id.items():
+        s = s.copy()
+        s.index = [to_date(d) for d in s.index]
+        s = s[~s.index.duplicated(keep="last")]
+        vals, lastv = [], None
+        for d in dates:
+            v = s.get(d)
+            if v is not None and not (isinstance(v, float) and math.isnan(v)):
+                lastv = float(v)
+            vals.append(None if lastv is None else rnd(m, lastv))
+        rows[sid] = vals
+    return dates, rows
+
+
+def load_json(path):
+    try:
+        return json.loads(pathlib.Path(path).read_text(encoding="utf-8"))
+    except Exception:
+        return None
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--out", required=True)
+    ap.add_argument("--prev", default="prev")
+    a = ap.parse_args()
+    out = pathlib.Path(a.out)
+    (out / "c").mkdir(parents=True, exist_ok=True)
+    prev = load_json(pathlib.Path(a.prev) / "prices.json")
+    prev_hist = load_json(pathlib.Path(a.prev) / "hist.json")
+
+    ysyms = [v["y"] for v in SYMBOLS.values()]
+    by_y = {v["y"]: sid for sid, v in SYMBOLS.items()}
+    now = dt.datetime.now(dt.timezone.utc)
+
+    # ── 1) 게임용 일별 종가 (기준일부터) ──
+    got = download(ysyms + [FX_SYMBOL], start=START, interval="1d")
+    # 장중 5분 봉 (최근 5거래일). 차트에도 쓰고, Yahoo 일봉에 빠진 거래일을 채우는 데도 쓴다.
+    i5l, i5h = {}, {}
+    i5 = download(ysyms, period="5d", interval="5m", lows=i5l, highs=i5h)
+    result = {"v": 1, "updated": now.strftime("%Y-%m-%dT%H:%M:%SZ"), "start": START, "dates": {}, "s": {}, "miss": []}
+    filled_days = {}
+    for m in ("KR", "US"):
+        series = {}
+        for sid, v in SYMBOLS.items():
+            if v["m"] != m or v["y"] not in got:
+                continue
+            d1 = got[v["y"]].copy()
+            d1.index = [to_date(i) for i in d1.index]
+            d1 = d1[~d1.index.duplicated(keep="last")]
+            # Yahoo 일봉에 그날이 빠져 있으면 5분 봉의 그날 마지막 가격으로 채운다 (2026-10-27 미국 10/26 누락 사례)
+            if v["y"] in i5:
+                intra = i5[v["y"]]
+                # 여러 거래소 종목을 한꺼번에 받으면 yfinance가 시각을 한 시간대로 맞춘다.
+                # 날짜는 반드시 그 종목 거래소의 현지 시각으로 따진다.
+                idx = pd.DatetimeIndex(intra.index)
+                idx = (idx.tz_convert(EXCH_TZ[m]) if idx.tz is not None else idx.tz_localize("UTC").tz_convert(EXCH_TZ[m]))
+                last_by_day = {}
+                for i, val in zip(idx, intra.values):
+                    if i.weekday() < 5:
+                        last_by_day[i.strftime("%Y-%m-%d")] = float(val)
+                add = {d: c for d, c in last_by_day.items() if d >= START and d not in d1.index}
+                if add:
+                    filled_days[m] = filled_days.get(m, set()) | set(add)
+                    d1 = pd.concat([d1, pd.Series(add)]).sort_index()
+            series[sid] = d1
+        dates, rows = build_market(m, series)
+        dates, rows = drop_weekends(dates, rows)
+        # 직전 배포본에 있던 거래일이 이번 결과에서 빠지면 그 값을 그대로 살린다 (한 번 들어온 날짜는 사라지지 않게)
+        if prev and prev.get("dates", {}).get(m):
+            pdates = prev["dates"][m]
+            lost = [d for d in pdates if d >= START and d not in dates and is_weekday(d)]
+            if lost:
+                union = sorted(set(dates) | set(lost))
+                for sid in list(rows.keys()):
+                    nmap = dict(zip(dates, rows[sid]))
+                    pmap = dict(zip(pdates, prev.get("s", {}).get(sid) or []))
+                    vals, lastv = [], None
+                    for d in union:
+                        v_ = nmap.get(d) if d in nmap else pmap.get(d)
+                        if v_ is not None:
+                            lastv = v_
+                        vals.append(lastv)
+                    rows[sid] = vals
+                dates = union
+                print(f"{m}: 직전 배포본에서 살린 거래일 {lost}")
+        missing = [sid for sid, v in SYMBOLS.items() if v["m"] == m and sid not in rows]
+        if prev and missing:
+            pdates = prev.get("dates", {}).get(m, [])
+            for sid in missing:
+                old = prev.get("s", {}).get(sid)
+                if not old:
+                    continue
+                omap = dict(zip(pdates, old))
+                vals, lastv = [], None
+                for d in dates:
+                    if omap.get(d) is not None:
+                        lastv = omap[d]
+                    vals.append(lastv)
+                if any(v is not None for v in vals):
+                    rows[sid] = vals
+        if not dates and prev:
+            dates = prev.get("dates", {}).get(m, [])
+            for sid, v in SYMBOLS.items():
+                if v["m"] == m and sid in prev.get("s", {}):
+                    rows[sid] = prev["s"][sid]
+        result["dates"][m] = dates
+        result["s"].update(rows)
+        result["miss"] += [sid for sid, v in SYMBOLS.items() if v["m"] == m and sid not in rows]
+    if FX_SYMBOL in got:
+        fx = got[FX_SYMBOL]
+        result["fx"] = {"d": [to_date(d) for d in fx.index], "c": [round(float(x), 2) for x in fx.values]}
+    elif prev and prev.get("fx"):
+        result["fx"] = prev["fx"]
+    total = len(SYMBOLS) - len(result["miss"])
+    if total == 0 and prev:
+        print("no daily data — keeping previous prices.json", file=sys.stderr)
+        result = prev
+    (out / "prices.json").write_text(json.dumps(result, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+
+    # ── 2) 장기 봉 (하루 한 번) ──
+    today = now.strftime("%Y-%m-%d")
+    sched = os.environ.get("GITHUB_EVENT_SCHEDULE", "")
+    # 일봉에 거래량(v)이 없는 예전 파일이면 오늘 이미 받았더라도 다시 받는다
+    no_vol = bool(prev_hist) and not any((x.get("d1") or {}).get("v") for x in prev_hist.get("s", {}).values())
+    need_hist = (not prev_hist) or prev_hist.get("asof") != today or sched.startswith("17 ") or no_vol
+    hist = prev_hist if (prev_hist and not need_hist) else {"asof": today, "s": {}}
+    # 오늘 이미 받았더라도, 새로 추가된 종목(장기 봉이 없는 종목)은 그 종목만 바로 받는다
+    new_ids = [] if need_hist else [sid for sid in SYMBOLS if not (hist["s"].get(sid) or {}).get("d1")]
+    if new_ids:
+        ys_new = [SYMBOLS[sid]["y"] for sid in new_ids]
+        n1v = {}
+        n1 = download(ys_new, period="2y", interval="1d", vols=n1v)
+        nwk = download(ys_new, period="10y", interval="1wk")
+        nmo = download(ys_new, period="max", interval="1mo")
+        for sid in new_ids:
+            y, m = SYMBOLS[sid]["y"], SYMBOLS[sid]["m"]
+            hist["s"][sid] = {
+                "d1": series_days(m, n1[y], n1v.get(y)) if y in n1 else None,
+                "wk": series_days(m, nwk[y]) if y in nwk else None,
+                "mo": series_days(m, nmo[y]) if y in nmo else None,
+            }
+        print(f"hist added for new symbols: {len(new_ids)} (d1 {len(n1)}, wk {len(nwk)}, mo {len(nmo)})")
+    if need_hist:
+        d1v = {}
+        d1 = download(ysyms, period="2y", interval="1d", vols=d1v)
+        wk = download(ysyms, period="10y", interval="1wk")
+        mo = download(ysyms, period="max", interval="1mo")
+        for sid, v in SYMBOLS.items():
+            y, m = v["y"], v["m"]
+            old = (prev_hist or {}).get("s", {}).get(sid, {})
+            hist["s"][sid] = {
+                "d1": series_days(m, d1[y], d1v.get(y)) if y in d1 else old.get("d1"),
+                "wk": series_days(m, wk[y]) if y in wk else old.get("wk"),
+                "mo": series_days(m, mo[y]) if y in mo else old.get("mo"),
+            }
+        print(f"hist refreshed: d1 {len(d1)}, wk {len(wk)}, mo {len(mo)}")
+    (out / "hist.json").write_text(json.dumps(hist, separators=(",", ":")), encoding="utf-8")
+
+    # ── 3) 장중 봉 (매번). 5분 봉은 위에서 받았다 ──
+    h1 = download(ysyms, period="1mo", interval="60m")
+    for sid, v in SYMBOLS.items():
+        y, m = v["y"], v["m"]
+        hs = hist["s"].get(sid, {}) if hist else {}
+        doc = {"v": 1, "t": result.get("updated"),
+               "i5": series_secs(m, i5[y], i5l.get(y), i5h.get(y)) if y in i5 else None,
+               "h1": series_secs(m, h1[y]) if y in h1 else None,
+               "d1": hs.get("d1"), "wk": hs.get("wk"), "mo": hs.get("mo")}
+        (out / "c" / (sid.replace(":", "_") + ".json")).write_text(json.dumps(doc, separators=(",", ":")), encoding="utf-8")
+
+    print(f"ok: {total}/{len(SYMBOLS)} symbols, KR {len(result['dates'].get('KR', []))} days, "
+          f"US {len(result['dates'].get('US', []))} days, intraday {len(i5)}/{len(ysyms)}, "
+          f"hourly {len(h1)}/{len(ysyms)}, hist {'new' if need_hist else 'reused'}, "
+          f"5분봉으로 채운 날 {{{', '.join(f'{k}: {sorted(v)}' for k, v in filled_days.items())}}}, missing: {result['miss']}")
+
+
+if __name__ == "__main__":
+    main()
