@@ -890,7 +890,8 @@ html.bm-open .top,html.bm-open .tabbar{visibility:hidden}
 .bm-c.bm-k{background:var(--surface-2)}
 .bm-c.own{box-shadow:inset 0 0 0 2px var(--oc);background:color-mix(in srgb,var(--oc) 12%,var(--surface))}
 .bm-c.sel{outline:2px solid var(--ink);outline-offset:-1px}
-.bm-c.fly{border-color:var(--brass);animation:bmglow 1s infinite alternate}
+.bm-c.fly{border-color:var(--brass);box-shadow:inset 0 0 0 2px var(--brass)}   /* 우주여행으로 갈 수 있는 칸: 깜빡이지 않고 테두리만 (글씨가 가려지지 않게) */
+.bm-ov.b3 .bm-c.fly{box-shadow:inset 0 0 0 3px var(--brass),2px 2px 0 #b8ad96,3.5px 3.5px 0 #9b8f77}
 @keyframes bmglow{to{background:color-mix(in srgb,var(--brass) 22%,var(--surface))}}
 .bm-c.pop{animation:bmpop .55s cubic-bezier(.3,1.6,.5,1)}
 @keyframes bmpop{0%{transform:scale(1)}35%{transform:scale(1.28);z-index:3}100%{transform:scale(1)}}
@@ -978,10 +979,10 @@ html.bm-open .top,html.bm-open .tabbar{visibility:hidden}
 .bm-pl small{grid-column:2/4;color:var(--ink-3);font-size:11px}
 
 /* ── 부루마블 입체 판: 판을 45° 돌려 비스듬히 눕힌다 (마름모 모양). 칸에 두께, 말·건물은 세워서 ── */
-.bm-ov.b3{--tilt:56deg}
+.bm-ov.b3{--tilt:46deg;--rz:20deg}   /* 판 기울기(작을수록 위에서 내려다봄)와 판 회전 */
 .bm-stage{position:relative;width:min(100%,900px);aspect-ratio:1.5;perspective:2000px;perspective-origin:50% 20%;margin:2px auto 0;flex:none}
 .bm-stage.shake{animation:bmshake .45s}
-.bm-ov.b3 .bm-board{position:absolute;left:50%;top:46%;width:61%;aspect-ratio:1;transform:translate(-50%,-50%) rotateX(var(--tilt)) rotateZ(45deg);transform-style:preserve-3d;gap:2.5px;padding:1.4%;border-radius:16px;
+.bm-ov.b3 .bm-board{position:absolute;left:50%;top:46%;width:61%;aspect-ratio:1;transform:translate(-50%,-50%) rotateX(var(--tilt)) rotateZ(var(--rz));transform-style:preserve-3d;gap:2.5px;padding:1.4%;border-radius:16px;
   background:linear-gradient(135deg,#7a4a26,#5a3318 60%,#4a2810);box-shadow:3px 3px 0 #3d210d,6px 6px 0 #33190a,9px 9px 0 #2a1407,12px 12px 0 #211004,16px 16px 26px rgba(0,0,0,.65)}
 .bm-ov.b3 .bm-board.shake{animation:none}
 .bm-ov.b3 .bm-c{border:0;border-radius:5px;background:linear-gradient(135deg,#fbf8f1,#e4ddcf);color:#2a2418;box-shadow:2px 2px 0 #b8ad96,3.5px 3.5px 0 #9b8f77,4px 4px 6px rgba(0,0,0,.35);overflow:hidden}
@@ -1002,10 +1003,10 @@ html.bm-open .top,html.bm-open .tabbar{visibility:hidden}
 .bm-logo b{font-size:clamp(14px,3.2vw,36px);font-weight:900;letter-spacing:.06em;color:#f2cb7a;text-shadow:0 2px 0 #7a5212,0 4px 8px rgba(0,0,0,.5);line-height:1.05}
 .bm-logo small{font-size:clamp(7px,1.3vw,12px);letter-spacing:.35em;color:rgba(242,203,122,.65);margin-top:4px}
 .bm-ov.b3 .bm-toks,.bm-ov.b3 .bm-tok{transform-style:preserve-3d}
-.bm-ov.b3 .bm-tok-u{width:100%;height:100%;transform-origin:50% 100%;transform:rotateZ(-45deg) rotateX(calc(var(--tilt) * -1)) translateY(-18%);transform-style:preserve-3d}
+.bm-ov.b3 .bm-tok-u{width:100%;height:100%;transform-origin:50% 100%;transform:rotateZ(calc(var(--rz) * -1)) rotateX(calc(var(--tilt) * -1)) translateY(-18%);transform-style:preserve-3d}
 .bm-tok-u{width:100%;height:100%}
 .bm-ov.b3 .bm-tok-i{box-shadow:0 3px 0 color-mix(in srgb,var(--pc) 55%,#000),0 8px 10px rgba(0,0,0,.45)}
-.bm-ov.b3 .bm-tok.b3t .bm-tok-u{position:absolute;left:0;bottom:50%;height:170%;transform:rotateZ(-45deg) rotateX(calc(var(--tilt) * -1))}
+.bm-ov.b3 .bm-tok.b3t .bm-tok-u{position:absolute;left:0;bottom:50%;height:170%;transform:rotateZ(calc(var(--rz) * -1)) rotateX(calc(var(--tilt) * -1))}
 .bm-tok.b3t .bm-tok-i{position:relative;width:100%;height:100%;border-radius:0;background:none;box-shadow:none;outline:0;display:block}
 .bm-tok.b3t .bm-pawn{display:block;width:100%;height:100%;overflow:visible;filter:drop-shadow(0 1px 0 rgba(0,0,0,.35))}
 .bm-tok.b3t.turn .bm-pawn{filter:drop-shadow(0 0 4px #fff) drop-shadow(0 0 8px var(--pc))}
