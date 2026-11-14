@@ -1255,7 +1255,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '2.3.10';
+const VERSION = '1.1.0';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -6163,12 +6163,12 @@ function bs3Frame(now){
   const shooter = BSV.hold ? 'me' : BSV.shooter || null, aim = BSV.aim || 'rest';
   let gp, gq;
   const SAW_D = 1.6, CUT = 1.3, sawing = A.sawT < SAW_D, sawBy = BSV.sawBy || 'op';
-  if (Lay){ gp = bs3S(Fl, 0.02, 0.05, -0.5); gq = bs3Q(bs3D(Fl, -1, 0, 0.18), 'flip'); }
+  if (Lay){ gp = bs3S(Fl, -0.02, 0.05, -0.5); gq = bs3Q(bs3D(Fl, 1, 0, 0.18), 'flip'); }   // 오른손잡이: 개머리는 오른쪽, 총구는 왼쪽
   else if (sawing && sawBy === 'op'){ gp = bs3S(Fa, 0.16, 0.07, -0.42); gq = bs3Q(bs3D(Fa, -1, 0, 0.85), 'up'); }   // 딜러가 탁자에 총을 눕혀 누르고 자른다
   else if (sawing){ gp = new T.Vector3(0.18, 0.42, 0.62); gq = bs3Q(new T.Vector3(-1, -0.25, -0.9), 'up'); }   // 내가 자를 때는 눈앞에서
-  else if (shooter === 'op' && ((Fa.kb || 0) > 0.05 || !alive(Fa))){ gp = bs3S(Fa, 0.08, 0.035, -0.5); gq = bs3Q(bs3D(Fa, -1, 0, 0.25), 'flip'); }   // 쏜 사람이 맞아 넘어지면 총은 손에서 떨어져 탁자 위로
+  else if (shooter === 'op' && ((Fa.kb || 0) > 0.05 || !alive(Fa))){ gp = bs3S(Fa, 0.08, 0.035, -0.5); gq = bs3Q(bs3D(Fa, 1, 0, 0.25), 'flip'); }   // 쏜 사람이 맞아 넘어지면 총은 손에서 떨어져 탁자 위로
   else if (rackMe){ gp = new T.Vector3(0.1, 0.7, 0.92); gq = bs3Q(new T.Vector3(-0.85, -0.22, -0.75), 'up'); }   // 내가 펌프질: 오른쪽 아래에서 총구를 앞쪽 탁자로 비스듬히
-  else if (Fr){ gp = bs3S(Fr, 0.07, 0.33, -0.62); gq = bs3Q(bs3D(Fr, -0.85, -0.22, -0.5), 'up'); }   // 상대: 허리 높이에서 총구를 앞·아래로 비스듬히 들고 당긴다
+  else if (Fr){ gp = bs3S(Fr, -0.07, 0.33, -0.62); gq = bs3Q(bs3D(Fr, 0.85, -0.22, -0.5), 'up'); }   // 개머리는 오른쪽 허리, 펌프는 왼손   // 상대: 허리 높이에서 총구를 앞·아래로 비스듬히 들고 당긴다
   else if (shooter === 'me'){
     const atMe = aim === 'down' || (BSV.hold && BSV.aimT === me);
     const tI = BSV.hold ? BSV.aimT : BSV.ti, fT = tI !== undefined && tI !== null ? fOf(tI) : null;
@@ -6176,11 +6176,11 @@ function bs3Frame(now){
     else { gp = new T.Vector3(0.16, 0.42, 0.92); gq = bs3Q((fT ? headOf(fT) : multi ? new T.Vector3(0, 0.6, -1.0) : headW.clone()).sub(gp), 'up'); }   // 여럿이면 겨눈 사람 쪽으로 (아직 안 골랐으면 가운데)
   } else if (shooter === 'op'){
     const fT = BSV.ti !== undefined && BSV.ti !== null ? fOf(BSV.ti) : null;
-    if ((Fa.kb || 0) > 0.05 || !alive(Fa)){ gp = bs3S(Fa, 0.08, 0.035, -0.5); gq = bs3Q(bs3D(Fa, -1, 0, 0.25), 'flip'); }   // 쏜 사람이 맞아 넘어지면 총은 손에서 떨어져 탁자 위로
+    if ((Fa.kb || 0) > 0.05 || !alive(Fa)){ gp = bs3S(Fa, 0.08, 0.035, -0.5); gq = bs3Q(bs3D(Fa, 1, 0, 0.25), 'flip'); }   // 쏜 사람이 맞아 넘어지면 총은 손에서 떨어져 탁자 위로
     else if (aim === 'down'){ gp = bs3S(Fa, 0.0, 0.55, -0.52); gq = bs3Q(camP.clone().sub(gp), 'up'); }
-    else if (fT && fT !== Fa){ gp = bs3S(Fa, 0.0, 0.58, -0.58); gq = bs3Q(headOf(fT).sub(gp), 'up'); }   // 다른 상대를 쏜다
+    else if (fT && fT !== Fa){ gp = bs3S(Fa, -0.08, 0.58, -0.58);   /* 오른쪽 어깨에 견착 */ gq = bs3Q(headOf(fT).sub(gp), 'up'); }   // 다른 상대를 쏜다
     else { gp = bs3S(Fa, 0.2, 0.6, -0.6); gq = bs3Q(headOf(Fa).add(new T.Vector3(0, -0.05, 0)).sub(gp), 'up'); }
-  } else { gp = new T.Vector3(0.0, 0.031, 0.08); gq = bs3Q(new T.Vector3(-1, 0, -0.12), 'side'); }
+  } else { gp = new T.Vector3(0.0, 0.031, 0.08); gq = bs3Q(new T.Vector3(1, 0, -0.12), 'side'); }   // 탁자 위: 총구는 상대의 왼쪽 (오른손잡이가 집기 좋은 방향)
   // 펌프질: 손이 먼저 총에 닿고(0~L0), 부드럽게 들어 올려(L0~L1) 들고 있다가, 내려놓는 건 평소처럼 천천히 돌아간다
   if ((rackMe || Fr) && A.rk0 && !(shooter === 'op' && ((Fa.kb || 0) > 0.05 || !alive(Fa)))){
     const u = bs3Ease((A.rackT - BS3_RK.l0) / (BS3_RK.l1 - BS3_RK.l0));
@@ -6344,18 +6344,18 @@ function bs3Frame(now){
       } else if (f === Fa && sawing && sawBy === 'op' && A.sawT < CUT + 0.25){   // 톱질: 왼손은 총을 누르고, 오른손은 톱 손잡이
         if (A2.s > 0){ toW(A2, W(O.GP.grip).add(new T.Vector3(0, 0.03, 0)), 14); A2.palmAt = gunC; A2.palmAx = gunAx; A2.ct = [0.15, 0.15, 0.2, 0.25, 0.2]; }   // 손을 펴서 총을 누른다
         else { GRIP(); O.saw.updateMatrixWorld(true); toW(A2, new T.Vector3(0.165, 0.04, 0).applyMatrix4(O.saw.matrixWorld), 30); }
-      } else if (Lay && n && f === Fl){ toW(A2, W(A2.s < 0 ? O.GP.pump : O.GP.grip).add(new T.Vector3(0, 0.02, 0)), 10); A2.palmAt = gunC; A2.palmAx = gunAx; GRIP(); }   // 다른 손은 총을 붙잡는다
-      else if (f === Fr){   // 펌프질: 한 손은 아래에서 펌프를 받쳐 당기고, 다른 손은 몸 쪽에서 손잡이를 감싸 쥔다
-        if (A2.s < 0) toW(A2, W(O.GP.pump.clone().add(new T.Vector3(rp * BS3_PUMP, -0.012, 0))), 40);
+      } else if (Lay && n && f === Fl){ toW(A2, W(A2.s > 0 ? O.GP.pump : O.GP.grip).add(new T.Vector3(0, 0.02, 0)), 10); A2.palmAt = gunC; A2.palmAx = gunAx; GRIP(); }   // 다른 손은 총을 붙잡는다
+      else if (f === Fr){   // 펌프질 (오른손잡이): 왼손(s>0)은 아래에서 펌프를 받쳐 당기고, 오른손(s<0)은 몸 쪽에서 손잡이를 감싸 쥔다
+        if (A2.s > 0) toW(A2, W(O.GP.pump.clone().add(new T.Vector3(rp * BS3_PUMP, -0.012, 0))), 40);
         else toW(A2, W(O.GP.grip.clone().add(new T.Vector3(0, 0.025, gripZ))), 18);
         A2.palmAt = gunC; A2.palmAx = gunAx;
         // 손가락: 손이 닿기 전엔 벌리고 다가가서 → 닿으면 감싸 쥔다. 펌프 손은 당기는 동안 더 꽉 쥐고, 손잡이 손의 검지는 방아쇠울 밖에 곧게 둔다
         const shut = bs3Ease((A.rackT - BS3_RK.l0 + 0.04) / 0.1), set = 1 - bs3Ease((A.rackT - BS3_RK.end + 0.12) / 0.12);
-        const k0 = 0.08 + (A2.s < 0 ? 0.74 + rp * 0.16 : 0.8) * shut * set;
-        A2.ct = A2.s < 0 ? [k0, k0 + 0.03, k0 + 0.05, k0 + 0.07, 0.1 + 0.65 * shut * set] : [0.1 + 0.25 * shut * set, k0 + 0.05, k0 + 0.08, k0 + 0.1, 0.1 + 0.7 * shut * set];
+        const k0 = 0.08 + (A2.s > 0 ? 0.74 + rp * 0.16 : 0.8) * shut * set;
+        A2.ct = A2.s > 0 ? [k0, k0 + 0.03, k0 + 0.05, k0 + 0.07, 0.1 + 0.65 * shut * set] : [0.1 + 0.25 * shut * set, k0 + 0.05, k0 + 0.08, k0 + 0.1, 0.1 + 0.7 * shut * set];
       }
-      else if (dealerHolds && f === Fa){ toW(A2, W(A2.s < 0 ? O.GP.pump : O.GP.grip.clone().add(new T.Vector3(0, 0.025, gripZ))), 16); A2.palmAt = gunC; A2.palmAx = gunAx;
-        if (A2.s < 0) GRIP(); else GRIP(A.bangT < 0.12 || A.clickT < 0.12 ? 0.95 : 0.5); }   // 쏘는 손: 검지를 방아쇠에 걸고 있다가 쏘는 순간 당긴다   // 손바닥으로 총을 감싼다 (손잡이 손은 몸 쪽 옆에서)
+      else if (dealerHolds && f === Fa){ toW(A2, W(A2.s > 0 ? O.GP.pump : O.GP.grip.clone().add(new T.Vector3(0, 0.025, gripZ))), 16); A2.palmAt = gunC; A2.palmAx = gunAx;
+        if (A2.s > 0) GRIP(); else GRIP(A.bangT < 0.12 || A.clickT < 0.12 ? 0.95 : 0.5); }   // 쏘는 손: 검지를 방아쇠에 걸고 있다가 쏘는 순간 당긴다   // 손바닥으로 총을 감싼다 (손잡이 손은 몸 쪽 옆에서)
       else rest(f, A2, i);
       bs3Arm(A2);
     });
@@ -9919,7 +9919,7 @@ async function checkUpdate(){
       const r = await fetch(location.pathname + '?vc=' + Date.now(), {cache:'no-store'});
       if (!r.ok) return;
       const m = (await r.text()).match(/const VERSION = '([\d.]+)'/);
-      if (!m || verNum(m[1]) <= verNum(VERSION)) return;
+      if (!m || m[1] === VERSION) return;   // 번호가 다르면 새 버전 (번호를 낮춰 다시 매길 수도 있어 크기 비교는 하지 않는다)
       let done = null; try { done = sessionStorage.getItem('seed10k.reloadedFor'); } catch(e){}
       if (done === m[1]) return;
       UPD.want = m[1];
