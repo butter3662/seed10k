@@ -276,7 +276,7 @@ GAMES.sl = {
    심판은 판이 끝날 때(play → over) resultOf로 결과 한 줄을 seed10k_mp_results에 적고,
    같은 두 사람의 최근 결과로 연승을 센다(streakOf). 게임 규칙이 판 도중 이상한 행동을 보면
    room.state.flags에 [{kind, seat, n, msg}]를 쌓고, 심판은 새로 생긴 것(newFlags)을 알림으로 보낸다. */
-export const WATCH = {oeStreak: 5, bjStand: 5, bmNoBuy: 5};
+export const WATCH = {oeStreak: 5, bjStand: 5, bmNoBuy: 5, bsSelfPct: 0.8, bsSelfMin: 5, bsRiskP: 0.5, bsRisk: 5};
 export function resultOf(room) {
   const st = room.state, g = st.g || {}, G = GAMES[room.game];
   const seats = st.seats.map((s) => ({uid: s.uid, nick: s.nick, ...(s.left ? {left: true} : {})})), uids = seats.map((s) => s.uid);
@@ -518,6 +518,28 @@ function bsStore(room, priv, g) {
   if (bsHid(g)) { priv.live = g.live; priv.blank = g.blank; pub.live = g.live + g.blank; pub.blank = 0; }
   room.state.g = pub;
 }
+/* 악용 의심 (부계정에 돈을 넘기려고 일부러 지는지). 직접 쏜 것만 센다 (시간 초과로 대신 둔 것은 빼고). 기록은 숨긴 상태(priv.w)에
+   - 한 판에서 직접 쏜 것이 WATCH.bsSelfMin(5)번 이상이고 그중 WATCH.bsSelfPct(80%) 이상이 자기 자신: 판이 끝날 때 한 번
+   - 실탄일 확률이 WATCH.bsRiskP(50%) 이상인데 자기 자신을 쏜 것이 한 판에 WATCH.bsRisk(5)번: 5번째에 (이후 5번마다) */
+function bsCount(room, priv, me, self, risk) {
+  const st = room.state, w = priv.w = priv.w || {shot: [], self: [], risky: []}, n = st.seats.length;
+  for (const k of ["shot", "self", "risky"]) while (w[k].length < n) w[k].push(0);
+  w.shot[me]++;
+  if (!self) return;
+  w.self[me]++;
+  if (risk !== null && risk >= WATCH.bsRiskP) {
+    w.risky[me]++;
+    if (streakHit(w.risky[me], WATCH.bsRisk)) (st.flags = st.flags || []).push({kind: "bs_risky", seat: me, n: w.risky[me],
+      msg: `벅샷 룰렛: ${st.seats[me].nick}이(가) 실탄일 확률이 ${Math.round(WATCH.bsRiskP * 100)}% 이상인데 자기 자신을 쏜 것이 한 판에 ${w.risky[me]}번 (판돈 $${room.stake}, 방 ${room.code})`});
+  }
+}
+function bsSelfCheck(room, priv) {
+  const st = room.state, w = priv && priv.w; if (!w) return;
+  w.shot.forEach((s, i) => {
+    if (s >= WATCH.bsSelfMin && w.self[i] / s >= WATCH.bsSelfPct) (st.flags = st.flags || []).push({kind: "bs_self", seat: i, n: w.self[i],
+      msg: `벅샷 룰렛: ${st.seats[i].nick}이(가) 한 판에서 직접 쏜 ${s}번 중 ${w.self[i]}번(${Math.round(w.self[i] / s * 100)}%)을 자기 자신에게 쏨 (판돈 $${room.stake}, 방 ${room.code})`});
+  });
+}
 const bsPub = (ev, g) => ev.map((e) => (e.t === "peek" ? {t: "peek", i: e.i} : e.t === "load" && bsHid(g) ? {...e, live: e.live + e.blank, blank: 0, hid: 1} : e));   // 돋보기 결과는 지운다
 GAMES.bs = {
   init(room, priv, now, rnd) {
@@ -531,9 +553,12 @@ GAMES.bs = {
     if (g.over) return {err: "끝난 판입니다"};
     if (g.turn !== me) return {err: "내 차례가 아닙니다"};
     let ev = null;
+    // 쏘기 직전, 쏘는 사람이 알 수 있는 '실탄일 확률': 돋보기로 봤으면 0 또는 1, 미스터리 모드면 모름(null), 아니면 남은 실탄 ÷ 남은 탄
+    const left = g.live + g.blank, risk = g.pk[me] !== null && g.pk[me] !== undefined ? (g.pk[me] ? 1 : 0) : bsHid(g) || !left ? null : g.live / left;
     if (a.op === "shoot" && Number.isInteger(a.target)) ev = BSE.shoot(g, me, a.target, rnd);
     else if (a.op === "use" && BS_KEYS.includes(a.it)) ev = BSE.use(g, me, a.it, Number.isInteger(a.target) ? a.target : -1, rnd);
     if (!ev) return {err: "지금 할 수 없습니다"};
+    if (a.op === "shoot") bsCount(room, priv, me, a.target === me, risk);
     const pk = ev.find((e) => e.t === "peek" && e.i === me);
     const r = GAMES.bs.after(room, priv, g, ev, now);
     return {...r, res: pk ? {peek: pk.live, load: g.load, left: g.live + g.blank} : {}};
@@ -541,11 +566,12 @@ GAMES.bs = {
   after(room, priv, g, ev, now) {
     bsStore(room, priv, g);
     bump(room, {t: "bs", list: bsPub(ev, g)});
-    if (g.over) return GAMES.bs.finish(room);
+    if (g.over) return GAMES.bs.finish(room, priv);
     room.state.deadline = now + BS_TURN_MS;
     return {};
   },
-  finish(room) {
+  finish(room, priv) {
+    bsSelfCheck(room, priv);
     const st = room.state, g = st.g, n = st.seats.length, r = BSE.ranking(g);
     room.status = "over"; st.deadline = null; g.rank = st.seats.map((s, i) => r.indexOf(i) + 1); g.why = "마지막 생존";
     return {payouts: st.seats.map((s, i) => ({user_id: s.uid, amount: i === g.win ? r2(room.stake * n) : 0, cost: room.stake, il: room.il,
