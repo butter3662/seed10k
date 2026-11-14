@@ -1315,7 +1315,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.2.8';
+const VERSION = '1.2.9';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -6250,7 +6250,11 @@ function bs3S(f, x, y, z){ return new BS3.T.Vector3(x, y, z + 1.08).applyMatrix4
 function bs3D(f, x, y, z){ return new BS3.T.Vector3(x, y, z).applyQuaternion(f.seat.quaternion); }
 // 두 마디 팔: 어깨 S에서 손 H까지, 팔꿈치는 바깥·아래쪽으로 굽힌다
 function bs3Arm(A){
-  const T = BS3.T, S = A.sh, H = A.p, d0 = H.clone().sub(S), dist = Math.min(d0.length(), A.a + A.b - 0.002), u = d0.normalize();
+  const T = BS3.T, S = A.sh;
+  // 손 방향을 따로 정한 때(총 손잡이): 팔뚝은 손바닥 가운데가 아니라 손목(손 뒤끝)에 닿아야 한다.
+  // 손 중심까지 팔뚝을 뻗으면 손이 꺾인 쪽으로 팔뚝 끝이 삐져나온다(손목이 튀어나와 보임). 손목 = 손 중심 − 손가락 방향 × BS3_WRIST
+  const zq = A.hq ? new T.Vector3(0, 0, 1).applyQuaternion(A.qs || A.hq) : null;
+  const H = zq ? A.p.clone().addScaledVector(zq, -BS3_WRIST) : A.p, d0 = H.clone().sub(S), dist = Math.min(d0.length(), A.a + A.b - 0.002), u = d0.normalize();
   const cosA = (A.a * A.a + dist * dist - A.b * A.b) / (2 * A.a * dist), sinA = Math.sqrt(Math.max(0, 1 - cosA * cosA));
   // 팔꿈치 방향: 몸 기준 바깥·뒤·약간 아래 (예전엔 세계 기준 아래라 손을 들면 팔꿈치가 탁자를 뚫었다)
   // 손을 어깨 가까이 들어 올리면(맥주 마시기·담배·겨누기) 팔꿈치는 아래·바깥으로 자연스럽게 내린다
@@ -6261,7 +6265,7 @@ function bs3Arm(A){
   const Hc = S.clone().add(u.clone().multiplyScalar(dist));
   const seg = (m, p, q, r) => { const d = q.clone().sub(p); m.position.copy(p); m.quaternion.setFromUnitVectors(new T.Vector3(0, 1, 0), d.clone().normalize()); m.scale.set(r, d.length(), r); };
   seg(A.up, S, E, 0.058); seg(A.fo, E, Hc, 0.047); A.j1.position.copy(S); A.j2.position.copy(E);
-  A.hand.position.copy(Hc);
+  A.hand.position.copy(Hc); if (zq) A.hand.position.addScaledVector(zq, BS3_WRIST);
   // 손 방향: 손가락(+z)은 팔뚝 방향, 손바닥(−y 쪽, 손가락이 굽는 쪽)은 잡는 물건을 향한다 (A.palmAt: 그 점, 없으면 아래 = 탁자 짚기)
   const z = Hc.clone().sub(E).normalize();
   let pa = A.palmAt;
@@ -6292,6 +6296,7 @@ const s0 = v => v < 0 ? -1 : 1;
 const bs3Damp = (k, dt) => 1 - Math.exp(-k * dt);
 // 펌프질 시간표(초): 손이 닿음 l0 → 들어 올림 l1 → 당기기 b0~b1('착') → 앞으로 f0~f1('칵') → end에 내려놓기 시작. BSAU.rack(BS3_RK.b0) 와 맞춘다
 // 손잡이 손가락: 검지(방아쇠에 건 채)·중지·약지·새끼(개머리판 목 밑을 감쌈)·엄지(위를 덮음) 굽힘, 검지를 총구 쪽으로 돌리는 각(rad). 히트박스 검사로 맞춘 값
+const BS3_WRIST = 0.034;   // 손 중심에서 손목까지 (손바닥 상자 뒤끝 0.025 × 손 크기 1.35)
 let BS3_GRIPC = [0.2, 0.55, 0.55, 0.6, 0.0], BS3_IDX_Y = 0.8;
 const BS3_RK = {l0:0.08, l1:0.4, b0:0.43, b1:0.56, f0:0.73, f1:0.83, end:1.05}, BS3_PUMP = 0.11;
 const bs3Ease = t => t < 0 ? 0 : t > 1 ? 1 : t * t * (3 - 2 * t);
@@ -6329,7 +6334,13 @@ function bs3Frame(now){
     // 상대가 맞으면 화면은 그대로, 맞은 사람이 뒤로 넘어갔다가 일어난다 (톱이면 더 오래 누워 있다)
     const big = (BSV.dmg || 1) > 1;
     if (BSV.flash && A.hitMe){ const out = g && g.pl[me] && g.pl[me].out; A.blackT = 0; A.blackD = out ? 0.55 : big ? 2.6 : 1.35; A.blackF = out ? 0.45 : 0.65; }
-    else if (BSV.flash){ const fh = figs.find(f => 'p' + f.i === BSV.flash); if (fh && alive(fh)){ fh.kbT = 0; fh.kbD = big ? 2.0 : 0.9; } } } if (fx === 'click') A.clickT = 0; if (fx === 'rack'){ A.rackT = 0; A.rk0 = {p:A.gP.clone(), q:A.gQ.clone()}; A.ejQ = null; } if (fx === 'saw') A.sawT = 0; }
+    else if (BSV.flash){ const fh = figs.find(f => 'p' + f.i === BSV.flash);
+      if (fh){   // 탄이 날아온 방향(쏜 사람 → 맞은 사람)으로 쓰러진다: 그 방향을 맞은 사람 몸 기준 각도로 적어 둔다 (0 = 정확히 뒤로)
+        const from = BSV.shooter === 'op' && BSV.si !== undefined && BSV.si !== null && fOf(BSV.si) ? bs3S(fOf(BSV.si), 0, 0.5, 0) : new T.Vector3(0, 1.1, 1.62);
+        const to = bs3S(fh, 0, 0.5, 0), d = to.sub(from); d.y = 0;
+        if (d.lengthSq() > 1e-6){ d.normalize().applyAxisAngle(new T.Vector3(0, 1, 0), -fh.seat.rotation.y); fh.kbDir = Math.atan2(d.x, -d.z); } else fh.kbDir = 0;
+        if (alive(fh)){ fh.kbT = 0; fh.kbD = big ? 2.0 : 0.9; }
+      } } } if (fx === 'click') A.clickT = 0; if (fx === 'rack'){ A.rackT = 0; A.rk0 = {p:A.gP.clone(), q:A.gQ.clone()}; A.ejQ = null; } if (fx === 'saw') A.sawT = 0; }
   if (BSV.eject !== P.eject && BSV.eject !== null && BSV.eject !== undefined){ if (A.rackT < BS3_RK.b1) A.ejQ = !!BSV.eject; else bs3Eject(!!BSV.eject); }   // 펌프를 끝까지 당기는 순간에 탄피가 튀어나온다
   if (Lay && !P.lay) A.layT = 0;
   // 탁자에 남은 탄피·잘린 총신 조각은 새로 장전할 때(장전 횟수가 바뀌면) 치운다. 새 판이거나 화면이 가려진 사이에 장전돼도 치워진다
@@ -6588,14 +6599,16 @@ function bs3Frame(now){
     if (out){
       // 탈락: 맞은 충격으로 뒤로 완전히 넘어가(0.35초) 한 번 튕긴 뒤 그대로 누워 있다 (일어나지 않는다)
       const t = f.fall, k = bs3Ease(t / 0.35), bounce = t > 0.35 && t < 0.65 ? Math.sin((t - 0.35) / 0.3 * Math.PI) * 0.08 : 0;
-      B.rotation.x = -k * 1.55 + bounce; B.position.y = -k * 0.24; B.position.z = -k * 0.3; B.rotation.z = k * (f.i % 2 ? 0.14 : -0.14);
+      const c = Math.cos(f.kbDir || 0), sn = Math.sin(f.kbDir || 0), th = k * 1.55 - bounce;   // 탄 방향으로 (kbDir: 몸 기준, 0 = 뒤)
+      B.rotation.x = -th * c; B.rotation.z = -th * sn + k * (f.i % 2 ? 0.14 : -0.14) * c; B.position.y = -k * 0.24; B.position.z = -k * 0.3 * c; B.position.x = k * 0.3 * sn;
     } else if (f.kbT !== undefined){   // 맞아서 뒤로 넘어졌다가(0.3초) 누워 있다가(kbD) 일어난다(0.8초)
       f.kbT += dt; const t = f.kbT, D = f.kbD;
       f.kb = t < 0.3 ? bs3Ease(t / 0.3) : t < 0.3 + D ? 1 : t < 1.1 + D ? 1 - bs3Ease((t - 0.3 - D) / 0.8) : 0;
       const bounce = t > 0.3 && t < 0.55 ? Math.sin((t - 0.3) / 0.25 * Math.PI) * 0.07 : 0;
-      B.rotation.x = -f.kb * 1.5 + bounce; B.position.y = -f.kb * 0.22; B.position.z = -f.kb * 0.28; B.rotation.z = f.kb * (f.i % 2 ? 0.1 : -0.1);   // 완전히 뒤로 벌렁 눕는다
+      const c = Math.cos(f.kbDir || 0), sn = Math.sin(f.kbDir || 0), th = f.kb * 1.5 - bounce;   // 탄이 날아온 방향으로 벌렁 넘어간다 (정면에서 맞으면 뒤로, 옆에서 맞으면 옆으로)
+      B.rotation.x = -th * c; B.rotation.z = -th * sn + f.kb * (f.i % 2 ? 0.1 : -0.1) * c; B.position.y = -f.kb * 0.22; B.position.z = -f.kb * 0.28 * c; B.position.x = f.kb * 0.28 * sn;
       if (t >= 1.1 + D){ f.kbT = undefined; f.kb = 0; }
-    } else { B.rotation.x *= 0.9; B.rotation.z *= 0.9; B.position.y *= 0.9; B.position.z *= 0.9; f.kb = 0; }
+    } else { B.rotation.x *= 0.9; B.rotation.z *= 0.9; B.position.y *= 0.9; B.position.z *= 0.9; B.position.x *= 0.9; f.kb = 0; }
     const hit = !A.hitMe && A.hitT < 0.6 && BSV.flash === 'p' + f.i ? Math.exp(-A.hitT * 6) : 0;
     if (f.torso) f.torso.scale.y = out ? 1 : 1 + Math.sin(A.t * 1.6 + f.i) * 0.008;   // 탈락하면 숨쉬기도 멈춘다
     const act = f === Fa;
