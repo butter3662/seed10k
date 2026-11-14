@@ -1255,7 +1255,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.1.2';
+const VERSION = '1.1.3';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -6136,7 +6136,8 @@ function bs3Frame(now){
   A.actI = actI;
   // Fa: 움직이는 상대, Fl: 장전하는 사람 = 살아 있는 사람 중 가운데에 가장 가까운 사람 (탈락한 사람은 장전하지 않는다)
   const alive = f => !(g && g.pl[f.i] && g.pl[f.i].out);
-  const Fa = fOf(actI), Fl = figs.filter(alive).sort((a, b) => Math.abs(a.seat.position.x) - Math.abs(b.seat.position.x))[0] || figs[Math.floor((figs.length - 1) / 2)];
+  const freeHands = f => !(g && g.pl[f.i] && g.pl[f.i].cuffed);
+  const Fa = fOf(actI), Fl = (figs.filter(f => alive(f) && freeHands(f)).length ? figs.filter(f => alive(f) && freeHands(f)) : figs.filter(alive)).sort((a, b) => Math.abs(a.seat.position.x) - Math.abs(b.seat.position.x))[0] || figs[Math.floor((figs.length - 1) / 2)];
   const headOf = f => f.head.getWorldPosition(new T.Vector3());
   // 펌프질하는 사람: 장전 뒤엔 장전한 사람, 쏜 뒤엔 쏜 사람, 맥주는 마신 사람 ('me'면 내 눈앞에서)
   const racking = A.rackT < BS3_RK.end && !Lay, rackMe = racking && BSV.rackBy === 'me';
@@ -6348,8 +6349,7 @@ function bs3Frame(now){
         if (t >= 0.32 && t < 0.86){ s.visible = true; s.position.copy(p).add(new T.Vector3(0, -0.02, 0.0)); s.rotation.set(0, 0, Math.PI / 2 * (1 - bs3Ease((t - 0.42) / 0.36))); s.scale.setScalar(1); }
         else if (t >= 0.86) s.visible = false;
       } else if (itHand && f === Fa && A2.s > 0){ toW(A2, itHand, 18); GRIP(0.8); A2.palmAt = O.IT && I && O.IT[I.it] ? O.IT[I.it].getWorldPosition(new T.Vector3()) : null;   // 손바닥이 쥔 아이템 쪽
-      } else if (fc && !(f === Fa && shooter) && !(Lay && f === Fl)){ toW(A2, bs3S(f, A2.s * 0.075, 0.035, -0.6), 10); A2.palmAt = bs3S(f, 0, 0.035, -0.6); A2.ct = [0.4, 0.45, 0.5, 0.55, 0.3];   // 묶인 손: 손바닥끼리 마주 본다
-        if (A2.s > 0 && f === cuffedF){ O.cuffOn.position.copy(bs3S(f, 0, 0.04, -0.6)); O.cuffOn.rotation.set(0, f.seat.rotation.y, 0); }
+      } else if (fc && !(f === Fa && shooter === 'op') && !(Lay && f === Fl)){   // (내가 총을 겨눌 때 shooter는 'me' → 묶인 상대의 손은 그대로 묶여 있어야 한다) toW(A2, bs3S(f, A2.s * 0.075, 0.035, -0.6), 10); A2.palmAt = bs3S(f, 0, 0.035, -0.6); A2.ct = [0.4, 0.45, 0.5, 0.55, 0.3];   // 묶인 손: 손바닥끼리 마주 본다
       } else if (f === Fa && sawing && sawBy === 'op' && A.sawT < CUT + 0.25){   // 톱질: 왼손은 총을 누르고, 오른손은 톱 손잡이
         if (A2.s > 0){ toW(A2, W(O.GP.grip).add(new T.Vector3(0, 0.03, 0)), 14); A2.palmAt = gunC; A2.palmAx = gunAx; A2.ct = [0.15, 0.15, 0.2, 0.25, 0.2]; }   // 손을 펴서 총을 누른다
         else { GRIP(); O.saw.updateMatrixWorld(true); toW(A2, new T.Vector3(0.165, 0.04, 0).applyMatrix4(O.saw.matrixWorld), 30); }
@@ -6366,8 +6366,14 @@ function bs3Frame(now){
       else if (dealerHolds && f === Fa){ toW(A2, W(A2.s > 0 ? O.GP.pump : O.GP.grip.clone().add(new T.Vector3(0, 0.025, gripZ))), 16); A2.palmAt = gunC; A2.palmAx = gunAx;
         if (A2.s > 0) GRIP(); else GRIP(A.bangT < 0.12 || A.clickT < 0.12 ? 0.95 : 0.5); }   // 쏘는 손: 검지를 방아쇠에 걸고 있다가 쏘는 순간 당긴다   // 손바닥으로 총을 감싼다 (손잡이 손은 몸 쪽 옆에서)
       else rest(f, A2, i);
-      bs3Arm(A2);
     });
+    // 묶인 사람은 어떤 자세에서도(맞아 넘어가거나 일어날 때도) 두 손목이 붙어 있고, 수갑은 그 손목을 따라간다
+    if (fc && !(Lay && f === Fl) && !(f === Fa && shooter === 'op')){
+      const side = new T.Vector3(1, 0, 0).applyQuaternion(bq), mid = f.arms[0].p.clone().add(f.arms[1].p).multiplyScalar(0.5);
+      f.arms.forEach(A2 => { A2.p.copy(mid).addScaledVector(side, A2.s * 0.075); if (!A2.palmAt || A2.palmAx){ A2.palmAt = mid.clone(); A2.palmAx = null; } });
+      if (f === cuffedF){ O.cuffOn.position.copy(mid).add(new T.Vector3(0, 0.01, 0)); O.cuffOn.quaternion.copy(bq); }
+    }
+    f.arms.forEach(A2 => bs3Arm(A2));
   });
   if (F){ F.t += dt; if (F.t > 0.6) A.feed = null; }
 
