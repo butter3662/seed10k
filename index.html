@@ -681,7 +681,8 @@ html.gated body{overflow:hidden}
 @keyframes bsLayIn{from{opacity:0;transform:translateY(-18px) rotate(var(--r))}}
 .bs-lay.go i{transition:transform .5s,opacity .5s;transform:translate(0,40px) scale(.4);opacity:0}
 .bs-count{position:absolute;left:10px;top:10px;display:flex;gap:10px;font-size:12px;color:rgba(230,225,211,.75)}
-.bs-count i{display:inline-block;width:6px;height:12px;border-radius:1px;margin-right:4px;vertical-align:-1px}.bs-count i.live{background:#e0473f}.bs-count i.blank{background:#5d7fa6}
+.bs-count i{display:inline-block;width:6px;height:12px;border-radius:1px;margin-right:4px;vertical-align:-1px}.bs-count i.live{background:#e0473f}.bs-count i.blank{background:#5d7fa6}.bs-count i.unk{background:#8f8a80}
+.mbs-rules{margin:0 0 10px;padding:8px 10px;border:1px solid var(--rule);border-radius:10px}.mbs-rules p{margin:4px 0 0;font-size:13px}.mbs-rule{display:flex;gap:8px;align-items:flex-start;margin-top:6px;cursor:pointer}.mbs-rule input{margin-top:3px}.mbs-rule span{display:flex;flex-direction:column}.mbs-rule small{opacity:.7;font-size:12px}
 .bs-peek{margin:0;height:24px;line-height:24px;text-align:center;font-size:13px}.bs-peek b{color:#7fb0e0}.bs-peek.live b{color:#ff6b5e}
 .bs-msg{margin:0;height:44px;display:flex;align-items:center;justify-content:center;text-align:center;font-weight:700;line-height:1.3}
 .bs-msg{flex-direction:column;gap:1px}.bs-tmr{font-size:12px;font-weight:600;min-height:15px;line-height:15px;font-variant-numeric:tabular-nums}
@@ -1255,7 +1256,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.1.4';
+const VERSION = '1.1.5';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -5313,6 +5314,7 @@ document.addEventListener('click', e => {
    목숨이 0이 되면 탈락, 마지막까지 남은 사람이 이긴다.
    아이템: 🔍돋보기(지금 탄을 나만 본다) 🚬담배(목숨 +1) 🍺맥주(지금 탄을 쏘지 않고 빼낸다, 모두가 본다)
            🪚톱(다음 한 발 피해 2배) ⛓️수갑(고른 상대가 다음 차례를 한 번 쉰다)
+   같이 하기 규칙 설정(방장이 고름, g.rules): clean 아이템 없음 · blind 남의 아이템 안 보임 · hidden 깜깜이(실탄·공포탄이 각각 몇 발인지 모름, 전체 발수만 앎)
    이 규칙 부분(BS ~ BSE)은 라즈베리파이 심판도 같은 코드를 쓴다 (build.py가 pi/bs_engine.js로 떼어 낸다) */
 const BS = {hpMax:4, perLoad:2, itemMax:8, minShells:2, maxShells:8};
 const BS_IT = {
@@ -5324,8 +5326,8 @@ const BS_IT = {
 };
 const BS_KEYS = Object.keys(BS_IT);
 const BSE = {
-  newGame(names, stake, rnd, first){
-    const g = {v:1, n:names.length, stake, pl:names.map(nm => ({nm, hp:BS.hpMax, items:[], cuffed:false, out:false, outAt:0})),
+  newGame(names, stake, rnd, first, rules){
+    const g = {v:1, n:names.length, stake, rules:{clean:!!(rules && rules.clean), blind:!!(rules && rules.blind), hidden:!!(rules && rules.hidden)}, pl:names.map(nm => ({nm, hp:BS.hpMax, items:[], cuffed:false, out:false, outAt:0})),
       turn:first, shells:[], live:0, blank:0, saw:false, load:0, pk:names.map(() => null), log:[], over:false, win:-1, outs:0, shots:0};
     const ev = [];
     BSE.reload(g, rnd, ev);
@@ -5340,13 +5342,13 @@ const BSE = {
     for (let k = total - 1; k > 0; k--){ const j = Math.floor(rnd() * (k + 1)); [sh[k], sh[j]] = [sh[j], sh[k]]; }
     g.shells = sh; g.live = live; g.blank = total - live; g.saw = false; g.load++; g.pk = g.pl.map(() => null);
     const got = g.pl.map(p => {
-      if (p.out) return [];
+      if (p.out || (g.rules && g.rules.clean)) return [];   // 클린 모드: 아이템을 나눠 주지 않는다
       const add = [];
       for (let k = 0; k < BS.perLoad && p.items.length < BS.itemMax; k++){ const it = BS_KEYS[Math.floor(rnd() * BS_KEYS.length)]; p.items.push(it); add.push(it); }
       return add;
     });
     ev.push({t:'load', live, blank:total - live, got});
-    BSE.log(g, `장전: 실탄 ${live} · 공포탄 ${total - live}`);
+    BSE.log(g, g.rules && g.rules.hidden ? `장전: ${total}발 (종류는 모름)` : `장전: 실탄 ${live} · 공포탄 ${total - live}`);
   },
   take(g){   // 맨 앞 탄을 꺼낸다 (쏘거나 맥주로 빼거나). 그 탄을 본 기억은 지운다
     const s = g.shells.shift();
@@ -5517,16 +5519,17 @@ function bsTableHTML(g, me, o){
   const V = BSV.busy && BSV.view;
   if (V) g = Object.assign({}, g, {live:V.live, blank:V.blank, turn:V.turn, saw:V.saw, over:V.over, load:V.load, pl:g.pl.map((p, i) => Object.assign({}, p, {hp:V.hp[i], out:V.out[i], items:V.items[i]}))});
   const myTurn = !g.over && g.turn === me && !BSV.busy && !o.wait;
+  const R0 = g.rules || {}, hid = !!R0.hidden, blind = !!R0.blind;   // 같이 하기 규칙
   const peek = o.peek !== undefined ? o.peek : g.pk ? g.pk[me] : null;
   const seat = (p, i, mine) => {
     const items = mine ? p.items.map(it => {
       const dis = !myTurn || !o.mine || BSV.hold || (it === 'saw' && g.saw) || (it === 'cig' && p.hp >= BS.hpMax) || (it === 'cuff' && !g.pl.some((q, j) => j !== me && !q.out && !q.cuffed));
       return `<button class="bs-it" data-bsit="${it}" ${dis ? 'disabled' : ''} title="${BS_IT[it].d}"><span class="bs-ico">${bsIco(it)}</span><small>${BS_IT[it].nm}</small></button>`;
-    }).join('') : p.items.map(it => `<span class="bs-it ro" title="${BS_IT[it].nm}"><span class="bs-ico">${bsIco(it)}</span></span>`).join('');
+    }).join('') : blind ? '' : p.items.map(it => `<span class="bs-it ro" title="${BS_IT[it].nm}"><span class="bs-ico">${bsIco(it)}</span></span>`).join('');
     const can = myTurn && !p.out;
     return `<div class="bs-p ${mine ? 'me' : ''} ${g.turn === i && !g.over ? 'turn' : ''} ${p.out ? 'out' : ''} ${BSV.flash === 'p' + i ? 'shot' : ''} ${can && BSV.hold && !mine ? 'aimable' : ''} ${BSV.aimT === i && can ? 'aimed' : ''}" data-bsi="${i}" ${can && BSV.hold && !mine ? `data-bsaim="${i}"` : ''}>
       <div class="bs-pn"><b>${mine && !o.spec ? '나' : esc(p.nm)}</b><span class="bs-tag">${p.out ? '탈락' : p.cuffed ? '⛓️ 묶임' : g.turn === i && !g.over ? '차례' : ''}</span>${bsHP(p.hp, BSV.flash === 'p' + i)}</div>
-      <div class="bs-items ${mine ? 'mine' : ''}">${items || '<span class="bs-none">아이템 없음</span>'}</div>
+      <div class="bs-items ${mine ? 'mine' : ''}">${items || `<span class="bs-none">${R0.clean ? '클린 모드' : blind && !mine ? '🙈 볼 수 없음' : '아이템 없음'}</span>`}</div>
     </div>`;
   };
   const opp = g.pl.map((p, k) => (me + 1 + k) % g.pl.length).filter(i => i !== me).map(i => seat(g.pl[i], i, false)).join('');   // 내 다음 자리부터: 3D 탁자의 왼쪽 → 오른쪽 순서와 같다
@@ -5542,7 +5545,7 @@ function bsTableHTML(g, me, o){
       <div class="bs-gunwrap aim-${aim} ${BSV.hold || BSV.aim === 'up' || BSV.aim === 'down' ? 'held' : ''} ${g.saw ? 'sawed' : ''}" ${myTurn && !BSV.hold ? 'data-bsgun="1" role="button" aria-label="총 들기"' : ''}><div class="bs-kick">${BS_GUN}<i class="bs-muzzle"></i></div></div>
       `}${myTurn && BSV.hold ? bsAimUI(g, me) : ''}<button class="bs-snd" data-bsdo="snd" aria-label="${BSA.on ? '소리 끄기' : '소리 켜기'}">${bsaIcon()}</button>${BSV.black && !s3 ? '<div class="bs-black"></div>' : ''}${BSV.banner ? `<div class="bs-banner">${BSV.banner}</div>` : ''}
       ${!s3 && BSV.eject !== undefined && BSV.eject !== null ? `<i class="bs-eject ${BSV.eject ? 'live' : 'blank'}"></i>` : ''}
-      <div class="bs-count"><span><i class="live"></i>실탄 <b>${g.live}</b></span><span><i class="blank"></i>공포탄 <b>${g.blank}</b></span>${g.saw ? '<span>🪚 톱</span>' : ''}</div>
+      <div class="bs-count">${hid ? `<span><i class="unk"></i>남은 탄 <b>${g.live}</b>발</span>` : `<span><i class="live"></i>실탄 <b>${g.live}</b></span><span><i class="blank"></i>공포탄 <b>${g.blank}</b></span>`}${g.saw ? '<span>🪚 톱</span>' : ''}</div>
     </div>
     <p class="bs-peek ${peek ? 'live' : ''}" style="visibility:${peek !== null && peek !== undefined && !g.over ? 'visible' : 'hidden'}">🔍 지금 탄: <b>${peek ? '실탄' : '공포탄'}</b></p>
     <p class="bs-msg">${o.timer ? '<span class="bs-tmr muted" id="mpTimer"></span>' : ''}<span>${msg}</span></p>
@@ -5584,16 +5587,17 @@ const bsWait = ms => { const gen = BSV.gen; return new Promise((res, rej) => set
 // 연출 시작 때의 화면 상태: 끝난 상태(g)에서 이벤트를 거꾸로 되돌린다. 연출하면서 하나씩 다시 적용한다
 const BS_EVIT = {peek:'glass', heal:'cig', beer:'beer', saw:'saw', cuff:'cuff'};
 function bsViewOf(g, ev){
-  const v = {hp:g.pl.map(p => p.hp), out:g.pl.map(p => !!p.out), items:g.pl.map(p => p.items.slice()), live:g.live, blank:g.blank, turn:g.turn, saw:!!g.saw, over:!!g.over, load:g.load || 0};
+  const v = {hp:g.pl.map(p => p.hp), out:g.pl.map(p => !!p.out), items:g.pl.map(p => p.items.slice()), live:g.live, blank:g.blank, turn:g.turn, saw:!!g.saw, over:!!g.over, load:g.load || 0, hid:!!(g.rules && g.rules.hidden)};
+  const back = live => { if (v.hid || live) v.live++; else v.blank++; };   // 깜깜이: live 칸이 남은 전체 발수다
   const rm = (a, it) => { const k = a.lastIndexOf(it); if (k >= 0) a.splice(k, 1); };
   for (let k = ev.length - 1; k >= 0; k--){
     const e = ev[k];
     if (e.t === 'win') v.over = false;
-    else if (e.t === 'shot'){ v.hp[e.target] = e.pre !== undefined ? e.pre : Math.min(BS.hpMax, e.hp + e.dmg); v.out[e.target] = false; if (e.live) v.live++; else v.blank++; v.saw = e.sw !== undefined ? e.sw : e.dmg > 1; v.turn = e.i; }
+    else if (e.t === 'shot'){ v.hp[e.target] = e.pre !== undefined ? e.pre : Math.min(BS.hpMax, e.hp + e.dmg); v.out[e.target] = false; back(e.live); v.saw = e.sw !== undefined ? e.sw : e.dmg > 1; v.turn = e.i; }
     else if (e.t === 'load'){ v.load--; v.live -= e.live; v.blank -= e.blank; (e.got || []).forEach((a, i) => a.forEach(it => rm(v.items[i], it))); }
     else if (e.t === 'turn' || e.t === 'skip'){ const a = ev.slice(0, k).reverse().find(x => x.i !== undefined && x.t !== 'skip' && x.t !== 'turn'); if (a) v.turn = a.i; }
     else if (BS_EVIT[e.t]){ v.turn = e.i;   // 쓴 아이템은 되살리지 않는다: 누르는 순간 인벤토리에서 사라진다
-      if (e.t === 'heal') v.hp[e.i]--; if (e.t === 'beer'){ if (e.live) v.live++; else v.blank++; } if (e.t === 'saw') v.saw = false; }
+      if (e.t === 'heal') v.hp[e.i]--; if (e.t === 'beer') back(e.live); if (e.t === 'saw') v.saw = false; }
   }
   v.live = Math.max(0, v.live); v.blank = Math.max(0, v.blank);
   return v;
@@ -5601,11 +5605,12 @@ function bsViewOf(g, ev){
 function bsViewDo(e){
   const v = BSV.view; if (!v) return;
   const rm = (a, it) => { const k = a.indexOf(it); if (k >= 0) a.splice(k, 1); };
-  if (e.t === 'shot'){ v.hp[e.target] = e.hp; v.out[e.target] = !!e.out; if (e.live) v.live = Math.max(0, v.live - 1); else v.blank = Math.max(0, v.blank - 1); v.saw = false; }
+  const take = live => { if (v.hid || live) v.live = Math.max(0, v.live - 1); else v.blank = Math.max(0, v.blank - 1); };
+  if (e.t === 'shot'){ v.hp[e.target] = e.hp; v.out[e.target] = !!e.out; take(e.live); v.saw = false; }
   else if (e.t === 'load'){ v.load++; v.live += e.live; v.blank += e.blank; (e.got || []).forEach((a, i) => a.forEach(it => v.items[i] && v.items[i].push(it))); }
   else if (e.t === 'turn') v.turn = e.i;
   else if (e.t === 'win') v.over = true;
-  else if (BS_EVIT[e.t]){ if (e.t === 'heal') v.hp[e.i] = e.hp; if (e.t === 'beer'){ if (e.live) v.live = Math.max(0, v.live - 1); else v.blank = Math.max(0, v.blank - 1); } if (e.t === 'saw') v.saw = true; }
+  else if (BS_EVIT[e.t]){ if (e.t === 'heal') v.hp[e.i] = e.hp; if (e.t === 'beer') take(e.live); if (e.t === 'saw') v.saw = true; }
 }
 // after: 이 묶음 뒤에 이미 받아 둔(아직 안 보여 준) 이벤트들. 지금 상태에서 그것까지 거꾸로 되돌려야 이 묶음 직전 모습이 된다
 async function bsPlay(ev, done, rerender, after){
@@ -5620,7 +5625,7 @@ async function bsPlay(ev, done, rerender, after){
       if (e.t === 'load'){
         BSV.aim = 'rest'; BSV.eject = null;
         BSV.hold = false; BSV.aimT = null; const n = e.live + e.blank;
-        BSV.lay = {live:e.live, blank:e.blank, k:Math.floor(Math.random() * 23), in:[]}; bsViewDo(e); BSV.msg = `실탄 ${e.live} · 공포탄 ${e.blank}`; rerender();
+        BSV.lay = {live:e.live, blank:e.blank, k:Math.floor(Math.random() * 23), in:[]}; bsViewDo(e); BSV.msg = e.hid ? `${n}발 장전 · 종류는 모름` : `실탄 ${e.live} · 공포탄 ${e.blank}`; rerender();
         for (let k = 0; k < n; k++) BSAU.lay(k * 0.07 + 0.15); await bsWait(1800);
         BSV.msg = '딜러가 장전한다…'; rerender();
         for (let k = 0; k < n; k++){ BSV.lay.in.push(k); rerender(); BSAU.insert(0.42); await bsWait(560); }   // 딜러가 탄을 하나씩 집어 넣는다 (손 동작 한 번 = 탄 한 발)
@@ -6976,10 +6981,23 @@ function mpLobbyHTML(R){
     <p class="muted" style="margin:0 0 8px">판돈 ${fmtUSD(R.stake)} · ${n}/${R.state.maxP}명${R.il ? ' · <b class="down">🚨 불법 모드 방</b>' : ''} · ${R.mode === 'live' ? '실제 시세' : '시뮬레이션'} 모드</p>
     ${prev && prev.seats ? `<p class="muted" style="margin:0 0 8px">지난 판: ${prev.score ? prev.seats.map((nm, i) => `${esc(nm)} ${prev.score[i]}`).join(' : ') + ' · ' : ''}${prev.win >= 0 && prev.seats[prev.win] !== undefined ? `${esc(prev.seats[prev.win])} 승` : ''}</p>` : ''}
     ${mpSeatsHTML(R)}
+    ${R.game === 'bs' ? mbsRulesHTML(R, host) : ''}
     ${me >= 0 && n < R.state.maxP ? '<div class="mg-foot" style="margin:0 0 8px"><button class="btn" id="onlInv">🟢 접속 중인 사람 부르기</button></div>' : ''}
     <div class="bm-acts">${me < 0 ? `<button class="btn solid" id="mpRejoin">참가 (판돈 ${fmtUSD(R.stake)})</button>`
       : host ? `<button class="btn solid" id="mpStart" ${n >= min ? '' : 'disabled'}>${n >= min ? '시작' : `${min}명이 되면 시작할 수 있습니다`}</button>` : '<p class="bm-wait">방장이 시작하기를 기다리는 중…</p>'}</div>`;
 }
+// 벅샷 규칙 (방장만 바꿈, 시작 전). 나머지 사람은 켜진 규칙만 본다
+const MBS_RULES = [['clean', '클린 모드', '아이템이 없습니다'], ['blind', '블라인드 모드', '상대의 아이템을 볼 수 없습니다'], ['hidden', '깜깜이 모드', '실탄·공포탄이 각각 몇 발 들어갔는지 알 수 없습니다 (전체 발수만 압니다)']];
+function mbsRulesHTML(R, host){
+  const r = R.state.rules || {};
+  if (!host){ const on = MBS_RULES.filter(([k]) => r[k]); return `<div class="mbs-rules"><small class="muted">규칙</small>${on.length ? on.map(([, nm, d]) => `<p><b>${nm}</b> · ${d}</p>`).join('') : '<p class="muted">기본 규칙</p>'}</div>`; }
+  return `<div class="mbs-rules"><small class="muted">규칙 (방장만 바꿀 수 있습니다)</small>${MBS_RULES.map(([k, nm, d]) => `<label class="mbs-rule"><input type="checkbox" data-bsrule="${k}" ${r[k] ? 'checked' : ''} ${MP.busy ? 'disabled' : ''}><span><b>${nm}</b><small>${d}</small></span></label>`).join('')}</div>`;
+}
+document.addEventListener('change', e => {   // 방장이 규칙을 켜고 끈다
+  const t = e.target; if (!t.dataset || !t.dataset.bsrule || !MP.room) return;
+  const r = Object.assign({}, MP.room.state.rules || {}); r[t.dataset.bsrule] = t.checked; mpAct('opt', r);
+});
+const mbsRuleTags = R => MBS_RULES.filter(([k]) => R.state.rules && R.state.rules[k]).map(([, nm]) => ` · ${nm}`).join('');
 async function mpAct(kind, arg, spent){
   if (MP.busy) return; MP.busy = true; mpRender();
   try {
@@ -7377,7 +7395,7 @@ function mbsBody(R){
     <div class="bm-acts">${host ? `<button class="btn solid" id="mpAgain">한 판 더 (${fmtUSD(R.stake)})</button>` : '<p class="bm-wait">방장이 한 판 더 열면 다시 참가할 수 있습니다</p>'}</div>`) : R.status === 'over' ? ' ' : '';
   return bsTableHTML(g, me < 0 ? 0 : me, {mine:me >= 0, spec:me < 0, peek:me < 0 ? null : mbsPeek(g), wait:MP.busy || me < 0, timer:R.status === 'play', foot});
 }
-MP_VIEW.bs = R => `<div class="card-h"><h2>💥 벅샷 룰렛</h2><small>판돈 ${fmtUSD(R.stake)} · ${R.state.seats.length}명 · 1등 ${fmtUSD(R.stake * R.state.seats.length)}${R.il ? ' · 🚨 불법' : ''}</small></div><div id="mbsBody"></div>`;
+MP_VIEW.bs = R => `<div class="card-h"><h2>💥 벅샷 룰렛</h2><small>판돈 ${fmtUSD(R.stake)} · ${R.state.seats.length}명 · 1등 ${fmtUSD(R.stake * R.state.seats.length)}${R.il ? ' · 🚨 불법' : ''}${mbsRuleTags(R)}</small></div><div id="mbsBody"></div>`;
 MP_UPD.bs = R => { const b = $('#mbsBody'); if (!b || !R.state.g) return false; mpSetH(b, mbsBody(R)); return true; };
 const mbsRer = () => { const R = MP.room; if (R && R.game === 'bs') MP_UPD.bs(R); };
 mbsRer.pending = () => (MP.view.bsQ || []).length > 0;   // 받아 두고 아직 안 보여 준 이벤트가 있나

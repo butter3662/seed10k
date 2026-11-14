@@ -97,6 +97,14 @@ export function handle(room0, priv0, req, now = Date.now(), rnd = Math.random) {
       st.seats[me].left = true; bump(room);
       return {room, priv, payouts: [], res: {}};
     }
+    case "opt": {                                                                 // 방장이 대기실에서 규칙을 고른다 (벅샷: 클린·블라인드·깜깜이)
+      if (uid !== room.host) return {err: "방장만 설정을 바꿀 수 있습니다"};
+      if (room.status !== "lobby") return {err: "시작 전에만 바꿀 수 있습니다"};
+      if (room.game !== "bs") return {err: "이 게임은 설정이 없습니다"};
+      st.rules = {clean: !!a.clean, blind: !!a.blind, hidden: !!a.hidden};
+      bump(room, {t: "opt"});
+      return {room, priv, payouts: [], res: {}};
+    }
     case "start": {
       if (uid !== room.host) return {err: "방장만 시작할 수 있습니다"};
       if (room.status !== "lobby") return {err: "이미 시작했습니다"};
@@ -120,7 +128,7 @@ export function handle(room0, priv0, req, now = Date.now(), rnd = Math.random) {
       if (room.status !== "over") return {err: "판이 끝난 뒤에 다시 열 수 있습니다"};
       if (a.il !== undefined && !!a.il !== room.il) return {err: "불법 모드 설정이 방과 다릅니다"};
       room.status = "lobby";
-      room.state = {seats: [seatOf2(uid, {nick: st.seats[me].nick, payAtStart: a.payAtStart})], maxP: st.maxP, seq: st.seq, startN: st.startN || 0, at: now, prev: G.summary ? G.summary(room) : null};
+      room.state = {seats: [seatOf2(uid, {nick: st.seats[me].nick, payAtStart: a.payAtStart})], maxP: st.maxP, seq: st.seq, startN: st.startN || 0, at: now, prev: G.summary ? G.summary(room) : null, ...(st.rules ? {rules: st.rules} : {})};   // 규칙은 다음 판에도 그대로
       for (const k of Object.keys(priv)) delete priv[k];
       bump(room, {t: "again"});
       return {room, priv, payouts: [], res: {}};
@@ -498,13 +506,23 @@ GAMES.bm = {
    탄 순서(shells)와 돋보기로 본 것(pk)은 숨긴 상태(priv)에 둔다. 돋보기 결과는 쓴 사람의 요청 결과(res)로만 돌려준다.
    한 번 고를 때마다 30초, 넘기면 컴퓨터 딜러와 같은 판단으로 대신 둔다(쏠 때까지). 진행 중에 나가면 그 자리에서 탈락 */
 const BS_TURN_MS = 30_000;
-const bsLoad = (room, priv) => ({...room.state.g, shells: priv.shells || [], pk: priv.pk || room.state.g.pl.map(() => null)});
-function bsStore(room, priv, g) { const {shells, pk, ...pub} = g; priv.shells = shells; priv.pk = pk; room.state.g = pub; }
-const bsPub = (ev) => ev.map((e) => (e.t === "peek" ? {t: "peek", i: e.i} : e));   // 돋보기 결과는 지운다
+// 깜깜이(rules.hidden): 실탄·공포탄 수도 숨긴 상태에 두고, 공개 상태·장전 이벤트에는 전체 발수만 live 칸에 싣는다 (blank = 0)
+const bsHid = (g) => !!(g.rules && g.rules.hidden);
+const bsLoad = (room, priv) => {
+  const g = {...room.state.g, shells: priv.shells || [], pk: priv.pk || room.state.g.pl.map(() => null)};
+  if (bsHid(g) && priv.live !== undefined) { g.live = priv.live; g.blank = priv.blank; }
+  return g;
+};
+function bsStore(room, priv, g) {
+  const {shells, pk, ...pub} = g; priv.shells = shells; priv.pk = pk;
+  if (bsHid(g)) { priv.live = g.live; priv.blank = g.blank; pub.live = g.live + g.blank; pub.blank = 0; }
+  room.state.g = pub;
+}
+const bsPub = (ev, g) => ev.map((e) => (e.t === "peek" ? {t: "peek", i: e.i} : e.t === "load" && bsHid(g) ? {...e, live: e.live + e.blank, blank: 0, hid: 1} : e));   // 돋보기 결과는 지운다
 GAMES.bs = {
   init(room, priv, now, rnd) {
     const st = room.state, n = st.seats.length, first = Math.floor(rnd() * n);
-    const {g} = BSE.newGame(st.seats.map((s) => s.nick), room.stake, rnd, first);
+    const {g} = BSE.newGame(st.seats.map((s) => s.nick), room.stake, rnd, first, st.rules);
     bsStore(room, priv, g);
     st.deadline = now + BS_TURN_MS;
   },
@@ -522,7 +540,7 @@ GAMES.bs = {
   },
   after(room, priv, g, ev, now) {
     bsStore(room, priv, g);
-    bump(room, {t: "bs", list: bsPub(ev)});
+    bump(room, {t: "bs", list: bsPub(ev, g)});
     if (g.over) return GAMES.bs.finish(room);
     room.state.deadline = now + BS_TURN_MS;
     return {};

@@ -9,8 +9,8 @@ const BS_IT = {
 };
 const BS_KEYS = Object.keys(BS_IT);
 const BSE = {
-  newGame(names, stake, rnd, first){
-    const g = {v:1, n:names.length, stake, pl:names.map(nm => ({nm, hp:BS.hpMax, items:[], cuffed:false, out:false, outAt:0})),
+  newGame(names, stake, rnd, first, rules){
+    const g = {v:1, n:names.length, stake, rules:{clean:!!(rules && rules.clean), blind:!!(rules && rules.blind), hidden:!!(rules && rules.hidden)}, pl:names.map(nm => ({nm, hp:BS.hpMax, items:[], cuffed:false, out:false, outAt:0})),
       turn:first, shells:[], live:0, blank:0, saw:false, load:0, pk:names.map(() => null), log:[], over:false, win:-1, outs:0, shots:0};
     const ev = [];
     BSE.reload(g, rnd, ev);
@@ -25,13 +25,13 @@ const BSE = {
     for (let k = total - 1; k > 0; k--){ const j = Math.floor(rnd() * (k + 1)); [sh[k], sh[j]] = [sh[j], sh[k]]; }
     g.shells = sh; g.live = live; g.blank = total - live; g.saw = false; g.load++; g.pk = g.pl.map(() => null);
     const got = g.pl.map(p => {
-      if (p.out) return [];
+      if (p.out || (g.rules && g.rules.clean)) return [];   // 클린 모드: 아이템을 나눠 주지 않는다
       const add = [];
       for (let k = 0; k < BS.perLoad && p.items.length < BS.itemMax; k++){ const it = BS_KEYS[Math.floor(rnd() * BS_KEYS.length)]; p.items.push(it); add.push(it); }
       return add;
     });
     ev.push({t:'load', live, blank:total - live, got});
-    BSE.log(g, `장전: 실탄 ${live} · 공포탄 ${total - live}`);
+    BSE.log(g, g.rules && g.rules.hidden ? `장전: ${total}발 (종류는 모름)` : `장전: 실탄 ${live} · 공포탄 ${total - live}`);
   },
   take(g){   // 맨 앞 탄을 꺼낸다 (쏘거나 맥주로 빼거나). 그 탄을 본 기억은 지운다
     const s = g.shells.shift();
