@@ -682,6 +682,16 @@ html.gated body{overflow:hidden}
 .bs-lay.go i{transition:transform .5s,opacity .5s;transform:translate(0,40px) scale(.4);opacity:0}
 .bs-count{position:absolute;left:10px;top:10px;display:flex;gap:10px;font-size:12px;color:rgba(230,225,211,.75)}
 .bs-count i{display:inline-block;width:6px;height:12px;border-radius:1px;margin-right:4px;vertical-align:-1px}.bs-count i.live{background:#e0473f}.bs-count i.blank{background:#5d7fa6}.bs-count i.unk{background:#8f8a80}
+.chk{display:flex;gap:6px;align-items:center;font-size:13px;cursor:pointer}
+.shop-list{display:flex;flex-direction:column;gap:8px}
+.shop-it{display:flex;gap:10px;align-items:center;padding:8px 10px;border:1px solid var(--rule);border-radius:10px}
+.shop-ic{font-size:24px;width:32px;text-align:center;flex:none}
+.shop-tx{display:flex;flex-direction:column;gap:2px;flex:1;min-width:0}.shop-tx small{opacity:.72;font-size:12px;line-height:1.35}.shop-tx .shop-own{opacity:1;font-weight:700}
+.shop-it .btn{flex:none;white-space:nowrap}
+.ncol-prev{font-size:20px;margin:0 0 12px;text-align:center}
+.ncol-pick{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:0 0 6px}
+.ncol-sw{height:34px;border-radius:9px;border:2px solid transparent;cursor:pointer}.ncol-sw[aria-pressed="true"]{border-color:var(--ink,#fff);box-shadow:0 0 0 2px rgba(0,0,0,.35) inset}
+.rank-ncol{margin:8px 0 0;display:flex;justify-content:flex-end}
 .ac-note{margin:10px 0 0;text-align:center;font-size:11px;opacity:.55}
 .mbs-rules{margin:0 0 10px;padding:8px 10px;border:1px solid var(--rule);border-radius:10px}.mbs-rules p{margin:4px 0 0;font-size:13px}.mbs-rule{display:flex;gap:8px;align-items:flex-start;margin-top:6px;cursor:pointer}.mbs-rule input{margin-top:3px}.mbs-rule span{display:flex;flex-direction:column}.mbs-rule small{opacity:.7;font-size:12px}
 .bs-peek{margin:0;height:24px;line-height:24px;text-align:center;font-size:13px}.bs-peek b{color:#7fb0e0}.bs-peek.live b{color:#ff6b5e}
@@ -1257,7 +1267,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.2.4';
+const VERSION = '1.2.5';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -1525,7 +1535,8 @@ async function testerCheck(){
   ACC.tester = false; ACC.rankBan = null; ACC.testerKnown = false;
   if (ACC.user && ACC.sb){
     try { const {data} = await ACC.sb.from('seed10k_testers').select('user_id').eq('user_id', ACC.user.id).maybeSingle(); ACC.tester = !!data; } catch(e){}
-    ACC.testerKnown = true;   // 테스트 계정인지 알기 전에는 돈 기록을 시작하지 않는다 (테스트 계정은 anticheat 대상이 아님)
+    ACC.testerKnown = true;
+    setTimeout(() => { try { shopFlush(); } catch(e){} }, 3000);   // 서버 확인을 기다리던 상점 구매   // 테스트 계정인지 알기 전에는 돈 기록을 시작하지 않는다 (테스트 계정은 anticheat 대상이 아님)
     try { const {data, error} = await ACC.sb.from('seed10k_rank_bans').select('at,reason').eq('user_id', ACC.user.id).maybeSingle(); if (!error) ACC.rankBan = data || null; } catch(e){}
   }
   if (ACC.tester){
@@ -1668,7 +1679,9 @@ const cashUSD = () => S.usd + S.krw / FX();
 const netWorth = () => cashUSD() + holdingsUSD() + altUSD() - debt();   // altUSD: 채권·주택 (inv.js)
 function capUSD(s){ const r = price(s.id) / basePrice(s); return s.cur === 'KRW' ? s.mc * r / FX() : s.mc * r; }
 function capNative(s){ return s.mc * price(s.id) / basePrice(s); }
-function g(){ return clamp(Math.round(S.grade), 1, 10); }
+// 전과(경찰 단속 기록) 1회마다 오를 수 있는 가장 좋은 신용등급이 1씩 내려간다 (전과 n회면 최고 1+n등급). 상점에서 전과를 지우면 되돌아온다
+const gradeFloor = () => Math.min(10, 1 + Math.max(0, +((S.gam && S.gam.bust) || 0)));
+function g(){ return clamp(Math.max(Math.round(S.grade), gradeFloor()), 1, 10); }
 /* 신용등급 색: 1등급 초록(색상 120°) → 노랑(60°) → 10등급 빨강(0°). 등급 사이는 연속으로 바뀐다 */
 function gradeColor(gr){
   const t = (clamp(gr, 1, 10) - 1) / 9, dark = document.documentElement.dataset.mode === 'dark';
@@ -2951,7 +2964,7 @@ function renderHome(){
   const dToday = S.nw.length > 1 ? (N - (S.pts || 0)) - (S.nw[S.nw.length-2] - (S.nwP[S.nwP.length-2] || 0)) : N - META.seed - (S.pts || 0);
   const started = live || S.day > 0;
   $('#hGrade').textContent = `신용 ${g()}등급`;
-  { const c = gradeColor(S.grade), el = $('#hGrade'); el.style.color = c; el.style.borderColor = c; }
+  { const c = gradeColor(g()), el = $('#hGrade'); el.style.color = c; el.style.borderColor = c; }
   $('#hSub').innerHTML = `<span class="ret ${cls(ret)}">${fmtPct(ret)}</span>${(S.pts || 0) > 0 ? '' : `<span>시드 <b>${fmtUSD(META.seed, 0)}</b> 대비</span>`}<span>${live ? '어제보다' : '오늘'} <b>${signUSD(started ? dToday : 0)}</b></span>`;
   const kr = holdingsUSD('KR'), us = holdingsUSD('US'), cu = S.usd, ck = S.krw / FX();
   const tot = kr + us + cu + ck || 1;
@@ -3219,6 +3232,7 @@ function renderLoans(){
     <li>신용대출을 ${META.gradeHold}${U} 이상 쓰고 만기 전에 연체 없이 완납하면 0.5등급 오릅니다.</li>
     <li>연체가 없으면 ${live ? '20일' : '20거래일'}마다 0.1등급 오릅니다.</li>
     <li>신용대출이 연체되면 하루 0.4등급씩 내려가고, 반대매매가 생기면 더 내려갑니다.</li>
+    <li>전과(경찰 단속) 1회마다 오를 수 있는 가장 좋은 등급이 1씩 내려갑니다${(S.gam && S.gam.bust) ? ` (지금 전과 ${S.gam.bust}회 → 최고 ${gradeFloor()}등급)` : ''}. 상점에서 전과를 지우면 되돌아옵니다.</li>
     <li>게임 기준금리는 연 ${S.base.toFixed(2)}%입니다${live ? ' (실제 시세 모드에서는 고정)' : ''}.</li></ul></div>`};
   const LOAN_SHORT = {credit:`만기 ${META.creditTerm}${U} · 수수료 3% · 일복리`, margin:`주식 평가액의 ${META.ltv*100}%까지 · 만기 없음 · 반대매매 위험`, od:'모자랄 때 자동으로 빌리고 자동으로 갚음'};
   const card = (key, title, desc, apr, kv, body, warn) => { INFO['loan-' + key] = {t:title, h:`<p class="prose">${desc}</p>`}; return cardHTML(key, title, apr, kv, body, warn); };
@@ -3243,7 +3257,7 @@ function renderLoans(){
   <div class="loans-grid">
     <section class="card wide">
       <div class="grade">
-        <div class="grade-n num" style="color:${gradeColor(S.grade)}">${gr}<small>등급</small></div>
+        <div class="grade-n num" style="color:${gradeColor(g())}">${gr}<small>등급</small></div>
         <div>
           <div style="font-weight:750">신용등급</div>
           <div class="ladder" aria-hidden="true">${Array.from({length:10}, (_, i) => `<i class="${10 - i >= gr ? 'on' : ''}"${10 - i >= gr ? ` style="background:${gradeColor(10 - i)};border-color:${gradeColor(10 - i)}"` : ''}></i>`).join('')}</div>
@@ -4105,7 +4119,9 @@ function bmSetup(){
       <label class="amt"><span>$</span><input id="bmBetIn" type="text" inputmode="decimal" placeholder="${BM.minBet}~${max}" value="${esc(UI.bmBet)}"></label>
       <div class="quick" style="margin:8px 0">${[10, 50, 100, 500].filter(v => v <= max).map(v => `<button data-bmbet="${v}">$${v}</button>`).join('')}${max >= BM.minBet ? `<button data-bmbet="${max}">최대</button>` : ''}</div>
       <div class="bd">${mult.map((m, k) => `<div><span>${k + 1}위</span><b class="num">${m}배${bet > 0 ? ` = ${fmtUSD(bet * m)}` : ''}</b></div>`).join('')}</div>
+      ${shopN('first') ? `<label class="chk" style="margin:0 0 6px"><input type="checkbox" id="bmFirstUse" ${UI.firstChk ? 'checked' : ''}> 🥇 선수권 쓰기 (내 차례부터 시작 · 가진 것 ${shopN('first')}개)</label>` : ''}
       <div class="err" role="status">${esc(err)}</div>`;
+    { const fu = $('#bmFirstUse'); if (fu) fu.onchange = () => { UI.firstChk = fu.checked; }; }
     $('#bmStart').disabled = !!err || !(bet >= BM.minBet && bet <= max);
     const inp = $('#bmBetIn');
     inp.addEventListener('input', () => { UI.bmBet = inp.value.replace(/[^\d.]/g, ''); const pos = inp.selectionStart; draw(); const i2 = $('#bmBetIn'); i2.focus(); try { i2.setSelectionRange(pos, pos); } catch(e){} });
@@ -4120,6 +4136,7 @@ function bmSetup(){
     const key = `bm:${Date.now().toString(36)}`;
     gamPay(bet); betPaid(key, bet);
     b2.n++; b2.cur = BME.newGame(UI.bmN + 1, bet, Math.random); b2.cur.il = gamIl();
+    if ($('#bmFirstUse') && $('#bmFirstUse').checked && shopUse('first')){ b2.cur.first = b2.cur.turn = 0; b2.cur.pending = {k:'roll'}; BME.log(b2.cur, '🥇 선수권: 나부터 시작'); BME.rec(b2.cur, '선수권 사용: 나부터 시작'); }   // 선수권: 내 차례부터 (나는 0번)
     UI.bmBet = '';
     commit(); close();
     setTimeout(bmOpen, 200);
@@ -4717,8 +4734,10 @@ function betDialog(k, title, extraHTML, onStart, noPay){   // noPay: 판돈을 �
     box.innerHTML = `<p style="margin:0 0 6px">판돈 (한도 ${fmtUSDn(lim, 0)}${gamIl() ? ', 🚨 불법 모드' : ''} · 달러 통장 ${fmtUSDn(S.usd)}${S.krw > 0 ? ` · 모자라면 원화 ${fmtKRWn(S.krw)}에서 자동 환전` : ''})</p>
       <label class="amt"><span>$</span><input id="betIn" type="text" inputmode="decimal" placeholder="${G.min}~${max}" value="${esc(UI.betIn[k] || '')}"></label>
       <div class="quick" style="margin:8px 0">${[1, 5, 10, 50, 100, 500].filter(v => v >= G.min && v <= max).map(v => `<button data-betq="${v}">$${v}</button>`).join('')}${max >= G.min ? `<button data-betq="${max}">최대</button>` : ''}</div>
-      ${gamIl() ? `<p class="muted" style="margin:0 0 6px">불법 모드: 이 판이 끝날 때 ${(G.p * 100).toFixed(1)}% 확률로 경찰 단속 (불법 도박으로 번 돈(지금 ${fmtUSDn(Math.max(0, ilAcc()))})의 ${GAM.seize * 100}% 압류, 랭킹 이름에 영구 빨간 줄)</p>` : ''}
+      ${gamIl() ? `<p class="muted" style="margin:0 0 6px">불법 모드: 이 판이 끝날 때 ${(polP(k) * 100).toFixed(2).replace(/\.?0+$/, "")}% 확률로 경찰 단속 (불법 도박으로 번 돈(지금 ${fmtUSDn(Math.max(0, ilAcc()))})의 ${GAM.seize * 100}% 압류, 랭킹 이름에 영구 빨간 줄)</p>` : ''}
+      ${!noPay && k === 'bs' && shopN('first') ? `<label class="chk" style="margin:0 0 6px"><input type="checkbox" id="firstUse" ${UI.firstChk ? 'checked' : ''}> 🥇 선수권 쓰기 (내 차례부터 시작 · 가진 것 ${shopN('first')}개)</label>` : ''}
       <div class="err" role="status">${esc(err)}</div>`;
+    { const fu = $('#firstUse'); if (fu) fu.onchange = () => { UI.firstChk = fu.checked; }; }
     $('#betGo').disabled = !!err || !(bet >= G.min && bet <= max);
     const inp = $('#betIn');
     inp.addEventListener('input', () => { UI.betIn[k] = inp.value.replace(/[^\d.]/g, ''); const pos = inp.selectionStart; draw(); const i2 = $('#betIn'); i2.focus(); try { i2.setSelectionRange(pos, pos); } catch(e){} });
@@ -4731,6 +4750,7 @@ function betDialog(k, title, extraHTML, onStart, noPay){   // noPay: 판돈을 �
     const key = `${k}:${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
     if (!noPay){ gamPay(bet); betPaid(key, bet); }
     UI.betIn[k] = '';
+    UI.firstUse = !noPay && k === 'bs' && !!($('#firstUse') && $('#firstUse').checked) && shopUse('first');   // 선수권: 이번 판은 내 차례부터
     close();
     setTimeout(() => onStart(bet), 180);
     if (!noPay) setTimeout(() => betAudit(key, bet, G.nm), 180 + BET_AUDIT_MS);   // 같이 하기(noPay)는 시작할 때 따로 확인한다
@@ -4738,13 +4758,19 @@ function betDialog(k, title, extraHTML, onStart, noPay){   // noPay: 판돈을 �
 }
 // 판이 끝날 때. il: 그 판을 불법 모드로 시작했는지. 단속되면 true
 // 판이 끝날 때. il: 그 판을 불법 모드로 시작했는지, net: 그 판의 손익(받은 돈 - 판돈). 단속되면 true
+// 경찰 적발 확률: 게임마다 기본 확률 + 전과 1회당 0.25%p (전과를 지우면 내려간다)
+const BUST_P = 0.0025;
+const bustAdd = () => BUST_P * Math.max(0, +(gamS().bust || 0));
+const polP = k => GAM[k].p + bustAdd();
+const runP = r => (r && r.p !== undefined ? r.p : RUN.p) + bustAdd();
 function police(k, il, net){
   if (!il) return false;
   const G = gamS();
   G.ilAcc = Math.round((ilAcc() + (+net || 0)) * 100) / 100;   // 불법 도박 누적 순이익 (단속 판의 손익까지 넣고 압류)
-  if (Math.random() >= GAM[k].p){ save(); return false; }
+  if (Math.random() >= polP(k)){ save(); return false; }
   G.bust = (G.bust || 0) + 1; G.bustAt = Date.now();
-  const acc = Math.max(0, G.ilAcc), amt = Math.round(acc * GAM.seize * 100) / 100;
+  const law = shopUse('lawyer');   // 변호사: 이번 압수액 절반
+  const acc = Math.max(0, G.ilAcc), amt = Math.round(acc * GAM.seize * (law ? 0.5 : 1) * 100) / 100;
   G.ilAcc = 0;   // 압류하고 누적은 처음부터
   const od = amt > 0 ? spendUSD(amt) : 0;
   if (amt > 0) altLog('police', `🚨 경찰 단속 (${GAM[k].nm}) 압류`, -amt, 'USD');
@@ -4753,7 +4779,7 @@ function police(k, il, net){
   const what = acc > 0 ? `지금까지 불법 도박으로 번 돈 ${fmtUSDn(acc)}의 ${GAM.seize * 100}%인 <b>${fmtUSDn(amt)}</b>을 압류당했습니다` : '불법 도박으로 번 돈이 없어 압류할 것은 없었습니다';
   const html = `<div class="police"><div class="siren"><i></i><i></i></div><h2>🚨 경찰 단속!</h2>
       <p>불법 도박(${GAM[k].nm}) 현장이 적발됐습니다. ${what}${od > 0 ? ` (달러가 모자라 마이너스통장에서 ${fmtUSDn(od)})` : ''}.</p>
-      <p class="muted">랭킹의 이름에 빨간 줄이 영구히 그어지고, 옆에 단속 횟수(지금 ${G.bust}회째)가 표시됩니다.</p></div>
+      ${law ? '<p>⚖️ 변호사 덕분에 압수액이 절반이 됐습니다.</p>' : ''}<p class="muted">랭킹의 이름에 빨간 줄이 그어지고, 옆에 단속 횟수(지금 ${G.bust}회째)가 표시됩니다. 전과 1회마다 최고 신용등급이 1씩 내려가고 경찰 적발 확률이 ${BUST_P * 100}%p씩 오릅니다 (상점에서 전과를 지우면 되돌아옴).</p></div>
       <div class="acts"><button class="btn solid" data-close>확인</button></div>`;
   // 결과 창이 떠 있으면 닫힌 뒤에 띄운다
   const tryShow = () => { if ($('#modal').hidden) showModal(html); else setTimeout(tryShow, 300); };
@@ -4768,21 +4794,24 @@ const RUN = {p:0.15, n:5, mult:2};
 function runS(){ const G = gamS(); if (!Array.isArray(G.runs)) G.runs = []; return G.runs; }
 function runAdd(k, loss){
   loss = Math.round(loss * 100) / 100; if (!(loss > 0)) return;
-  runS().push({k, amt:loss, left:RUN.n, at:Date.now()});
+  const dive = shopUse('dive');   // 잠수: 이 도주는 판마다 적발 확률이 DIVE_P
+  runS().push({k, amt:loss, left:RUN.n, at:Date.now(), ...(dive ? {p:DIVE_P} : {})});
+  if (dive) toast(`🤿 잠수했습니다: 이 도주는 판마다 ${DIVE_P * 100}% 확률로만 적발됩니다`);
   altLog('gamble', `🏃 ${GAM[k] ? GAM[k].nm : k}에서 도망 (${fmtUSDn(loss)} 안 냄)`, 0, 'USD');
   save();
 }
-const runNote = loss => `<p class="muted">이후 도박 ${RUN.n}판 동안 판이 끝날 때마다 ${RUN.p * 100}% 확률로 적발됩니다. 걸리면 안 낸 돈의 ${RUN.mult}배(<b>${fmtUSDn(loss * RUN.mult)}</b>)를 압수당하고 전과(랭킹의 단속 횟수)가 1회 늘어납니다.</p>`;
+const runNote = loss => `<p class="muted">이후 도박 ${RUN.n}판 동안 판이 끝날 때마다 ${+((shopN('dive') ? DIVE_P : RUN.p) * 100 + bustAdd() * 100).toFixed(2)}% 확률로 적발됩니다${shopN('dive') ? ' (🤿 잠수 사용)' : ''}. 걸리면 안 낸 돈의 ${RUN.mult}배(<b>${fmtUSDn(loss * RUN.mult)}</b>)를 압수당하고 전과(랭킹의 단속 횟수)가 1회 늘어납니다.</p>`;
 // 도박 한 판이 끝날 때마다 (도망친 그 판보다 먼저 부른다: 그 판은 지난 도주들에게 '이후 판'이다)
 function runCheck(){
   const G = gamS(), runs = runS(); if (!runs.length) return;
   const caught = [];
-  for (const r of runs){ r.left--; if (Math.random() < RUN.p) caught.push(r); }
+  for (const r of runs){ r.left--; if (Math.random() < runP(r)) caught.push(r); }
   G.runs = runs.filter(r => !caught.includes(r) && r.left > 0);
   if (!caught.length){ save(); return; }
   let tot = 0, od = 0;
+  const law = shopUse('lawyer');   // 변호사: 이번에 걸린 도주들의 압수액 절반
   for (const r of caught){
-    const amt = Math.round(r.amt * RUN.mult * 100) / 100; tot += amt;
+    const amt = Math.round(r.amt * RUN.mult * (law ? 0.5 : 1) * 100) / 100; tot += amt;
     od += spendUSD(amt) || 0;
     G.bust = (G.bust || 0) + 1; G.bustAt = Date.now();
     altLog('police', `🚔 도주 적발 (${GAM[r.k] ? GAM[r.k].nm : r.k}): 안 낸 ${fmtUSDn(r.amt)}의 ${RUN.mult}배 압수`, -amt, 'USD');
@@ -4791,7 +4820,7 @@ function runCheck(){
   commit();
   const html = `<div class="police"><div class="siren"><i></i><i></i></div><h2>🚔 도주 적발!</h2>
       <p>${caught.map(r => `${GAM[r.k] ? GAM[r.k].nm : r.k}에서 안 낸 ${fmtUSDn(r.amt)}`).join(', ')}이(가) 들통났습니다. ${RUN.mult}배인 <b>${fmtUSDn(Math.round(tot * 100) / 100)}</b>을 압수당했습니다${od > 0 ? ` (달러가 모자라 마이너스통장에서 ${fmtUSDn(od)})` : ''}.</p>
-      <p class="muted">전과가 ${caught.length}회 늘었습니다 (단속 ${G.bust}회째). 랭킹의 이름에 빨간 줄과 횟수가 표시됩니다.</p></div>
+      ${law ? '<p>⚖️ 변호사 덕분에 압수액이 절반이 됐습니다.</p>' : ''}<p class="muted">전과가 ${caught.length}회 늘었습니다 (단속 ${G.bust}회째). 랭킹의 이름에 빨간 줄과 횟수가 표시됩니다. 전과 1회마다 최고 신용등급이 1씩 내려가고 경찰 적발 확률이 ${BUST_P * 100}%p씩 오릅니다.</p></div>
       <div class="acts"><button class="btn solid" data-close>확인</button></div>`;
   const tryShow = () => { if ($('#modal').hidden) showModal(html); else setTimeout(tryShow, 300); };
   setTimeout(tryShow, 1400);
@@ -4815,11 +4844,12 @@ function renderGamblePane(p){
   p.innerHTML = `<section class="card c-mg" id="mpCard">${mpCardHTML()}</section>
     <section class="card gam-il ${il ? 'on' : ''}"><div class="card-h"><h2>${il ? '🚨' : '🎲'} 불법 모드</h2><button class="sw ${il ? 'on' : ''}" id="ilSw" role="switch" aria-checked="${il}"><i></i></button></div>
       <p class="mg-desc">${il ? '켜짐' : '꺼짐'}: 판돈 한도 ${['bm', 'bs', 'oe', 'bj'].map(k => `${GAM[k].nm} ${fmtUSDn(il ? GAM[k].on : GAM[k].off, 0)}`).join(' · ')}</p>
-      <p class="muted" style="margin:4px 0 0">켜면 한도가 10배가 되지만, 한 판이 끝날 때마다 경찰 단속 확률이 있습니다 (${['bm', 'bs', 'oe', 'bj'].map(k => `${GAM[k].nm} ${(GAM[k].p * 100).toFixed(1)}%`).join(' · ')}). 단속되면 지금까지 불법 도박(모든 게임 합산)으로 번 돈의 ${GAM.seize * 100}%를 압류하고, 랭킹 이름에 영구 빨간 줄과 단속 횟수가 표시됩니다.</p>
+      <p class="muted" style="margin:4px 0 0">켜면 한도가 10배가 되지만, 한 판이 끝날 때마다 경찰 단속 확률이 있습니다 (${['bm', 'bs', 'oe', 'bj'].map(k => `${GAM[k].nm} ${(polP(k) * 100).toFixed(2).replace(/\.?0+$/, "")}%`).join(' · ')}). 단속되면 지금까지 불법 도박(모든 게임 합산)으로 번 돈의 ${GAM.seize * 100}%를 압류하고, 랭킹 이름에 영구 빨간 줄과 단속 횟수가 표시됩니다.</p>
       ${il || ilAcc() ? `<p class="muted" style="margin:4px 0 0">불법 도박 누적 순이익 <b class="num ${cls(ilAcc())}">${signUSD(ilAcc())}</b> · 단속되면 ${GAM.seize * 100}% 압류</p>` : ''}${G.bust ? `<p style="margin:4px 0 0"><b class="down">단속 ${G.bust}회</b></p>` : ''}</section>
     ${runS().length ? `<section class="card run-card"><div class="card-h"><h2>🏃 도주 중</h2><small>${runS().length}건</small></div>
-      <p class="mg-desc">${runS().map(r => `${GAM[r.k] ? GAM[r.k].nm : r.k} ${fmtUSDn(r.amt)} · 남은 ${r.left}판`).join('<br>')}</p>
-      <p class="muted" style="margin:4px 0 0">도박 판이 끝날 때마다 건마다 ${RUN.p * 100}% 확률로 적발 → 안 낸 돈의 ${RUN.mult}배 압수 + 전과 1회</p></section>` : ''}
+      <p class="mg-desc">${runS().map(r => `${GAM[r.k] ? GAM[r.k].nm : r.k} ${fmtUSDn(r.amt)} · 남은 ${r.left}판 · 판마다 ${+(runP(r) * 100).toFixed(2)}%${r.p !== undefined ? ' 🤿' : ''}`).join('<br>')}</p>
+      <p class="muted" style="margin:4px 0 0">도박 판이 끝날 때마다 건마다 위 확률로 적발 → 안 낸 돈의 ${RUN.mult}배 압수 + 전과 1회</p></section>` : ''}
+    <section class="card c-mg" id="shopCard">${shopCardHTML()}</section>
     <section class="card c-mg" id="bmCard">${bmCardHTML()}</section>
     <section class="card c-mg" id="bsPane">${bsPaneHTML()}</section>
     <section class="card c-mg" id="oePane">${oePaneHTML()}</section>
@@ -5660,7 +5690,7 @@ function bsStart(){
   const s = bsS(); if (s.cur) return;
   if (S.over) return toast('파산해서 할 수 없습니다', true);
   betDialog('bs', '💥 벅샷 룰렛', `<p class="muted" style="margin:0 0 8px">딜러와 1:1, 목숨 ${BS.hpMax}. 마지막까지 버티면 판돈 2배</p>`, bet => {
-    const first = Math.random() < 0.5 ? 0 : 1;
+    const first = UI.firstUse ? 0 : Math.random() < 0.5 ? 0 : 1; UI.firstUse = false;   // 선수권을 썼으면 내 차례부터
     const {g, ev} = BSE.newGame(['나', '딜러'], bet, Math.random, first);
     g.il = gamIl(); g.tn = 1; s.cur = g; commit(); gmOpen('bs');
     BSV.msg = ''; bsRender();
@@ -8745,6 +8775,115 @@ function altAssetsHTML(){
   return (rows ? `<section class="card ao1"><div class="card-h"><h2>채권·주택</h2><small>${bs.length + hs.length}개 · ${fmtUSD(altUSD())}</small></div>${rows}</section>` : '');
 }
 
+/* ───── 상점 (게임 안의 달러로 산다) ─────
+   전과 지우기 $500 · 변호사 선임 $300 · 잠수 $300 · 선수권 $200 · 닉네임 색 $300 (+ 부루마블 말 스킨 뽑기)
+   - 전과 지우기·닉네임 색은 남들도 보는 것이라 서버 함수(seed10k_shop_redeem)가 준다: 서버는 방금 생긴 돈 기록 'shop:<아이템>'(−가격)이 있어야만 효과를 준다
+   - 변호사·잠수·선수권은 내 기록(S.gam.shop.inv)에 개수로 쌓였다가 쓸 때 하나씩 줄어든다
+   값은 달러 통장에서 낸다. 달러가 모자라면 원화에서 모자란 만큼 먼저 환전한다(그 환전은 돈 기록에 따로 한 줄). 마이너스통장은 쓰지 않는다 */
+const SHOP = [
+  {id:'record', ic:'🧽', nm:'전과 지우기', price:500, d:'경찰 단속 기록(전과)을 1회 지웁니다. 0회가 되면 랭킹의 빨간 줄도 사라지고, 낮아졌던 최고 신용등급과 적발 확률도 되돌아옵니다.', server:true},
+  {id:'lawyer', ic:'⚖️', nm:'변호사 선임', price:300, d:'다음 경찰 단속(불법 모드 단속·도주 적발) 한 번은 압수액이 절반이 됩니다.'},
+  {id:'dive', ic:'🤿', nm:'잠수', price:300, d:''},   // 설명은 shopDesc (RUN.p를 쓰므로)
+  {id:'first', ic:'🥇', nm:'선수권', price:200, d:'혼자 하는 벅샷 룰렛·부루마블을 시작할 때 쓰면 내 차례부터 시작합니다.'},
+];
+const DIVE_P = 0.08;
+function shopS(){ const G = gamS(); if (!G.shop || typeof G.shop !== 'object') G.shop = {}; const s = G.shop; if (!s.inv || typeof s.inv !== 'object') s.inv = {}; if (!Array.isArray(s.pend)) s.pend = []; return s; }
+const shopN = id => Math.max(0, +(shopS().inv[id] || 0));
+function shopUse(id){ const s = shopS(); if (!(s.inv[id] > 0)) return false; s.inv[id]--; return true; }
+const shopItem = id => SHOP.find(x => x.id === id) || (id === 'color' ? {id:'color', ic:'🎨', nm:'닉네임 색 변경', price:300, server:true} : id === 'skin' ? {id:'skin', ic:'🎲', nm:'부루마블 말 스킨 뽑기', price:300} : null);
+const shopDesc = it => it.id === 'dive' ? `다음에 진 판에서 도망칠 때, 그 도주가 판마다 적발될 확률이 ${RUN.p * 100}% 대신 ${DIVE_P * 100}%가 됩니다.` : it.d;
+// 값 내기: 다른 돈 변화는 먼저 따로 적고, 환전도 따로 적은 뒤, 상점 결제만 한 줄(why = shop:<id>, 정확히 −가격)로 남긴다
+function shopPay(id){
+  const it = shopItem(id); if (!it) return false;
+  if (!canPayUSD(it.price)){ toast(`달러·원화 통장을 합쳐 ${fmtUSD(it.price)}이 있어야 합니다`, true); return false; }
+  lgTrack();
+  if (!ACC.tester && S.usd < it.price){
+    const need = fxFromForTarget('k2u', it.price - S.usd);
+    if (need > S.krw + 1e-9 || !exchange('k2u', need, true, true)){ toast('환전하지 못했습니다', true); return false; }
+    lgTrack('fx:shop');
+  }
+  if (!ACC.tester) S.usd = Math.round((S.usd - it.price) * 100) / 100;
+  lgTrack('shop:' + id);
+  altLog('shop', `🛒 상점: ${it.nm}`, -it.price, 'USD');
+  commit();
+  return true;
+}
+// 서버가 주는 아이템: 결제 기록을 먼저 올리고 서버 함수를 부른다. 연결이 끊기면 기다리는 목록(pend)에 두고 다음에 다시
+async function shopRedeem(item, arg){
+  const s = shopS(), job = {item, arg:arg || null, at:Date.now()};
+  s.pend.push(job); save();
+  return shopFlush();
+}
+async function shopFlush(){
+  const s = shopS(); if (!s.pend.length || !ACC.sb || !ACC.user) return null;
+  await lgFlush();
+  let last = null;
+  for (const job of s.pend.slice()){
+    let r = null;
+    try { const {data, error} = await ACC.sb.rpc('seed10k_shop_redeem', {item:job.item, arg:job.arg}); if (error) throw error; r = data; } catch(e){ return null; }   // 연결 문제: 다음에 다시
+    s.pend = s.pend.filter(x => x !== job);
+    if (r && r.ok){
+      last = r;
+      if (job.item === 'record'){ const G = gamS(); G.bust = Math.max(0, (G.bust || 0) - 1); if (ACC.busted instanceof Map){ if (r.left > 0) ACC.busted.set(ACC.user.id, r.left); else ACC.busted.delete(ACC.user.id); } toast(r.left > 0 ? `전과를 1회 지웠습니다 (남은 전과 ${r.left}회)` : '전과를 모두 지웠습니다. 빨간 줄이 사라졌습니다'); }
+      if (job.item === 'color'){ ACC.ncol = ACC.ncol instanceof Map ? ACC.ncol : new Map(); ACC.ncol.set(ACC.user.id, r.color); toast('닉네임 색을 바꿨습니다'); }
+    } else {   // 서버가 거절: 낸 돈을 돌려준다
+      const it = shopItem(job.item);
+      if (it && !ACC.tester){ receiveUSD(it.price); altLog('shop', `🛒 ${it.nm} 실패로 환불${r && r.err ? ` (${r.err})` : ''}`, it.price, 'USD'); }
+      toast(`${it ? it.nm : '상점'}: ${(r && r.err) || '처리하지 못했습니다'}${it && !ACC.tester ? ' — 환불했습니다' : ''}`, true);
+    }
+  }
+  commit(); render();
+  if (typeof renderRankCard === 'function') renderRankCard();
+  return last;
+}
+function shopCardHTML(){
+  const G = gamS();
+  return `<div class="card-h"><h2>🛒 상점</h2><small>게임 안의 달러로 삽니다</small></div>
+    <div class="shop-list">${SHOP.map(it => {
+      const own = it.id === 'record' ? `전과 ${G.bust || 0}회` : shopN(it.id) ? `가진 것 ${shopN(it.id)}개` : '';
+      const off = it.id === 'record' && !(G.bust > 0);
+      return `<div class="shop-it"><span class="shop-ic">${it.ic}</span><div class="shop-tx"><b>${it.nm}</b><small>${shopDesc(it)}</small>${own ? `<small class="shop-own">${own}</small>` : ''}</div>
+        <button class="btn solid" data-shop="${it.id}" ${off ? 'disabled title="지울 전과가 없습니다"' : ''}>${fmtUSDn(it.price, 0)}</button></div>`;
+    }).join('')}</div>
+    ${shopS().pend.length ? `<p class="muted" style="margin:6px 0 0">서버 확인을 기다리는 구매 ${shopS().pend.length}건 · 연결되면 자동으로 처리합니다</p>` : ''}
+    <p class="muted" style="margin:6px 0 0">닉네임 색은 랭킹 아래, 부루마블 말 스킨은 부루마블에서 바꿉니다.</p>`;
+}
+function renderShopCard(){ const c = $('#shopCard'); if (c) c.innerHTML = shopCardHTML(); }
+async function shopBuy(id){
+  const it = shopItem(id); if (!it) return;
+  if (S.over) return toast('파산해서 살 수 없습니다', true);
+  if (id === 'record' && !(gamS().bust > 0)) return toast('지울 전과가 없습니다', true);
+  if (it.server && !ACC.user) return toast('로그인해야 살 수 있습니다', true);
+  confirmBox(`${it.ic} ${it.nm}`, `${fmtUSD(it.price)}을 내고 삽니다.<br><small class="muted">${shopDesc(it)}</small>`, `${fmtUSD(it.price)} 내고 사기`, async () => {
+    if (!shopPay(id)) return;
+    if (it.server) await shopRedeem(id);
+    else { const s = shopS(); s.inv[id] = shopN(id) + 1; commit(); toast(`${it.nm}을(를) 샀습니다 (가진 것 ${shopN(id)}개)`); }
+    renderShopCard();
+  });
+}
+document.addEventListener('click', e => { const b = e.target.closest('[data-shop]'); if (b && !b.disabled) shopBuy(b.dataset.shop); });
+
+/* 닉네임 색 (랭킹 아래 버튼). 고를 수 있는 색 10가지 (밝은·어두운 화면 모두에서 읽히는 중간 밝기) */
+const NCOLS = ['#E5484D', '#F76B15', '#E2A336', '#46A758', '#12A594', '#0090FF', '#3E63DD', '#8E4EC6', '#D6409F', '#8D8D8D'];
+function ncolOf(uid){ return ACC.ncol instanceof Map ? ACC.ncol.get(uid) || '' : ''; }
+async function ncolLoad(ids){
+  if (!ACC.sb || !ids.length) return;
+  try { const {data, error} = await ACC.sb.from('seed10k_namecolors').select('user_id,color').in('user_id', ids); if (error) throw error;
+    ACC.ncol = ACC.ncol instanceof Map ? ACC.ncol : new Map(); (data || []).forEach(r => ACC.ncol.set(r.user_id, r.color)); } catch(e){}
+}
+function ncolDialog(){
+  if (!ACC.user || !ACC.nick) return toast('랭킹에 참여한 계정만 바꿀 수 있습니다', true);
+  const cur = ncolOf(ACC.user.id); let pick = cur || NCOLS[0];
+  const close = showModal(`<h2>🎨 닉네임 색 변경</h2><p class="muted" style="margin:0 0 10px">랭킹에서 내 닉네임이 이 색으로 보입니다. 바꿀 때마다 ${fmtUSD(300)}입니다.</p>
+    <div class="ncol-prev" id="ncolPrev"></div><div class="ncol-pick">${NCOLS.map(c => `<button class="ncol-sw" data-ncol="${c}" style="background:${c}" aria-label="${c}"></button>`).join('')}</div>
+    <div class="acts"><button class="btn" data-close>닫기</button><button class="btn solid" id="ncolGo">${fmtUSD(300)}에 바꾸기</button></div>`);
+  const draw = () => { $('#ncolPrev').innerHTML = `<span style="color:${pick};font-weight:800">${esc(ACC.nick)}</span>${pick === cur ? ' <small class="muted">(지금 색)</small>' : ''}`; $$('#modal [data-ncol]').forEach(b => b.setAttribute('aria-pressed', b.dataset.ncol === pick)); $('#ncolGo').disabled = pick === cur; };
+  $$('#modal [data-ncol]').forEach(b => b.onclick = () => { pick = b.dataset.ncol; draw(); });
+  draw();
+  $('#ncolGo').onclick = async () => { close(); if (!shopPay('color')) return; await shopRedeem('color', pick); };
+}
+document.addEventListener('click', e => { if (e.target.closest('#btnNcol')) ncolDialog(); });
+
 
 /* ───────── 상세 차트 (애플 주식 앱 방식) ───────── */
 const CH = {};   // 종목별 차트 파일 캐시
@@ -9683,6 +9822,7 @@ async function refreshRanks(force){
     const {data, error} = await ACC.sb.from('seed10k_ranks').select('user_id,nickname,return_pct,net_worth,days').eq('mode', mode).order('return_pct', {ascending:false}).limit(20);
     if (error) throw error;
     ACC.ranks[mode] = data || [];
+    await ncolLoad((data || []).map(r => r.user_id));   // 상점에서 산 닉네임 색
     try {   // 경찰 단속 기록 (seed10k_busted 표가 없으면 조용히 넘긴다)
       const ids = (data || []).map(r => r.user_id);
       if (ids.length){
@@ -9735,7 +9875,8 @@ function rankCardHTML(){
   else body = `<ol class="ranks">${rows.map((r, i) => {
       const me = ACC.user && r.user_id === ACC.user.id;
       return `<li class="${me ? 'me' : ''}"><span class="rn num">${i + 1}</span><span class="rk-n">${(() => { const n = ACC.busted instanceof Map ? ACC.busted.get(r.user_id) || 0 : 0;
-          return n ? `<span class="busted" title="불법 도박 단속 ${n}회">${esc(r.nickname)}</span><b class="bust-n" title="불법 도박 단속 ${n}회">X${n}</b>` : `<span>${esc(r.nickname)}</span>`; })()}${me ? ' <small>나</small>' : ''}<span class="rk-d">${r.days}${mode === 'live' ? '일째' : '거래일째'} · ${fmtUSD(+r.net_worth, 0)}</span></span><b class="num ${cls(+r.return_pct)}">${fmtPct(+r.return_pct / 100)}</b></li>`;
+          const nc = ncolOf(r.user_id), st = nc ? ` style="color:${nc}"` : '';
+          return n ? `<span class="busted"${st} title="불법 도박 단속 ${n}회">${esc(r.nickname)}</span><b class="bust-n" title="불법 도박 단속 ${n}회">X${n}</b>` : `<span${st}>${esc(r.nickname)}</span>`; })()}${me ? ' <small>나</small>' : ''}<span class="rk-d">${r.days}${mode === 'live' ? '일째' : '거래일째'} · ${fmtUSD(+r.net_worth, 0)}</span></span><b class="num ${cls(+r.return_pct)}">${fmtPct(+r.return_pct / 100)}</b></li>`;
     }).join('')}</ol>`;
   let foot = '';
   if (!ACC.user) foot = `<div class="rank-foot"><span>로그인하면 랭킹에 참여할 수 있습니다.</span><button class="btn" id="btnLoginOpen">로그인</button></div>`;
@@ -9744,6 +9885,7 @@ function rankCardHTML(){
   else if (ACC.myRank[mode]) foot = `<div class="rank-foot"><span>내 순위 <b>${ACC.myRank[mode]}위</b> (${esc(ACC.nick)})</span></div>`;
   else if (mode !== S.mode) foot = `<div class="rank-foot"><span>이 모드는 아직 플레이 기록이 올라가지 않았습니다.</span></div>`;
   INFO.rank = {t:'랭킹 기준', h:`<p class="prose">순자산과 수익률 모두 미니게임 포인트를 뺀 값입니다. 수익률은 포인트가 들어올 때마다 기간을 끊어 계산하는 시간가중수익률이라, 같은 매매를 했다면 포인트를 언제 얼마나 받았든 같은 값이 나옵니다.</p><p class="prose">게임 계산이 브라우저에서 이뤄져 조작을 완전히 막을 수는 없으니 재미로 봐주세요.</p>`};
+  if (ACC.user && ACC.nick && !ACC.rankBan) foot += `<div class="rank-ncol"><button class="btn" id="btnNcol">🎨 닉네임 색 변경 (${fmtUSD(300)})</button></div>`;
   return head + body + foot + `<p class="muted" style="margin:8px 0 0">포인트를 뺀 투자 실력 기준입니다. ${infoBtn('rank', '랭킹 기준')}</p>`;
 }
 // 오른쪽 위 계정 이름 (누르면 규칙·설정의 계정 칸으로)
