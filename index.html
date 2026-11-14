@@ -1255,7 +1255,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '2.3.1';
+const VERSION = '2.3.2';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -6132,7 +6132,8 @@ function bs3Frame(now){
     else { gp = new T.Vector3(0.16, 0.42, 0.92); gq = bs3Q((fT ? headOf(fT) : multi ? new T.Vector3(0, 0.6, -1.0) : headW.clone()).sub(gp), 'up'); }   // 여럿이면 겨눈 사람 쪽으로 (아직 안 골랐으면 가운데)
   } else if (shooter === 'op'){
     const fT = BSV.ti !== undefined && BSV.ti !== null ? fOf(BSV.ti) : null;
-    if (aim === 'down'){ gp = bs3S(Fa, 0.0, 0.55, -0.52); gq = bs3Q(camP.clone().sub(gp), 'up'); }
+    if ((Fa.kb || 0) > 0.05 || !alive(Fa)){ gp = bs3S(Fa, 0.08, 0.035, -0.5); gq = bs3Q(bs3D(Fa, -1, 0, 0.25), 'flip'); }   // 쏜 사람이 맞아 넘어지면 총은 손에서 떨어져 탁자 위로
+    else if (aim === 'down'){ gp = bs3S(Fa, 0.0, 0.55, -0.52); gq = bs3Q(camP.clone().sub(gp), 'up'); }
     else if (fT && fT !== Fa){ gp = bs3S(Fa, 0.0, 0.58, -0.58); gq = bs3Q(headOf(fT).sub(gp), 'up'); }   // 다른 상대를 쏜다
     else { gp = bs3S(Fa, 0.2, 0.6, -0.6); gq = bs3Q(headOf(Fa).add(new T.Vector3(0, -0.05, 0)).sub(gp), 'up'); }
   } else { gp = new T.Vector3(0.0, 0.031, 0.08); gq = bs3Q(new T.Vector3(-1, 0, -0.12), 'side'); }
@@ -6249,7 +6250,10 @@ function bs3Frame(now){
     const fc = g && g.pl[f.i] && g.pl[f.i].cuffed && !g.pl[f.i].out, dead = !alive(f) || (f.kb || 0) > 0.3;   // 넘어져 있는 동안도 손이 늘어진다
     f.arms.forEach((A2, i) => {
       A2.sh.copy(A2.shL).applyMatrix4(f.body.matrixWorld);
-      if (dead){   // 탈락한 사람: 손을 탁자 위에 축 늘어뜨린 채 움직이지 않는다 (숨쉬기·흔들림 없음)
+      if ((f.kb || 0) > 0.05 && alive(f)){   // 맞아서 넘어가는 중: 팔이 몸을 따라 힘없이 뒤로 축 늘어진다 (탁자를 짚지 않는다)
+        const q = f.body.getWorldQuaternion(new T.Quaternion());
+        A2.p.lerp(A2.sh.clone().add(new T.Vector3(A2.s * 0.16, -0.8, 0.08).applyQuaternion(q)), bs3Damp(14, dt));
+      } else if (dead){   // 탈락한 사람: 손을 탁자 위에 축 늘어뜨린 채 움직이지 않는다 (숨쉬기·흔들림 없음)
         A2.p.lerp(bs3S(f, A2.s * 0.24, 0.02, -0.5), bs3Damp(6, dt));
       } else if (Lay && f === Fl && F && F.t < 0.6 && ((slotX(F.k) >= 0) === (A2.s > 0))){
         // 탄 하나 넣기 (0.56초): 집으러 가기 → 쥐기 → 약실로 → 밀어 넣기 → 돌아오기
@@ -6304,7 +6308,7 @@ function bs3Frame(now){
       f.kbT += dt; const t = f.kbT, D = f.kbD;
       f.kb = t < 0.3 ? bs3Ease(t / 0.3) : t < 0.3 + D ? 1 : t < 1.1 + D ? 1 - bs3Ease((t - 0.3 - D) / 0.8) : 0;
       const bounce = t > 0.3 && t < 0.55 ? Math.sin((t - 0.3) / 0.25 * Math.PI) * 0.07 : 0;
-      B.rotation.x = -f.kb * 1.05 + bounce; B.position.y = -f.kb * 0.06; B.position.z = -f.kb * 0.1; B.rotation.z = f.kb * (f.i % 2 ? 0.08 : -0.08);
+      B.rotation.x = -f.kb * 1.5 + bounce; B.position.y = -f.kb * 0.22; B.position.z = -f.kb * 0.28; B.rotation.z = f.kb * (f.i % 2 ? 0.1 : -0.1);   // 완전히 뒤로 벌렁 눕는다
       if (t >= 1.1 + D){ f.kbT = undefined; f.kb = 0; }
     } else { B.rotation.x *= 0.9; B.rotation.z *= 0.9; B.position.y *= 0.9; B.position.z *= 0.9; f.kb = 0; }
     const hit = !A.hitMe && A.hitT < 0.6 && BSV.flash === 'p' + f.i ? Math.exp(-A.hitT * 6) : 0;
