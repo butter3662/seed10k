@@ -97,7 +97,7 @@ export function handle(room0, priv0, req, now = Date.now(), rnd = Math.random) {
       st.seats[me].left = true; bump(room);
       return {room, priv, payouts: [], res: {}};
     }
-    case "opt": {                                                                 // 방장이 대기실에서 규칙을 고른다 (벅샷: 클린·블라인드·깜깜이)
+    case "opt": {                                                                 // 방장이 대기실에서 규칙을 고른다 (벅샷: 클린·블라인드·미스터리 모드)
       if (uid !== room.host) return {err: "방장만 설정을 바꿀 수 있습니다"};
       if (room.status !== "lobby") return {err: "시작 전에만 바꿀 수 있습니다"};
       if (room.game !== "bs") return {err: "이 게임은 설정이 없습니다"};
@@ -506,7 +506,7 @@ GAMES.bm = {
    탄 순서(shells)와 돋보기로 본 것(pk)은 숨긴 상태(priv)에 둔다. 돋보기 결과는 쓴 사람의 요청 결과(res)로만 돌려준다.
    한 번 고를 때마다 30초, 넘기면 컴퓨터 딜러와 같은 판단으로 대신 둔다(쏠 때까지). 진행 중에 나가면 그 자리에서 탈락 */
 const BS_TURN_MS = 30_000;
-// 깜깜이(rules.hidden): 실탄·공포탄 수도 숨긴 상태에 두고, 공개 상태·장전 이벤트에는 전체 발수만 live 칸에 싣는다 (blank = 0)
+// 미스터리 모드(rules.hidden): 실탄·공포탄 수도 숨긴 상태에 두고, 공개 상태·장전 이벤트에는 전체 발수만 live 칸에 싣는다 (blank = 0)
 const bsHid = (g) => !!(g.rules && g.rules.hidden);
 const bsLoad = (room, priv) => {
   const g = {...room.state.g, shells: priv.shells || [], pk: priv.pk || room.state.g.pl.map(() => null)};

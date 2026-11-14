@@ -1256,7 +1256,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.1.5';
+const VERSION = '1.1.6';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -5314,7 +5314,7 @@ document.addEventListener('click', e => {
    목숨이 0이 되면 탈락, 마지막까지 남은 사람이 이긴다.
    아이템: 🔍돋보기(지금 탄을 나만 본다) 🚬담배(목숨 +1) 🍺맥주(지금 탄을 쏘지 않고 빼낸다, 모두가 본다)
            🪚톱(다음 한 발 피해 2배) ⛓️수갑(고른 상대가 다음 차례를 한 번 쉰다)
-   같이 하기 규칙 설정(방장이 고름, g.rules): clean 아이템 없음 · blind 남의 아이템 안 보임 · hidden 깜깜이(실탄·공포탄이 각각 몇 발인지 모름, 전체 발수만 앎)
+   같이 하기 규칙 설정(방장이 고름, g.rules): clean 아이템 없음 · blind 남의 아이템 안 보임 · hidden 미스터리 모드(실탄·공포탄이 각각 몇 발인지 모름, 전체 발수만 앎)
    이 규칙 부분(BS ~ BSE)은 라즈베리파이 심판도 같은 코드를 쓴다 (build.py가 pi/bs_engine.js로 떼어 낸다) */
 const BS = {hpMax:4, perLoad:2, itemMax:8, minShells:2, maxShells:8};
 const BS_IT = {
@@ -5588,7 +5588,7 @@ const bsWait = ms => { const gen = BSV.gen; return new Promise((res, rej) => set
 const BS_EVIT = {peek:'glass', heal:'cig', beer:'beer', saw:'saw', cuff:'cuff'};
 function bsViewOf(g, ev){
   const v = {hp:g.pl.map(p => p.hp), out:g.pl.map(p => !!p.out), items:g.pl.map(p => p.items.slice()), live:g.live, blank:g.blank, turn:g.turn, saw:!!g.saw, over:!!g.over, load:g.load || 0, hid:!!(g.rules && g.rules.hidden)};
-  const back = live => { if (v.hid || live) v.live++; else v.blank++; };   // 깜깜이: live 칸이 남은 전체 발수다
+  const back = live => { if (v.hid || live) v.live++; else v.blank++; };   // 미스터리 모드: live 칸이 남은 전체 발수다
   const rm = (a, it) => { const k = a.lastIndexOf(it); if (k >= 0) a.splice(k, 1); };
   for (let k = ev.length - 1; k >= 0; k--){
     const e = ev[k];
@@ -6987,7 +6987,7 @@ function mpLobbyHTML(R){
       : host ? `<button class="btn solid" id="mpStart" ${n >= min ? '' : 'disabled'}>${n >= min ? '시작' : `${min}명이 되면 시작할 수 있습니다`}</button>` : '<p class="bm-wait">방장이 시작하기를 기다리는 중…</p>'}</div>`;
 }
 // 벅샷 규칙 (방장만 바꿈, 시작 전). 나머지 사람은 켜진 규칙만 본다
-const MBS_RULES = [['clean', '클린 모드', '아이템이 없습니다'], ['blind', '블라인드 모드', '상대의 아이템을 볼 수 없습니다'], ['hidden', '깜깜이 모드', '실탄·공포탄이 각각 몇 발 들어갔는지 알 수 없습니다 (전체 발수만 압니다)']];
+const MBS_RULES = [['clean', '클린 모드', '아이템이 없습니다'], ['blind', '블라인드 모드', '상대의 아이템을 볼 수 없습니다'], ['hidden', '미스터리 모드', '실탄·공포탄이 각각 몇 발 들어갔는지 알 수 없습니다 (전체 발수만 압니다)']];
 function mbsRulesHTML(R, host){
   const r = R.state.rules || {};
   if (!host){ const on = MBS_RULES.filter(([k]) => r[k]); return `<div class="mbs-rules"><small class="muted">규칙</small>${on.length ? on.map(([, nm, d]) => `<p><b>${nm}</b> · ${d}</p>`).join('') : '<p class="muted">기본 규칙</p>'}</div>`; }
