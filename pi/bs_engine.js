@@ -89,22 +89,34 @@ const BSE = {
   // 순위: 이긴 사람 1위, 나머지는 늦게 탈락한 순
   ranking(g){ return g.pl.map((p, i) => i).sort((a, b) => (g.pl[a].out ? g.pl[a].outAt : 1e9) < (g.pl[b].out ? g.pl[b].outAt : 1e9) ? 1 : -1); },
   // 컴퓨터(또는 시간 초과 대신)의 다음 한 수. know: 지금 탄을 알면 true/false
+  /* 컴퓨터 판단. 같은 상황이라도 매번 같지 않게, 사람처럼 '성향'과 '흔들림'이 있다.
+     성향 tm: 판마다 정해지는 대담함 0.25(신중)~0.85(대담). 대담할수록 톱을 일찍 걸고, 공포탄일 것 같아도 상대를 쏴 보곤 한다.
+     pr: 지금 탄이 실탄일 확률 (돋보기로 봤으면 0 또는 1, 아니면 남은 실탄 ÷ 남은 탄) */
   ai(g, i, rnd){
-    const p = g.pl[i], know = g.pk[i], has = it => p.items.includes(it);
+    const p = g.pl[i], know = g.pk[i], has = it => p.items.includes(it), r = () => rnd();
+    if (p.tm === undefined) p.tm = Math.round((0.25 + r() * 0.6) * 100) / 100;
+    const bold = p.tm, left = g.live + g.blank;
     const opps = g.pl.map((q, j) => j).filter(j => j !== i && !g.pl[j].out).sort((a, b) => g.pl[a].hp - g.pl[b].hp);
-    const opp = opps[0];
-    const pr = know !== null ? (know ? 1 : 0) : g.live / Math.max(1, g.live + g.blank);
-    if (p.hp < BS.hpMax && has('cig')) return {op:'use', it:'cig'};
-    if (know === null && has('glass') && g.live && g.blank) return {op:'use', it:'glass'};
+    const opp = opps.length > 1 && r() < 0.25 ? opps[Math.floor(r() * opps.length)] : opps[0];   // 보통은 목숨이 가장 적은 사람, 가끔은 아무나
+    const pr = know !== null ? (know ? 1 : 0) : g.live / Math.max(1, left);
+    if (p.hp < BS.hpMax && has('cig') && (p.hp <= 2 || r() < 0.8)) return {op:'use', it:'cig'};
+    if (g.saw) return {op:'shoot', target:opp};   // 톱을 댔으면 상대에게
+    if (know === null && has('glass') && g.live && g.blank && r() < 0.9 - 0.3 * bold) return {op:'use', it:'glass'};
     if (pr === 1){
-      if (has('saw') && !g.saw) return {op:'use', it:'saw'};
-      if (has('cuff') && g.shells.length > 1 && !g.pl[opp].cuffed) return {op:'use', it:'cuff', target:opp};
+      if (has('saw')) return {op:'use', it:'saw'};
+      if (has('cuff') && left > 1 && !g.pl[opp].cuffed && r() < 0.8) return {op:'use', it:'cuff', target:opp};
       return {op:'shoot', target:opp};
     }
     if (pr === 0) return {op:'shoot', target:i};
-    if (has('beer') && pr > 0.3 && pr < 0.7 && g.shells.length > 1) return {op:'use', it:'beer'};
-    if (has('cuff') && g.shells.length > 1 && !g.pl[opp].cuffed) return {op:'use', it:'cuff', target:opp};
-    return {op:'shoot', target: pr >= 0.5 ? opp : i};
+    // 톱: 실탄이라는 확신이 없어도 그럴 것 같으면 걸어 본다 (실탄 확률이 높을수록, 대담할수록 자주)
+    if (has('saw') && pr >= 0.45 && r() < (pr - 0.35) * (0.6 + bold)) return {op:'use', it:'saw'};
+    if (has('beer') && pr > 0.25 && pr < 0.75 && left > 1 && r() < 0.55) return {op:'use', it:'beer'};
+    if (has('cuff') && left > 1 && !g.pl[opp].cuffed && r() < 0.35 + pr * 0.4) return {op:'use', it:'cuff', target:opp};
+    // 쏘기: 실탄 확률에 성향과 그때그때의 흔들림을 더해 정한다
+    let atOpp = (pr - 0.5) + (bold - 0.5) * 0.25 + (r() - 0.5) * 0.3 > 0;
+    if (!atOpp && pr <= 0.35 && r() < bold * 0.3) atOpp = true;   // 공포탄일 것 같아도 대담하면 상대를 쏴 본다
+    if (r() < 0.08) atOpp = !atOpp;                               // 가끔은 아무도 예상 못 한 수
+    return {op:'shoot', target: atOpp ? opp : i};
   },
   step(g, i, a, rnd){ return a.op === 'use' ? BSE.use(g, i, a.it, a.target, rnd) : a.op === 'shoot' ? BSE.shoot(g, i, a.target, rnd) : null; },
 };
