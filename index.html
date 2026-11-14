@@ -1315,7 +1315,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.2.7';
+const VERSION = '1.2.8';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -8974,19 +8974,19 @@ document.addEventListener('click', e => { if (e.target.closest('#btnNcol')) ncol
    판 위에서는 이 그림이 말 자리에 서 있다(빌보드). 프로펠러·팽이처럼 도는 것은 여러 장을 찍어 번갈아 보여 준다.
    단위: 말 높이 약 1, 바닥 y = 0. 앞(얼굴·기수)은 +x */
 const BM_SKINS = [
-  {id:'heli', nm:'헬리콥터', fly:true, frames:6},
+  {id:'heli', nm:'헬리콥터', fly:true, frames:6, tint:true},   // tint: 몸체 색을 그 말의 플레이어 색으로
   {id:'rook', nm:'크롬 룩'},
   {id:'rabbit', nm:'토끼'},
   {id:'stick', nm:'졸라맨'},
   {id:'king', nm:'흑요석 킹'},
   {id:'finger', nm:'🖕'},
   {id:'dog', nm:'강아지'},
-  {id:'car', nm:'자동차'},
-  {id:'plane', nm:'비행기', fly:true, frames:4},
+  {id:'car', nm:'자동차', tint:true},
+  {id:'plane', nm:'비행기', fly:true, frames:4, tint:true},
   {id:'snow', nm:'눈사람'},
 ];
 const bmSkin = id => BM_SKINS.find(s => s.id === id) || null;
-function bmSkinModel(T, id, f){   // f: 0~1 (돌아가는 부품의 위상)
+function bmSkinModel(T, id, f, tint){   // f: 0~1 (돌아가는 부품의 위상), tint: 몸체 색 (플레이어 색)
   const G = new T.Group();
   const M = (c, o) => new T.MeshPhysicalMaterial(Object.assign({color:c, roughness:0.45, metalness:0}, o || {}));
   const add = (geo, mat, x, y, z, rx, ry, rz, par) => { const m = new T.Mesh(geo, mat); m.position.set(x || 0, y || 0, z || 0); m.rotation.set(rx || 0, ry || 0, rz || 0); m.castShadow = m.receiveShadow = true; (par || G).add(m); return m; };
@@ -8999,7 +8999,7 @@ function bmSkinModel(T, id, f){   // f: 0~1 (돌아가는 부품의 위상)
   // 두 점을 잇는 원기둥 (팔·다리·막대)
   const rod = (a, b, r, mat, par) => { const A = new T.Vector3(...a), B = new T.Vector3(...b), d = B.clone().sub(A); const m = add(new T.CylinderGeometry(r, r, d.length(), 20), mat, 0, 0, 0, 0, 0, 0, par); m.position.copy(A).add(B).multiplyScalar(0.5); m.quaternion.setFromUnitVectors(new T.Vector3(0, 1, 0), d.normalize()); ball(r, mat, ...a, 1, 1, 1, par); ball(r, mat, ...b, 1, 1, 1, par); return m; };
   if (id === 'heli'){
-    const red = M('#D62839', {clearcoat:1, clearcoatRoughness:0.08, roughness:0.3}), wht = M('#F4F4F4', {clearcoat:0.8, roughness:0.35}), dk = M('#2B2D33', {metalness:0.6, roughness:0.35}),
+    const red = M(tint || '#D62839', {clearcoat:1, clearcoatRoughness:0.08, roughness:0.3}), wht = M('#F4F4F4', {clearcoat:0.8, roughness:0.35}), dk = M('#2B2D33', {metalness:0.6, roughness:0.35}),
       glass = M('#8ED1FC', {roughness:0.04, metalness:0.1, transmission:0.35, thickness:0.2, clearcoat:1});
     ball(0.3, red, 0, 0.58, 0, 1.55, 1.05, 1.0);                       // 몸통
     ball(0.3, wht, -0.02, 0.5, 0, 1.5, 0.75, 1.02);                    // 흰 배
@@ -9076,7 +9076,7 @@ function bmSkinModel(T, id, f){   // f: 0~1 (돌아가는 부품의 위상)
     for (const z of [-0.075, 0.075]){ ball(0.032, eye, 0.44, 0.86, z, 0.8, 1, 1); ball(0.01, shine, 0.465, 0.875, z * 0.9);
       const ear = cap(0.06, 0.14, dkf, 0.27, 0.86, z * 1.75, z > 0 ? 0.5 : -0.5, 0, 0.15); ear.scale.set(0.55, 1, 1.0); }      // 눈 · 귀(늘어진)
   } else if (id === 'car'){
-    const paint = M('#FFB703', {clearcoat:1, clearcoatRoughness:0.05, roughness:0.25, metalness:0.2}), glass = M('#1D2A3A', {roughness:0.05, metalness:0.3, clearcoat:1}), tire = M('#1A1A1C', {roughness:0.8}), rim = M('#D9DEE4', {metalness:1, roughness:0.2}), lamp = M('#FFF6D6', {emissive:'#FFF2B0', emissiveIntensity:1.2}), tail = M('#FF3B3B', {emissive:'#FF2020', emissiveIntensity:0.9});
+    const paint = M(tint || '#FFB703', {clearcoat:1, clearcoatRoughness:0.05, roughness:0.25, metalness:0.2}), glass = M('#1D2A3A', {roughness:0.05, metalness:0.3, clearcoat:1}), tire = M('#1A1A1C', {roughness:0.8}), rim = M('#D9DEE4', {metalness:1, roughness:0.2}), lamp = M('#FFF6D6', {emissive:'#FFF2B0', emissiveIntensity:1.2}), tail = M('#FF3B3B', {emissive:'#FF2020', emissiveIntensity:0.9});
     const sh = new T.Shape(); sh.moveTo(-0.62, 0.16); sh.lineTo(0.6, 0.16); sh.quadraticCurveTo(0.68, 0.18, 0.66, 0.3); sh.quadraticCurveTo(0.62, 0.38, 0.4, 0.4); sh.lineTo(0.2, 0.42); sh.quadraticCurveTo(0.05, 0.62, -0.18, 0.62); sh.quadraticCurveTo(-0.42, 0.6, -0.52, 0.44); sh.quadraticCurveTo(-0.66, 0.42, -0.64, 0.3); sh.closePath();
     const body = new T.ExtrudeGeometry(sh, {depth:0.5, bevelEnabled:true, bevelThickness:0.05, bevelSize:0.04, bevelSegments:6, curveSegments:24}); body.translate(0, 0, -0.25);
     add(body, paint, 0, 0.02, 0);
@@ -9087,10 +9087,10 @@ function bmSkinModel(T, id, f){   // f: 0~1 (돌아가는 부품의 위상)
     for (const z of [-0.18, 0.18]){ ball(0.045, lamp, 0.69, 0.3, z, 0.6, 1, 1.4); ball(0.04, tail, -0.68, 0.33, z, 0.5, 0.8, 1.6); }
     box(0.03, 0.05, 0.36, M('#2B2D33', {metalness:0.6}), 0.69, 0.2, 0);   // 그릴
   } else if (id === 'plane'){
-    const wht = M('#F5F7FA', {clearcoat:1, roughness:0.25}), blu = M('#1F6FEB', {clearcoat:1, roughness:0.25}), glass = M('#1D2A3A', {roughness:0.05, clearcoat:1}), dk = M('#2B2D33', {metalness:0.6, roughness:0.3});
-    cap(0.16, 0.9, wht, 0, 0.62, 0, 0, 0, Math.PI / 2);                                 // 동체
-    ball(0.16, blu, 0.6, 0.62, 0, 0.9, 1, 1);                                            // 기수
-    add(new T.TorusGeometry(0.161, 0.018, 12, 48), blu, -0.1, 0.62, 0, 0, Math.PI / 2);  // 띠
+    const wht = M('#F5F7FA', {clearcoat:1, roughness:0.25}), blu = M(tint || '#1F6FEB', {clearcoat:1, roughness:0.25}), glass = M('#1D2A3A', {roughness:0.05, clearcoat:1}), dk = M('#2B2D33', {metalness:0.6, roughness:0.3});
+    cap(0.16, 0.9, tint ? blu : wht, 0, 0.62, 0, 0, 0, Math.PI / 2);                    // 동체 (플레이어 색이면 동체를 그 색으로)
+    ball(0.16, tint ? wht : blu, 0.6, 0.62, 0, 0.9, 1, 1);                               // 기수
+    add(new T.TorusGeometry(0.161, 0.018, 12, 48), tint ? wht : blu, -0.1, 0.62, 0, 0, Math.PI / 2);  // 띠
     ball(0.1, glass, 0.4, 0.7, 0, 1.4, 0.7, 1.05);                                       // 조종석
     for (let k = 0; k < 4; k++) for (const z of [-0.15, 0.15]) ball(0.022, glass, 0.15 - k * 0.12, 0.67, z, 1, 1, 0.4);   // 창문
     const ws = new T.Shape(); ws.moveTo(0.12, 0); ws.lineTo(-0.1, 0.72); ws.lineTo(-0.26, 0.72); ws.lineTo(-0.18, 0); ws.closePath();
@@ -9135,7 +9135,7 @@ function bmSkinShoot(T, id, opt){
     const S = new T.Scene(); S.environment = env;
     S.add(new T.HemisphereLight('#ffffff', '#5a4a3a', 0.6));
     const L = new T.DirectionalLight('#ffffff', 2.2); L.position.set(2, 4, 2.5); S.add(L);
-    const m = bmSkinModel(T, id, k / frames); m.rotation.y += (opt && opt.yaw !== undefined) ? opt.yaw : -0.7; S.add(m);
+    const m = bmSkinModel(T, id, k / frames, opt && opt.tint); m.rotation.y += (opt && opt.yaw !== undefined) ? opt.yaw : -0.7; S.add(m);
     const box = new T.Box3().setFromObject(m), c = box.getCenter(new T.Vector3()), sz = box.getSize(new T.Vector3());
     const el = (opt && opt.el !== undefined) ? opt.el : 0.75, cam = new T.PerspectiveCamera(24, W / H, 0.1, 50), d = Math.max(sz.x, sz.y * 1.1, sz.z) * 2.95;
     cam.position.set(0, c.y + Math.sin(el) * d, Math.cos(el) * d); cam.lookAt(0, c.y, 0); cam.updateMatrixWorld(true);
@@ -9153,31 +9153,35 @@ function bmSkinShoot(T, id, opt){
    가진 스킨: S.gam.shop.skins (id 목록), 쓰는 스킨: S.gam.shop.skin. 내 말에만 보인다 (같이 하기에서도 내 화면의 내 말)
    그림은 처음 한 번 찍어 이 기기에 저장해 두고(localStorage) 다시 쓴다 */
 const BMSK = {img:{}, wait:{}};
-const BMSK_VER = 6;
+const BMSK_VER = 7;
 function bmSkinOwn(){ const s = shopS(); if (!Array.isArray(s.skins)) s.skins = []; return s.skins; }
 function bmSkinCur(){ const s = shopS(); return s.skin && bmSkinOwn().includes(s.skin) && bmSkin(s.skin) ? s.skin : null; }
-function bmSkinGet(id){   // 이미 있으면 바로, 없으면 null (찍기를 시작해 두고, 끝나면 판을 다시 그린다)
-  if (BMSK.img[id]) return BMSK.img[id];
-  try { const c = JSON.parse(localStorage.getItem(`seed10k.sk.${id}.${BMSK_VER}`) || 'null'); if (c && c.url) return (BMSK.img[id] = c); } catch(e){}
-  bmSkinMake(id).then(() => { if (typeof bmBuild === 'function' && $('#bmOv') && !$('#bmOv').hidden) bmBuild(); }).catch(() => {});
+const bmSkKey = (id, tint) => (bmSkin(id) && bmSkin(id).tint && tint) ? `${id}-${tint.replace('#', '')}` : id;   // 색을 입히는 스킨은 색마다 따로 찍는다
+const bmSkinMyCol = () => BM.cols[0];   // 게임 밖(창·뽑기)에서 보여 줄 때의 색: 혼자 할 때 내 색
+function bmSkinGet(id, tint){   // 이미 있으면 바로, 없으면 null (찍기를 시작해 두고, 끝나면 판을 다시 그린다)
+  const key = bmSkKey(id, tint);
+  if (BMSK.img[key]) return BMSK.img[key];
+  try { const c = JSON.parse(localStorage.getItem(`seed10k.sk.${key}.${BMSK_VER}`) || 'null'); if (c && c.url) return (BMSK.img[key] = c); } catch(e){}
+  bmSkinMake(id, tint).then(() => { if (typeof bmBuild === 'function' && $('#bmOv') && !$('#bmOv').hidden) bmBuild(); }).catch(() => {});
   return null;
 }
-async function bmSkinMake(id){
-  if (BMSK.img[id]) return BMSK.img[id];
-  if (BMSK.wait[id]) return BMSK.wait[id];
-  return (BMSK.wait[id] = (async () => {   // (부루마블 밖 카드의 🎨 버튼으로도 부른다)
+async function bmSkinMake(id, tint){
+  const key = bmSkKey(id, tint);
+  if (BMSK.img[key]) return BMSK.img[key];
+  if (BMSK.wait[key]) return BMSK.wait[key];
+  return (BMSK.wait[key] = (async () => {   // (부루마블 밖 카드의 🎨 버튼으로도 부른다)
     const T = BS3.T || (BS3.T = await import(BS3_URL));
     await new Promise(r => setTimeout(r, 30));
-    const r = bmSkinShoot(T, id);
-    BMSK.img[id] = r;
-    try { localStorage.setItem(`seed10k.sk.${id}.${BMSK_VER}`, JSON.stringify(r)); } catch(e){}
+    const r = bmSkinShoot(T, id, {tint:bmSkin(id).tint ? tint : null});
+    BMSK.img[key] = r;
+    try { localStorage.setItem(`seed10k.sk.${key}.${BMSK_VER}`, JSON.stringify(r)); } catch(e){}
     return r;
   })());
 }
 // 말 HTML (내 말이고 스킨을 쓰면). 입체 판: 판과 나란한 층(.bm-skw, 뜨기·날기 애니메이션) 위에 보는 사람을 향해 선 그림(.bm-tok-u)
 function bmSkinTok(i, d3){
   const id = bmSkinCur(); if (!id) return '';
-  const im = bmSkinGet(id); if (!im) return '';
+  const im = bmSkinGet(id, BM.cols[i]); if (!im) return '';   // 내 말의 플레이어 색으로
   const sk = bmSkin(id), strip = `<div class="bm-sk" style="--n:${im.n}"><img src="${im.url}" alt=""><i class="bm-sk-top"></i></div>`;   // bm-sk-top: 이름표가 따라갈 점 (모형 머리 위)
   return d3 ? `<div class="bm-tok b3t sk${sk.fly ? ' skf' : ''}" data-tok="${i}" style="--pc:${BM.cols[i]}"><i class="bm-tok-sh"></i><div class="bm-tok-i bm-skw"><div class="bm-tok-u">${strip}</div></div></div>`
             : `<div class="bm-tok sk2" data-tok="${i}" style="--pc:${BM.cols[i]}"><div class="bm-tok-u"><div class="bm-tok-i">${strip}</div></div></div>`;
@@ -9192,11 +9196,11 @@ async function bmSkinDialog(){
     const box = $('#skPick'); if (!box) return;
     const cur = bmSkinCur();
     box.innerHTML = `<button class="sk-it" data-skset="" aria-pressed="${!cur}"><span class="sk-im sk-def">♟</span><b>기본 말</b></button>` +
-      own.map(id => { const im = BMSK.img[id] || bmSkinGet(id); return `<button class="sk-it" data-skset="${id}" aria-pressed="${cur === id}"><span class="sk-im">${im ? `<span class="bm-sk" style="--n:${im.n}"><img src="${im.url}" alt=""></span>` : '<i class="sk-load">찍는 중…</i>'}</span><b>${esc(bmSkin(id).nm)}</b></button>`; }).join('');
+      own.map(id => { const im = bmSkinGet(id, bmSkinMyCol()); return `<button class="sk-it" data-skset="${id}" aria-pressed="${cur === id}"><span class="sk-im">${im ? `<span class="bm-sk" style="--n:${im.n}"><img src="${im.url}" alt=""></span>` : '<i class="sk-load">찍는 중…</i>'}</span><b>${esc(bmSkin(id).nm)}</b></button>`; }).join('');
     box.querySelectorAll('[data-skset]').forEach(b => b.onclick = () => { shopS().skin = b.dataset.skset || null; save(); draw(); const c = $('#bmCard'); if (c) c.innerHTML = bmCardHTML(); });
   };
   draw();
-  for (const id of own) if (!BMSK.img[id]){ await bmSkinMake(id).catch(() => {}); draw(); }
+  for (const id of own) if (!BMSK.img[bmSkKey(id, bmSkinMyCol())]){ await bmSkinMake(id, bmSkinMyCol()).catch(() => {}); draw(); }
 }
 // 뽑기: 아직 없는 스킨 중 하나 (모두 같은 확률). 연출: 선물 상자가 떨다가 열리고 → 스킨 이름이 빠르게 돌다 느려지고 → 번쩍하며 모형이 튀어나온다
 const BM_SKIN_IC = {heli:'🚁', rook:'♜', rabbit:'🐰', stick:'🕺', king:'♚', finger:'🖕', dog:'🐶', car:'🚗', plane:'✈️', snow:'⛄'};
@@ -9204,7 +9208,7 @@ async function bmSkinDraw(){
   const left = BM_SKINS.map(s => s.id).filter(id => !bmSkinOwn().includes(id)); if (!left.length) return;
   const id = left[Math.floor(Math.random() * left.length)], sk = bmSkin(id);
   bmSkinOwn().push(id); shopS().skin = id; commit();   // 먼저 저장해 둔다 (연출 중에 창을 닫아도 받은 것은 남는다)
-  const make = bmSkinMake(id).catch(() => null);        // 연출하는 동안 모형을 찍는다
+  const make = bmSkinMake(id, bmSkinMyCol()).catch(() => null);        // 연출하는 동안 모형을 찍는다
   const snd = k => { try { if (typeof BMAU === 'object' && BMAU[k]) BMAU[k](); } catch(e){} };
   const wait = ms => new Promise(r => setTimeout(r, ms));
   let skip = false;
