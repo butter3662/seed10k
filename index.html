@@ -682,6 +682,7 @@ html.gated body{overflow:hidden}
 .bs-lay.go i{transition:transform .5s,opacity .5s;transform:translate(0,40px) scale(.4);opacity:0}
 .bs-count{position:absolute;left:10px;top:10px;display:flex;gap:10px;font-size:12px;color:rgba(230,225,211,.75)}
 .bs-count i{display:inline-block;width:6px;height:12px;border-radius:1px;margin-right:4px;vertical-align:-1px}.bs-count i.live{background:#e0473f}.bs-count i.blank{background:#5d7fa6}.bs-count i.unk{background:#8f8a80}
+.ac-note{margin:10px 0 0;text-align:center;font-size:11px;opacity:.55}
 .mbs-rules{margin:0 0 10px;padding:8px 10px;border:1px solid var(--rule);border-radius:10px}.mbs-rules p{margin:4px 0 0;font-size:13px}.mbs-rule{display:flex;gap:8px;align-items:flex-start;margin-top:6px;cursor:pointer}.mbs-rule input{margin-top:3px}.mbs-rule span{display:flex;flex-direction:column}.mbs-rule small{opacity:.7;font-size:12px}
 .bs-peek{margin:0;height:24px;line-height:24px;text-align:center;font-size:13px}.bs-peek b{color:#7fb0e0}.bs-peek.live b{color:#ff6b5e}
 .bs-msg{margin:0;height:44px;display:flex;align-items:center;justify-content:center;text-align:center;font-weight:700;line-height:1.3}
@@ -1256,7 +1257,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.2.0';
+const VERSION = '1.2.1';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -4078,7 +4079,7 @@ function bmCardHTML(){
   const h = b.hist.slice(0, 3).map(x => `<span class="${cls(x.pay - x.stake)}">${x.rank}/${x.n}위 ${signUSD(x.pay - x.stake)}</span>`).join(' · ');
   return `<div class="card-h"><h2>🎲 부루마블 ${infoBtn('bm')}</h2><small>${isLive() ? '오늘' : '이번 거래일'} ${b.n}판</small></div>
     ${lock ? `<p class="mg-desc">${ACC.user ? '가입' : '이 기록을 시작'}하고 ${BM.waitDays}일이 지나야 할 수 있습니다.</p>` : g ? `<p class="mg-desc">진행 중: ${g.round}바퀴째, 판돈 ${fmtUSD(g.stake)}</p>` : h ? `<p class="mg-desc">최근 ${h}</p>` : `<p class="mg-desc">판돈을 걸고 컴퓨터와 도시를 사고파는 주사위 보드게임</p>`}
-    <div class="mg-foot"><span class="muted">${g ? '' : `달러 통장 <b class="num">${fmtUSDn(S.usd)}</b>`}</span><span style="display:flex;gap:8px">${b.last ? '<button class="btn" id="bmLastLog">지난 판 기록</button>' : ''}<button class="btn solid" id="bmGo" ${!g && (S.over || lock) ? 'disabled' : ''}>${label}</button></span></div>`;
+    <div class="mg-foot"><span class="muted">${g ? '' : `달러 통장 <b class="num">${fmtUSDn(S.usd)}</b>`}</span><span style="display:flex;gap:8px"><button class="btn solid" id="bmGo" ${!g && (S.over || lock) ? 'disabled' : ''}>${label}</button></span></div>`;
 }
 function bmSetup(){
   if (BMV.mp && bmOpenNow()) bmHide();
@@ -4207,7 +4208,7 @@ function bmBuild(){
     : `<div class="bm-tok" data-tok="${i}" style="--pc:${BM.cols[i]}"><div class="bm-tok-u"><div class="bm-tok-i"><span>${i === bmMe() ? '나' : esc([...p.nm][0] || '?')}</span></div></div></div>`).join('');
   const top = `<div class="bm-top"><button class="btn" id="bmClose">닫기</button><div class="bm-ttl"><b>🎲 부루마블</b><small id="bmSub"></small></div><div class="bm-tr"><button class="btn bm-spd bm-snd" id="bmSnd" aria-label="${BSA.on ? '소리 끄기' : '소리 켜기'}">${bsaIcon()}</button><button class="btn bm-spd" id="bm3d"></button><button class="btn bm-spd" id="bmSpd"></button><button class="btn" id="bmQuit">기권</button></div></div>`;
   const pls = `<div class="bm-pls" id="bmPls">${g.pl.map((p, i) => `<div class="bm-pl" data-pl="${i}"><i style="background:${BM.cols[i]}"></i><span class="bm-pn"></span><b class="num bm-pc"></b><small class="num bm-pa"></small></div>`).join('')}</div>`;
-  const under = `<div class="bm-act" id="bmActBox"></div><div id="bmInfoBox"></div><ul class="bm-log" id="bmLog"></ul>`;
+  const under = `<div class="bm-act" id="bmActBox"></div><div id="bmInfoBox"></div>${acNote()}`;
   ov.classList.toggle('b3', bm3D());
   // 입체 판: 판(칸·말·건물)만 비스듬히 눕히고, 주사위·글자·효과는 눕히지 않은 층에 띄운다. 고를 것·기록은 판 아래로
   ov.innerHTML = bm3D() ? `${top}
@@ -4314,7 +4315,6 @@ function bmUpdate(){
   const ab = $('#bmActBox'); if (ab.dataset.h !== act){ ab.innerHTML = act; ab.dataset.h = act; }
   $('#bmMsg').textContent = BMV.msg;
   $('#bmInfoBox').innerHTML = BMV.sel >= 0 && !(pd && pd.k === 'space') ? bmInfo(g, BMV.sel) : '';
-  $('#bmLog').innerHTML = BMV.busy ? $('#bmLog').innerHTML : g.log.slice(-4).reverse().map(s => `<li>${esc(s)}</li>`).join('');
   bmPlace(false);
 }
 const bmRender = bmUpdate;
@@ -4661,6 +4661,8 @@ function gamS(){
 const ilAcc = () => gamS().ilAcc || 0;   // 불법 도박 누적 순이익 (달러)
 const gamIl = () => !!gamS().il;
 // 도박에 쓸 수 있는 돈: 달러 통장 + 원화 통장을 달러로 바꾼 만큼 (달러가 모자라면 판돈을 낼 때 원화에서 자동 환전)
+// 게임 화면 맨 아래 작은 안내 (판 기록 '로그'는 서버에만 남기고 게임 화면에는 보이지 않는다)
+const acNote = () => '<p class="ac-note">🛡️ anticheat 작동 중</p>';
 const gamUsable = () => Math.max(0, S.usd) + Math.max(0, S.krw || 0) / fxRates().buy;
 const gamMax = k => Math.min(gamIl() ? GAM[k].on : GAM[k].off, Math.floor(gamUsable()));
 // 판돈 내기: 달러로 내고, 모자라면 모자란 만큼 원화에서 자동 환전한다. 원화로도 모자라면 예전처럼 마이너스통장
@@ -4926,7 +4928,7 @@ function slOpen(){
   const cells = slCellsHTML();
   ov.innerHTML = `<div class="bm-top"><button class="btn" id="slClose">닫기</button><div class="bm-ttl"><b>🐍 뱀사다리</b><small>판돈 ${fmtUSD(g.stake)}${g.il ? ' · 🚨 불법' : ''}</small></div><button class="btn" id="slQuit">기권</button></div>
     <div class="sl-board" id="slBoard">${cells}<svg class="sl-svg" id="slSvg"></svg><div class="sl-tok" data-sltok="0" style="--pc:${BM.cols[0]}"><span>나</span></div><div class="sl-tok" data-sltok="1" style="--pc:${BM.cols[1]}"><span>컴</span></div><div class="bm-fx" id="slFx"></div></div>
-    <div class="sl-panel"><div class="bm-row"><div class="bm-dice" id="slDice">${bmDieHTML()}</div><div class="bm-msg" id="slMsg"></div></div><div class="bm-act" id="slAct"></div><ul class="bm-log" id="slLog"></ul></div>`;
+    <div class="sl-panel"><div class="bm-row"><div class="bm-dice" id="slDice">${bmDieHTML()}</div><div class="bm-msg" id="slMsg"></div></div><div class="bm-act" id="slAct"></div>${acNote()}</div>`;
   slDraw(); slUpdate(); slTick();
 }
 // 뱀(곡선)·사다리(가로대) 그리기 (같이 하기 판도 같은 그림을 쓴다)
@@ -4975,7 +4977,6 @@ function slUpdate(){
   if (g.over && !SLV.busy) act.innerHTML = `<button class="btn solid bm-roll" id="slEnd">결과 보기</button>${g.win !== 0 ? '<button class="btn run-btn" id="slRun">🏃 도망가기</button>' : ''}`;
   else if (SLV.busy || g.turn !== 0) act.innerHTML = `<p class="bm-wait">${g.turn ? '컴퓨터' : '내'} 차례…</p>`;
   else act.innerHTML = `<button class="btn solid bm-roll" id="slRoll">🎲 주사위 굴리기</button>`;
-  $('#slLog').innerHTML = SLV.busy ? $('#slLog').innerHTML : g.log.slice(-4).reverse().map(s => `<li>${esc(s)}</li>`).join('');
   slPlace(false);
 }
 function slWait(ms){ const gen = SLV.gen; return new Promise((res, rej) => setTimeout(() => (gen === SLV.gen && $('#slOv') && !$('#slOv').hidden) ? res() : rej('stop'), bmMs(ms))); }
@@ -5311,7 +5312,7 @@ function bjCardInnerHTML(){
       : ['hit', 'stand', 'double', 'split'].map(a => {
           const ok = BJE.can(g, a) && (a === 'hit' || a === 'stand' || rich);
           return `<button class="btn ${a === 'stand' ? 'solid' : ''}" data-bj="${a}" ${ok && !BJV.anim ? '' : 'disabled'}>${BJ_ACT[a]}${(a === 'double' || a === 'split') && BJE.can(g, a) ? ` +${fmtUSD(more)}` : ''}</button>`;
-        }).join('')}</div>`;
+        }).join('')}</div>${acNote()}`;
 }
 function bjHTML(){ BJV.now = new Set(); const h = bjCardInnerHTML(); BJV.now.forEach(x => BJV.seen.add(x)); return h; }   // 그린 카드를 기억해 두고 다음엔 새 카드만 날아오게
 function bjRender(){ const c = $('#bjCard'); if (c) c.innerHTML = bjHTML(); gmSync(); }
@@ -5614,7 +5615,7 @@ function bsTableHTML(g, me, o){
     ${seat(g.pl[me], me, true)}
   </div>
   <div class="bs-foot">${o.foot || (g.over && !BSV.busy && o.mine ? `<div class="bm-acts"><button class="btn solid" id="bsEnd">결과 보기</button>${g.win !== me && !g.quit ? '<button class="btn run-btn" id="bsRun">🏃 도망가기</button>' : ''}</div>` : '')}</div>
-  <ul class="bm-log bs-log">${g.log.slice(-5).reverse().map(t => `<li>${esc(t)}</li>`).join('')}</ul>`;
+  ${o.solo ? acNote() : ''}`;
 }
 // 위 막대 오른쪽(닫기와 맞은편)의 기권 단추: 6번째 차례까지는 절반 환불 표시
 function bsQuitSlot(){
@@ -7033,7 +7034,7 @@ function mpRender(){
   }
   const body = !R ? '<p class="muted">방을 불러오는 중…</p>' : R.status === 'closed' ? `<p>방이 닫혔습니다.</p><p class="muted">시작 전에 닫힌 방은 판돈이 빠지지 않습니다.</p>` : R.status === 'lobby' ? mpLobbyHTML(R) : (MP_VIEW[R.game] || (() => ''))(R);
   ov.innerHTML = `<div class="bm-top"><button class="btn" id="mpClose">닫기</button><div class="bm-ttl"><b>${g ? g.ic + ' ' + g.nm : '👥 같이 하기'}</b><small>${mpSpec() ? '👀 관전 중 · ' : ''}방 ${esc(MP.code || '')} · 달러 통장 ${fmtUSD(S.usd)}${esc(mpWatchTxt())}</small></div>${mpSpec() ? '<span class="gm-sp"></span>' : '<button class="btn" id="mpLeave">나가기</button>'}</div>
-    <section class="card c-mg gm-body">${body}</section>`;
+    <section class="card c-mg gm-body">${body}${acNote()}</section>`;
   mpTick();
   if (R && MP_UPD[R.game] && (R.status === 'play' || R.status === 'over')) MP_UPD[R.game](R);
 }
@@ -7198,7 +7199,7 @@ MP_VIEW.sl = R => {
   const st = R.state, n = st.seats.length;
   return `<div class="card-h"><h2>🐍 뱀사다리</h2><small>판돈 ${fmtUSD(R.stake)} · ${n}명 · 1등 ${fmtUSD(R.stake * n)}${R.il ? ' · 🚨 불법' : ''}</small></div>
     <div class="sl-board" id="mslBoard">${slCellsHTML()}<svg class="sl-svg" id="mslSvg"></svg>${st.seats.map((p, i) => `<div class="sl-tok" data-msltok="${i}" style="--pc:${BM.cols[i % BM.cols.length]}"><span>${esc([...(p.nick || '?')][0])}</span></div>`).join('')}<div class="bm-fx" id="mslFx"></div></div>
-    <div class="sl-panel" style="margin-top:10px"><div id="mslSeats"></div><div class="bm-row"><div class="bm-dice" id="mslDice">${bmDieHTML()}</div><div class="bm-msg" id="mslMsg"></div></div><div class="bm-acts" id="mslAct"></div><ul class="bm-log" id="mslLog"></ul></div>`;
+    <div class="sl-panel" style="margin-top:10px"><div id="mslSeats"></div><div class="bm-row"><div class="bm-dice" id="mslDice">${bmDieHTML()}</div><div class="bm-msg" id="mslMsg"></div></div><div class="bm-acts" id="mslAct"></div></div>`;
 };
 const mpSetH = (el, h) => { if (el && el._h !== h){ el._h = h; el.innerHTML = h; mpTick(); } };   // 바뀐 것만 다시 그린다 (누르는 중인 버튼이 사라지지 않게)
 const mslNm = (R, i) => i === mpMe() ? '나' : (R.state.seats[i] || {}).nick || '?';
@@ -7235,7 +7236,6 @@ MP_UPD.sl = R => {
     mpSetH(msg, `${esc(mslNm(R, g.turn))} 차례… <span class="muted" id="mpTimer"></span>`);
     mpSetH(act, '<p class="bm-wait">기다리는 중 (20초가 지나면 자동으로 굴립니다)</p>');
   }
-  mpSetH($('#mslLog'), (g.log || []).slice(-4).reverse().map(t => `<li>${esc(t)}</li>`).join(''));
   mslPlace(R, false);
   return true;
 };
