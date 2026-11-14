@@ -276,7 +276,7 @@ GAMES.sl = {
    심판은 판이 끝날 때(play → over) resultOf로 결과 한 줄을 seed10k_mp_results에 적고,
    같은 두 사람의 최근 결과로 연승을 센다(streakOf). 게임 규칙이 판 도중 이상한 행동을 보면
    room.state.flags에 [{kind, seat, n, msg}]를 쌓고, 심판은 새로 생긴 것(newFlags)을 알림으로 보낸다. */
-export const WATCH = {oeStreak: 5, bjStand: 5, bmNoBuy: 5, bsSelfPct: 0.8, bsSelfMin: 5, bsRiskP: 0.5, bsRisk: 5};
+export const WATCH = {pairCap: 4000, pairWinPct: 0.9, pairWinMin: 10, pairWinWin: 20, oeStreak: 5, bjStand: 5, bmNoBuy: 5, bsSelfPct: 0.8, bsSelfMin: 5, bsRiskP: 0.5, bsRisk: 5};
 export function resultOf(room) {
   const st = room.state, g = st.g || {}, G = GAMES[room.game];
   const seats = st.seats.map((s) => ({uid: s.uid, nick: s.nick, ...(s.left ? {left: true} : {})})), uids = seats.map((s) => s.uid);
@@ -294,6 +294,31 @@ export function streakOf(rows) {
 }
 // 연승 알림을 보낼 때: 5연승, 10연승, 15연승 … (같은 연승으로 판마다 울리지 않게)
 export const streakHit = (n, k = WATCH.oeStreak) => n >= k && (n - k) % k === 0;
+/* ── 몰아주기: 두 계정 사이에 넘어간 돈 ──
+   판이 끝나면 심판이 각자의 손익(net: 받은 돈 − 낸 판돈)을 결과 줄(summary.net)에 적는다.
+   한 판에서 a가 b에게 넘긴 돈 = a가 잃었고 b가 땄을 때, a가 잃은 돈 중 b가 딴 몫 (딴 사람이 여럿이면 딴 금액 비율로 나눈다).
+   netOf: 끝난 판의 정산 줄에서 손익을 뽑는다 (판돈을 낸 줄 '판돈 냄 #N'은 cost < 0이라 빠진다) */
+export function netOf(payouts) {
+  const net = {};
+  for (const p of payouts || []) if (p && p.user_id && +p.cost > 0) net[p.user_id] = Math.round(((net[p.user_id] || 0) + (+p.amount || 0) - (+p.cost || 0)) * 100) / 100;
+  return net;
+}
+export function flowOf(net, a, b) {   // 이 한 판에서 a → b로 넘어간 돈 (b → a면 음수)
+  if (!net || net[a] === undefined || net[b] === undefined) return 0;
+  const pos = Object.values(net).reduce((s, v) => s + (v > 0 ? v : 0), 0);
+  if (!pos) return 0;
+  if (net[a] < 0 && net[b] > 0) return -net[a] * net[b] / pos;
+  if (net[b] < 0 && net[a] > 0) return -(-net[b] * net[a] / pos);
+  return 0;
+}
+// rows: 두 사람이 같이 한 판들 (summary.net이 있는 것만 셈). a → b로 넘어간 돈의 합
+export const pairFlow = (rows, a, b) => Math.round(rows.reduce((s, r) => s + flowOf(r.summary && r.summary.net, a, b), 0) * 100) / 100;
+// 두 사람 중 누가 이 판에서 더 잘했나 (손익이 더 큰 쪽, 기록이 없으면 이긴 사람). 같으면 null
+export function pairTop(r, a, b) {
+  const n = r.summary && r.summary.net;
+  if (n && n[a] !== undefined && n[b] !== undefined) return n[a] > n[b] ? a : n[b] > n[a] ? b : null;
+  return r.winner === a || r.winner === b ? r.winner : null;
+}
 export function newFlags(room0, room) {
   const a = (room0 && room0.state && room0.state.flags || []).length, b = (room && room.state && room.state.flags) || [];
   return b.length >= a ? b.slice(a) : b;   // 줄었으면 새 판이 시작된 것

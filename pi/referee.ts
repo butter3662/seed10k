@@ -21,7 +21,7 @@
 
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
 import { BM } from "./bm_engine.js";
-import { handle, tick, resultOf, streakOf, streakHit, newFlags, WATCH, bjLowStreak } from "./mp_core.js";
+import { handle, tick, resultOf, streakOf, streakHit, newFlags, WATCH, bjLowStreak, netOf, pairFlow, pairTop } from "./mp_core.js";
 
 const BASE = (Deno.env.get("SUPABASE_URL") || "").replace(/\/+$/, "");
 const KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
@@ -63,7 +63,7 @@ async function save(out: { room: Room; priv: any; payouts?: any[] }, room0: Room
   await rest("POST", "seed10k_rooms?on_conflict=code", [row], "resolution=merge-duplicates,return=minimal");
   await rest("POST", "seed10k_room_priv?on_conflict=code", [{ code: room.code, priv: out.priv || {} }], "resolution=merge-duplicates,return=minimal");
   // 기록·알림은 실패해도 게임은 계속된다
-  watch(room0, room, out.priv || {}).catch((e) => console.error("[seed10k-ref] 기록·알림 실패:", String((e as Error)?.message || e).slice(0, 300)));
+  watch(room0, room, out.priv || {}, out.payouts || []).catch((e) => console.error("[seed10k-ref] 기록·알림 실패:", String((e as Error)?.message || e).slice(0, 300)));
 }
 
 /* ── 판 결과 기록과 악용 의심 알림 ── */
@@ -73,14 +73,16 @@ async function alert(a: { kind: string; game: string; code: string; mode: string
   console.log("[seed10k-ref] 알림:", a.msg);
   if (NTFY) await fetch("https://ntfy.sh/", { method: "POST", body: JSON.stringify({ topic: NTFY, title: "SEED 10K 부정행위 의심", message: a.msg, tags: ["rotating_light"] }), signal: AbortSignal.timeout(10_000) }).catch(() => {});
 }
-async function watch(room0: Room | undefined, room: Room, priv: any) {
+async function watch(room0: Room | undefined, room: Room, priv: any, payouts: any[] = []) {
   const nick = (i: number) => (room.state.seats[i] || {}).nick || "?";
   for (const f of newFlags(room0, room)) {
     await alert({ kind: f.kind, game: room.game, code: room.code, mode: room.mode, uid: room.state.seats[f.seat]?.uid, msg: f.msg, detail: f });
   }
   if (!(room0 && room0.status !== "over" && room.status === "over")) return;   // 판이 막 끝났을 때만 (블랙잭은 시작하자마자 끝날 수 있다)
   const res = resultOf(room);
+  res.summary = { ...(res.summary || {}), net: netOf(payouts) };   // 각자의 손익: 몰아주기(두 계정 사이에 넘어간 돈) 계산용
   await rest("POST", "seed10k_mp_results", [res], "return=minimal");
+  await pairWatch(room, res);
   if (room.game === "bj") await bjWatch(room, res);
   if (room.game === "bm") {   // 부루마블: 혼자 할 때처럼 판 전체 기록을 각자의 seed10k_bmlog에 남긴다
     const g = room.state.g, n = room.state.seats.length, at = new Date().toISOString();
@@ -97,6 +99,65 @@ async function watch(room0: Room | undefined, room: Room, priv: any) {
       await alert({ kind: "oe_streak", game: "oe", code: room.code, mode: room.mode, uid: res.winner, other: res.uids[l],
         msg: `홀짝 대결: ${nick(w)}이(가) 같은 상대 ${nick(l)}에게 ${n}연승 (판돈 $${room.stake}, 방 ${room.code})`, detail: { n, stake: room.stake } });
     }
+  }
+}
+/* ── 몰아주기 ──
+   ① 한도 (블랙잭 제외): 두 계정 사이에 최근 24시간 동안 블랙잭이 아닌 판에서 한쪽으로 넘어간 돈이 WATCH.pairCap($4,000) 이상이면 같은 방에 들어오거나 시작할 수 없다
+   ② 승률: 같은 두 사람의 판이 WATCH.pairWinMin(10)판 이상이고, 최근 WATCH.pairWinWin(20)판에서 한쪽이 WATCH.pairWinPct(90%) 이상 앞서면 알림 (같이 한 판이 5판 늘 때마다)
+   ③ 같은 기기·같은 네트워크: 접속할 때 기기 ID(사이트가 만든 무작위 값)와 IP 해시(IP 원문은 저장하지 않는다)를 적어 두고, 같은 방에 겹치는 사람이 있으면 알림 */
+const DAY = 24 * 3600_000;
+const pairRows = async (a: string, b: string, q: string) => await rest("GET", `seed10k_mp_results?uids=cs.%7B${a},${b}%7D&${q}`) || [];
+async function pairCapHit(uids: string[]): Promise<string> {   // 한도를 넘은 두 사람이 있으면 그 설명
+  for (let i = 0; i < uids.length; i++) for (let j = i + 1; j < uids.length; j++) {
+    const a = uids[i], b = uids[j];
+    const rows = await pairRows(a, b, `game=neq.bj&at=gte.${new Date(Date.now() - DAY).toISOString()}&select=summary`);   // 블랙잭은 한도에서 뺀다
+    const f = pairFlow(rows, a, b);
+    if (Math.abs(f) >= WATCH.pairCap) return `${i}:${j}:${f}`;
+  }
+  return "";
+}
+const once = new Map<string, number>();   // 같은 알림을 하루에 한 번만
+const firstTime = (k: string) => { const t = once.get(k) || 0; if (Date.now() - t < DAY) return false; once.set(k, Date.now()); if (once.size > 5000) once.clear(); return true; };
+async function pairWatch(room: Room, res: any) {
+  const uids: string[] = res.uids, nick = (u: string) => (res.seats.find((s: any) => s.uid === u) || {}).nick || "?";
+  for (let i = 0; i < uids.length; i++) for (let j = i + 1; j < uids.length; j++) {
+    const a = uids[i], b = uids[j];
+    const rows = await pairRows(a, b, `order=id.desc&limit=${WATCH.pairWinWin}&select=winner,summary`);
+    const head = await fetch(`${BASE}/rest/v1/seed10k_mp_results?uids=cs.%7B${a},${b}%7D&select=id`, { method: "HEAD", headers: { apikey: KEY, Authorization: `Bearer ${KEY}`, Prefer: "count=exact" }, signal: AbortSignal.timeout(10_000) }).catch(() => null);
+    const total = +((head?.headers.get("content-range") || "").split("/")[1] || 0) || rows.length;
+    if (total < WATCH.pairWinMin || total % 5 !== 0) continue;
+    const tops = rows.map((r: any) => pairTop(r, a, b)).filter(Boolean), wa = tops.filter((x: string) => x === a).length, wb = tops.length - wa;
+    const w = wa >= wb ? a : b, l = w === a ? b : a, k = Math.max(wa, wb);
+    if (!tops.length || k / tops.length < WATCH.pairWinPct) continue;
+    const moved = pairFlow(rows, l, w);
+    await alert({ kind: "pair_win", game: room.game, code: room.code, mode: room.mode, uid: w, other: l,
+      msg: `몰아주기 의심: ${nick(w)}이(가) 같은 상대 ${nick(l)}에게 최근 ${tops.length}판 중 ${k}판(${Math.round(k / tops.length * 100)}%) 앞섬, 그동안 넘어간 돈 $${moved.toFixed(2)} (같이 한 판 ${total}판, 방 ${room.code})`,
+      detail: { total, win: k, n: tops.length, moved } });
+  }
+}
+async function iphOf(req: Request): Promise<string> {   // 터널(Cloudflare)이 붙여 주는 실제 접속 IP → 해시 (원문은 저장하지 않는다)
+  const ip = (req.headers.get("cf-connecting-ip") || req.headers.get("x-forwarded-for") || "").split(",")[0].trim();
+  if (!ip) return "";
+  const d = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`seed10k|${KEY.slice(-24)}|${ip}`));
+  return Array.from(new Uint8Array(d)).slice(0, 10).map((x) => x.toString(16).padStart(2, "0")).join("");
+}
+async function linkNote(uid: string, dev: string, iph: string) {   // 이 계정이 쓴 기기·네트워크를 적어 둔다
+  if (!dev && !iph) return;
+  await rest("POST", "seed10k_links?on_conflict=user_id,dev,iph", [{ user_id: uid, dev: dev || "", iph: iph || "", at: new Date().toISOString() }], "resolution=merge-duplicates,return=minimal").catch(() => {});
+}
+async function linkWatch(room: Room) {   // 같은 방 사람들 중 기기·네트워크가 겹치는 두 계정
+  const seats = room.state.seats || []; if (seats.length < 2) return;
+  const ids = seats.map((s: any) => s.uid).join(",");
+  const rows: any[] = await rest("GET", `seed10k_links?user_id=in.(${ids})&at=gte.${new Date(Date.now() - 30 * DAY).toISOString()}&select=user_id,dev,iph`).catch(() => []) || [];
+  const nick = (u: string) => (seats.find((s: any) => s.uid === u) || {}).nick || "?";
+  for (let i = 0; i < seats.length; i++) for (let j = i + 1; j < seats.length; j++) {
+    const a = seats[i].uid, b = seats[j].uid, A = rows.filter((r) => r.user_id === a), B = rows.filter((r) => r.user_id === b);
+    const dev = A.some((x) => x.dev && B.some((y) => y.dev === x.dev)), net = !dev && A.some((x) => x.iph && B.some((y) => y.iph === x.iph));
+    if (!dev && !net) continue;
+    const kind = dev ? "same_dev" : "same_net";
+    if (!firstTime(`${kind}:${[a, b].sort().join(",")}`)) continue;
+    await alert({ kind, game: room.game, code: room.code, mode: room.mode, uid: a, other: b,
+      msg: `${dev ? "같은 기기" : "같은 네트워크(IP)"}를 쓴 두 계정이 같은 방에: ${nick(a)} · ${nick(b)} (방 ${room.code})${dev ? "" : " — 학교·집 와이파이일 수도 있음"}` });
   }
 }
 async function bjWatch(room: Room, res: any) {   // 블랙잭: 버스트할 수 없는 11 이하에서 직접 스탠드한 판이 이어지면
@@ -140,12 +201,27 @@ async function processReq(q: any, shown?: (r: { ok: boolean; err?: string; res?:
       if (at && Date.now() - at > 60_000) { r = { ok: false, err: "요청이 너무 늦게 도착해 처리하지 않았습니다. 판돈은 곧 돌려받습니다" }; shown?.(r); return r; }
       const why = await banned(q.user_id) ? "부정행위로 멀티플레이가 제한된 계정입니다" : await tester(q.user_id) ? "테스트 계정은 멀티플레이를 할 수 없습니다" : "";
       if (why) { handled++; r = { ok: false, err: why }; shown?.(r); return r; }
+      await linkNote(q.user_id, q.dev || "", q.iph || "");
+    }
+    // 몰아주기 한도: 들어올 때(들어올 사람과 이미 앉은 사람들), 시작할 때(앉은 사람 모두) 확인한다
+    if ((q.kind === "join" || q.kind === "start") && room0 && room0.status === "lobby" && room0.game !== "bj") {
+      const uids = room0.state.seats.map((s: any) => s.uid).filter((u: string) => q.kind === "start" || u !== q.user_id);
+      if (q.kind === "join" && !uids.includes(q.user_id)) uids.push(q.user_id);
+      const hit = await pairCapHit(uids);
+      if (hit) {
+        const [i, j] = hit.split(":").map(Number), nk = (u: string) => (room0.state.seats.find((s: any) => s.uid === u) || {}).nick || "새로 들어온 사람";
+        const a = uids[i], b = uids[j];
+        if (firstTime(`cap:${[a, b].sort().join(",")}`)) await alert({ kind: "pair_cap", game: room0.game, code: room0.code, mode: room0.mode, uid: a, other: b,
+          msg: `몰아주기 한도: ${nk(a)} · ${nk(b)} 사이에 24시간 동안 $${Math.abs(+hit.split(":")[2]).toFixed(2)}가 한쪽으로 넘어가 같은 방을 막음 (한도 $${WATCH.pairCap}, 방 ${room0.code})` });
+        handled++; r = { ok: false, err: `같이 할 수 없습니다: 최근 24시간 동안 두 사람 사이에 넘어간 돈이 한도($${WATCH.pairCap.toLocaleString()})를 넘었습니다` }; shown?.(r); return r;
+      }
     }
     const out = handle(room0 || null, privs.get(q.code) || {}, q, Date.now(), Math.random);
     handled++;
     if (out.err) { r = { ok: false, err: out.err }; shown?.(r); return r; }
     r = { ok: true, res: out.res || {} };
     if (out.room) await save(out as any, room0, () => shown?.(r));
+    if (out.room && (q.kind === "join" || q.kind === "start")) linkWatch(out.room).catch(() => {});
     else shown?.(r);
     return r;
   } catch (e) {
@@ -190,7 +266,7 @@ function ticks() {
           → {t:'chat', code, id, text, nick}  방 채팅 (앉은 사람과 관전자, 0.6초에 한 번, 60자)
    심판 → {t:'room', row}  구독한 방이 바뀔 때마다 (seed10k_rooms 한 줄과 같은 모양)
         → {t:'chat', code, id, seat, nick, text, v:true}  서버가 보낸 사람을 확인한 채팅 */
-type Sock = { ws: WebSocket; uid: string | null; codes: Set<string>; chatAt?: number };
+type Sock = { ws: WebSocket; uid: string | null; codes: Set<string>; chatAt?: number; dev?: string; iph?: string };
 const socks = new Set<Sock>();
 const roomRow = (room: Room) => ({ code: room.code, game: room.game, mode: room.mode, host: room.host, stake: room.stake, il: room.il, status: room.status, state: room.state, ver: room.ver, updated_at: new Date().toISOString() });
 function broadcast(room: Room) {
@@ -211,8 +287,8 @@ async function whoIs(token: string): Promise<string | null> {   // Supabase 로�
   } catch { return null; }
 }
 let wsReq = 0;
-function onSock(ws: WebSocket) {
-  const k: Sock = { ws, uid: null, codes: new Set() };
+function onSock(ws: WebSocket, iph = "") {
+  const k: Sock = { ws, uid: null, codes: new Set(), iph };
   ws.onopen = () => socks.add(k);
   ws.onclose = () => socks.delete(k);
   ws.onerror = () => socks.delete(k);
@@ -220,7 +296,7 @@ function onSock(ws: WebSocket) {
     let m: any;
     try { if (typeof e.data !== "string" || e.data.length > 20_000) return; m = JSON.parse(e.data); } catch { return; }
     if (m.t === "ping") return send(k, { t: "pong" });
-    if (m.t === "auth") { k.uid = typeof m.token === "string" ? await whoIs(m.token) : null; return send(k, { t: "auth", ok: !!k.uid }); }
+    if (m.t === "auth") { k.uid = typeof m.token === "string" ? await whoIs(m.token) : null; k.dev = typeof m.dev === "string" && /^[a-z0-9]{8,40}$/.test(m.dev) ? m.dev : ""; return send(k, { t: "auth", ok: !!k.uid }); }
     if (!k.uid) return send(k, { t: "res", id: m.id, ok: false, err: "로그인 확인이 안 됐습니다" });
     if (m.t === "sub" && typeof m.code === "string" && /^[A-Z0-9]{6}$/.test(m.code)) {
       if (k.codes.size > 20) k.codes.clear();
@@ -244,7 +320,7 @@ function onSock(ws: WebSocket) {
       return;
     }
     if (m.t === "req" && typeof m.code === "string" && typeof m.kind === "string") {
-      const q = { id: `ws${++wsReq}`, user_id: k.uid, code: m.code, kind: m.kind, arg: m.arg && typeof m.arg === "object" ? m.arg : {}, at: new Date().toISOString() };
+      const q = { id: `ws${++wsReq}`, user_id: k.uid, code: m.code, kind: m.kind, arg: m.arg && typeof m.arg === "object" ? m.arg : {}, at: new Date().toISOString(), dev: k.dev || "", iph: k.iph || "" };
       k.codes.add(m.code);
       let sent = false;
       const reply = (r: any) => { if (sent) return; sent = true; send(k, { t: "res", id: m.id, ok: r.ok, err: r.err, res: r.res }); };
@@ -252,13 +328,15 @@ function onSock(ws: WebSocket) {
       reply(r);
     }
   };
+  return k;
 }
 const PORT = 8787;
 Deno.serve({ port: PORT, hostname: "0.0.0.0", onListen: () => console.log(`[seed10k-ref] 웹소켓 대기: ${PORT}번`) }, (req) => {
   const u = new URL(req.url);
   if (u.pathname === "/ws" && req.headers.get("upgrade")?.toLowerCase() === "websocket") {
     const { socket, response } = Deno.upgradeWebSocket(req, { idleTimeout: 60 });
-    onSock(socket);
+    const k = onSock(socket);
+    iphOf(req).then((h) => { k.iph = h; }).catch(() => {});
     return response;
   }
   return new Response("seed10k referee", { headers: { "access-control-allow-origin": "*" } });
