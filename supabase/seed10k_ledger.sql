@@ -27,6 +27,7 @@ create policy "seed10k_ledger_select" on public.seed10k_ledger for select using 
 create or replace function public.seed10k_ledger_alert(u uuid, m text, k text, msg text, det jsonb) returns void
 language plpgsql security definer set search_path = public as $$
 begin
+  if exists (select 1 from public.seed10k_testers where user_id = u) then return; end if;   -- 테스트 계정은 anticheat 대상이 아님
   if exists (select 1 from public.seed10k_alerts where uid = u and kind = k and mode = m and at > now() - interval '1 day') then return; end if;
   insert into public.seed10k_alerts (kind, game, mode, uid, msg, detail) values (k, 'ledger', m, u, msg, det);
 end $$;
@@ -76,3 +77,6 @@ exception when others then return null;   -- 확인이 실패해도 저장은 �
 end $$;
 drop trigger if exists seed10k_ledger_save on public.seed10k_saves;
 create trigger seed10k_ledger_save after insert or update of data on public.seed10k_saves for each row execute function public.seed10k_ledger_save();
+
+-- 테스트 계정에 이미 생긴 돈 기록 알림은 확인한 것으로 둔다
+update public.seed10k_alerts set seen = true where kind like 'ledger%' and not seen and uid in (select user_id from public.seed10k_testers);

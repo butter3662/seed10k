@@ -69,6 +69,7 @@ async function save(out: { room: Room; priv: any; payouts?: any[] }, room0: Room
 /* ── 판 결과 기록과 악용 의심 알림 ── */
 const NTFY = (Deno.env.get("NTFY_TOPIC") || "").trim();
 async function alert(a: { kind: string; game: string; code: string; mode: string; uid?: string; other?: string; msg: string; detail?: unknown }) {
+  if ((a.uid && await tester(a.uid)) || (a.other && await tester(a.other))) return;   // 테스트 계정은 anticheat 대상이 아님
   await rest("POST", "seed10k_alerts", [a], "return=minimal");
   console.log("[seed10k-ref] 알림:", a.msg);
   if (NTFY) await fetch("https://ntfy.sh/", { method: "POST", body: JSON.stringify({ topic: NTFY, title: "SEED 10K 부정행위 의심", message: a.msg, tags: ["rotating_light"] }), signal: AbortSignal.timeout(10_000) }).catch(() => {});
