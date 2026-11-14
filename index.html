@@ -1255,7 +1255,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '2.3.4';
+const VERSION = '2.3.5';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -6068,7 +6068,9 @@ function bs3D(f, x, y, z){ return new BS3.T.Vector3(x, y, z).applyQuaternion(f.s
 function bs3Arm(A){
   const T = BS3.T, S = A.sh, H = A.p, d0 = H.clone().sub(S), dist = Math.min(d0.length(), A.a + A.b - 0.002), u = d0.normalize();
   const cosA = (A.a * A.a + dist * dist - A.b * A.b) / (2 * A.a * dist), sinA = Math.sqrt(Math.max(0, 1 - cosA * cosA));
-  const pole = new T.Vector3(A.s * 0.8, -1, 0.1); const w = pole.sub(u.clone().multiplyScalar(pole.dot(u))).normalize();
+  // 팔꿈치 방향: 몸 기준 바깥·뒤·약간 아래 (예전엔 세계 기준 아래라 손을 들면 팔꿈치가 탁자를 뚫었다)
+  const pole = new T.Vector3(A.s * 0.85, -0.45, -0.85); if (A.q) pole.applyQuaternion(A.q);
+  const w = pole.sub(u.clone().multiplyScalar(pole.dot(u))).normalize();
   const E = S.clone().add(u.clone().multiplyScalar(A.a * cosA)).add(w.multiplyScalar(A.a * sinA));
   const Hc = S.clone().add(u.clone().multiplyScalar(dist));
   const seg = (m, p, q, r) => { const d = q.clone().sub(p); m.position.copy(p); m.quaternion.setFromUnitVectors(new T.Vector3(0, 1, 0), d.clone().normalize()); m.scale.set(r, d.length(), r); };
@@ -6250,11 +6252,14 @@ function bs3Frame(now){
   figs.forEach(f => {
     f.body.updateMatrixWorld(true);
     const fc = g && g.pl[f.i] && g.pl[f.i].cuffed && !g.pl[f.i].out, dead = !alive(f) || (f.kb || 0) > 0.3;   // 넘어져 있는 동안도 손이 늘어진다
+    const bq = f.body.getWorldQuaternion(new T.Quaternion());
     f.arms.forEach((A2, i) => {
-      A2.sh.copy(A2.shL).applyMatrix4(f.body.matrixWorld);
-      if ((f.kb || 0) > 0.05 && alive(f)){   // 맞아서 넘어가는 중: 팔이 몸을 따라 힘없이 뒤로 축 늘어진다 (탁자를 짚지 않는다)
-        const q = f.body.getWorldQuaternion(new T.Quaternion());
-        A2.p.lerp(A2.sh.clone().add(new T.Vector3(A2.s * 0.16, -0.8, 0.08).applyQuaternion(q)), bs3Damp(14, dt));
+      A2.sh.copy(A2.shL).applyMatrix4(f.body.matrixWorld); A2.q = bq;
+      const rising = f.kbT !== undefined && f.kbT > 0.3 + (f.kbD || 0);
+      if (rising && alive(f)){   // 일어나는 중: 손을 먼저 탁자 가장자리 위로 들어 올린다 (밑에서 탁자를 뚫고 올라오지 않게)
+        A2.p.lerp(bs3S(f, A2.s * 0.32, 0.32, -0.95), bs3Damp(12, dt));
+      } else if ((f.kb || 0) > 0.05 && alive(f)){   // 맞아서 넘어가는 중: 팔이 몸을 따라 힘없이 뒤로 축 늘어진다 (탁자를 짚지 않는다)
+        A2.p.lerp(A2.sh.clone().add(new T.Vector3(A2.s * 0.16, -0.8, 0.08).applyQuaternion(bq)), bs3Damp(14, dt));
       } else if (dead){   // 탈락한 사람: 손을 탁자 위에 축 늘어뜨린 채 움직이지 않는다 (숨쉬기·흔들림 없음)
         A2.p.lerp(bs3S(f, A2.s * 0.24, 0.02, -0.5), bs3Damp(6, dt));
       } else if (Lay && f === Fl && F && F.t < 0.6 && ((slotX(F.k) >= 0) === (A2.s > 0))){
@@ -6280,7 +6285,7 @@ function bs3Frame(now){
       } else if (Lay && n && f === Fl){ toW(A2, W(A2.s < 0 ? O.GP.pump : O.GP.grip).add(new T.Vector3(0, 0.02, 0)), 10); }   // 다른 손은 총을 붙잡는다
       else if (dealerHolds && f === Fa){ toW(A2, W(A2.s < 0 ? O.GP.pump : O.GP.grip), 16); }
       else if (A.rackT < 0.8 && !shooter && f === Fl){   // 펌프질: 왼손은 움직이는 펌프를 따라가고, 오른손은 손잡이를 쥔다
-        if (A2.s < 0){ O.pump.updateMatrixWorld(true); toW(A2, new T.Vector3().setFromMatrixPosition(O.pump.matrixWorld).add(new T.Vector3(0, 0.025, 0)), 30); }
+        if (A2.s < 0) toW(A2, W(O.GP.pump.clone().add(new T.Vector3(rp * 0.085, 0, 0))), 30);   // 펌프(앞손잡이) 자리 + 당긴 만큼
         else toW(A2, W(O.GP.grip).add(new T.Vector3(0, 0.02, 0)), 18);
       }
       else rest(f, A2, i);
@@ -6334,6 +6339,11 @@ function bs3Frame(now){
   const sh = (A.bangT < 0.5 ? Math.exp(-A.bangT * 9) * (A.hitMe ? 0.06 : 0.02) : 0);
   BS3.cam.position.set(Math.sin(A.t * 0.5) * 0.015 + (Math.random() - .5) * sh, 1.1 + Math.sin(A.t * 0.8) * 0.008 + (Math.random() - .5) * sh, 1.62);
   const lookP = new T.Vector3(0, 0.3 + (A.hitMe && A.hitT < 0.4 ? -0.08 * Math.exp(-A.hitT * 5) : 0), -0.45);
+  // 암전이 풀릴 때: 쓰러졌다 일어나는 것처럼 시야가 아래에서 위로 올라온다 (암전 동안은 낮은 자리에 있다가, 밝아지는 동안 1초에 걸쳐 제자리로)
+  if (A.hitMe && !meOut && A.blackD > 0.6){
+    const rt = A.blackT - 0.05 - A.blackD, low = rt < 0 ? 1 : 1 - bs3Ease(rt / 1.0);
+    if (low > 0){ BS3.cam.position.y -= low * 0.42; BS3.cam.position.z -= low * 0.1; BS3.cam.position.x += low * 0.06; lookP.y -= low * 0.32; }
+  }
   // 내가 지면: 시야가 옆으로 기울며 탁자 높이로 무너지고, 점점 어두워진다
   const up2 = g && !g.over ? bs3Ease((A.meFall - 3.2) / 1.2) : 0;   // 여럿이 하는 판에서 먼저 탈락하면 잠시 뒤 다시 일어나 구경한다
   const mf = bs3Ease((A.meFall - 0.6) / 1.0) * (1 - up2), roll = mf * 1.25 + (A.meFall > 1.6 && A.meFall < 1.95 ? Math.sin((A.meFall - 1.6) / 0.35 * Math.PI) * 0.06 : 0);
