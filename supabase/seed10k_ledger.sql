@@ -80,3 +80,5 @@ create trigger seed10k_ledger_save after insert or update of data on public.seed
 
 -- 테스트 계정에 이미 생긴 돈 기록 알림은 확인한 것으로 둔다
 update public.seed10k_alerts set seen = true where kind like 'ledger%' and not seen and uid in (select user_id from public.seed10k_testers);
+-- 2026-11-14: 저장 직전에 들어온 상금 때문에 잘못 뜬 '저장 잔고 불일치'·'돈 기록 끊김' 알림(사이트 수정 전)을 확인한 것으로 둔다
+update public.seed10k_alerts set seen = true where kind like 'ledger%' and not seen and at < timestamptz '2026-11-14 12:00:00+00';

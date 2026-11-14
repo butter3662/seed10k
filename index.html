@@ -1580,7 +1580,7 @@ async function lgFlush(){   // 쌓인 줄을 올린다. 네트워크가 끊겼�
   try {
     const {error} = await ACC.sb.from('seed10k_ledger').insert(rows);
     if (error){ if (/fetch|network/i.test(error.message || '')) return false; console.warn('[ledger]', error.message); if (!/relation|42P01|does not exist/i.test(error.message || '')) return true; }
-    q.splice(0, rows.length); lgKeep();
+    q.splice(0, rows.length); lgKeep(); LG.sent = (LG.sent || 0) + rows.length;
     return q.length ? lgFlush() : true;
   } catch(e){ return !(e instanceof TypeError || /fetch|network/i.test(String(e && e.message || e)) || navigator.onLine === false); }   // 네트워크가 아닌 오류로 저장까지 막지는 않는다 (줄은 남겨 두고 다음에 다시)
 }
@@ -7800,7 +7800,7 @@ function renderAdmin(){
   const v = $('#v-admin'); if (!v) return;
   if (!ADM.on){ v.innerHTML = '<p class="empty">관리자만 볼 수 있습니다.</p>'; return; }
   const al = ADM.alerts.slice(0, 50).map(a => `<li class="adm-al ${a.seen ? 'seen' : ''}"><div><small class="muted">${admT(a.at)} · ${esc(({oe_streak:'홀짝 연승', bj_stand:'블랙잭 계속 스탠드', bm_nobuy:'부루마블 땅 안 사기', bs_self:'벅샷 자기만 쏘기', bs_risky:'벅샷 위험한데 자기 쏘기', pair_cap:'몰아주기 한도', pair_win:'몰아주기 의심(승률)', same_dev:'같은 기기', same_net:'같은 네트워크', ledger_gap:'돈 기록 끊김', ledger_save:'저장 잔고 불일치'})[a.kind] || a.kind)} · ${a.mode === 'live' ? '실제 시세' : '시뮬'}</small><p>${esc(a.msg)}</p></div>
-      <div class="adm-al-b">${a.uid ? `<button class="btn" data-admu="${a.uid}">이긴/의심 쪽</button>` : ''}${a.other ? `<button class="btn" data-admu="${a.other}">상대</button>` : ''}${a.seen ? '' : `<button class="btn" data-admseen="${a.id}">확인함</button>`}</div></li>`).join('');
+      <div class="adm-al-b">${a.uid ? `<button class="btn" data-admu="${a.uid}" title="이 알림의 대상 계정 정보 열기">의심 계정</button>` : ''}${a.other ? `<button class="btn" data-admu="${a.other}" title="같이 걸린 다른 계정 정보 열기">함께 걸린 계정</button>` : ''}${a.seen ? '' : `<button class="btn" data-admseen="${a.id}">확인함</button>`}</div></li>`).join('');
   const us = ADM.users === null ? '' : ADM.users.length ? `<ul class="adm-us">${ADM.users.map(u => { const bn = ADM.bans && ADM.bans.get(u.user_id);
       return `<li class="adm-ur"><button class="adm-u ${u.user_id === ADM.uid ? 'on' : ''}" data-admu="${u.user_id}"><b>${esc(u.nickname || '(닉네임 없음)')}${bn ? ' <span class="adm-bn">🚫 랭킹 밴</span>' : ''}</b><small>${esc(u.email || '')}</small><small class="muted">가입 ${admT(u.joined)}${u.last_save ? ` · 마지막 저장 ${admT(u.last_save)}` : ''}${bn && bn.reason ? ` · 사유: ${esc(bn.reason)}` : ''}</small></button>${bn ? `<button class="btn" data-admrkunban="${u.user_id}">밴 풀기</button>` : `<button class="btn" data-admrkban="${u.user_id}" data-nick="${esc(u.nickname || u.email || '')}">밴</button>`}</li>`; }).join('')}</ul>` : '<p class="empty">찾은 계정이 없습니다.</p>';
   v.innerHTML = `<div class="stack">
@@ -9600,8 +9600,15 @@ async function pushCloud(){
   if (!ACC.user || !ACC.sb || !S || S._ph) return;
   if (ACC.pushing){ ACC.pushAgain = true; return; }
   ACC.pushing = true;
-  lgTrack();   // 저장하지 않은 채 바뀐 돈이 있으면 먼저 적는다
-  if (!(await lgFlush())){ ACC.pushing = false; scheduleCloud(); return; }   // 돈 기록을 먼저 올린다 (못 올렸으면 다음에 같이)
+  // 돈 기록을 먼저 올린다. 올리는 동안(await)에도 게임에서 딴 돈이 들어올 수 있으므로, 기록이 다 올라가 '바뀐 게 없다'가 확인될 때까지 반복하고
+  // 그 직후(기다림 없이) 저장할 내용을 찍는다 → 저장 잔고와 마지막 기록이 항상 같다 (전에는 그 사이 들어온 상금 때문에 '저장 잔고 불일치'가 잘못 떴다)
+  for (let k = 0; ; k++){
+    lgTrack();
+    if (!lgQ().length || ACC.tester || !ACC.testerKnown) break;
+    const s0 = LG.sent || 0;
+    if (k >= 4 || !(await lgFlush())){ ACC.pushing = false; scheduleCloud(); return; }
+    if ((LG.sent || 0) === s0) break;   // 서버가 받지 않는 오류(네트워크 아님)면 저장까지 막지는 않는다
+  }
   const uid = ACC.user.id, snap = S, mode = snap.mode, base = snap.syncBase ?? null, ver = ACC.ver;
   const token = Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
   const data = JSON.parse(JSON.stringify(snap)); data.syncBase = token; data.dirty = false; delete data._ph;
