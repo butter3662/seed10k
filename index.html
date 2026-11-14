@@ -682,6 +682,23 @@ html.gated body{overflow:hidden}
 .bs-lay.go i{transition:transform .5s,opacity .5s;transform:translate(0,40px) scale(.4);opacity:0}
 .bs-count{position:absolute;left:10px;top:10px;display:flex;gap:10px;font-size:12px;color:rgba(230,225,211,.75)}
 .bs-count i{display:inline-block;width:6px;height:12px;border-radius:1px;margin-right:4px;vertical-align:-1px}.bs-count i.live{background:#e0473f}.bs-count i.blank{background:#5d7fa6}.bs-count i.unk{background:#8f8a80}
+.bm-sk{display:block;width:100%;height:100%;overflow:hidden;position:relative}
+.bm-sk img{display:block;height:100%;width:calc(var(--n,1) * 100%);max-width:none;object-fit:fill;animation:bmskf calc(var(--n,1) * 70ms) steps(var(--n,1)) infinite}
+.bm-sk[style*="--n:1"] img{animation:none}
+@keyframes bmskf{to{transform:translateX(-100%)}}
+.bm-ov.b3 .bm-tok.b3t .bm-tok-i.bm-skw{position:absolute;inset:0;transform-style:preserve-3d;background:none;box-shadow:none;border-radius:0;outline:0}
+.bm-ov.b3 .bm-tok.b3t.sk .bm-tok-u{left:-86%;width:272%;height:340%}   /* 그림 비율 256:320 = 0.8 → 너비 = 높이 × 0.8 (말 칸이 정사각형) */
+.bm-ov.b3 .bm-tok.skf .bm-tok-i.bm-skw{transform:translateZ(calc(var(--S) * .55))}
+.bm-ov.b3 .bm-tok.skf .bm-tok-i.bm-skw:not(.fly):not(.hop){animation:bmhover 1.6s ease-in-out infinite}
+@keyframes bmhover{50%{transform:translateZ(calc(var(--S) * .7))}}
+.bm-ov.b3 .bm-tok.skf .bm-tok-sh{opacity:.55;transform:scale(.8)}
+.bm-tok.sk2 .bm-tok-i{background:radial-gradient(circle,#fff,#e9e3d3);padding:2px}
+.sk-pick{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.sk-it{display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px;border:2px solid var(--rule);border-radius:12px;background:none;color:inherit;cursor:pointer}
+.sk-it[aria-pressed="true"]{border-color:var(--brass)}
+.sk-im{width:76px;height:95px;display:grid;place-items:center}.sk-im .bm-sk{width:76px;height:95px}.sk-def{font-size:44px}
+.sk-load{font-size:12px;opacity:.6}
+.sk-reveal{width:180px;height:225px;margin:0 auto;display:grid;place-items:center}.sk-reveal .bm-sk{width:180px;height:225px}
 .chk{display:flex;gap:6px;align-items:center;font-size:13px;cursor:pointer}
 .shop-list{display:flex;flex-direction:column;gap:8px}
 .shop-it{display:flex;gap:10px;align-items:center;padding:8px 10px;border:1px solid var(--rule);border-radius:10px}
@@ -1266,7 +1283,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.2.5';
+const VERSION = '1.2.6';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -4221,10 +4238,10 @@ function bmBuild(){
     return `<button class="bm-c bm-${side}${k % 10 === 0 ? ' bm-k' : ''} bm-t-${c.t}" data-bmsq="${k}" style="grid-row:${r};grid-column:${col}">${body}</button>`;
   }).join('');
   // 말: 평면 판은 동그라미, 입체 판은 플레이어 색의 체스 폰(빛이 왼쪽 위에서 오는 원통 그늘) + 머리 위 이름표 + 판에 드리운 그림자
-  const toks = g.pl.map((p, i) => bm3D()
+  const toks = g.pl.map((p, i) => (i === bmMe() && bmSkinTok(i, bm3D())) || (bm3D()
     ? `<div class="bm-tok b3t" data-tok="${i}" style="--pc:${BM.cols[i]}"><i class="bm-tok-sh"></i><div class="bm-tok-i bm-p3">${bmPawn3D()}</div></div>`
-    : `<div class="bm-tok" data-tok="${i}" style="--pc:${BM.cols[i]}"><div class="bm-tok-u"><div class="bm-tok-i"><span>${i === bmMe() ? '나' : esc([...p.nm][0] || '?')}</span></div></div></div>`).join('');
-  const top = `<div class="bm-top"><button class="btn" id="bmClose">닫기</button><div class="bm-ttl"><b>🎲 부루마블</b><small id="bmSub"></small></div><div class="bm-tr"><button class="btn bm-spd bm-snd" id="bmSnd" aria-label="${BSA.on ? '소리 끄기' : '소리 켜기'}">${bsaIcon()}</button><button class="btn bm-spd" id="bm3d"></button><button class="btn bm-spd" id="bmSpd"></button><button class="btn" id="bmQuit">기권</button></div></div>`;
+    : `<div class="bm-tok" data-tok="${i}" style="--pc:${BM.cols[i]}"><div class="bm-tok-u"><div class="bm-tok-i"><span>${i === bmMe() ? '나' : esc([...p.nm][0] || '?')}</span></div></div></div>`)).join('');
+  const top = `<div class="bm-top"><button class="btn" id="bmClose">닫기</button><div class="bm-ttl"><b>🎲 부루마블</b><small id="bmSub"></small></div><div class="bm-tr"><button class="btn bm-spd" id="bmSkinBtn" aria-label="말 스킨" title="말 스킨">🎨</button><button class="btn bm-spd bm-snd" id="bmSnd" aria-label="${BSA.on ? '소리 끄기' : '소리 켜기'}">${bsaIcon()}</button><button class="btn bm-spd" id="bm3d"></button><button class="btn bm-spd" id="bmSpd"></button><button class="btn" id="bmQuit">기권</button></div></div>`;
   const pls = `<div class="bm-pls" id="bmPls">${g.pl.map((p, i) => `<div class="bm-pl" data-pl="${i}"><i style="background:${BM.cols[i]}"></i><span class="bm-pn"></span><b class="num bm-pc"></b><small class="num bm-pa"></small></div>`).join('')}</div>`;
   const under = `<div class="bm-act" id="bmActBox"></div><div id="bmInfoBox"></div>${acNote()}`;
   ov.classList.toggle('b3', bm3D());
@@ -4484,6 +4501,7 @@ async function bmPlay(ev, v0, done){
         await bmWait(e.a === e.b ? 450 : 200);
       } else if (e.t === 'move'){
         if (e.jump){ BMAU.fly(); await bmHopTo(e.i, e.path[0], true); continue; }
+        if (bmSkinFly(e.i) && e.path.length){ BMAU.fly(); await bmHopTo(e.i, e.path[e.path.length - 1], true); await bmWait(90); continue; }   // 헬리콥터·비행기 스킨: 칸을 걷지 않고 날아서 간다
         for (const k of e.path){ BMAU.hop(); await bmHopTo(e.i, k, false); }
         await bmWait(90);
       } else if (e.t === 'card'){
@@ -8785,12 +8803,13 @@ const SHOP = [
   {id:'lawyer', ic:'⚖️', nm:'변호사 선임', price:300, d:'다음 경찰 단속(불법 모드 단속·도주 적발) 한 번은 압수액이 절반이 됩니다.'},
   {id:'dive', ic:'🤿', nm:'잠수', price:300, d:''},   // 설명은 shopDesc (RUN.p를 쓰므로)
   {id:'first', ic:'🥇', nm:'선수권', price:200, d:'혼자 하는 벅샷 룰렛·부루마블을 시작할 때 쓰면 내 차례부터 시작합니다.'},
+  {id:'skin', ic:'🎲', nm:'부루마블 말 스킨 뽑기', price:300, d:'말 스킨 10종 중 아직 없는 것 하나가 나옵니다 (헬리콥터·비행기는 날아다닙니다). 부루마블 화면 위쪽 🎨 버튼으로 바꿔 씁니다.'},
 ];
 const DIVE_P = 0.08;
 function shopS(){ const G = gamS(); if (!G.shop || typeof G.shop !== 'object') G.shop = {}; const s = G.shop; if (!s.inv || typeof s.inv !== 'object') s.inv = {}; if (!Array.isArray(s.pend)) s.pend = []; return s; }
 const shopN = id => Math.max(0, +(shopS().inv[id] || 0));
 function shopUse(id){ const s = shopS(); if (!(s.inv[id] > 0)) return false; s.inv[id]--; return true; }
-const shopItem = id => SHOP.find(x => x.id === id) || (id === 'color' ? {id:'color', ic:'🎨', nm:'닉네임 색 변경', price:300, server:true} : id === 'skin' ? {id:'skin', ic:'🎲', nm:'부루마블 말 스킨 뽑기', price:300} : null);
+const shopItem = id => SHOP.find(x => x.id === id) || (id === 'color' ? {id:'color', ic:'🎨', nm:'닉네임 색 변경', price:300, server:true} : null);
 const shopDesc = it => it.id === 'dive' ? `다음에 진 판에서 도망칠 때, 그 도주가 판마다 적발될 확률이 ${RUN.p * 100}% 대신 ${DIVE_P * 100}%가 됩니다.` : it.d;
 // 값 내기: 다른 돈 변화는 먼저 따로 적고, 환전도 따로 적은 뒤, 상점 결제만 한 줄(why = shop:<id>, 정확히 −가격)로 남긴다
 function shopPay(id){
@@ -8840,8 +8859,8 @@ function shopCardHTML(){
   const G = gamS();
   return `<div class="card-h"><h2>🛒 상점</h2><small>게임 안의 달러로 삽니다</small></div>
     <div class="shop-list">${SHOP.map(it => {
-      const own = it.id === 'record' ? `전과 ${G.bust || 0}회` : shopN(it.id) ? `가진 것 ${shopN(it.id)}개` : '';
-      const off = it.id === 'record' && !(G.bust > 0);
+      const own = it.id === 'record' ? `전과 ${G.bust || 0}회` : it.id === 'skin' ? `모은 스킨 ${bmSkinOwn().length}/${BM_SKINS.length}` : shopN(it.id) ? `가진 것 ${shopN(it.id)}개` : '';
+      const off = (it.id === 'record' && !(G.bust > 0)) || (it.id === 'skin' && bmSkinOwn().length >= BM_SKINS.length);
       return `<div class="shop-it"><span class="shop-ic">${it.ic}</span><div class="shop-tx"><b>${it.nm}</b><small>${shopDesc(it)}</small>${own ? `<small class="shop-own">${own}</small>` : ''}</div>
         <button class="btn solid" data-shop="${it.id}" ${off ? 'disabled title="지울 전과가 없습니다"' : ''}>${fmtUSDn(it.price, 0)}</button></div>`;
     }).join('')}</div>
@@ -8853,10 +8872,12 @@ async function shopBuy(id){
   const it = shopItem(id); if (!it) return;
   if (S.over) return toast('파산해서 살 수 없습니다', true);
   if (id === 'record' && !(gamS().bust > 0)) return toast('지울 전과가 없습니다', true);
+  if (id === 'skin' && bmSkinOwn().length >= BM_SKINS.length) return toast('스킨을 모두 모았습니다', true);
   if (it.server && !ACC.user) return toast('로그인해야 살 수 있습니다', true);
   confirmBox(`${it.ic} ${it.nm}`, `${fmtUSD(it.price)}을 내고 삽니다.<br><small class="muted">${shopDesc(it)}</small>`, `${fmtUSD(it.price)} 내고 사기`, async () => {
     if (!shopPay(id)) return;
     if (it.server) await shopRedeem(id);
+    else if (id === 'skin') await bmSkinDraw();
     else { const s = shopS(); s.inv[id] = shopN(id) + 1; commit(); toast(`${it.nm}을(를) 샀습니다 (가진 것 ${shopN(id)}개)`); }
     renderShopCard();
   });
@@ -8883,6 +8904,244 @@ function ncolDialog(){
   $('#ncolGo').onclick = async () => { close(); if (!shopPay('color')) return; await shopRedeem('color', pick); };
 }
 document.addEventListener('click', e => { if (e.target.closest('#btnNcol')) ncolDialog(); });
+
+/* ── 부루마블 말 스킨 (상점 뽑기) ──
+   three.js로 만든 작은 입체 모형을, 부루마블 입체 판을 보는 각도(위에서 약 44°)에서 한 번 찍어 그림으로 쓴다.
+   판 위에서는 이 그림이 말 자리에 서 있다(빌보드). 프로펠러·팽이처럼 도는 것은 여러 장을 찍어 번갈아 보여 준다.
+   단위: 말 높이 약 1, 바닥 y = 0. 앞(얼굴·기수)은 +x */
+const BM_SKINS = [
+  {id:'heli', nm:'헬리콥터', fly:true, frames:6},
+  {id:'rook', nm:'크롬 룩'},
+  {id:'rabbit', nm:'토끼'},
+  {id:'stick', nm:'졸라맨'},
+  {id:'king', nm:'흑요석 킹'},
+  {id:'finger', nm:'🖕'},
+  {id:'dog', nm:'강아지'},
+  {id:'car', nm:'자동차'},
+  {id:'plane', nm:'비행기', fly:true, frames:4},
+  {id:'snow', nm:'눈사람'},
+];
+const bmSkin = id => BM_SKINS.find(s => s.id === id) || null;
+function bmSkinModel(T, id, f){   // f: 0~1 (돌아가는 부품의 위상)
+  const G = new T.Group();
+  const M = (c, o) => new T.MeshPhysicalMaterial(Object.assign({color:c, roughness:0.45, metalness:0}, o || {}));
+  const add = (geo, mat, x, y, z, rx, ry, rz, par) => { const m = new T.Mesh(geo, mat); m.position.set(x || 0, y || 0, z || 0); m.rotation.set(rx || 0, ry || 0, rz || 0); m.castShadow = m.receiveShadow = true; (par || G).add(m); return m; };
+  const lathe = (pts, mat, seg) => add(new T.LatheGeometry(pts.map(([r, y]) => new T.Vector2(r, y)), seg || 72), mat);
+  const smooth = (pts, n) => { const c = new T.SplineCurve(pts.map(([r, y]) => new T.Vector2(r, y))); return c.getPoints(n || 80).map(v => [Math.max(0.001, v.x), v.y]); };
+  const cyl = (r0, r1, h, mat, x, y, z, rx, ry, rz, par) => add(new T.CylinderGeometry(r0, r1, h, 32), mat, x, y, z, rx, ry, rz, par);
+  const ball = (r, mat, x, y, z, sx, sy, sz, par) => { const m = add(new T.SphereGeometry(r, 48, 32), mat, x, y, z, 0, 0, 0, par); m.scale.set(sx || 1, sy || 1, sz || 1); return m; };
+  const cap = (r, l, mat, x, y, z, rx, ry, rz, par) => add(new T.CapsuleGeometry(r, l, 10, 24), mat, x, y, z, rx, ry, rz, par);
+  const box = (w, h, d, mat, x, y, z, rx, ry, rz, par) => add(new T.BoxGeometry(w, h, d), mat, x, y, z, rx, ry, rz, par);
+  // 두 점을 잇는 원기둥 (팔·다리·막대)
+  const rod = (a, b, r, mat, par) => { const A = new T.Vector3(...a), B = new T.Vector3(...b), d = B.clone().sub(A); const m = add(new T.CylinderGeometry(r, r, d.length(), 20), mat, 0, 0, 0, 0, 0, 0, par); m.position.copy(A).add(B).multiplyScalar(0.5); m.quaternion.setFromUnitVectors(new T.Vector3(0, 1, 0), d.normalize()); ball(r, mat, ...a, 1, 1, 1, par); ball(r, mat, ...b, 1, 1, 1, par); return m; };
+  if (id === 'heli'){
+    const red = M('#D62839', {clearcoat:1, clearcoatRoughness:0.08, roughness:0.3}), wht = M('#F4F4F4', {clearcoat:0.8, roughness:0.35}), dk = M('#2B2D33', {metalness:0.6, roughness:0.35}),
+      glass = M('#8ED1FC', {roughness:0.04, metalness:0.1, transmission:0.35, thickness:0.2, clearcoat:1});
+    ball(0.3, red, 0, 0.58, 0, 1.55, 1.05, 1.0);                       // 몸통
+    ball(0.3, wht, -0.02, 0.5, 0, 1.5, 0.75, 1.02);                    // 흰 배
+    ball(0.25, glass, 0.26, 0.64, 0, 1.0, 0.95, 0.92);                 // 앞 유리
+    cyl(0.05, 0.11, 0.78, red, -0.72, 0.66, 0, 0, 0, Math.PI / 2);     // 꼬리 붐
+    box(0.2, 0.28, 0.03, wht, -1.08, 0.78, 0, 0, 0, -0.35);            // 꼬리 날개
+    const tr = new T.Group(); tr.position.set(-1.1, 0.8, 0.05); G.add(tr); tr.rotation.z = f * Math.PI * 2;
+    box(0.36, 0.035, 0.012, dk, 0, 0, 0, 0, 0, 0, tr); box(0.035, 0.36, 0.012, dk, 0, 0, 0, 0, 0, 0, tr);   // 꼬리 로터
+    cyl(0.035, 0.05, 0.16, dk, 0, 0.95, 0); ball(0.06, dk, 0, 1.04, 0);
+    const mr = new T.Group(); mr.position.set(0, 1.05, 0); mr.rotation.y = f * Math.PI * 2 / 4; G.add(mr);
+    for (let k = 0; k < 4; k++){ const b = box(0.82, 0.016, 0.07, dk, 0.43, 0, 0, 0.12, 0, 0, null); mr.add(b); b.position.set(Math.cos(k * Math.PI / 2) * 0.43, 0, Math.sin(k * Math.PI / 2) * 0.43); b.rotation.y = -k * Math.PI / 2; }
+    for (const z of [-0.24, 0.24]){ cyl(0.022, 0.022, 0.92, dk, 0.02, 0.14, z, 0, 0, Math.PI / 2); rod([0.22, 0.14, z], [0.18, 0.4, z * 0.6], 0.016, dk); rod([-0.2, 0.14, z], [-0.18, 0.4, z * 0.6], 0.016, dk); ball(0.024, dk, 0.48, 0.17, z); }
+    for (const z of [-0.255, 0.255]) for (const x of [-0.1, 0.06]) box(0.12, 0.09, 0.01, glass, x, 0.68, z);   // 옆 창문
+  } else if (id === 'rook'){
+    const cr = M('#E6EBF0', {metalness:1, roughness:0.12});
+    lathe(smooth([[0.001, 0], [0.46, 0], [0.47, 0.04], [0.44, 0.08], [0.38, 0.11], [0.36, 0.14], [0.31, 0.2], [0.27, 0.45], [0.27, 0.68], [0.3, 0.72], [0.34, 0.75], [0.34, 0.95]], 90).concat([[0.26, 0.95], [0.26, 0.86], [0.001, 0.86]]), cr);
+    for (let k = 0; k < 6; k++){ const a = k / 6 * Math.PI * 2; box(0.14, 0.12, 0.08, cr, Math.cos(a) * 0.3, 1.0, Math.sin(a) * 0.3, 0, -a, 0); }   // 성벽 이빨
+  } else if (id === 'rabbit'){
+    const fur = M('#F7F4EF', {roughness:0.85, sheen:1, sheenColor:new T.Color('#ffffff'), sheenRoughness:0.6}), pink = M('#F7A1B5', {roughness:0.6}), eye = M('#1B1B1F', {roughness:0.05, clearcoat:1}), shine = M('#ffffff', {emissive:'#ffffff', emissiveIntensity:1});
+    ball(0.3, fur, -0.05, 0.33, 0, 1.15, 1.05, 1.0);                   // 몸
+    ball(0.16, fur, 0.05, 0.12, 0.15, 1.4, 0.55, 0.75); ball(0.16, fur, 0.05, 0.12, -0.15, 1.4, 0.55, 0.75);   // 뒷발
+    ball(0.07, fur, 0.26, 0.18, 0.09, 1.2, 1, 1); ball(0.07, fur, 0.26, 0.18, -0.09, 1.2, 1, 1);               // 앞발
+    ball(0.09, fur, -0.38, 0.36, 0);                                    // 꼬리
+    ball(0.23, fur, 0.14, 0.74, 0, 1.05, 0.95, 1.0);                    // 머리
+    ball(0.1, fur, 0.3, 0.68, 0.07, 1, 0.8, 1); ball(0.1, fur, 0.3, 0.68, -0.07, 1, 0.8, 1);                   // 볼
+    ball(0.035, pink, 0.39, 0.72, 0, 1, 0.8, 1.2);                       // 코
+    for (const z of [-0.11, 0.11]){ ball(0.042, eye, 0.31, 0.8, z, 0.7, 1.1, 1); ball(0.012, shine, 0.34, 0.82, z * 0.92); }   // 눈
+    for (const z of [-1, 1]){
+      const ear = new T.Group(); ear.position.set(0.06, 0.9, z * 0.08); ear.rotation.set(z * 0.22, 0, -0.18 + (z > 0 ? 0.25 : 0)); G.add(ear);
+      const o = cap(0.06, 0.38, fur, 0, 0.24, 0, 0, 0, 0, ear); o.scale.set(0.75, 1, 1.25);
+      const i = cap(0.04, 0.3, pink, 0.03, 0.25, 0, 0, 0, 0, ear); i.scale.set(0.35, 1, 1.0);
+    }
+    for (const z of [-1, 1]) for (const dy of [-0.012, 0.012]) rod([0.37, 0.69 + dy, z * 0.06], [0.48, 0.71 + dy * 3, z * 0.19], 0.003, M('#C9C3BA'));   // 수염
+  } else if (id === 'stick'){
+    const ink = M('#16161A', {roughness:0.22, clearcoat:1, clearcoatRoughness:0.08}), r = 0.05;
+    cyl(0.3, 0.33, 0.05, M('#3A3D46', {metalness:0.6, roughness:0.25}), 0, 0.025, 0);           // 받침
+    const hip = [0, 0.5, 0], neck = [0, 0.86, 0];
+    rod(hip, neck, r, ink); ball(0.165, ink, 0, 1.06, 0);                                         // 몸 · 머리
+    rod(neck, [0.05, 0.7, 0.2], r, ink); rod([0.05, 0.7, 0.2], [0.02, 0.52, 0.12], r, ink);       // 허리에 올린 팔
+    rod(neck, [0.04, 1.0, -0.2], r, ink); rod([0.04, 1.0, -0.2], [0.06, 1.22, -0.22], r, ink);    // 번쩍 든 팔
+    rod(hip, [0.06, 0.27, 0.12], r, ink); rod([0.06, 0.27, 0.12], [0.04, 0.06, 0.15], r, ink);    // 다리 (어깨너비로 서 있다)
+    rod(hip, [-0.04, 0.27, -0.12], r, ink); rod([-0.04, 0.27, -0.12], [-0.02, 0.06, -0.15], r, ink);
+    G.rotation.y = -Math.PI / 2 + 0.95;   // 팔다리를 벌린 면이 보는 사람 쪽을 향하게
+  } else if (id === 'king'){
+    const ob = M('#221D2B', {roughness:0.12, metalness:0.2, clearcoat:1, clearcoatRoughness:0.05}), pu = M('#A66BFF', {roughness:0.2, metalness:0.6, emissive:'#5B2A9E', emissiveIntensity:0.5});
+    lathe(smooth([[0.001, 0], [0.45, 0], [0.46, 0.05], [0.4, 0.1], [0.35, 0.13], [0.3, 0.2], [0.22, 0.4], [0.17, 0.62], [0.16, 0.7], [0.25, 0.73], [0.27, 0.76], [0.2, 0.79], [0.2, 0.82], [0.24, 0.95], [0.26, 1.0], [0.18, 1.03], [0.001, 1.04]], 100), ob);
+    add(new T.TorusGeometry(0.235, 0.022, 16, 72), pu, 0, 0.745, 0, Math.PI / 2);
+    box(0.07, 0.24, 0.07, pu, 0, 1.15, 0); box(0.2, 0.07, 0.07, pu, 0, 1.17, 0);                // 십자
+  } else if (id === 'finger'){
+    const sk = M('#F2C9A0', {roughness:0.55, sheen:0.4, sheenColor:new T.Color('#ffd9c0')}), nail = M('#FBE3E0', {roughness:0.15, clearcoat:1}), cuff = M('#2D6CDF', {roughness:0.6});
+    cyl(0.25, 0.27, 0.3, cuff, 0, 0.15, 0); add(new T.TorusGeometry(0.255, 0.03, 12, 48), M('#1E4FB0', {roughness:0.6}), 0, 0.3, 0, Math.PI / 2);   // 소매
+    const pal = box(0.44, 0.34, 0.3, sk, 0, 0.48, 0); pal.geometry = new T.CapsuleGeometry(0.15, 0.16, 8, 24); pal.rotation.z = Math.PI / 2; pal.scale.set(1.05, 1.25, 1.0); pal.position.set(0, 0.5, 0);
+    ball(0.19, sk, 0, 0.42, 0, 1.15, 0.9, 0.85);                                                           // 손바닥 아래
+    for (const [x, s] of [[0.15, 0.95], [-0.08, 0.92], [-0.18, 0.8]]){ cap(0.058 * s, 0.1, sk, x, 0.67, 0.12, Math.PI / 2, 0, 0); ball(0.06 * s, sk, x, 0.62, 0.18); }   // 접은 손가락 3개
+    cap(0.055, 0.16, sk, 0.12, 0.56, 0.16, 0, 0, -1.2);                                                     // 엄지
+    cap(0.062, 0.2, sk, 0.04, 0.78, 0.0); cap(0.06, 0.16, sk, 0.04, 0.98, 0.0); const tip = cap(0.057, 0.08, sk, 0.04, 1.14, 0.0);   // 가운뎃손가락 (세 마디)
+    ball(0.045, nail, 0.04, 1.16, 0.035, 0.9, 1.3, 0.4);                                                    // 손톱
+    for (const y of [0.88, 1.06]) add(new T.TorusGeometry(0.058, 0.006, 8, 24), M('#D9A984', {roughness:0.7}), 0.04, y, 0, Math.PI / 2);  // 마디 주름
+  } else if (id === 'dog'){
+    const fur = M('#D9A35F', {roughness:0.75, sheen:0.8, sheenColor:new T.Color('#ffe2b8'), sheenRoughness:0.6}), cream = M('#F6E3C3', {roughness:0.8, sheen:0.6, sheenColor:new T.Color('#ffffff')}),
+      dkf = M('#8A5A2B', {roughness:0.7}), eye = M('#1B1B1F', {roughness:0.05, clearcoat:1}), shine = M('#ffffff', {emissive:'#ffffff', emissiveIntensity:1}),
+      nose = M('#202024', {roughness:0.2, clearcoat:1}), collar = M('#D62839', {roughness:0.4, clearcoat:0.6}), gold = M('#F2C14E', {metalness:1, roughness:0.25}), tongue = M('#F26D85', {roughness:0.5});
+    cap(0.18, 0.36, fur, -0.04, 0.46, 0, 0, 0, Math.PI / 2).scale.set(1, 1, 0.92);           // 몸통
+    ball(0.15, cream, 0.06, 0.4, 0, 1.6, 0.8, 0.85);                                           // 배
+    for (const [x, z] of [[0.2, 0.1], [0.2, -0.1], [-0.26, 0.1], [-0.26, -0.1]]){ cap(0.06, 0.26, fur, x, 0.2, z); ball(0.07, cream, x + 0.02, 0.04, z, 1.3, 0.7, 1.1); }   // 다리 · 발
+    cap(0.035, 0.2, fur, -0.42, 0.64, 0, 0, 0, 0.75);                                         // 꼬리 (위로 말려 든)
+    ball(0.045, cream, -0.5, 0.74, 0);
+    add(new T.TorusGeometry(0.135, 0.028, 12, 40), collar, 0.24, 0.66, 0, 0, Math.PI / 2, 0.5);   // 목걸이
+    ball(0.035, gold, 0.31, 0.56, 0, 1, 1, 0.4);                                               // 이름표
+    ball(0.17, fur, 0.32, 0.8, 0, 1.05, 1, 1);                                                 // 머리
+    ball(0.1, cream, 0.45, 0.74, 0, 1.25, 0.8, 0.95);                                          // 주둥이
+    ball(0.04, nose, 0.57, 0.78, 0, 1, 0.8, 1.15);                                             // 코
+    ball(0.035, tongue, 0.52, 0.66, 0, 1, 0.5, 1.2);                                           // 혀
+    for (const z of [-0.075, 0.075]){ ball(0.032, eye, 0.44, 0.86, z, 0.8, 1, 1); ball(0.01, shine, 0.465, 0.875, z * 0.9);
+      const ear = cap(0.06, 0.14, dkf, 0.27, 0.86, z * 1.75, z > 0 ? 0.5 : -0.5, 0, 0.15); ear.scale.set(0.55, 1, 1.0); }      // 눈 · 귀(늘어진)
+  } else if (id === 'car'){
+    const paint = M('#FFB703', {clearcoat:1, clearcoatRoughness:0.05, roughness:0.25, metalness:0.2}), glass = M('#1D2A3A', {roughness:0.05, metalness:0.3, clearcoat:1}), tire = M('#1A1A1C', {roughness:0.8}), rim = M('#D9DEE4', {metalness:1, roughness:0.2}), lamp = M('#FFF6D6', {emissive:'#FFF2B0', emissiveIntensity:1.2}), tail = M('#FF3B3B', {emissive:'#FF2020', emissiveIntensity:0.9});
+    const sh = new T.Shape(); sh.moveTo(-0.62, 0.16); sh.lineTo(0.6, 0.16); sh.quadraticCurveTo(0.68, 0.18, 0.66, 0.3); sh.quadraticCurveTo(0.62, 0.38, 0.4, 0.4); sh.lineTo(0.2, 0.42); sh.quadraticCurveTo(0.05, 0.62, -0.18, 0.62); sh.quadraticCurveTo(-0.42, 0.6, -0.52, 0.44); sh.quadraticCurveTo(-0.66, 0.42, -0.64, 0.3); sh.closePath();
+    const body = new T.ExtrudeGeometry(sh, {depth:0.5, bevelEnabled:true, bevelThickness:0.05, bevelSize:0.04, bevelSegments:6, curveSegments:24}); body.translate(0, 0, -0.25);
+    add(body, paint, 0, 0.02, 0);
+    const wsh = new T.Shape(); wsh.moveTo(0.16, 0.45); wsh.quadraticCurveTo(0.04, 0.6, -0.17, 0.6); wsh.quadraticCurveTo(-0.38, 0.58, -0.47, 0.46); wsh.closePath();
+    const win = new T.ExtrudeGeometry(wsh, {depth:0.6, bevelEnabled:false}); win.translate(0, 0.0, -0.3); add(win, glass, 0, 0.02, 0);
+    box(0.04, 0.14, 0.58, glass, 0.26, 0.5, 0, 0, 0, -0.75);   // 앞 유리
+    for (const x of [-0.4, 0.4]) for (const z of [-0.29, 0.29]){ cyl(0.15, 0.15, 0.12, tire, x, 0.15, z, Math.PI / 2); cyl(0.09, 0.09, 0.13, rim, x, 0.15, z, Math.PI / 2); add(new T.TorusGeometry(0.15, 0.025, 12, 40), tire, x, 0.15, z); }
+    for (const z of [-0.18, 0.18]){ ball(0.045, lamp, 0.69, 0.3, z, 0.6, 1, 1.4); ball(0.04, tail, -0.68, 0.33, z, 0.5, 0.8, 1.6); }
+    box(0.03, 0.05, 0.36, M('#2B2D33', {metalness:0.6}), 0.69, 0.2, 0);   // 그릴
+  } else if (id === 'plane'){
+    const wht = M('#F5F7FA', {clearcoat:1, roughness:0.25}), blu = M('#1F6FEB', {clearcoat:1, roughness:0.25}), glass = M('#1D2A3A', {roughness:0.05, clearcoat:1}), dk = M('#2B2D33', {metalness:0.6, roughness:0.3});
+    cap(0.16, 0.9, wht, 0, 0.62, 0, 0, 0, Math.PI / 2);                                 // 동체
+    ball(0.16, blu, 0.6, 0.62, 0, 0.9, 1, 1);                                            // 기수
+    add(new T.TorusGeometry(0.161, 0.018, 12, 48), blu, -0.1, 0.62, 0, 0, Math.PI / 2);  // 띠
+    ball(0.1, glass, 0.4, 0.7, 0, 1.4, 0.7, 1.05);                                       // 조종석
+    for (let k = 0; k < 4; k++) for (const z of [-0.15, 0.15]) ball(0.022, glass, 0.15 - k * 0.12, 0.67, z, 1, 1, 0.4);   // 창문
+    const ws = new T.Shape(); ws.moveTo(0.12, 0); ws.lineTo(-0.1, 0.72); ws.lineTo(-0.26, 0.72); ws.lineTo(-0.18, 0); ws.closePath();
+    const wg = new T.ExtrudeGeometry(ws, {depth:0.03, bevelEnabled:true, bevelThickness:0.01, bevelSize:0.01, bevelSegments:3});
+    for (const s of [1, -1]){ const w = add(wg, wht, 0.08, 0.56, 0, -Math.PI / 2 * s, 0, 0); w.scale.z = 1; if (s < 0) w.rotation.x = Math.PI / 2; }
+    const ts = new T.Shape(); ts.moveTo(0, 0); ts.lineTo(-0.1, 0.24); ts.lineTo(-0.2, 0.24); ts.lineTo(-0.16, 0); ts.closePath();
+    const tg = new T.ExtrudeGeometry(ts, {depth:0.025, bevelEnabled:false});
+    for (const s of [1, -1]){ const w = add(tg, blu, -0.5, 0.64, 0, -Math.PI / 2 * s, 0, 0); if (s < 0) w.rotation.x = Math.PI / 2; }
+    const fs = new T.Shape(); fs.moveTo(0, 0); fs.lineTo(-0.12, 0.3); fs.lineTo(-0.24, 0.3); fs.lineTo(-0.2, 0); fs.closePath();
+    add(new T.ExtrudeGeometry(fs, {depth:0.025, bevelEnabled:false}), blu, -0.48, 0.7, -0.0125);   // 수직 꼬리
+    const pr = new T.Group(); pr.position.set(0.76, 0.62, 0); pr.rotation.x = f * Math.PI * 2 / 3; G.add(pr);
+    ball(0.045, dk, 0.0, 0, 0, 1.2, 1, 1, pr);
+    for (let k = 0; k < 3; k++){ const b = box(0.012, 0.3, 0.05, dk, 0.01, 0, 0, 0, 0, 0, pr); b.geometry.translate(0, 0.15, 0); b.rotation.x = k * Math.PI * 2 / 3; }
+  } else if (id === 'snow'){
+    const snow = M('#FBFDFF', {roughness:0.9, sheen:1, sheenColor:new T.Color('#dfeaff'), sheenRoughness:0.8}), coal = M('#17181C', {roughness:0.5}), carrot = M('#F2742B', {roughness:0.6}), wood = M('#6B4423', {roughness:0.9}), scarf = M('#D62839', {roughness:0.8}), hat = M('#18191D', {roughness:0.35, clearcoat:0.6}), band = M('#2F6BFF', {roughness:0.5});
+    // 눈덩이에 살짝 울퉁불퉁한 결 (점마다 반지름을 조금씩 흔든다)
+    const lump = (r, y, seed) => { const geo = new T.SphereGeometry(r, 64, 48), p = geo.attributes.position; for (let k = 0; k < p.count; k++){ const v = new T.Vector3().fromBufferAttribute(p, k); const n = 1 + 0.025 * Math.sin(v.x * 37 + seed) * Math.sin(v.y * 41 + seed * 2) * Math.sin(v.z * 29 + seed * 3); v.multiplyScalar(n); p.setXYZ(k, v.x, v.y, v.z); } geo.computeVertexNormals(); return add(geo, snow, 0, y, 0); };
+    lump(0.3, 0.27, 1); lump(0.22, 0.68, 2); lump(0.165, 1.0, 3);
+    add(new T.ConeGeometry(0.035, 0.2, 24), carrot, 0.24, 1.0, 0, 0, 0, -Math.PI / 2);                     // 당근 코
+    for (const z of [-0.06, 0.06]) ball(0.022, coal, 0.14, 1.06, z);                                         // 눈
+    for (let k = -2; k <= 2; k++) ball(0.013, coal, 0.155 - Math.abs(k) * 0.006, 0.93 + k * k * 0.006, k * 0.035);   // 입
+    for (const y of [0.6, 0.7, 0.8]) ball(0.022, coal, 0.21 - Math.abs(y - 0.7) * 0.25, y, 0);              // 단추
+    add(new T.TorusGeometry(0.155, 0.045, 16, 48), scarf, 0, 0.86, 0, Math.PI / 2);                          // 목도리
+    box(0.07, 0.24, 0.025, scarf, 0.07, 0.74, 0.13, 0.15, 0, 0.18);
+    rod([0, 0.74, 0.2], [0.05, 0.94, 0.48], 0.014, wood); rod([0.04, 0.88, 0.4], [0.12, 0.95, 0.47], 0.008, wood);   // 나뭇가지 팔
+    rod([0, 0.74, -0.2], [0.02, 0.86, -0.5], 0.014, wood); rod([0.01, 0.82, -0.42], [0.08, 0.9, -0.5], 0.008, wood);
+    cyl(0.2, 0.2, 0.02, hat, 0, 1.13, 0); cyl(0.12, 0.13, 0.2, hat, 0, 1.24, 0); cyl(0.131, 0.131, 0.04, band, 0, 1.16, 0);   // 모자
+  }
+  return G;
+}
+// 찍기: 판을 보는 각도(내려다보는 각 el, 모형을 돌린 각 yaw)로 정사각 그림 (투명 배경)
+function bmSkinShoot(T, id, opt){
+  const W = (opt && opt.w) || 256, H = (opt && opt.h) || 320, frames = (bmSkin(id) || {}).frames || 1;
+  const R = new T.WebGLRenderer({antialias:true, alpha:true, preserveDrawingBuffer:true}); R.setSize(W, H, false); R.setPixelRatio(1);
+  R.outputColorSpace = T.SRGBColorSpace; R.toneMapping = T.ACESFilmicToneMapping; R.toneMappingExposure = 1.05;
+  // 반사용 환경: 밝은 판 몇 장이 있는 방 (외부 그림 없이)
+  const room = new T.Scene(); room.add(new T.Mesh(new T.BoxGeometry(10, 10, 10), new T.MeshBasicMaterial({color:'#6b7380', side:T.BackSide})));
+  for (const [x, y, z, s, c] of [[0, 4.9, 0, 6, '#ffffff'], [4.9, 1, 0, 3, '#fff3dc'], [-4.9, 2, 1, 3, '#dfe9ff'], [0, 1, 4.9, 4, '#ffffff'], [0, -4.9, 0, 4, '#3a3f48'], [0, 2, -4.9, 3, '#cfd8e6']]){ const p = new T.Mesh(new T.PlaneGeometry(s, s), new T.MeshBasicMaterial({color:c, side:T.DoubleSide})); p.position.set(x, y, z); p.lookAt(0, 0, 0); room.add(p); }
+  const pm = new T.PMREMGenerator(R), env = pm.fromScene(room, 0.03).texture;
+  const strip = document.createElement('canvas'); strip.width = W * frames; strip.height = H; const sx = strip.getContext('2d');
+  for (let k = 0; k < frames; k++){
+    const S = new T.Scene(); S.environment = env;
+    S.add(new T.HemisphereLight('#ffffff', '#5a4a3a', 0.6));
+    const L = new T.DirectionalLight('#ffffff', 2.2); L.position.set(2, 4, 2.5); S.add(L);
+    const m = bmSkinModel(T, id, k / frames); m.rotation.y += (opt && opt.yaw !== undefined) ? opt.yaw : -0.7; S.add(m);
+    const box = new T.Box3().setFromObject(m), c = box.getCenter(new T.Vector3()), sz = box.getSize(new T.Vector3());
+    const el = (opt && opt.el !== undefined) ? opt.el : 0.75, cam = new T.PerspectiveCamera(24, W / H, 0.1, 50), d = Math.max(sz.x, sz.y * 1.1, sz.z) * 2.95;
+    cam.position.set(0, c.y + Math.sin(el) * d, Math.cos(el) * d); cam.lookAt(0, c.y, 0);
+    R.render(S, cam); sx.drawImage(R.domElement, k * W, 0);
+    S.traverse(o => { if (o.geometry) o.geometry.dispose(); });
+  }
+  pm.dispose(); R.dispose();
+  return {url:strip.toDataURL('image/png'), n:frames};
+}
+
+/* ── 판에서 쓰기 ──
+   가진 스킨: S.gam.shop.skins (id 목록), 쓰는 스킨: S.gam.shop.skin. 내 말에만 보인다 (같이 하기에서도 내 화면의 내 말)
+   그림은 처음 한 번 찍어 이 기기에 저장해 두고(localStorage) 다시 쓴다 */
+const BMSK = {img:{}, wait:{}};
+const BMSK_VER = 4;
+function bmSkinOwn(){ const s = shopS(); if (!Array.isArray(s.skins)) s.skins = []; return s.skins; }
+function bmSkinCur(){ const s = shopS(); return s.skin && bmSkinOwn().includes(s.skin) && bmSkin(s.skin) ? s.skin : null; }
+function bmSkinGet(id){   // 이미 있으면 바로, 없으면 null (찍기를 시작해 두고, 끝나면 판을 다시 그린다)
+  if (BMSK.img[id]) return BMSK.img[id];
+  try { const c = JSON.parse(localStorage.getItem(`seed10k.sk.${id}.${BMSK_VER}`) || 'null'); if (c && c.url) return (BMSK.img[id] = c); } catch(e){}
+  bmSkinMake(id).then(() => { if (typeof bmBuild === 'function' && $('#bmOv') && !$('#bmOv').hidden) bmBuild(); }).catch(() => {});
+  return null;
+}
+async function bmSkinMake(id){
+  if (BMSK.img[id]) return BMSK.img[id];
+  if (BMSK.wait[id]) return BMSK.wait[id];
+  return (BMSK.wait[id] = (async () => {
+    const T = BS3.T || (BS3.T = await import(BS3_URL));
+    await new Promise(r => setTimeout(r, 30));
+    const r = bmSkinShoot(T, id);
+    BMSK.img[id] = r;
+    try { localStorage.setItem(`seed10k.sk.${id}.${BMSK_VER}`, JSON.stringify(r)); } catch(e){}
+    return r;
+  })());
+}
+// 말 HTML (내 말이고 스킨을 쓰면). 입체 판: 판과 나란한 층(.bm-skw, 뜨기·날기 애니메이션) 위에 보는 사람을 향해 선 그림(.bm-tok-u)
+function bmSkinTok(i, d3){
+  const id = bmSkinCur(); if (!id) return '';
+  const im = bmSkinGet(id); if (!im) return '';
+  const sk = bmSkin(id), strip = `<div class="bm-sk" style="--n:${im.n}"><img src="${im.url}" alt=""></div>`;
+  return d3 ? `<div class="bm-tok b3t sk${sk.fly ? ' skf' : ''}" data-tok="${i}" style="--pc:${BM.cols[i]}"><i class="bm-tok-sh"></i><div class="bm-tok-i bm-skw"><div class="bm-tok-u">${strip}</div></div></div>`
+            : `<div class="bm-tok sk2" data-tok="${i}" style="--pc:${BM.cols[i]}"><div class="bm-tok-u"><div class="bm-tok-i">${strip}</div></div></div>`;
+}
+const bmSkinFly = i => { const id = i === bmMe() && bmSkinCur(); return !!(id && bmSkin(id).fly); };
+// 스킨 바꾸기 창 (부루마블 화면 위쪽 버튼)
+async function bmSkinDialog(){
+  const own = bmSkinOwn();
+  const close = showModal(`<h2>🎨 말 스킨</h2><p class="muted" style="margin:0 0 10px">${own.length ? '쓸 스킨을 고르세요. 내 화면의 내 말에 보입니다.' : '아직 가진 스킨이 없습니다. 도박 탭의 상점에서 뽑을 수 있습니다.'}</p>
+    <div class="sk-pick" id="skPick"></div><div class="acts"><button class="btn" data-close>닫기</button></div>`);
+  const draw = () => {
+    const box = $('#skPick'); if (!box) return;
+    const cur = bmSkinCur();
+    box.innerHTML = `<button class="sk-it" data-skset="" aria-pressed="${!cur}"><span class="sk-im sk-def">♟</span><b>기본 말</b></button>` +
+      own.map(id => { const im = BMSK.img[id] || bmSkinGet(id); return `<button class="sk-it" data-skset="${id}" aria-pressed="${cur === id}"><span class="sk-im">${im ? `<span class="bm-sk" style="--n:${im.n}"><img src="${im.url}" alt=""></span>` : '<i class="sk-load">찍는 중…</i>'}</span><b>${esc(bmSkin(id).nm)}</b></button>`; }).join('');
+    box.querySelectorAll('[data-skset]').forEach(b => b.onclick = () => { shopS().skin = b.dataset.skset || null; save(); draw(); if (typeof bmBuild === 'function') bmBuild(); });
+  };
+  draw();
+  for (const id of own) if (!BMSK.img[id]){ await bmSkinMake(id).catch(() => {}); draw(); }
+}
+// 뽑기: 아직 없는 스킨 중 하나 (모두 같은 확률)
+async function bmSkinDraw(){
+  const left = BM_SKINS.map(s => s.id).filter(id => !bmSkinOwn().includes(id)); if (!left.length) return;
+  const id = left[Math.floor(Math.random() * left.length)];
+  bmSkinOwn().push(id); shopS().skin = id; commit();
+  const close = showModal(`<h2>🎉 새 말 스킨!</h2><div class="sk-reveal" id="skRev"><i class="sk-load">찍는 중…</i></div><p style="text-align:center;margin:6px 0 0"><b>${esc(bmSkin(id).nm)}</b>${bmSkin(id).fly ? ' · 칸을 옮길 때 날아갑니다' : ''}</p>
+    <p class="muted" style="text-align:center;margin:4px 0 0">바로 쓰도록 바꿔 두었습니다. 부루마블 화면 위쪽 🎨 버튼으로 바꿀 수 있습니다. (남은 스킨 ${left.length - 1}개)</p><div class="acts"><button class="btn solid" data-close>확인</button></div>`);
+  const im = await bmSkinMake(id).catch(() => null);
+  const box = $('#skRev'); if (box && im) box.innerHTML = `<span class="bm-sk" style="--n:${im.n}"><img src="${im.url}" alt=""></span>`;
+}
+document.addEventListener('click', e => { if (e.target.closest && e.target.closest('#bmSkinBtn')) bmSkinDialog(); });
 
 
 /* ───────── 상세 차트 (애플 주식 앱 방식) ───────── */
