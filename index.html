@@ -1255,7 +1255,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '2.3.6';
+const VERSION = '2.3.7';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -6080,7 +6080,12 @@ function bs3Arm(A){
   A.hand.position.copy(Hc);
   // 손 방향: 손가락(+z)은 팔뚝 방향, 손바닥(−y 쪽, 손가락이 굽는 쪽)은 잡는 물건을 향한다 (A.palmAt: 그 점, 없으면 아래 = 탁자 짚기)
   const z = Hc.clone().sub(E).normalize();
-  let n = A.palmAt ? A.palmAt.clone().sub(Hc) : new T.Vector3(0, -1, 0);
+  let pa = A.palmAt;
+  if (A.palmAx){   // 총을 쥘 때: 손바닥이 총의 중심선(축)을 직각으로 향한다 → 총을 감싸 쥔다
+    const c = A.palmAt, ax = A.palmAx; pa = c.clone().add(ax.clone().multiplyScalar(Hc.clone().sub(c).dot(ax)));
+    if (pa.distanceToSquared(Hc) < 1e-5) pa = Hc.clone().add(new T.Vector3(0, 1, 0));
+  }
+  let n = pa ? pa.clone().sub(Hc) : new T.Vector3(0, -1, 0);
   if (n.lengthSq() < 1e-6) n.set(0, -1, 0);
   const y = n.normalize().multiplyScalar(-1); y.sub(z.clone().multiplyScalar(y.dot(z)));
   if (y.lengthSq() < 1e-6) y.set(0, 1, 0).sub(z.clone().multiplyScalar(z.y));
@@ -6262,9 +6267,9 @@ function bs3Frame(now){
     f.body.updateMatrixWorld(true);
     const fc = g && g.pl[f.i] && g.pl[f.i].cuffed && !g.pl[f.i].out, dead = !alive(f) || (f.kb || 0) > 0.3;   // 넘어져 있는 동안도 손이 늘어진다
     const bq = f.body.getWorldQuaternion(new T.Quaternion());
-    const gunC = W(new T.Vector3(0, 0, 0)), bodyC = new T.Vector3(0, 0.12, 0.02).applyMatrix4(f.body.matrixWorld);
+    const gunC = W(new T.Vector3(0, 0, 0)), gunAx = W(new T.Vector3(1, 0, 0)).sub(gunC).normalize(), bodyC = new T.Vector3(0, 0.12, 0.02).applyMatrix4(f.body.matrixWorld);
     f.arms.forEach((A2, i) => {
-      A2.sh.copy(A2.shL).applyMatrix4(f.body.matrixWorld); A2.q = bq; A2.palmAt = null;   // 기본: 손바닥이 아래 (탁자 짚기)
+      A2.sh.copy(A2.shL).applyMatrix4(f.body.matrixWorld); A2.q = bq; A2.palmAt = null; A2.palmAx = null;   // 기본: 손바닥이 아래 (탁자 짚기)
       const rising = f.kbT !== undefined && f.kbT > 0.3 + (f.kbD || 0);
       if (rising && alive(f)){   // 일어나는 중: 손을 먼저 탁자 가장자리 위로 들어 올린다 (밑에서 탁자를 뚫고 올라오지 않게)
         A2.p.lerp(bs3S(f, A2.s * 0.32, 0.32, -0.95), bs3Damp(12, dt));
@@ -6290,14 +6295,14 @@ function bs3Frame(now){
       } else if (fc && !(f === Fa && shooter) && !(Lay && f === Fl)){ toW(A2, bs3S(f, A2.s * 0.075, 0.035, -0.6), 10); A2.palmAt = bs3S(f, 0, 0.035, -0.6);   // 묶인 손: 손바닥끼리 마주 본다
         if (A2.s > 0 && f === cuffedF){ O.cuffOn.position.copy(bs3S(f, 0, 0.04, -0.6)); O.cuffOn.rotation.set(0, f.seat.rotation.y, 0); }
       } else if (f === Fa && sawing && sawBy === 'op' && A.sawT < CUT + 0.25){   // 톱질: 왼손은 총을 누르고, 오른손은 톱 손잡이
-        if (A2.s > 0){ toW(A2, W(O.GP.grip).add(new T.Vector3(0, 0.03, 0)), 14); A2.palmAt = gunC; }
+        if (A2.s > 0){ toW(A2, W(O.GP.grip).add(new T.Vector3(0, 0.03, 0)), 14); A2.palmAt = gunC; A2.palmAx = gunAx; }
         else { O.saw.updateMatrixWorld(true); toW(A2, new T.Vector3(0.165, 0.04, 0).applyMatrix4(O.saw.matrixWorld), 30); }
-      } else if (Lay && n && f === Fl){ toW(A2, W(A2.s < 0 ? O.GP.pump : O.GP.grip).add(new T.Vector3(0, 0.02, 0)), 10); A2.palmAt = gunC; }   // 다른 손은 총을 붙잡는다
-      else if (dealerHolds && f === Fa){ toW(A2, W(A2.s < 0 ? O.GP.pump : O.GP.grip), 16); A2.palmAt = gunC; }   // 손바닥으로 총을 감싼다
+      } else if (Lay && n && f === Fl){ toW(A2, W(A2.s < 0 ? O.GP.pump : O.GP.grip).add(new T.Vector3(0, 0.02, 0)), 10); A2.palmAt = gunC; A2.palmAx = gunAx; }   // 다른 손은 총을 붙잡는다
+      else if (dealerHolds && f === Fa){ toW(A2, W(A2.s < 0 ? O.GP.pump : O.GP.grip), 16); A2.palmAt = gunC; A2.palmAx = gunAx; }   // 손바닥으로 총을 감싼다
       else if (A.rackT < 0.8 && !shooter && f === Fl){   // 펌프질: 왼손은 움직이는 펌프를 따라가고, 오른손은 손잡이를 쥔다
         if (A2.s < 0) toW(A2, W(O.GP.pump.clone().add(new T.Vector3(rp * 0.085, 0, 0))), 30);   // 펌프(앞손잡이) 자리 + 당긴 만큼
         else toW(A2, W(O.GP.grip).add(new T.Vector3(0, 0.02, 0)), 18);
-        A2.palmAt = gunC;
+        A2.palmAt = gunC; A2.palmAx = gunAx;
       }
       else rest(f, A2, i);
       bs3Arm(A2);
