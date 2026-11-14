@@ -100,6 +100,16 @@ const BSE = {
     const opp = opps.length > 1 && r() < 0.25 ? opps[Math.floor(r() * opps.length)] : opps[0];   // 보통은 목숨이 가장 적은 사람, 가끔은 아무나
     const pr = know !== null ? (know ? 1 : 0) : g.live / Math.max(1, left);
     if (p.hp < BS.hpMax && has('cig') && (p.hp <= 2 || r() < 0.8)) return {op:'use', it:'cig'};
+    // 한 수 앞 보기: 내가 지금 쏴서 상대를 못 끝내고 차례를 넘기면, 남은 탄으로 상대가 나를 끝낼 수 있나?
+    //   위험 = 이번에 쏜 뒤 남는 탄 중 실탄 비율 (rem발 중 g.live − pr발). 내 목숨이 상대 한 방(상대가 톱을 가졌으면 2)에 끝나고, 위험이 ½ 이상이면
+    //   수갑이 있으면 상대를 묶고(다음 차례도 내 것), 없으면 맥주로 지금 탄을 빼서 남는 실탄을 줄인다
+    { const rem = left - 1, danger = rem > 0 ? (g.live - pr) / rem : 0, hit = g.pl[opp].items.includes('saw') ? 2 : 1;
+      const killNow = pr === 1 && g.pl[opp].hp <= (g.saw ? 2 : 1);
+      if (p.hp <= hit && !killNow && !g.pl[opp].cuffed && danger >= 0.5){
+        if (has('cuff') && rem > 0) return {op:'use', it:'cuff', target:opp};
+        if (has('beer') && left > 1) return {op:'use', it:'beer'};
+      }
+    }
     if (g.saw) return {op:'shoot', target:opp};   // 톱을 댔으면 상대에게
     if (know === null && has('glass') && g.live && g.blank && r() < 0.9 - 0.3 * bold) return {op:'use', it:'glass'};
     if (pr === 1){
