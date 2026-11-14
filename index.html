@@ -1255,7 +1255,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '2.3.3';
+const VERSION = '2.3.4';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -5636,6 +5636,7 @@ async function bsPlay(ev, done, rerender, after){
         if (e.live && e.dmg){
           const hitMe = e.target === me(), big = e.dmg > 1;
           if (hitMe){   // 내가 맞으면 그 순간 시야가 꺼졌다가 돌아온다 (톱으로 자른 총이면 더 오래). 3D는 장면이 직접 어둡게 한다
+            await bsWait(50);   // 총구 불꽃을 0.05초 본 뒤 암전
             if (BS3.st !== 'on'){ BSV.black = true; rerender(); }
             await bsWait(e.out ? 550 : big ? 2600 : 1350);
             if (BSV.black){ BSV.black = false; rerender(); } await bsWait(e.out ? 500 : 650);
@@ -6340,7 +6341,7 @@ function bs3Frame(now){
   BS3.cam.up.set(Math.sin(roll), Math.cos(roll), 0);
   if (I && I.by === 'me' && I.it === 'beer'){ const tl = bs3Ease((iu - 0.25) / 0.15) * (1 - bs3Ease((iu - 0.65) / 0.15)); lookP.y += tl * 0.35; }
   BS3.cam.lookAt(lookP);
-  const bt = A.blackT, black = bt < A.blackD ? 0 : bs3Ease((bt - A.blackD) / A.blackF);   // 맞는 순간 바로 꺼진다
+  const bt = A.blackT - 0.05, black = bt < 0 ? 1 : bt < A.blackD ? 0 : bs3Ease((bt - A.blackD) / A.blackF);   // 총구 불꽃을 0.05초 보여 준 뒤 바로 꺼진다
   BS3.R.toneMappingExposure = 1.15 * (1 - 0.8 * bs3Ease((A.meFall - 1.4) / 1.6) * (1 - up2)) * black;
   BS3.black = black;
   BS3.R.render(BS3.scene, BS3.cam);
