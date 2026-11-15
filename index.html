@@ -804,7 +804,7 @@ html.gated body{overflow:hidden}
 .bs-aimui .bs-opp{position:absolute;right:10px;bottom:10px;display:flex;flex-direction:column;align-items:flex-end;gap:6px}
 .bs-aimui .bs-opp .btn{position:static;pointer-events:auto}
 .bm-snd{width:40px;padding:0 9px}.bm-snd svg{width:20px;height:20px;display:block}
-.bs-spd{right:48px!important;font-size:14px;line-height:1;padding:0}.bs-spd.on{border-color:rgba(255,200,90,.7);color:#ffd27a}
+.bs-spd{right:48px!important;padding:7px}.bs-spd.on{border-color:rgba(255,200,90,.7);color:#ffd27a}
 .bs-snd{position:absolute;right:8px;top:8px;z-index:7;width:34px;height:34px;padding:6px;border-radius:50%;border:1px solid rgba(255,255,255,.18);background:rgba(0,0,0,.45);color:#e6e1d3;cursor:pointer}.bs-snd svg{width:100%;height:100%;display:block}
 .bs-black{position:absolute;inset:0;z-index:6;background:#000;pointer-events:none}
 .bs-ico{display:block;width:24px;height:24px}.bs-ico svg{width:100%;height:100%;display:block}.bs-it.ro .bs-ico{width:20px;height:20px}
@@ -1319,7 +1319,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.4.7';
+const VERSION = '1.4.8';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -5816,7 +5816,7 @@ const BS_FAST = 0.55;
 const bsFast = () => $('#mbsBody') ? mpRoomFast('bs') : !!SET.bsFast;
 const bsK = () => bsFast() ? BS_FAST : 1;   // 소리 시작 시각도 같은 배율로
 const bsMs = ms => Math.round(ms * (bsFast() ? BS_FAST : 1) * (bmReduce() ? 0.5 : 1));
-const bsSpdBtn = () => `<button class="bs-snd bs-spd ${bsFast() ? 'on' : ''}" data-bsdo="spd" aria-label="빠르게" title="${$('#mbsBody') ? '같이 하기에서는 방장이 정합니다' : '빠르게'}">${bsFast() ? '⏩' : '▶︎'}</button>`;
+const bsSpdBtn = () => `<button class="bs-snd bs-spd ${bsFast() ? 'on' : ''}" data-bsdo="spd" aria-label="빠르게" title="${$('#mbsBody') ? '같이 하기에서는 방장이 정합니다' : '빠르게'}">${bsFast() ? '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 6.5v11l8-5.5zM12 6.5v11l8-5.5z"/></svg>' : '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 6v12l9-6z"/></svg>'}</button>`;   // 이모지 대신 그림(화살표 두 개 = 빠르게)
 const bsWait = ms => { const gen = BSV.gen; return new Promise((res, rej) => setTimeout(() => gen === BSV.gen && $('.bs-table') ? res() : rej('stop'), bsMs(ms))); };   // 혼자(#bsCard)·같이(#mbsBody) 모두 판이 보이는 동안만
 // 이벤트를 차례로 보여 준다 (쏘기: 총 흔들림 → 실탄이면 번쩍·맞은 쪽 목숨 깜빡, 공포탄이면 딸깍)
 // 연출 시작 때의 화면 상태: 끝난 상태(g)에서 이벤트를 거꾸로 되돌린다. 연출하면서 하나씩 다시 적용한다
