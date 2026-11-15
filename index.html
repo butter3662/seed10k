@@ -1318,7 +1318,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.4.0';
+const VERSION = '1.4.1';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -7960,11 +7960,58 @@ function renderAdmin(){
       ${al ? `<ul class="adm-als">${al}</ul>` : '<p class="empty">알림이 없습니다.</p>'}
       ${ADM.unseen ? '<div class="mg-foot"><button class="btn" id="admSeenAll">모두 확인함</button></div>' : ''}</section>
     <section class="card" id="admSrv">${admSrvHTML()}</section>
+    <section class="card" id="admBsSt">${admBsHTML()}</section>
     <section class="card"><div class="card-h"><h2>🔎 유저 검색</h2><small>이메일이나 닉네임 일부</small></div>
       <form id="admQF" class="adm-q"><label class="amt"><input id="admQ" type="search" autocomplete="off" placeholder="비우고 검색하면 최근 저장 순 40명" value="${esc(ADM.q)}"></label><button class="btn solid" type="submit">검색</button></form>
       ${us}</section>
     <section class="card" id="admUser"${ADM.uid ? '' : ' hidden'}>${ADM.uid ? admUserHTML() : ''}</section>
   </div>`;
+}
+/* ── 벅샷 승률 (기권한 판은 뺀다) ──
+   혼자(딜러와): 각 계정 저장 기록의 도박 내역(altLog, 계정·모드마다 최근 300줄)에서 '벅샷 룰렛 승리/패배' 줄을 센다 → 오래된 판은 빠져 있을 수 있다
+   같이 하기: seed10k_mp_results의 벅샷 판. 사람마다, 자기가 나간(기권) 판은 빼고 센다 */
+ADM.bs = null;
+async function admBsLoad(){
+  ADM.bs = {busy:true}; admBsDraw();
+  const sb = ACC.sb;
+  const [sv, mr, ts, us, rk] = await Promise.all([
+    sb.from('seed10k_saves').select('user_id,mode,al:data->altLog'),
+    sb.from('seed10k_mp_results').select('mode,uids,seats,win,winner').eq('game', 'bs').limit(5000),
+    sb.from('seed10k_testers').select('user_id'),
+    sb.rpc('seed10k_admin_users', {q:''}),
+    sb.from('seed10k_ranks').select('user_id,nickname'),
+  ]);
+  const err = [sv, mr].map(r => r.error && r.error.message).filter(Boolean);
+  const tst = new Set(((ts && ts.data) || []).map(r => r.user_id)), nick = new Map(((us && us.data) || []).map(u => [u.user_id, u.nickname || u.email || u.user_id.slice(0, 8)]));
+  ((rk && rk.data) || []).forEach(r => { if (r.nickname && !nick.has(r.user_id)) nick.set(r.user_id, r.nickname); });
+  const per = new Map(), P = id => { if (!per.has(id)) per.set(id, {sw:0, sl:0, sq:0, mw:0, ml:0, mq:0}); return per.get(id); };
+  for (const r of (sv.data || [])) for (const x of (Array.isArray(r.al) ? r.al : r.data && Array.isArray(r.data.altLog) ? r.data.altLog : [])){
+    const m = /^벅샷 룰렛 (승리|패배|기권)/.exec(x && x.s || ''); if (!m) continue;
+    const p = P(r.user_id); if (m[1] === '승리') p.sw++; else if (m[1] === '패배') p.sl++; else p.sq++;
+  }
+  for (const g of (mr.data || [])){
+    const quit = (g.seats || []).some(st => st && st.left);   // 누가 기권(나감)한 판은 그 판 전체를 뺀다 (남은 사람의 승리도 기권승이라 세지 않음)
+    (g.uids || []).forEach((u, i) => { const st = (g.seats || [])[i] || {}, p = P(u);
+      if (st.nick && !nick.has(u)) nick.set(u, st.nick);
+      if (quit){ if (st.left) p.mq++; return; } else if (g.winner === u || g.win === i) p.mw++; else p.ml++; });
+  }
+  ADM.bs = {per, tst, nick, err, at:new Date()}; admBsDraw();
+}
+function admBsDraw(){ const c = $('#admBsSt'); if (c) c.innerHTML = admBsHTML(); }
+function admBsHTML(){
+  const B = ADM.bs, head = `<div class="card-h"><h2>💥 벅샷 승률</h2><button class="btn" id="admBsGo">${B && !B.busy ? '다시 계산' : '계산하기'}</button></div>`;
+  if (!B) return head + '<p class="muted" style="margin:0">기권한 판은 빼고 셉니다. 누르면 모든 계정의 기록을 불러와 계산합니다.</p>';
+  if (B.busy) return head + '<p class="muted" style="margin:0">불러오는 중…</p>';
+  const pct = (w, n) => n ? `${(w / n * 100).toFixed(1)}%` : '-';
+  const sum = keep => { const t = {sw:0, sl:0, sq:0, mw:0, ml:0, mq:0}; for (const [id, p] of B.per) if (keep(id)) for (const k in t) t[k] += p[k]; return t; };
+  const all = sum(() => true), real = sum(id => !B.tst.has(id));
+  const line = (nm, t) => `<tr><td>${nm}</td><td class="r num">${t.sw}승 ${t.sl}패<br><b>${pct(t.sw, t.sw + t.sl)}</b></td><td class="r num">${t.mw}승 ${t.ml}패<br><b>${pct(t.mw, t.mw + t.ml)}</b></td><td class="r num muted">${t.sq} · ${t.mq}</td></tr>`;
+  const rows = [...B.per].filter(([, p]) => p.sw + p.sl + p.mw + p.ml > 0).sort((a, b) => (b[1].sw + b[1].sl + b[1].mw + b[1].ml) - (a[1].sw + a[1].sl + a[1].mw + a[1].ml))
+    .map(([id, p]) => line(`${esc(B.nick.get(id) || id.slice(0, 8))}${B.tst.has(id) ? ' <small class="muted">🧪</small>' : ''}`, p)).join('');
+  return head + `<p class="muted" style="margin:0 0 8px">${admT(B.at.toISOString())} 기준 · 기권한 판은 승률에서 뺌(같이 하기는 누가 기권한 판 전체를 뺌, 오른쪽은 내가 기권한 판 수) · 혼자 판은 계정·모드마다 최근 도박 내역 300줄 안의 것만 남아 있음</p>
+    ${B.err.length ? `<p class="down">일부를 불러오지 못했습니다: ${esc(B.err.join(' / '))}</p>` : ''}
+    <table class="trades"><thead><tr><th></th><th class="r">혼자 (딜러와)</th><th class="r">같이 하기</th><th class="r">기권 혼자·같이</th></tr></thead><tbody>
+    ${line('<b>전체</b>', all)}${line('<b>테스트 계정 빼고</b>', real)}${rows}</tbody></table>`;
 }
 const WATCH_ADM = {cap:4000, pwMin:10, pwPct:90, oe:5, bj:5, bm:5, bsPct:80, bsMin:5, bsP:50, bsRisk:5};   // pi/mp_core.js의 WATCH와 같게
 /* ── 게임 서버(라즈베리파이) 상태와 '서버 업데이트' 버튼 ──
@@ -8095,6 +8142,7 @@ document.addEventListener('click', async e => {
     if (error) return toast(error.message, true);
     const a = ADM.alerts.find(x => x.id === id); if (a && !a.seen){ a.seen = true; ADM.unseen--; } admBadge(); return renderAdmin();
   }
+  if (t.id === 'admBsGo') return admBsLoad();
   if (t.id === 'admUpd'){
     t.disabled = true;
     const {error} = await ACC.sb.from('seed10k_admin_cmds').insert({kind:'update'});
