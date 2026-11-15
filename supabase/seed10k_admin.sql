@@ -111,3 +111,9 @@ do $$ begin
     alter publication supabase_realtime add table public.seed10k_alerts;
   end if;
 end $$;
+
+-- 4-1b) 알림 지우기: 관리자가 목록에서 '삭제'하면 hidden = true (실제로 지우지 않음 → 그 계정 정보 맨 아래 '의심 기록'에는 계속 남는다)
+alter table public.seed10k_alerts add column if not exists hidden boolean not null default false;
+grant update (seen, hidden) on public.seed10k_alerts to authenticated;
+create index if not exists seed10k_alerts_uid on public.seed10k_alerts (uid);
+create index if not exists seed10k_alerts_other on public.seed10k_alerts (other);

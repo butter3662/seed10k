@@ -1162,6 +1162,8 @@ html[data-game=live] .c-news{order:3}
 .adm-als,.adm-us{list-style:none;margin:0;padding:0;display:grid;gap:8px}
 .adm-al{display:flex;gap:10px;justify-content:space-between;align-items:flex-start;background:color-mix(in srgb,var(--danger) 9%,var(--surface-2));border-radius:10px;padding:10px 12px}
 .adm-al.seen{background:var(--surface-2);opacity:.75}
+.adm-al-who{margin:2px 0 0;font-size:13px;color:var(--ink-2)}.adm-al-who b{color:var(--ink)}
+.adm-sus{margin-top:14px}.adm-sus>summary{cursor:pointer;list-style:revert}
 .adm-lggap td{background:color-mix(in srgb,var(--down) 10%,transparent)}
 .adm-al p{margin:3px 0 0;font-size:13.5px;font-weight:650}
 .adm-al-b{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;flex:none;max-width:45%}
@@ -1319,7 +1321,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.4.8';
+const VERSION = '1.4.9';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -7959,7 +7961,7 @@ async function admCheck(){
   try {
     ADM.ch = ACC.sb.channel('adm-alerts').on('postgres_changes', {event:'INSERT', schema:'public', table:'seed10k_alerts'}, p => {
       if (!p.new) return;
-      ADM.alerts.unshift(p.new); ADM.unseen++; admBadge();
+      ADM.alerts.unshift(p.new); ADM.unseen++; admBadge(); admNickLoad([p.new.uid, p.new.other]).then(() => { if (UI.tab === 'admin') renderAdmin(); });
       toast(`🚨 부정행위 의심: ${p.new.msg}`, true);
       if (UI.tab === 'admin') renderAdmin();
     }).subscribe();
@@ -7967,9 +7969,20 @@ async function admCheck(){
   await admLoadAlerts();
   if (!was && ADM.unseen) toast(`🚨 확인하지 않은 부정행위 의심 알림 ${ADM.unseen}건`, true);
 }
+const ADM_KIND = {oe_streak:'홀짝 연승', bj_stand:'블랙잭 계속 스탠드', bm_nobuy:'부루마블 땅 안 사기', bs_self:'벅샷 자기만 쏘기', bs_risky:'벅샷 위험한데 자기 쏘기', pair_cap:'몰아주기 한도', pair_win:'몰아주기 의심(승률)', same_dev:'같은 기기', same_net:'같은 네트워크', ledger_gap:'돈 기록 끊김', ledger_save:'저장 잔고 불일치'};
+const admKind = k => ADM_KIND[k] || k;
+// 알림에 나오는 계정의 닉네임 (랭킹 표에서). 없으면 계정 id 앞 8자리
+ADM.nick = new Map();
+const admNick = id => id ? (ADM.nick.get(id) || id.slice(0, 8)) : '';
+async function admNickLoad(ids){
+  ids = [...new Set(ids.filter(id => id && !ADM.nick.has(id)))]; if (!ids.length) return;
+  try { const {data} = await ACC.sb.from('seed10k_ranks').select('user_id,nickname').in('user_id', ids); (data || []).forEach(r => { if (r.nickname) ADM.nick.set(r.user_id, r.nickname); }); } catch(e){}
+}
 async function admLoadAlerts(){
-  const {data, error} = await ACC.sb.from('seed10k_alerts').select('*').order('id', {ascending:false}).limit(100);
-  if (!error){ ADM.alerts = data || []; ADM.unseen = ADM.alerts.filter(a => !a.seen).length; }
+  // 삭제(hidden)한 알림은 목록에서 뺀다 (그 계정 정보 맨 아래 '의심 기록'에는 남음)
+  let {data, error} = await ACC.sb.from('seed10k_alerts').select('*').eq('hidden', false).order('id', {ascending:false}).limit(100);
+  if (error && /hidden/.test(error.message || '')) ({data, error} = await ACC.sb.from('seed10k_alerts').select('*').order('id', {ascending:false}).limit(100));   // 열이 아직 없으면
+  if (!error){ ADM.alerts = data || []; ADM.unseen = ADM.alerts.filter(a => !a.seen).length; await admNickLoad(ADM.alerts.flatMap(a => [a.uid, a.other])); }
   admBadge();
   if (UI.tab === 'admin') renderAdmin();
 }
@@ -7978,8 +7991,8 @@ function admBadge(){ $$('[data-tab="admin"]').forEach(b => b.classList.toggle('w
 function renderAdmin(){
   const v = $('#v-admin'); if (!v) return;
   if (!ADM.on){ v.innerHTML = '<p class="empty">관리자만 볼 수 있습니다.</p>'; return; }
-  const al = ADM.alerts.slice(0, 50).map(a => `<li class="adm-al ${a.seen ? 'seen' : ''}"><div><small class="muted">${admT(a.at)} · ${esc(({oe_streak:'홀짝 연승', bj_stand:'블랙잭 계속 스탠드', bm_nobuy:'부루마블 땅 안 사기', bs_self:'벅샷 자기만 쏘기', bs_risky:'벅샷 위험한데 자기 쏘기', pair_cap:'몰아주기 한도', pair_win:'몰아주기 의심(승률)', same_dev:'같은 기기', same_net:'같은 네트워크', ledger_gap:'돈 기록 끊김', ledger_save:'저장 잔고 불일치'})[a.kind] || a.kind)} · ${a.mode === 'live' ? '실제 시세' : '시뮬'}</small><p>${esc(a.msg)}</p></div>
-      <div class="adm-al-b">${a.uid ? `<button class="btn" data-admu="${a.uid}" title="이 알림의 대상 계정 정보 열기">의심 계정</button>` : ''}${a.other ? `<button class="btn" data-admu="${a.other}" title="같이 걸린 다른 계정 정보 열기">함께 걸린 계정</button>` : ''}${a.seen ? '' : `<button class="btn" data-admseen="${a.id}">확인함</button>`}</div></li>`).join('');
+  const al = ADM.alerts.slice(0, 50).map(a => `<li class="adm-al ${a.seen ? 'seen' : ''}"><div><small class="muted">${admT(a.at)} · ${esc(admKind(a.kind))} · ${a.mode === 'live' ? '실제 시세' : '시뮬'}</small><p class="adm-al-who">${a.uid ? `👤 <b>${esc(admNick(a.uid))}</b>` : ''}${a.other ? ` · 상대 <b>${esc(admNick(a.other))}</b>` : ''}</p><p>${esc(a.msg)}</p></div>
+      <div class="adm-al-b">${a.uid ? `<button class="btn" data-admu="${a.uid}" title="이 알림의 대상 계정 정보 열기">의심 계정</button>` : ''}${a.other ? `<button class="btn" data-admu="${a.other}" title="같이 걸린 다른 계정 정보 열기">함께 걸린 계정</button>` : ''}${a.seen ? '' : `<button class="btn" data-admseen="${a.id}">확인함</button>`}<button class="btn" data-admdel="${a.id}" title="목록에서 지웁니다 (그 계정 정보 맨 아래 '의심 기록'에는 남음)">삭제</button></div></li>`).join('');
   const us = ADM.users === null ? '' : ADM.users.length ? `<ul class="adm-us">${ADM.users.map(u => { const bn = ADM.bans && ADM.bans.get(u.user_id);
       return `<li class="adm-ur"><button class="adm-u ${u.user_id === ADM.uid ? 'on' : ''}" data-admu="${u.user_id}"><b>${esc(u.nickname || '(닉네임 없음)')}${bn ? ' <span class="adm-bn">🚫 랭킹 밴</span>' : ''}</b><small>${esc(u.email || '')}</small><small class="muted">가입 ${admT(u.joined)}${u.last_save ? ` · 마지막 저장 ${admT(u.last_save)}` : ''}${bn && bn.reason ? ` · 사유: ${esc(bn.reason)}` : ''}</small></button>${bn ? `<button class="btn" data-admrkunban="${u.user_id}">밴 풀기</button>` : `<button class="btn" data-admrkban="${u.user_id}" data-nick="${esc(u.nickname || u.email || '')}">밴</button>`}</li>`; }).join('')}</ul>` : '<p class="empty">찾은 계정이 없습니다.</p>';
   v.innerHTML = `<div class="stack">
@@ -8081,7 +8094,7 @@ async function admSearch(q){
 async function admOpenUser(uid){
   ADM.uid = uid; ADM.data = null; renderAdmin();
   const sb = ACC.sb;
-  const [sv, pay, res, bml, ban, tst, who, rb, lg] = await Promise.all([
+  const [sv, pay, res, bml, ban, tst, who, rb, lg, als] = await Promise.all([
     sb.from('seed10k_saves').select('mode,data,updated_at').eq('user_id', uid),
     sb.from('seed10k_payouts').select('id,at,code,game,mode,amount,cost,il,note,claimed_at').eq('user_id', uid).order('id', {ascending:false}).limit(2000),
     sb.from('seed10k_mp_results').select('*').contains('uids', [uid]).order('id', {ascending:false}).limit(30),
@@ -8091,10 +8104,11 @@ async function admOpenUser(uid){
     ADM.users && ADM.users.find(u => u.user_id === uid) ? Promise.resolve({data:[ADM.users.find(u => u.user_id === uid)]}) : sb.rpc('seed10k_admin_users', {q:''}).then(r => ({data:(r.data || []).filter(u => u.user_id === uid)})),
     sb.from('seed10k_rank_bans').select('*').eq('user_id', uid).maybeSingle(),
     sb.from('seed10k_ledger').select('id,mode,at,amt,bal,amt_k,bal_k,why').eq('user_id', uid).order('id', {ascending:false}).limit(300),
+    Promise.all(['uid', 'other'].map(c => sb.from('seed10k_alerts').select('*').eq(c, uid).order('id', {ascending:false}).limit(300))).then(rs => ({data:[...new Map(rs.flatMap(r => r.data || []).map(a => [a.id, a])).values()].sort((x, y) => y.id - x.id)})),   // 대상이었던 것 + 상대로 걸린 것
   ]);
   if (ADM.uid !== uid) return;
   const saves = sv.data || [];
-  ADM.data = {saves, pays:pay.data || [], res:res.data || [], bm:bml.data || [], ban:ban.data || null, tester:!!(tst && tst.data), rban:(rb && rb.data) || null, lg:(lg && lg.data) || [], who:(who.data || [])[0] || null, err:[sv, pay, res, bml].map(r => r.error && r.error.message).filter(Boolean)};
+  ADM.data = {saves, pays:pay.data || [], res:res.data || [], bm:bml.data || [], ban:ban.data || null, tester:!!(tst && tst.data), rban:(rb && rb.data) || null, lg:(lg && lg.data) || [], als:(als && als.data) || [], who:(who.data || [])[0] || null, err:[sv, pay, res, bml].map(r => r.error && r.error.message).filter(Boolean)};
   if (!ADM.mode || !saves.some(s => s.mode === ADM.mode)) ADM.mode = (saves.find(s => s.mode === S.mode) || saves[0] || {}).mode || S.mode;
   renderAdmin();
   const el = $('#admUser'); if (el) el.scrollIntoView({block:'start', behavior:'smooth'});
@@ -8150,7 +8164,19 @@ function admUserHTML(){
     <h3 class="adm-h">채권·주택·복권·도박 (최근 30)</h3>${tbl('<th>날짜</th><th>내용</th><th class="r">금액</th>', alt, '내역이 없습니다.')}
     <h3 class="adm-h">주식 거래 (최근 20)</h3>${tbl('<th>날짜</th><th>구분</th><th>종목</th><th class="r">금액</th>', trades, '주식 거래 내역이 없습니다.')}
     <h3 class="adm-h">부루마블 (최근 10)</h3>${tbl('<th>시각</th><th>결과</th><th class="r">순손익</th>', bm, '기록이 없습니다.')}
-    <h3 class="adm-h">환전 (최근 10)</h3>${tbl('<th>날짜</th><th>방향</th><th class="r">낸 금액</th>', fx, '환전 내역이 없습니다.')}`;
+    <h3 class="adm-h">환전 (최근 10)</h3>${tbl('<th>날짜</th><th>방향</th><th class="r">낸 금액</th>', fx, '환전 내역이 없습니다.')}
+    ${admSusHTML(D.als || [], ADM.uid)}`;
+}
+// 이 계정의 부정행위 의심 기록 전부 (대상이었던 것 + 상대로 같이 걸린 것). 삭제한 알림도 여기엔 남는다. 펼쳤다 접었다
+function admSusHTML(list, uid){
+  admNickLoad(list.flatMap(a => [a.uid, a.other])).then(() => { const el = $('#admSusList'); if (el && ADM.uid === uid) el.innerHTML = admSusRows(list, uid); });
+  return `<details class="adm-sus"><summary><h3 class="adm-h" style="display:inline">🚨 부정행위 의심 기록 (${list.length}건)</h3></summary>
+    <div id="admSusList">${admSusRows(list, uid)}</div></details>`;
+}
+function admSusRows(list, uid){
+  if (!list.length) return '<p class="empty">의심 기록이 없습니다.</p>';
+  return `<ul class="adm-als">${list.map(a => `<li class="adm-al ${a.seen ? 'seen' : ''}"><div><small class="muted">${admT(a.at)} · ${esc(admKind(a.kind))} · ${a.mode === 'live' ? '실제 시세' : '시뮬'}${a.uid === uid ? '' : ' · 상대로 같이 걸림'}${a.hidden ? ' · 삭제됨' : ''}</small>
+    <p class="adm-al-who">${a.uid ? `👤 <b>${esc(admNick(a.uid))}</b>` : ''}${a.other ? ` · 상대 <b>${esc(admNick(a.other))}</b>` : ''}</p><p>${esc(a.msg)}</p></div></li>`).join('')}</ul>`;
 }
 // 남의 저장 기록은 사이트에서 못 고친다 (정책). SQL 편집기에서 실행할 문장을 만들어 준다.
 // syncBase를 바꾸고 dirty를 false로 두면, 그 계정이 접속했을 때 서버 기록(회수된 것)을 받아 간다
@@ -8171,6 +8197,13 @@ document.addEventListener('click', async e => {
     const a = ADM.alerts.find(x => x.id === id); if (a && !a.seen){ a.seen = true; ADM.unseen--; } admBadge(); return renderAdmin();
   }
   if (t.id === 'admBsGo') return admBsLoad();
+  if (t.dataset.admdel){
+    const id = +t.dataset.admdel; t.disabled = true;
+    const {error} = await ACC.sb.from('seed10k_alerts').update({hidden:true, seen:true}).eq('id', id);
+    if (error){ t.disabled = false; return toast('지우지 못했습니다: ' + error.message, true); }
+    const a = ADM.alerts.find(x => x.id === id); if (a && !a.seen) ADM.unseen--;
+    ADM.alerts = ADM.alerts.filter(x => x.id !== id); admBadge(); return renderAdmin();
+  }
   if (t.id === 'admUpd'){
     t.disabled = true;
     const {error} = await ACC.sb.from('seed10k_admin_cmds').insert({kind:'update'});
