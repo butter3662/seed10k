@@ -1323,7 +1323,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.5.9';
+const VERSION = '1.6.0';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -2423,7 +2423,7 @@ function bankruptCheck(alerts){
   const N = netWorth();
   if (N <= 0 && !S.over){
     S.over = true;
-    alerts.push({t:'파산', b:`순자산이 ${fmtUSD(N)}가 되어 더 이상 거래할 수 없습니다. 규칙·설정에서 새 게임을 시작하세요.`, bad:true, over:true});
+    alerts.push({t:'파산', b:`순자산이 ${fmtUSD(N)}가 되어 더 이상 거래할 수 없습니다. 규칙·설정에서 환생하세요.`, bad:true, over:true});
   }
 }
 
@@ -2928,20 +2928,20 @@ function openInfo(key){
 function showAlerts(list){
   const html = list.map(a => `<h2 style="${a.bad ? 'color:var(--danger)' : ''}">${esc(a.t)}</h2><p>${esc(a.b)}</p>`).join('');
   const over = list.some(a => a.over), onlyDiv = list.every(a => a.div);
-  showModal(html + `<div class="acts">${over ? '<button class="btn" data-close>닫기</button><button class="btn solid" id="mdReset">새 게임</button>' : onlyDiv ? '<button class="btn solid" data-close>확인</button>' : '<button class="btn" data-close>확인</button><button class="btn solid" id="mdLoans" data-close>대출 화면 열기</button>'}</div>`);
+  showModal(html + `<div class="acts">${over ? '<button class="btn" data-close>닫기</button><button class="btn solid" id="mdReset">환생하기</button>' : onlyDiv ? '<button class="btn solid" data-close>확인</button>' : '<button class="btn" data-close>확인</button><button class="btn solid" id="mdLoans" data-close>대출 화면 열기</button>'}</div>`);
   const r = $('#mdReset'); if (r) r.onclick = () => { confirmReset(); };
   const l = $('#mdLoans'); if (l) l.addEventListener('click', () => go('loans'));
 }
-/* 새 게임 확인: 로그인했으면 계정 비밀번호를 다시 입력해야 지운다. 손님은 확인 창만. */
+/* 환생(새 게임) 확인: 로그인했으면 계정 비밀번호를 다시 입력해야 지운다. 손님은 확인 창만. */
 function confirmReset(){
-  const title = '새 게임을 시작할까요?';
-  const body = `${isLive() ? '실제 시세' : '시뮬레이션'} 모드의 거래, 대출, 기록이 모두 지워지고 시드 $10,000로 다시 시작합니다. 다른 모드의 기록은 그대로입니다.`;
-  if (!ACC.user || !ACC.sb || !ACC.user.email) return confirmBox(title, body, '새 게임 시작', resetGame);
+  const title = '환생할까요?';
+  const body = `${isLive() ? '실제 시세' : '시뮬레이션'} 모드의 거래, 대출, 기록이 모두 지워지고 시드 $10,000로 다시 시작합니다. 다른 모드의 기록은 그대로이고, 전과는 계정에 남습니다.`;
+  if (!ACC.user || !ACC.sb || !ACC.user.email) return confirmBox(title, body, '환생하기', resetGame);
   const close = showModal(`<h2>${title}</h2><p>${body}</p>
     <p class="muted" style="margin:10px 0 6px">확인을 위해 계정(${esc(ACC.user.email)}) 비밀번호를 입력하세요.</p>
     <label class="amt"><input id="rsPw" type="password" autocomplete="current-password" placeholder="비밀번호" aria-label="계정 비밀번호"></label>
     <div class="err" id="rsErr" role="status"></div>
-    <div class="acts"><button class="btn" data-close>취소</button><button class="btn solid" id="rsOk" style="background:var(--danger);border-color:var(--danger)">새 게임 시작</button></div>`);
+    <div class="acts"><button class="btn" data-close>취소</button><button class="btn solid" id="rsOk" style="background:var(--danger);border-color:var(--danger)">환생하기</button></div>`);
   const pw = $('#rsPw'), ok = $('#rsOk'), err = $('#rsErr');
   setTimeout(() => pw && pw.focus(), 60);
   const submit = async () => {
@@ -3503,8 +3503,8 @@ function renderInfo(){
         <div class="seg"><button data-theme="auto" aria-pressed="${SET.theme === 'auto'}">자동</button><button data-theme="light" aria-pressed="${SET.theme === 'light'}">밝게</button><button data-theme="dark" aria-pressed="${SET.theme === 'dark'}">어둡게</button></div></div>
       ${live ? '' : `<div class="set-row"><div class="l">자동 진행 속도<small>헤더의 ▶▶ 버튼으로 켜고 끕니다</small></div>
         <div class="seg">${SPEEDS.map((s, i) => `<button data-speed="${i}" aria-pressed="${SET.speed === i}">${s.l}</button>`).join('')}</div></div>`}
-      <div class="set-row"><div class="l">새 게임<small>이 모드의 기록을 지우고 시드 $10,000로 다시 시작합니다</small></div>
-        <button class="btn" id="btnReset" style="color:var(--danger)">새 게임 시작</button></div>
+      <div class="set-row"><div class="l">환생<small>이 모드의 기록을 지우고 시드 $10,000로 다시 시작합니다 (전과는 계정에 남음)</small></div>
+        <button class="btn" id="btnReset" style="color:var(--danger)">환생하기</button></div>
     </section>
     <div class="info-col">
       ${infoRow('rules', '게임 규칙', '거래 시간, 체결, 통장, 배당, 대출, 파산')}
@@ -8200,7 +8200,7 @@ function admUserHTML(){
   const pays = D.pays.filter(p => p.mode === mode).slice(0, 20).map(p => `<tr><td>${admT(p.at)}</td><td>${esc(p.note || p.game || '')}</td><td class="r num ${(+p.amount - +p.cost) > 0 ? 'up' : ''}">${admUSD(admR2(+p.amount - +p.cost))}<br><span class="muted">${p.claimed_at ? '받음' : '아직 안 받음'}</span></td></tr>`).join('');
   const bm = D.bm.filter(b => b.mode === mode).map(b => `<tr><td>${admT(b.at)}</td><td>${b.n}명 · ${b.rank}위${b.forfeit ? ' (기권)' : ''}${b.il ? ' · 불법' : ''}</td><td class="r num">${admUSD(admR2(+b.pay - +b.stake))}</td></tr>`).join('');
   // 돈 기록(원장): 줄마다 '앞 줄 잔고 + 금액 = 이번 잔고'가 이어지지 않으면 빨갛게. why: start = 이 기기에서 기록 시작, reset = 계정 초기화, 그 밖에는 돈을 바꾼 함수 이름
-  const lgs = (D.lg || []).filter(r => r.mode === mode).slice(0, 40), whyT = w => ({start:'기록 시작(새 기기)', reset:'계정 초기화', admin:'관리자 수정'})[w] || w || '';
+  const lgs = (D.lg || []).filter(r => r.mode === mode).slice(0, 40), whyT = w => ({start:'기록 시작(새 기기)', reset:'환생(계정 초기화)', admin:'관리자 수정'})[w] || w || '';
   const lgRows = lgs.map((r, i) => { const nx = lgs[i + 1], gap = nx && r.why !== 'start' && (Math.abs((+r.bal - +r.amt) - +nx.bal) > 0.02 || Math.abs((+r.bal_k - +r.amt_k) - +nx.bal_k) > 2), st = nx && r.why === 'start' && (Math.abs(+r.bal - +nx.bal) > 0.02 || Math.abs(+r.bal_k - +nx.bal_k) > 2);
     return `<tr${gap || st ? ' class="adm-lggap"' : ''}><td>${admT(r.at)}</td><td>${esc(whyT(r.why))}${gap ? '<br><b class="down">앞 줄과 안 이어짐</b>' : st ? '<br><b class="down">앞 줄 잔고와 다름</b>' : ''}</td><td class="r num">${+r.amt ? admUSD(+r.amt) : ''}${+r.amt_k ? `<br>${fmtKRW(+r.amt_k)}` : ''}</td><td class="r num">${fmtUSD(+r.bal)}<br><span class="muted">${fmtKRW(+r.bal_k)}</span></td></tr>`; }).join('');
   const tbl = (h, rows, empty) => rows ? `<table class="trades"><thead><tr>${h}</tr></thead><tbody>${rows}</tbody></table>` : `<p class="empty">${empty}</p>`;
@@ -8217,7 +8217,7 @@ function admUserHTML(){
       <div><dt>멀티 판 수</dt><dd class="num">${M.n}판 · ${M.w}승${M.pending ? ` · 안 받은 것 ${M.pending}건` : ''}</dd></div>
       ${d ? `<div><dt>달러 통장</dt><dd class="num">${fmtUSD(+d.usd || 0)}</dd></div><div><dt>원화 통장</dt><dd class="num">${fmtKRW(+d.krw || 0)}</dd></div>
       <div><dt>거래일</dt><dd class="num">${d.day || 0}</dd></div><div><dt>불법 도박 누적 · 단속</dt><dd class="num">${admUSD(+G.ilAcc || 0)} · ${G.bust || 0}회</dd></div>
-      <div><dt>마지막 저장</dt><dd>${admT(sv.updated_at)}</dd></div><div><dt>이 기록 시작 (가입·초기화)</dt><dd>${d.started ? admT(new Date(+d.started).toISOString()) : '-'}</dd></div>` : '<div><dt>저장 기록</dt><dd>이 모드 기록 없음</dd></div>'}
+      <div><dt>마지막 저장</dt><dd>${admT(sv.updated_at)}</dd></div><div><dt>이 기록 시작 (가입·환생)</dt><dd>${d.started ? admT(new Date(+d.started).toISOString()) : '-'}</dd></div>` : '<div><dt>저장 기록</dt><dd>이 모드 기록 없음</dd></div>'}
     </dl>
     ${M.net > 0 && d ? `<div class="mg-foot"><button class="btn" id="admClaw">멀티로 딴 ${fmtUSD(M.net)} 회수 SQL 만들기</button></div>` : ''}
     <h3 class="adm-h">돈 기록 (최근 40줄)</h3>${tbl('<th>시각</th><th>무엇 때문에</th><th class="r">바뀐 돈</th><th class="r">바뀐 뒤 잔고</th>', lgRows, '돈 기록이 없습니다.')}
@@ -10084,7 +10084,7 @@ function resetGame(){
   $$('.view').forEach(v => { delete v.dataset.built; });
   go('home'); renderHeader();
   if (isLive()) liveTick();
-  toast('새 게임을 시작했습니다. 시드 $10,000');
+  toast('환생했습니다. 시드 $10,000');
 }
 async function setMode(mode){
   stopAuto(); bmHide(); slHide(); gmHide();
