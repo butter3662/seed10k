@@ -97,11 +97,11 @@ export function handle(room0, priv0, req, now = Date.now(), rnd = Math.random) {
       st.seats[me].left = true; bump(room);
       return {room, priv, payouts: [], res: {}};
     }
-    case "opt": {                                                                 // 방장이 대기실에서 규칙을 고른다 (벅샷: 클린·블라인드·미스터리 모드)
+    case "opt": {                                                                 // 방장이 대기실에서 규칙을 고른다 (벅샷: 클린·블라인드·미스터리 모드·빠르게, 부루마블: 빠르게)
       if (uid !== room.host) return {err: "방장만 설정을 바꿀 수 있습니다"};
       if (room.status !== "lobby") return {err: "시작 전에만 바꿀 수 있습니다"};
-      if (room.game !== "bs") return {err: "이 게임은 설정이 없습니다"};
-      st.rules = {clean: !!a.clean, blind: !!a.blind, hidden: !!a.hidden};
+      if (room.game !== "bs" && room.game !== "bm") return {err: "이 게임은 설정이 없습니다"};
+      st.rules = room.game === "bs" ? {clean: !!a.clean, blind: !!a.blind, hidden: !!a.hidden, fast: !!a.fast} : {fast: !!a.fast};   // fast: 연출 빠르게 (화면만)
       bump(room, {t: "opt"});
       return {room, priv, payouts: [], res: {}};
     }
