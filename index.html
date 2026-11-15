@@ -1168,10 +1168,12 @@ html[data-game=live] .c-news{order:3}
 /* 관리 화면이 휴대폰 폭을 넘지 않게: 카드는 줄어들 수 있게 하고, 넓은 표는 그 안에서 옆으로 밀어 본다 */
 #v-admin .stack>*,#v-admin .card,#v-admin .card>*{min-width:0}
 #v-admin table.trades{width:100%;max-width:100%}
-#v-admin table.trades td,#v-admin table.trades th{white-space:normal;overflow-wrap:anywhere}
+#v-admin table.trades td,#v-admin table.trades th{white-space:normal;overflow-wrap:anywhere;word-break:keep-all}
+#v-admin table.trades td.num,#v-admin table.trades td.num *{white-space:nowrap;overflow-wrap:normal}
 #v-admin .adm-kv dd,#v-admin .adm-kv dt,#v-admin .adm-al p,#v-admin .adm-al small,#v-admin .muted{overflow-wrap:anywhere;min-width:0}
 #v-admin .adm-al{flex-wrap:wrap}#v-admin .adm-al>div:first-child{min-width:0;flex:1 1 200px}
 .adm-wr{margin:6px 0;border-top:1px solid var(--rule);padding-top:6px}.adm-wr>summary{cursor:pointer}
+.adm-sec{border-top:1px solid var(--rule);margin:0}.adm-sec>summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px;padding:10px 0}.adm-sec>summary::-webkit-details-marker{display:none}.adm-sec>summary::before{content:'▸';color:var(--ink-2);transition:transform .15s}.adm-sec[open]>summary::before{transform:rotate(90deg)}.adm-sec>summary .adm-h{margin:0}
 .adm-sus{margin-top:14px}.adm-sus>summary{cursor:pointer;list-style:revert}
 .adm-lggap td{background:color-mix(in srgb,var(--down) 10%,transparent)}
 .adm-al p{margin:3px 0 0;font-size:13.5px;font-weight:650}
@@ -1330,7 +1332,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.6.4';
+const VERSION = '1.6.5';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -8288,19 +8290,23 @@ function admUserHTML(){
       <div><dt>마지막 저장</dt><dd>${admT(sv.updated_at)}</dd></div><div><dt>이 기록 시작 (가입·환생)</dt><dd>${d.started ? admT(new Date(+d.started).toISOString()) : '-'}</dd></div>` : '<div><dt>저장 기록</dt><dd>이 모드 기록 없음</dd></div>'}
     </dl>
     ${M.net > 0 && d ? `<div class="mg-foot"><button class="btn" id="admClaw">멀티로 딴 ${fmtUSD(M.net)} 회수 SQL 만들기</button></div>` : ''}
-    <h3 class="adm-h">돈 기록 (최근 40줄)</h3>${tbl('<th>시각</th><th>무엇 때문에</th><th class="r">바뀐 돈</th><th class="r">바뀐 뒤 잔고</th>', lgRows, '돈 기록이 없습니다.')}
-    <h3 class="adm-h">멀티 판 결과 (최근 30)</h3>${tbl('<th>시각</th><th>게임 · 상대</th><th>결과</th><th class="r">판돈</th>', res, '멀티 판 기록이 없습니다.')}
-    <h3 class="adm-h">멀티 받은 돈 (최근 20)</h3>${tbl('<th>시각</th><th>내용</th><th class="r">순손익</th>', pays, '받은 돈 기록이 없습니다.')}
-    <h3 class="adm-h">채권·주택·복권·도박 (최근 30)</h3>${tbl('<th>날짜</th><th>내용</th><th class="r">금액</th>', alt, '내역이 없습니다.')}
-    <h3 class="adm-h">주식 거래 (최근 20)</h3>${tbl('<th>날짜</th><th>구분</th><th>종목</th><th class="r">금액</th>', trades, '주식 거래 내역이 없습니다.')}
-    <h3 class="adm-h">부루마블 (최근 10)</h3>${tbl('<th>시각</th><th>결과</th><th class="r">순손익</th>', bm, '기록이 없습니다.')}
-    <h3 class="adm-h">환전 (최근 10)</h3>${tbl('<th>날짜</th><th>방향</th><th class="r">낸 금액</th>', fx, '환전 내역이 없습니다.')}
+    ${admSec('돈 기록 (최근 40줄)', tbl('<th>시각</th><th>무엇 때문에</th><th class="r">바뀐 돈</th><th class="r">바뀐 뒤 잔고</th>', lgRows, '돈 기록이 없습니다.'))}
+    ${admSec('멀티 판 결과 (최근 30)', tbl('<th>시각</th><th>게임 · 상대</th><th>결과</th><th class="r">판돈</th>', res, '멀티 판 기록이 없습니다.'))}
+    ${admSec('멀티 받은 돈 (최근 20)', tbl('<th>시각</th><th>내용</th><th class="r">순손익</th>', pays, '받은 돈 기록이 없습니다.'))}
+    ${admSec('채권·주택·복권·도박 (최근 30)', tbl('<th>날짜</th><th>내용</th><th class="r">금액</th>', alt, '내역이 없습니다.'))}
+    ${admSec('주식 거래 (최근 20)', tbl('<th>날짜</th><th>구분</th><th>종목</th><th class="r">금액</th>', trades, '주식 거래 내역이 없습니다.'))}
+    ${admSec('부루마블 (최근 10)', tbl('<th>시각</th><th>결과</th><th class="r">순손익</th>', bm, '기록이 없습니다.'))}
+    ${admSec('환전 (최근 10)', tbl('<th>날짜</th><th>방향</th><th class="r">낸 금액</th>', fx, '환전 내역이 없습니다.'))}
     ${admSusHTML(D.als || [], ADM.uid)}`;
 }
 // 이 계정의 부정행위 의심 기록 전부 (대상이었던 것 + 상대로 같이 걸린 것). 삭제한 알림도 여기엔 남는다. 펼쳤다 접었다
+// 계정 정보의 기록 묶음: 제목을 눌러 열었다 닫았다. 연 것은 기억해 두어 화면을 다시 그려도 그대로 (ADM.secOpen)
+ADM.secOpen = ADM.secOpen || {};
+const admSec = (title, body) => `<details class="adm-sec" data-sec="${esc(title)}" ${ADM.secOpen[title] ? 'open' : ''}><summary><h3 class="adm-h">${esc(title)}</h3></summary>${body}</details>`;
+document.addEventListener('toggle', e => { const d = e.target; if (d && d.dataset && d.dataset.sec) ADM.secOpen[d.dataset.sec] = d.open; }, true);
 function admSusHTML(list, uid){
   admNickLoad(list.flatMap(a => [a.uid, a.other])).then(() => { const el = $('#admSusList'); if (el && ADM.uid === uid) el.innerHTML = admSusRows(list, uid); });
-  return `<details class="adm-sus"><summary><h3 class="adm-h" style="display:inline">🚨 부정행위 의심 기록 (${list.length}건)</h3></summary>
+  return `<details class="adm-sec adm-sus" data-sec="의심 기록" ${ADM.secOpen['의심 기록'] ? 'open' : ''}><summary><h3 class="adm-h">🚨 부정행위 의심 기록 (${list.length}건)</h3></summary>
     <div id="admSusList">${admSusRows(list, uid)}</div></details>`;
 }
 function admSusRows(list, uid){
