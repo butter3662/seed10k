@@ -732,7 +732,7 @@ html.gated body{overflow:hidden}
 .chk{display:flex;gap:6px;align-items:center;font-size:13px;cursor:pointer}
 .shop-list{display:flex;flex-direction:column;gap:8px}
 .shop-it{display:flex;gap:10px;align-items:center;padding:8px 10px;border:1px solid var(--rule);border-radius:10px}
-.shop-ic{font-size:24px;width:32px;text-align:center;flex:none}
+.shop-ic{font-size:24px;width:32px;text-align:center;flex:none}.shop-svg{width:30px;height:30px;display:block;margin:0 auto}.shop-ic.big .shop-svg{width:52px;height:52px}
 .shop-tx{display:flex;flex-direction:column;gap:2px;flex:1;min-width:0}.shop-tx small{opacity:.72;font-size:12px;line-height:1.35}.shop-tx .shop-own{opacity:1;font-weight:700}
 .shop-it .btn{flex:none;white-space:nowrap}
 .shop-ask{display:flex;flex-direction:column;align-items:center;text-align:center;padding:6px 0}.shop-ic.big{font-size:44px;width:auto;margin-bottom:4px}
@@ -1321,7 +1321,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.4.9';
+const VERSION = '1.5.0';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -9013,13 +9013,13 @@ function altAssetsHTML(){
 }
 
 /* ───── 상점 (게임 안의 달러로 산다) ─────
-   전과 지우기 $300(순수익으로만) · 변호사 선임 $500 · 잠수 $450 · 선수권 $200 · 닉네임 색 $300 (+ 부루마블 말 스킨 뽑기)
+   브로커(전과 지우기) $300(순수익으로만) · 변호사 선임 $500 · 잠수 $450 · 선수권 $200 · 닉네임 색 $300 (+ 부루마블 말 스킨 뽑기)
    - 전과 지우기·닉네임 색은 남들도 보는 것이라 서버 함수(seed10k_shop_redeem)가 준다: 서버는 방금 생긴 돈 기록 'shop:<아이템>'(−가격)이 있어야만 효과를 준다
    - 변호사·잠수·선수권은 내 기록(S.gam.shop.inv)에 개수로 쌓였다가 쓸 때 하나씩 줄어든다
    값은 달러 통장에서 낸다. 달러가 모자라면 원화에서 모자란 만큼 먼저 환전한다(그 환전은 돈 기록에 따로 한 줄). 마이너스통장은 쓰지 않는다 */
 const LAWYER_CUT = 0.3;   // 변호사: 압수액을 이만큼 줄인다 (예전 50% → 30%, 가격 $300 → $500)
 const SHOP = [
-  {id:'record', ic:'🧽', nm:'전과 지우기', price:300, d:'경찰 단속 기록(전과)을 1회 지웁니다. 0회가 되면 랭킹의 빨간 줄도 사라지고, 나빠졌던 신용등급(0.25등급)과 적발 확률도 되돌아옵니다. 순수익(순자산 − 시작 자금 $10,000)으로만 낼 수 있습니다.', server:true},
+  {id:'record', ic:'<svg class="shop-svg" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="33" r="25" fill="#2b2f3a"/><path d="M10 28c6-3 14-4 22-4s16 1 22 4l-1 9c-6 2-13 3-21 3s-15-1-21-3z" fill="#f1c9a5"/><path d="M8 24c8-4 16-5 24-5s16 1 24 5l-1 4c-7-3-15-4-23-4s-16 1-23 4z" fill="#c0392b"/><path d="M54 25l8-3-2 6-6 1z" fill="#c0392b"/><ellipse cx="23" cy="32" rx="3.2" ry="2.6" fill="#1a1a1a"/><ellipse cx="41" cy="32" rx="3.2" ry="2.6" fill="#1a1a1a"/><path d="M18 28.5l8 1.6M46 28.5l-8 1.6" stroke="#1a1a1a" stroke-width="1.8" stroke-linecap="round"/></svg>', nm:'브로커', price:300, d:'브로커를 고용해 경찰 단속 기록(전과)을 1회 지웁니다. 0회가 되면 랭킹의 빨간 줄도 사라지고, 나빠졌던 신용등급(0.25등급)과 적발 확률도 되돌아옵니다. 브로커는 출처가 확실한 돈만 받아서 순수익(순자산 − 시작 자금 $10,000)으로만 낼 수 있습니다.', server:true},   // 아이콘: 칼 없는 닌자 얼굴 (🥷 이모지는 기기에 따라 등에 칼이 그려져서 직접 그림)
   {id:'lawyer', ic:'⚖️', nm:'변호사 선임', price:500, d:'다음 경찰 단속(불법 모드 단속·도주 적발) 한 번은 압수액이 30% 줄어듭니다. 압수할 돈이 없는 단속에는 쓰이지 않고 남습니다.'},
   {id:'dive', ic:'🤿', nm:'잠수', price:450, d:''},   // 설명은 shopDesc (RUN.p를 쓰므로)
   {id:'first', ic:'🥇', nm:'선수권', price:200, d:'혼자 하는 벅샷 룰렛·부루마블을 시작할 때 쓰면 내 차례부터 시작합니다.'},
@@ -9063,7 +9063,7 @@ async function shopFlush(){
     s.pend = s.pend.filter(x => x !== job);
     if (r && r.ok){
       last = r;
-      if (job.item === 'record'){ const G = gamS(); G.bust = Math.max(0, (G.bust || 0) - 1); if (ACC.busted instanceof Map){ if (r.left > 0) ACC.busted.set(ACC.user.id, r.left); else ACC.busted.delete(ACC.user.id); } toast(r.left > 0 ? `전과를 1회 지웠습니다 (남은 전과 ${r.left}회)` : '전과를 모두 지웠습니다. 빨간 줄이 사라졌습니다'); }
+      if (job.item === 'record'){ const G = gamS(); G.bust = Math.max(0, (G.bust || 0) - 1); if (ACC.busted instanceof Map){ if (r.left > 0) ACC.busted.set(ACC.user.id, r.left); else ACC.busted.delete(ACC.user.id); } toast(r.left > 0 ? `브로커가 전과를 1회 지웠습니다 (남은 전과 ${r.left}회)` : '브로커가 전과를 모두 지웠습니다. 빨간 줄이 사라졌습니다'); }
       if (job.item === 'color'){ ACC.ncol = ACC.ncol instanceof Map ? ACC.ncol : new Map(); ACC.ncol.set(ACC.user.id, r.color); toast('닉네임 색을 바꿨습니다'); }
     } else {   // 서버가 거절: 낸 돈을 돌려준다
       const it = shopItem(job.item);
@@ -9080,7 +9080,7 @@ async function shopFlush(){
 function shopCardHTML(){
   const n = SHOP.filter(it => it.id !== 'record' && it.id !== 'skin').reduce((a, it) => a + shopN(it.id), 0);
   return `<div class="card-h"><h2>🛒 상점</h2><button class="btn solid" id="shopOpenBtn">상점 열기</button></div>
-    <p class="mg-desc" style="margin:0">전과 지우기 · 변호사 · 잠수 · 선수권 · 말 스킨 뽑기${n ? ` · 가진 아이템 ${n}개` : ''}${shopS().pend.length ? ` · 서버 확인 대기 ${shopS().pend.length}건` : ''}</p>`;
+    <p class="mg-desc" style="margin:0">브로커 · 변호사 · 잠수 · 선수권 · 말 스킨 뽑기${n ? ` · 가진 아이템 ${n}개` : ''}${shopS().pend.length ? ` · 서버 확인 대기 ${shopS().pend.length}건` : ''}</p>`;
 }
 // 순수익 = 순자산 − 시작 자금. 전과 지우기는 이 안에서만 낼 수 있다 → 계정 초기화로 받은 시작 자금으로는 못 지운다 (환생해서 지우기 막기)
 // 지우면 순자산이 그만큼 줄어 순수익도 같이 줄어든다. 실제 시세 모드에서 시세를 받기 전에는 순자산을 믿을 수 없어 0으로 본다
@@ -10827,6 +10827,16 @@ go('home'); renderHeader();
 if (S.mode === 'live') startLivePolling();
 renderGate();
 initAccount();
+/* 1.5.0 안내: 이 브라우저에서 처음 한 번만 띄운다 (로그인·모드 고르기 화면과 다른 창이 다 닫힌 뒤) */
+(function bustNotice(){
+  const K = 'seed10k.notice.bust150';
+  try { if (localStorage.getItem(K)) return; } catch(e){ return; }
+  const t = setInterval(() => {
+    if (S._ph || !$('#gate').hidden || !$('#modal').hidden || document.hidden) return;
+    clearInterval(t); try { localStorage.setItem(K, '1'); } catch(e){}
+    showModal(`<h2>🚨 전과 시스템 변화</h2><div class="prose"><p>전과 1스택당 신용등급이 0.25등급, 경찰 검거 확률이 0.25%씩 올라갑니다.</p><p>상점에서 <span style="display:inline-block;width:1.3em;vertical-align:-.25em">${shopItem('record').ic.replace('class="shop-svg"', 'style="width:100%;height:auto;display:block"')}</span> 브로커를 고용해 전과를 지울 수 있습니다.</p></div><div class="acts"><button class="btn solid" data-close>확인</button></div>`);
+  }, 1500);
+})();
 
 </script>
 </body>
