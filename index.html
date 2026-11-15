@@ -1318,7 +1318,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.4.2';
+const VERSION = '1.4.3';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -5804,7 +5804,8 @@ function bsStart(){
 }
 const BS_DLR_CX = 2;   // 혼자 하기 딜러 보정 횟수 (판마다)
 const bsLoader = g => g && g.pl.length === 2 && g.pl[1].nm === '딜러' && g.pl[0].nm === '나' ? 0 : g ? g.turn : -1;
-const bsWait = ms => { const gen = BSV.gen; return new Promise((res, rej) => setTimeout(() => gen === BSV.gen && $('.bs-table') ? res() : rej('stop'), bmMs(ms))); };   // 혼자(#bsCard)·같이(#mbsBody) 모두 판이 보이는 동안만
+const bsMs = ms => Math.round(ms * (bmReduce() ? 0.5 : 1));   // 벅샷은 부루마블의 '빠르게'를 따르지 않는다 (3D 장전·사격 연출이 끊기지 않게)
+const bsWait = ms => { const gen = BSV.gen; return new Promise((res, rej) => setTimeout(() => gen === BSV.gen && $('.bs-table') ? res() : rej('stop'), bsMs(ms))); };   // 혼자(#bsCard)·같이(#mbsBody) 모두 판이 보이는 동안만
 // 이벤트를 차례로 보여 준다 (쏘기: 총 흔들림 → 실탄이면 번쩍·맞은 쪽 목숨 깜빡, 공포탄이면 딸깍)
 // 연출 시작 때의 화면 상태: 끝난 상태(g)에서 이벤트를 거꾸로 되돌린다. 연출하면서 하나씩 다시 적용한다
 const BS_EVIT = {peek:'glass', heal:'cig', beer:'beer', saw:'saw', cuff:'cuff'};
@@ -5912,7 +5913,7 @@ function bsTick(){
     bsTnAdd(g2, ev);
     save();
     bsPlay(ev, () => bsTick());
-  }, bmMs(700));
+  }, bsMs(700));
 }
 // 몇 번째 차례인가 (혼자 할 때만 센다): 첫 차례가 1, 차례가 넘어갈 때마다 +1 (공포탄으로 나를 쏴서 한 번 더 하는 것은 같은 차례)
 const BS_QUIT_TN = 6;   // 이 차례까지 기권하면 판돈의 절반을 돌려받는다 (나와 딜러가 3번씩 총을 잡는 동안)
