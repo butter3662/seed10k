@@ -1323,7 +1323,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.6.0';
+const VERSION = '1.6.1';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -1696,6 +1696,13 @@ function lgTrack(why){
   if (Math.abs(d) < 0.005 && dk === 0) return;
   lgQ().push({mode:S.mode, amt:d, bal:usd, amt_k:dk, bal_k:krw, why:String(why || lgStack() || 'etc').slice(0, 80), at:new Date().toISOString()});
   L.prev = usd; L.prevK = krw; lgKeep();
+}
+// 금액 0인 표시 줄 (예: 불법 판 결과 'il:bs:p=0.0500'): 먼저 바뀐 돈을 적은 뒤, 지금 잔고 그대로 한 줄 더 남긴다
+function lgMark(why){
+  if (!S || S._ph || !ACC.user || ACC.tester || !ACC.testerKnown) return;
+  lgTrack();
+  const L = LG.m[ACC.user.id + ':' + S.mode]; if (!L || L.obj !== S) return;
+  lgQ().push({mode:S.mode, amt:0, bal:L.prev, amt_k:0, bal_k:L.prevK, why:String(why).slice(0, 80), at:new Date().toISOString()}); lgKeep();
 }
 function lgReset(why, from){   // 새 게임(계정 초기화) 등으로 기록을 통째로 바꾼 직후: 바뀐 잔고를 한 줄로 잇는다
   // from = 바꾸기 직전 잔고 {usd, krw}. 예전에는 이 기기가 아직 기록을 시작하지 않았을 때(접속 직후, 모드를 막 바꾼 때) 아무것도 안 적어서,
@@ -4257,10 +4264,11 @@ function bmSetup(){
     box.querySelectorAll('[data-bmbet]').forEach(x => x.onclick = () => { UI.bmBet = x.dataset.bmbet; draw(); });
   };
   draw();
-  $('#bmStart').onclick = () => {
+  $('#bmStart').onclick = async () => {
     const tz = tzOn(), bet = Math.round((parseFloat(UI.bmBet) || 0) * 100) / 100, max = gamMaxT('bm', tz);
     const b2 = bmToday();
     if (b2.cur || bmLockLeft() || !(bet >= BM.minBet && bet <= max)) return;
+    if (tz){ const b = $('#bmStart'); b.disabled = true; const ok = await tzRegister('bm', bet); b.disabled = false; if (!ok || bmToday().cur) return; }
     const key = `bm:${Date.now().toString(36)}`;
     gamPay(bet); betPaid(key, bet);
     b2.n++; b2.cur = BME.newGame(UI.bmN + 1, bet, Math.random); b2.cur.il = gamIl();
@@ -4828,6 +4836,16 @@ const TZ_P = 0.20;
 const tzOn = () => !!UI.tzChk && shopN('tazza') > 0;
 const gamMaxT = (k, tz) => tz ? Math.floor(gamUsable()) : gamMax(k);
 const tzChkHTML = () => shopN('tazza') ? `<label class="chk" style="margin:0 0 6px"><input type="checkbox" id="tzUse" ${UI.tzChk ? 'checked' : ''}> 🃏 타짜 쓰기 (이 판 판돈 한도 없음 · 경찰 적발 ${+((TZ_P + bustAdd()) * 100).toFixed(2)}% · 도망·은신 안 됨 · 가진 것 ${shopN('tazza')}개)</label>` : '';
+// 타짜를 쓰기 전에 서버에 등록한다 (산 타짜 중 안 쓴 것이 있어야 됨). 연결이 안 되면 쓰지 않는다
+async function tzRegister(k, bet){
+  if (!ACC.sb || !ACC.user) { toast('타짜는 로그인해야 쓸 수 있습니다', true); return false; }
+  try {
+    const {data, error} = await ACC.sb.rpc('seed10k_tazza_use', {game:k, stake:bet, mode:S.mode});
+    if (error) throw error;
+    if (!data || !data.ok){ toast(`타짜를 쓸 수 없습니다: ${(data && data.err) || '서버가 거절했습니다'}`, true); return false; }
+    return true;
+  } catch(e){ toast(`타짜를 쓰려면 서버에 연결돼야 합니다 (${errText(e)})`, true); return false; }
+}
 function gamTz(g){ if (UI.tzNext){ g.tz = true; g.il = true; UI.tzNext = false; } return g; }   // 판을 만든 직후 부른다
 // 판돈 내기: 달러로 내고, 모자라면 모자란 만큼 원화에서 자동 환전한다. 원화로도 모자라면 예전처럼 마이너스통장
 function gamPay(amt){
@@ -4891,10 +4909,11 @@ function betDialog(k, title, extraHTML, onStart, noPay){   // noPay: 판돈을 �
     box.querySelectorAll('[data-betq]').forEach(x => x.onclick = () => { UI.betIn[k] = x.dataset.betq; draw(); });
   };
   draw();
-  $('#betGo').onclick = () => {
+  $('#betGo').onclick = async () => {
     const bet = Math.round((parseFloat(UI.betIn[k]) || 0) * 100) / 100;
     const tz = !noPay && tzOn();
     if (!(bet >= G.min && bet <= gamMaxT(k, tz))) return;
+    if (tz){ const b = $('#betGo'); b.disabled = true; const ok = await tzRegister(k, bet); b.disabled = false; if (!ok) return; }
     const key = `${k}:${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
     if (!noPay){ gamPay(bet); betPaid(key, bet); }
     UI.betIn[k] = '';
@@ -4917,8 +4936,10 @@ function police(k, il, net, tz){
   if (!il) return false;
   const G = gamS();
   G.ilAcc = Math.round((ilAcc() + (+net || 0)) * 100) / 100;   // 불법 도박 누적 순이익 (단속 판의 손익까지 넣고 압류)
-  if (!tz && shopUse('hide')){ save(); toast(`🫥 은신: 이번 판은 경찰 단속을 피했습니다 (남은 은신 ${shopN('hide')}개)`); return false; }   // 은신: 불법 도박 1판 단속 면제 (도주 적발은 그대로)
-  if (Math.random() >= (tz ? TZ_P + bustAdd() : polP(k))){ save(); return false; }
+  const pp = tz ? TZ_P + bustAdd() : polP(k);
+  if (!tz && shopUse('hide')){ save(); lgMark(`il:${k}:hide`); toast(`🫥 은신: 이번 판은 경찰 단속을 피했습니다 (남은 은신 ${shopN('hide')}개)`); return false; }   // 은신: 불법 도박 1판 단속 면제 (도주 적발은 그대로)
+  // 불법 판이 끝날 때마다 돈 기록에 표시 줄(금액 0)을 남긴다: 서버가 '단속이 너무 안 걸리는' 계정을 확률로 찾는다 (seed10k_ledger_chain ⑤)
+  if (Math.random() >= pp){ save(); lgMark(`il:${k}:p=${pp.toFixed(4)}${tz ? ':tz' : ''}`); return false; }
   G.bust = (G.bust || 0) + 1; G.bustAt = Date.now();
   const acc = Math.max(0, G.ilAcc);
   const law = acc > 0 && shopUse('lawyer');   // 변호사: 이번 압수액 LAWYER_CUT(30%) 감경. 압수할 게 없으면 쓰지 않고 남겨 둔다
@@ -4927,6 +4948,7 @@ function police(k, il, net, tz){
   const od = amt > 0 ? spendUSD(amt) : 0;
   if (amt > 0) altLog('police', `🚨 경찰 단속 (${GAM[k].nm}) 압류`, -amt, 'USD');
   commit();
+  lgMark(`il:${k}:p=${pp.toFixed(4)}:bust${tz ? ':tz' : ''}`);
   markBusted(k);
   const what = acc > 0 ? `지금까지 불법 도박으로 번 돈 ${fmtUSDn(acc)}의 ${GAM.seize * 100}%인 <b>${fmtUSDn(amt)}</b>을 압류당했습니다` : '불법 도박으로 번 돈이 없어 압류할 것은 없었습니다';
   const html = `<div class="police"><div class="siren"><i></i><i></i></div><h2>🚨 경찰 단속!</h2>
@@ -8031,7 +8053,7 @@ async function admCheck(){
   await admLoadAlerts();
   if (!was && ADM.unseen) toast(`🚨 확인하지 않은 부정행위 의심 알림 ${ADM.unseen}건`, true);
 }
-const ADM_KIND = {oe_streak:'홀짝 연승', bj_stand:'블랙잭 계속 스탠드', bm_nobuy:'부루마블 땅 안 사기', bs_self:'벅샷 자기만 쏘기', bs_risky:'벅샷 위험한데 자기 쏘기', pair_cap:'몰아주기 한도', pair_win:'몰아주기 의심(승률)', same_dev:'같은 기기', same_net:'같은 네트워크', ledger_gap:'돈 기록 끊김', ledger_save:'저장 잔고 불일치'};
+const ADM_KIND = {oe_streak:'홀짝 연승', bj_stand:'블랙잭 계속 스탠드', bm_nobuy:'부루마블 땅 안 사기', bs_self:'벅샷 자기만 쏘기', bs_risky:'벅샷 위험한데 자기 쏘기', pair_cap:'몰아주기 한도', pair_win:'몰아주기 의심(승률)', same_dev:'같은 기기', same_net:'같은 네트워크', ledger_gap:'돈 기록 끊김', ledger_save:'저장 잔고 불일치', ledger_reset:'환생 위장', gam_over:'한도 초과 도박 수익', tz_big:'타짜 큰 판', il_nobust:'단속이 너무 안 걸림'};
 const admKind = k => ADM_KIND[k] || k;
 // 알림에 나오는 계정의 닉네임 (랭킹 표에서). 없으면 계정 id 앞 8자리
 ADM.nick = new Map();
@@ -8059,7 +8081,7 @@ function renderAdmin(){
       return `<li class="adm-ur"><button class="adm-u ${u.user_id === ADM.uid ? 'on' : ''}" data-admu="${u.user_id}"><b>${esc(u.nickname || '(닉네임 없음)')}${bn ? ' <span class="adm-bn">🚫 랭킹 밴</span>' : ''}</b><small>${esc(u.email || '')}</small><small class="muted">가입 ${admT(u.joined)}${u.last_save ? ` · 마지막 저장 ${admT(u.last_save)}` : ''}${bn && bn.reason ? ` · 사유: ${esc(bn.reason)}` : ''}</small></button>${bn ? `<button class="btn" data-admrkunban="${u.user_id}">밴 풀기</button>` : `<button class="btn" data-admrkban="${u.user_id}" data-nick="${esc(u.nickname || u.email || '')}">밴</button>`}</li>`; }).join('')}</ul>` : '<p class="empty">찾은 계정이 없습니다.</p>';
   v.innerHTML = `<div class="stack">
     <section class="card"><div class="card-h"><h2>🚨 부정행위 의심 알림</h2><small>${ADM.unseen ? `<b class="down">확인 안 함 ${ADM.unseen}건</b>` : '모두 확인함'}</small></div>
-      <p class="muted" style="margin:0 0 8px">게임 서버가 판이 끝날 때 확인해 적습니다. 몰아주기: 두 계정 사이에 24시간 동안 한쪽으로 넘어간 돈이 $${WATCH_ADM.cap.toLocaleString()} 이상이면 같은 방을 막음(블랙잭 제외) · 같은 두 사람이 ${WATCH_ADM.pwMin}판 이상 했고 최근 20판에서 한쪽이 ${WATCH_ADM.pwPct}% 이상 앞섬(5판마다) · 같은 기기나 같은 네트워크(IP)를 쓴 두 계정이 같은 방에 들어옴. 돈 기록: 기록 없이 잔고가 바뀌었거나(두 기기에서 동시에 하면 생길 수 있음), 저장된 잔고가 마지막 기록과 다름. 홀짝 대결: 같은 상대에게 ${WATCH_ADM.oe}연승(이후 5판마다). 블랙잭 대결: 버스트할 수 없는 11 이하에서 직접 스탠드한 판이 ${WATCH_ADM.bj}판 연속. 부루마블: 돈이 있는데 직접 '안 산다'를 고른 것이 한 판에 ${WATCH_ADM.bm}번(이후 5번마다). 벅샷 룰렛: 한 판에서 직접 쏜 것이 ${WATCH_ADM.bsMin}번 이상이고 그중 ${WATCH_ADM.bsPct}% 이상이 자기 자신 · 실탄일 확률이 ${WATCH_ADM.bsP}% 이상인데 자기 자신을 쏜 것이 한 판에 ${WATCH_ADM.bsRisk}번(이후 5번마다, 미스터리 모드에서는 돋보기로 본 때만 셈).</p>
+      <p class="muted" style="margin:0 0 8px">게임 서버가 판이 끝날 때 확인해 적습니다. 몰아주기: 두 계정 사이에 24시간 동안 한쪽으로 넘어간 돈이 $${WATCH_ADM.cap.toLocaleString()} 이상이면 같은 방을 막음(블랙잭 제외) · 같은 두 사람이 ${WATCH_ADM.pwMin}판 이상 했고 최근 20판에서 한쪽이 ${WATCH_ADM.pwPct}% 이상 앞섬(5판마다) · 같은 기기나 같은 네트워크(IP)를 쓴 두 계정이 같은 방에 들어옴. 돈 기록: 기록 없이 잔고가 바뀌었거나(두 기기에서 동시에 하면 생길 수 있음), 저장된 잔고가 마지막 기록과 다름. 홀짝 대결: 같은 상대에게 ${WATCH_ADM.oe}연승(이후 5판마다). 블랙잭 대결: 버스트할 수 없는 11 이하에서 직접 스탠드한 판이 ${WATCH_ADM.bj}판 연속. 부루마블: 돈이 있는데 직접 '안 산다'를 고른 것이 한 판에 ${WATCH_ADM.bm}번(이후 5번마다). 벅샷 룰렛: 한 판에서 직접 쏜 것이 ${WATCH_ADM.bsMin}번 이상이고 그중 ${WATCH_ADM.bsPct}% 이상이 자기 자신 · 실탄일 확률이 ${WATCH_ADM.bsP}% 이상인데 자기 자신을 쏜 것이 한 판에 ${WATCH_ADM.bsRisk}번(이후 5번마다, 미스터리 모드에서는 돋보기로 본 때만 셈). 돈 기록 추가: 환생했는데 시작 잔고가 $10,000이 아님 · 타짜 없이 한 판에서 한도보다 많이 받음(타짜 판은 $20,000 이상이면 기록만) · 불법 판이 단속 없이 지나갈 확률이 0.5% 아래 · 사이트에서 관리자 수정으로 위장.</p>
       ${al ? `<ul class="adm-als">${al}</ul>` : '<p class="empty">알림이 없습니다.</p>'}
       ${ADM.unseen ? '<div class="mg-foot"><button class="btn" id="admSeenAll">모두 확인함</button></div>' : ''}</section>
     <section class="card" id="admSrv">${admSrvHTML()}</section>

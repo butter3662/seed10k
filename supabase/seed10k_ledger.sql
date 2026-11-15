@@ -34,8 +34,47 @@ end $$;
 
 create or replace function public.seed10k_ledger_chain() returns trigger
 language plpgsql security definer set search_path = public as $$
-declare last record;
+declare last record; g text; lim numeric; tz boolean; lp numeric; nn int; mname text;
 begin
+  mname := case new.mode when 'live' then '실제 시세' else '시뮬' end;
+  begin   -- ③④⑤는 따로 감싼다: 여기서 오류가 나도 아래 '기록 끊김' 확인은 그대로 돈다
+  -- ③ 환생 위장: 환생(why = 'reset') 줄은 반드시 시작 자금($10,000 · ₩0)이 된다
+  if new.why = 'reset' and (abs(new.bal - 10000) > 0.02 or abs(new.bal_k) > 2) then
+    perform public.seed10k_ledger_alert(new.user_id, new.mode, 'ledger_reset',
+      format('환생했는데 시작 잔고가 $10,000 · ₩0이 아님 (%s): $%s · ₩%s', mname, round(new.bal, 2), round(new.bal_k)),
+      jsonb_build_object('id', new.id, 'bal', new.bal, 'bal_k', new.bal_k));
+  end if;
+  -- ④ 한도를 넘는 도박 수익: 혼자 하는 판 정산 줄(xxFinish)의 받은 돈이 그 게임에서 타짜 없이 받을 수 있는 최대보다 크다
+  --    (불법 모드 판돈 한도 × 최대 배수: 벅샷·뱀사다리 $1,000×2, 부루마블 $1,000×3, 블랙잭 스플릿·더블 $8,000×2, 홀짝 $100×2^10)
+  g := substring(coalesce(new.why, '') from '(bs|bj|bm|sl|oe)Finish');
+  if g is not null and new.amt > 0 then
+    lim := case g when 'bs' then 2000 when 'sl' then 2000 when 'bm' then 3000 when 'bj' then 16000 when 'oe' then 102400 end;
+    tz := exists (select 1 from public.seed10k_tazza_uses t where t.user_id = new.user_id and t.game = g and t.at > now() - interval '6 hours');
+    if not tz and new.amt > lim + 0.01 then
+      perform public.seed10k_ledger_alert(new.user_id, new.mode, 'gam_over',
+        format('한도를 넘는 도박 수익 (%s): %s 한 판에서 $%s를 받음 (타짜 없이 최대 $%s)', mname, g, round(new.amt, 2), lim),
+        jsonb_build_object('id', new.id, 'game', g, 'amt', new.amt, 'lim', lim));
+    elsif tz and new.amt >= 20000 then
+      perform public.seed10k_ledger_alert(new.user_id, new.mode, 'tz_big',
+        format('타짜 큰 판 (%s): %s에서 $%s를 받음', mname, g, round(new.amt, 2)),
+        jsonb_build_object('id', new.id, 'game', g, 'amt', new.amt));
+    end if;
+  end if;
+  -- ⑤ 단속이 너무 안 걸림: 불법 판이 끝날 때 사이트가 남기는 표시 줄(why = 'il:<게임>:p=<적발 확률>[:bust][:hide]')로,
+  --    마지막 단속 뒤 단속 없이 지나간 판들의 '한 번도 안 걸릴 확률'을 곱해 0.5% 아래면 알린다 (은신 판은 빼고 셈)
+  if coalesce(new.why, '') like 'il:%' and new.why not like '%:bust%' and new.why not like '%:hide%' then
+    select coalesce(sum(ln(greatest(1e-6, 1 - least(0.99, (substring(l.why from 'p=([0-9.]+)'))::numeric)))), 0), count(*) into lp, nn
+      from public.seed10k_ledger l
+      where l.user_id = new.user_id and l.why like 'il:%' and l.why not like '%:hide%' and l.why ~ 'p=[0-9.]+'
+        and l.id > coalesce((select max(b.id) from public.seed10k_ledger b where b.user_id = new.user_id and b.why like 'il:%:bust%'), 0);
+    if nn >= 20 and exp(lp) < 0.005 then
+      perform public.seed10k_ledger_alert(new.user_id, new.mode, 'il_nobust',
+        format('불법 판 %s판 연속 단속 0회 (그럴 확률 %s%%) — 단속 결과를 서버에 안 알렸을 수 있음', nn, round(exp(lp) * 100, 3)),
+        jsonb_build_object('n', nn, 'p', exp(lp)));
+    end if;
+  end if;
+  exception when others then null;
+  end;
   -- 바로 앞 줄 = 이 줄보다 id가 작은 마지막 줄. (예전에는 'id <> new.id'로 찾아서, 여러 줄을 한 번에 올리면 — 행 트리거는 문장이 끝난 뒤 돌므로 —
   --  같이 올라간 뒤쪽 줄을 앞 줄로 잘못 보고 '기록 끊김'을 냈다. 예: 상점에서 연달아 산 변호사 7줄)
   select bal, bal_k into last from public.seed10k_ledger where user_id = new.user_id and mode = new.mode and id < new.id order by id desc limit 1;
@@ -66,13 +105,16 @@ begin
   select bal, bal_k into last from public.seed10k_ledger where user_id = new.user_id and mode = new.mode order by id desc limit 1;
   if not found then return null; end if;   -- 아직 기록을 시작하지 않은 계정
   if abs(u - last.bal) <= 0.02 and abs(k - last.bal_k) <= 2 then return null; end if;
-  if coalesce(new.data->>'syncBase', '') like 'admin%' then   -- 관리자가 SQL로 고친 것: 기록을 대신 잇는다
+  -- 관리자가 SQL 편집기에서 고친 것만 기록을 대신 잇는다. 사이트(로그인한 사용자, auth.uid() 있음)가 syncBase를 admin…으로 적어 보낸 것은
+  -- 관리자 수정 위장이므로 잇지 않고 알린다 (예전에는 이것도 이어 줘서 저장 기록의 돈을 고쳐도 알림이 안 떴다)
+  if coalesce(new.data->>'syncBase', '') like 'admin%' and auth.uid() is null then
     insert into public.seed10k_ledger (user_id, mode, amt, bal, amt_k, bal_k, why) values (new.user_id, new.mode, u - last.bal, u, k - last.bal_k, k, 'admin');
     return null;
   end if;
   perform public.seed10k_ledger_alert(new.user_id, new.mode, 'ledger_save',
-    format('저장된 잔고가 돈 기록과 다름 (%s): 기록 $%s · ₩%s, 저장 $%s · ₩%s (저장 기록을 직접 고쳤을 수 있음)',
-      case new.mode when 'live' then '실제 시세' else '시뮬' end, round(last.bal, 2), round(last.bal_k), round(u, 2), round(k)),
+    format('저장된 잔고가 돈 기록과 다름 (%s): 기록 $%s · ₩%s, 저장 $%s · ₩%s (저장 기록을 직접 고쳤을 수 있음)%s',
+      case new.mode when 'live' then '실제 시세' else '시뮬' end, round(last.bal, 2), round(last.bal_k), round(u, 2), round(k),
+      case when coalesce(new.data->>'syncBase', '') like 'admin%' then ' — 사이트에서 관리자 수정으로 위장함' else '' end),
     jsonb_build_object('ledger', last.bal, 'ledger_k', last.bal_k, 'save', u, 'save_k', k));
   return null;
 exception when others then return null;   -- 확인이 실패해도 저장은 절대 막지 않는다

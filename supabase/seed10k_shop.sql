@@ -77,3 +77,38 @@ begin
 end $$;
 revoke all on function public.seed10k_tazza_status() from public, anon;
 grant execute on function public.seed10k_tazza_status() to authenticated;
+
+-- 타짜 쓰기: 판을 시작하기 전에 서버에 등록한다. 산 타짜(seed10k_shop_uses의 item = 'tazza') 중 아직 안 쓴 것이 있어야 받아 준다.
+-- 사이트 저장 기록의 타짜 개수만 고쳐서 여러 번 쓰는 것을 막고, '한도를 넘는 도박 수익' 확인(seed10k_ledger_chain)이 이 기록을 본다.
+create table if not exists public.seed10k_tazza_uses (
+  id bigint generated always as identity primary key,
+  user_id uuid not null,
+  buy_id bigint,                 -- seed10k_shop_uses.ledger_id (테스트 계정은 비움)
+  game text not null, mode text, stake numeric,
+  at timestamptz not null default now()
+);
+create unique index if not exists seed10k_tazza_uses_buy on public.seed10k_tazza_uses (buy_id) where buy_id is not null;
+create index if not exists seed10k_tazza_uses_ua on public.seed10k_tazza_uses (user_id, at desc);
+alter table public.seed10k_tazza_uses enable row level security;
+drop policy if exists "seed10k_tazza_uses_select" on public.seed10k_tazza_uses;
+create policy "seed10k_tazza_uses_select" on public.seed10k_tazza_uses for select using (auth.uid() = user_id or public.seed10k_is_admin());
+
+create or replace function public.seed10k_tazza_use(game text, stake numeric, mode text default null) returns jsonb
+language plpgsql security definer set search_path = public as $$
+declare uid uuid := auth.uid(); b bigint;
+begin
+  if uid is null then return jsonb_build_object('ok', false, 'err', '로그인이 필요합니다'); end if;
+  if game not in ('bs', 'bj', 'bm', 'sl', 'oe') then return jsonb_build_object('ok', false, 'err', '타짜를 쓸 수 없는 게임입니다'); end if;
+  if exists (select 1 from public.seed10k_testers where user_id = uid) then
+    insert into public.seed10k_tazza_uses (user_id, buy_id, game, mode, stake) values (uid, null, game, mode, stake);
+    return jsonb_build_object('ok', true);
+  end if;
+  select u.ledger_id into b from public.seed10k_shop_uses u
+    where u.user_id = uid and u.item = 'tazza' and not exists (select 1 from public.seed10k_tazza_uses t where t.buy_id = u.ledger_id)
+    order by u.at limit 1;
+  if b is null then return jsonb_build_object('ok', false, 'err', '서버에 쓰지 않은 타짜 구매 기록이 없습니다'); end if;
+  insert into public.seed10k_tazza_uses (user_id, buy_id, game, mode, stake) values (uid, b, game, mode, stake);
+  return jsonb_build_object('ok', true);
+end $$;
+revoke all on function public.seed10k_tazza_use(text, numeric, text) from public, anon;
+grant execute on function public.seed10k_tazza_use(text, numeric, text) to authenticated;
