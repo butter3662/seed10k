@@ -36,7 +36,9 @@ create or replace function public.seed10k_ledger_chain() returns trigger
 language plpgsql security definer set search_path = public as $$
 declare last record;
 begin
-  select bal, bal_k into last from public.seed10k_ledger where user_id = new.user_id and mode = new.mode and id <> new.id order by id desc limit 1;
+  -- 바로 앞 줄 = 이 줄보다 id가 작은 마지막 줄. (예전에는 'id <> new.id'로 찾아서, 여러 줄을 한 번에 올리면 — 행 트리거는 문장이 끝난 뒤 돌므로 —
+  --  같이 올라간 뒤쪽 줄을 앞 줄로 잘못 보고 '기록 끊김'을 냈다. 예: 상점에서 연달아 산 변호사 7줄)
+  select bal, bal_k into last from public.seed10k_ledger where user_id = new.user_id and mode = new.mode and id < new.id order by id desc limit 1;
   if found and new.why is distinct from 'start'
      and (abs((new.bal - new.amt) - last.bal) > 0.02 or abs((new.bal_k - new.amt_k) - last.bal_k) > 2) then
     perform public.seed10k_ledger_alert(new.user_id, new.mode, 'ledger_gap',
@@ -82,3 +84,14 @@ create trigger seed10k_ledger_save after insert or update of data on public.seed
 update public.seed10k_alerts set seen = true where kind like 'ledger%' and not seen and uid in (select user_id from public.seed10k_testers);
 -- 2026-11-14: 저장 직전에 들어온 상금 때문에 잘못 뜬 '저장 잔고 불일치'·'돈 기록 끊김' 알림(사이트 수정 전)을 확인한 것으로 둔다
 update public.seed10k_alerts set seen = true where kind like 'ledger%' and not seen and at < timestamptz '2026-11-14 12:00:00+00';
+
+-- 위 버그(여러 줄을 한 번에 올리면 '기록 끊김' 오탐)로 생긴 알림을 확인함으로 바꾼다: 알림이 가리키는 줄을 바로 앞 줄(id가 작은 마지막 줄)과 다시 맞춰 보고 이어지면 오탐
+update public.seed10k_alerts a set seen = true
+from (
+  select a2.id aid, l.why, l.bal - l.amt frm, l.bal_k - l.amt_k frmk, p.bal pb, p.bal_k pbk
+  from public.seed10k_alerts a2
+  join public.seed10k_ledger l on l.id = (a2.detail->>'id')::bigint
+  left join lateral (select bal, bal_k from public.seed10k_ledger q where q.user_id = l.user_id and q.mode = l.mode and q.id < l.id order by q.id desc limit 1) p on true
+  where a2.kind = 'ledger_gap' and not a2.seen and (a2.detail->>'id') ~ '^[0-9]+$'
+) x
+where a.id = x.aid and x.why is distinct from 'start' and x.pb is not null and abs(x.frm - x.pb) <= 0.02 and abs(x.frmk - x.pbk) <= 2;

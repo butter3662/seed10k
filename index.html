@@ -1318,7 +1318,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.4.1';
+const VERSION = '1.4.2';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -5601,9 +5601,17 @@ const BSE = {
      성향 tm: 판마다 정해지는 대담함 0.25(신중)~0.85(대담). 대담할수록 톱을 일찍 걸고, 공포탄일 것 같아도 상대를 쏴 보곤 한다.
      pr: 지금 탄이 실탄일 확률 (돋보기로 봤으면 0 또는 1, 아니면 남은 실탄 ÷ 남은 탄) */
   ai(g, i, rnd){
-    const p = g.pl[i], know = g.pk[i], has = it => p.items.includes(it), r = () => rnd();
+    const p = g.pl[i], has = it => p.items.includes(it), r = () => rnd();
+    let know = g.pk[i];
     if (p.tm === undefined) p.tm = Math.round((0.25 + r() * 0.6) * 100) / 100;
     const bold = p.tm, left = g.live + g.blank;
+    // 혼자 하기 딜러 보정: 판마다 정해진 횟수(g.cx[i])만큼, 다음 탄이 무엇인지 모를 때 몰래 본다. 화면·기록에는 아무것도 남기지 않는다.
+    // 같은 탄을 두고 여러 번 판단해도(아이템을 쓰고 다시 판단) 한 번만 센다 (g.cy: 마지막으로 본 탄 = 몇 번째 장전의 남은 몇 발째)
+    if (know === null && g.cx && g.cx[i] > 0 && g.live && g.blank && g.shells.length){
+      const key = g.load * 100 + left;
+      if (!g.cy || g.cy.i !== i || g.cy.k !== key){ g.cx[i]--; g.cy = {i, k:key}; }
+      know = !!g.shells[0];
+    } else if (know === null && g.cy && g.cy.i === i && g.cy.k === g.load * 100 + left && g.shells.length) know = !!g.shells[0];
     const opps = g.pl.map((q, j) => j).filter(j => j !== i && !g.pl[j].out).sort((a, b) => g.pl[a].hp - g.pl[b].hp);
     const opp = opps.length > 1 && r() < 0.25 ? opps[Math.floor(r() * opps.length)] : opps[0];   // 보통은 목숨이 가장 적은 사람, 가끔은 아무나
     const pr = know !== null ? (know ? 1 : 0) : g.live / Math.max(1, left);
@@ -5789,11 +5797,12 @@ function bsStart(){
   betDialog('bs', '💥 벅샷 룰렛', `<p class="muted" style="margin:0 0 8px">딜러와 1:1, 목숨 ${BS.hpMax}. 마지막까지 버티면 판돈 2배</p>`, bet => {
     const first = UI.firstUse ? 0 : Math.random() < 0.5 ? 0 : 1; UI.firstUse = false;   // 선수권을 썼으면 내 차례부터
     const {g, ev} = BSE.newGame(['나', '딜러'], bet, Math.random, first);
-    g.il = gamIl(); g.tn = 1; s.cur = g; commit(); gmOpen('bs');
+    g.il = gamIl(); g.tn = 1; g.cx = [0, BS_DLR_CX]; s.cur = g; commit(); gmOpen('bs');
     BSV.msg = ''; bsRender();
     bsPlay(ev, () => bsTick());
   });
 }
+const BS_DLR_CX = 2;   // 혼자 하기 딜러 보정 횟수 (판마다)
 const bsLoader = g => g && g.pl.length === 2 && g.pl[1].nm === '딜러' && g.pl[0].nm === '나' ? 0 : g ? g.turn : -1;
 const bsWait = ms => { const gen = BSV.gen; return new Promise((res, rej) => setTimeout(() => gen === BSV.gen && $('.bs-table') ? res() : rej('stop'), bmMs(ms))); };   // 혼자(#bsCard)·같이(#mbsBody) 모두 판이 보이는 동안만
 // 이벤트를 차례로 보여 준다 (쏘기: 총 흔들림 → 실탄이면 번쩍·맞은 쪽 목숨 깜빡, 공포탄이면 딸깍)
