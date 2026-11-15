@@ -1323,7 +1323,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.6.2';
+const VERSION = '1.6.3';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -4936,7 +4936,7 @@ const runP = r => (r && r.p !== undefined ? r.p : RUN.p) + bustAdd();
 /* 이스터에그 — 경찰의 연민: 분기(한국 시간 1~3월, 4~6월…)마다 한 번, 순자산이 MERCY_NW 미만인 사람이 불법 도박 단속에 걸리면(도주 적발은 해당 없음)
    전과를 남기지 않고 압류도 없이 MERCY_PAY를 준다. 쓴 분기는 계정 단위로 센다: 돈 기록의 표시 줄(why에 ':mercy')을 접속할 때 읽고(ACC.mercyAt),
    로그인 없이 하면 저장 기록(G.mercyQ). 환생해도 그대로 (resetGame이 옮김) */
-const MERCY_NW = 6000, MERCY_PAY = 500;
+const MERCY_NW = 8000, MERCY_PAY = 500;
 const kstQ = t => { const d = new Date(+t + 9 * 3600e3); return `${d.getUTCFullYear()}Q${Math.floor(d.getUTCMonth() / 3) + 1}`; };
 async function mercyLoad(){
   ACC.mercyAt = null; if (!ACC.sb || !ACC.user) return;
