@@ -1149,14 +1149,14 @@ html[data-game=live] .c-news{order:3}
   position:fixed;z-index:40;left:0;right:0;bottom:0;height:calc(var(--tabbar) + env(safe-area-inset-bottom));
   padding-bottom:env(safe-area-inset-bottom);background:color-mix(in srgb,var(--surface) 94%,transparent);
   backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:1px solid var(--rule);
-  display:grid;grid-template-columns:repeat(4,1fr)
+  display:grid;grid-template-columns:repeat(5,1fr)
 }
 .tabbar button{border:0;background:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:11px;font-weight:650;color:var(--ink-3)}
 .tabbar svg{width:22px;height:22px}
 .tabbar button[aria-current=page]{color:var(--ink)}
 .tabbar button[aria-current=page] svg{color:var(--brass)}
 .tabbar button,.tabs-top button{position:relative}
-.tabbar.adm{grid-template-columns:repeat(5,1fr)}
+.tabbar.adm{grid-template-columns:repeat(6,1fr)}
 .tabbar button[hidden],.tabs-top button[hidden]{display:none}
 .adm-als,.adm-us{list-style:none;margin:0;padding:0;display:grid;gap:8px}
 .adm-al{display:flex;gap:10px;justify-content:space-between;align-items:flex-start;background:color-mix(in srgb,var(--danger) 9%,var(--surface-2));border-radius:10px;padding:10px 12px}
@@ -1238,7 +1238,7 @@ html[data-game=live] .c-news{order:3}
       <span class="wm">SEED</span><b>10K</b>
     </div>
     <nav class="tabs-top" aria-label="화면">
-      <button data-tab="home">홈</button><button data-tab="market">투자</button><button data-tab="assets">내 자산</button><button data-tab="info">규칙·설정</button><button data-tab="admin" hidden>관리</button>
+      <button data-tab="home">홈</button><button data-tab="market">투자</button><button data-tab="assets">내 자산</button><button data-tab="shop">상점</button><button data-tab="info">규칙·설정</button><button data-tab="admin" hidden>관리</button>
     </nav>
     <div class="session" id="simCtl">
       <div class="sess-date"><span id="sessDay">기준일</span><strong id="sessDate"></strong></div>
@@ -1268,6 +1268,7 @@ html[data-game=live] .c-news{order:3}
   <section class="view" id="v-home" aria-label="홈"></section>
   <section class="view" id="v-market" aria-label="투자"></section>
   <section class="view" id="v-assets" aria-label="내 자산"></section>
+  <section class="view" id="v-shop" aria-label="상점"></section>
   <section class="view" id="v-info" aria-label="규칙과 설정"></section>
   <section class="view" id="v-admin" aria-label="관리"></section>
 </main>
@@ -1276,6 +1277,7 @@ html[data-game=live] .c-news{order:3}
   <button data-tab="home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5L12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>홈</button>
   <button data-tab="market"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l5-6 4 3 6-8 3 4"/><path d="M3 21h18"/></svg>투자</button>
   <button data-tab="assets"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="14" rx="3"/><path d="M3 10h18M16 15h2"/><path d="M7 6V4.5A1.5 1.5 0 0 1 8.5 3h7A1.5 1.5 0 0 1 17 4.5V6"/></svg>내 자산</button>
+  <button data-tab="shop"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8h14l-1.2 11.2a2 2 0 0 1-2 1.8H8.2a2 2 0 0 1-2-1.8z"/><path d="M9 10V7a3 3 0 0 1 6 0v3"/></svg>상점</button>
   <button data-tab="info"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg>규칙·설정</button>
   <button data-tab="admin" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 4.5-3.4 8-8 9-4.6-1-8-4.5-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg>관리</button>
 </nav>
@@ -1316,7 +1318,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.3.5';
+const VERSION = '1.3.6';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -4929,7 +4931,6 @@ function renderGamblePane(p){
     ${runS().length ? `<section class="card run-card"><div class="card-h"><h2>🏃 도주 중</h2><small>${runS().length}건</small></div>
       <p class="mg-desc">${runS().map(r => `${GAM[r.k] ? GAM[r.k].nm : r.k} ${fmtUSDn(r.amt)} · 남은 ${r.left}판 · 판마다 ${+(runP(r) * 100).toFixed(2)}%${r.p !== undefined ? ' 🤿' : ''}`).join('<br>')}</p>
       <p class="muted" style="margin:4px 0 0">도박 판이 끝날 때마다 건마다 위 확률로 적발 → 안 낸 돈의 ${RUN.mult}배 압수 + 전과 1회</p></section>` : ''}
-    <section class="card c-mg" id="shopCard">${shopCardHTML()}</section>
     <section class="card c-mg" id="bmCard">${bmCardHTML()}</section>
     <section class="card c-mg" id="bsPane">${bsPaneHTML()}</section>
     <section class="card c-mg" id="oePane">${oePaneHTML()}</section>
@@ -8959,7 +8960,15 @@ function shopCardHTML(){
 // 지우면 순자산이 그만큼 줄어 순수익도 같이 줄어든다. 실제 시세 모드에서 시세를 받기 전에는 순자산을 믿을 수 없어 0으로 본다
 function shopClean(){ if (!S || S._ph || (isLive() && !LIVE.ok)) return 0; return Math.max(0, Math.floor((netWorth() - META.seed) * 100) / 100); }
 function shopCleanOk(id){ const it = shopItem(id); return !it || id !== 'record' || shopClean() >= it.price; }
-function renderShopCard(){ const c = $('#shopCard'); if (c) c.innerHTML = shopCardHTML(); }
+function renderShopCard(){ if (UI.tab === 'shop') renderShop(); }
+// 상점 탭 (내 자산과 규칙·설정 사이). 목록과 사기 전 확인 화면이 이 탭 안에서 바뀐다
+function renderShop(){
+  const v = $('#v-shop'); if (!v) return;
+  if (!v.dataset.built){ v.dataset.built = '1';
+    v.innerHTML = `<div class="stack"><section class="card"><div class="card-h"><h2>🛒 상점</h2><small>게임 안의 달러로 삽니다</small></div><div id="shopBox"></div></section>
+      <section class="card"><div class="card-h"><h2>🎨 닉네임 색</h2><button class="btn" id="shopNcol">색 바꾸기 · ${fmtUSDn(300, 0)}</button></div><p class="mg-desc" style="margin:0">랭킹에서 내 닉네임이 고른 색으로 보입니다</p></section></div>`; }
+  if (!SHOPV.ask) shopDraw();
+}
 const SHOPV = {ask:null};
 function shopListHTML(){
   const G = gamS();
@@ -8970,13 +8979,15 @@ function shopListHTML(){
         <button class="btn solid" data-shop="${it.id}" ${off ? `disabled title="${it.id === 'record' ? (!(G.bust > 0) ? '지울 전과가 없습니다' : '순수익(순자산 − 시작 자금)이 모자랍니다') : '모두 모았습니다'}"` : ''}>${fmtUSDn(it.price, 0)}</button></div>`;
     }).join('')}</div>
     ${shopS().pend.length ? `<p class="muted" style="margin:6px 0 0">서버 확인을 기다리는 구매 ${shopS().pend.length}건 · 연결되면 자동으로 처리합니다</p>` : ''}
-    <p class="muted" style="margin:8px 0 0">달러 통장 ${fmtUSDn(S.usd)}${S.krw > 0 ? ` · 모자라면 원화 ${fmtKRWn(S.krw)}에서 자동 환전` : ''} · 닉네임 색은 랭킹 아래에서 바꿉니다</p>`;
+    <p class="muted" style="margin:8px 0 0">달러 통장 ${fmtUSDn(S.usd)}${S.krw > 0 ? ` · 모자라면 원화 ${fmtKRWn(S.krw)}에서 자동 환전` : ''}</p>`;
 }
 function shopDraw(){
   const box = $('#shopBox'); if (!box) return;
   const it = SHOPV.ask && shopItem(SHOPV.ask);
-  box.innerHTML = it ? `<div class="shop-ask"><span class="shop-ic big">${it.ic}</span><b>${it.nm}</b><p class="muted" style="margin:6px 0 0">${shopDesc(it)}</p>
+  const h = it ? `<div class="shop-ask"><span class="shop-ic big">${it.ic}</span><b>${it.nm}</b><p class="muted" style="margin:6px 0 0">${shopDesc(it)}</p>
       <div class="acts"><button class="btn" id="shopBack">뒤로</button><button class="btn solid" id="shopGo">${fmtUSDn(it.price, 0)} 내고 사기</button></div></div>` : shopListHTML();
+  if (box.dataset.h === h) return;   // 같으면 다시 그리지 않는다 (시세 갱신 때마다 버튼이 바뀌어 누른 것이 씹히지 않게)
+  box.dataset.h = h; box.innerHTML = h;
   const bk = $('#shopBack'); if (bk) bk.onclick = () => { SHOPV.ask = null; shopDraw(); };
   const go = $('#shopGo'); if (go) go.onclick = () => shopBuyNow(SHOPV.ask);
 }
@@ -9005,7 +9016,8 @@ async function shopBuyNow(id){
   shopDraw(); renderShopCard();
 }
 document.addEventListener('click', e => {
-  if (e.target.closest && e.target.closest('#shopOpenBtn')) return shopOpen();
+  if (e.target.closest && e.target.closest('#shopOpenBtn')) return go('shop');
+  if (e.target.closest && e.target.closest('#shopNcol')) return ncolDialog();
   const b = e.target.closest && e.target.closest('[data-shop]'); if (b && !b.disabled) shopBuy(b.dataset.shop);
 });
 
@@ -9821,7 +9833,7 @@ function renderTab(){
   const a = document.activeElement;
   const av = a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) ? a.closest('.view') : null;
   if (av && av.id === 'v-' + UI.tab) return;
-  ({home:renderHome, market:renderInvest, assets:renderAssets, info:renderInfo, admin:renderAdmin})[UI.tab]();
+  ({home:renderHome, market:renderInvest, assets:renderAssets, shop:renderShop, info:renderInfo, admin:renderAdmin})[UI.tab]();
   if (UI.tab === 'assets') refreshRanks(false);
 }
 function commit(){
