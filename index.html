@@ -1332,7 +1332,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.6.6';
+const VERSION = '1.6.7';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -5985,8 +5985,8 @@ async function bsPlay(ev, done, rerender, after){
         BSV.lay = {live:e.live, blank:e.blank, k:Math.floor(Math.random() * 23), in:[]}; bsViewDo(e); BSV.msg = e.hid ? `${n}발 장전 · 종류는 모름` : `실탄 ${e.live} · 공포탄 ${e.blank}`; rerender();
         for (let k = 0; k < n; k++) BSAU.lay(k * 0.07 + 0.15); await bsWait(1800);
         BSV.msg = '딜러가 장전한다…'; rerender();
-        for (let k = 0; k < n; k++){ BSV.lay.in.push(k); rerender(); BSAU.insert(0.42 * bsK()); await bsWait(560); }   // 딜러가 탄을 하나씩 집어 넣는다 (손 동작 한 번 = 탄 한 발)
-        BSV.lay = null; BSV.rackBy = null; BSV.fx = 'rack'; BSV.msg = '장전 완료'; rerender(); BSAU.rack(0.43 * bsK()); await bsWait(1300);
+        for (let k = 0; k < n; k++){ BSV.lay.in.push(k); rerender(); BSAU.insert(0.42); await bsWait(560); }   // 딜러가 탄을 하나씩 집어 넣는다 (손 동작 한 번 = 탄 한 발)
+        BSV.lay = null; BSV.rackBy = null; BSV.fx = 'rack'; BSV.msg = '장전 완료'; rerender(); BSAU.rack(0.43); await bsWait(1300);
         BSV.fx = ''; BSV.msg = e.got && e.got.some(x => x.length) ? '아이템을 나눠 받았다' : '장전 완료'; rerender(); await bsWait(600);
       } else if (e.t === 'shot'){
         const self = e.target === e.i, up = (e.target === me()) ? 'down' : 'up';   // 내 쪽(아래)을 쏘면 총구가 아래로
@@ -6006,7 +6006,7 @@ async function bsPlay(ev, done, rerender, after){
         } else await bsWait(e.live ? 1200 : 900);
         BSV.flash = ''; BSV.fx = '';
         BSV.shooter = null; BSV.si = null; BSV.ti = null;   // 겨누던 자세를 풀고 펌프질로 넘어간다
-        BSV.rackBy = byMe ? 'me' : e.i; BSV.fx = 'rack'; BSV.eject = e.live; BSV.aim = 'rest'; rerender(); BSAU.rack(0.43 * bsK()); BSAU.drop(0.95 * bsK()); await bsWait(1300);
+        BSV.rackBy = byMe ? 'me' : e.i; BSV.fx = 'rack'; BSV.eject = e.live; BSV.aim = 'rest'; rerender(); BSAU.rack(0.43); BSAU.drop(0.95); await bsWait(1300);
         BSV.fx = ''; BSV.eject = null;
       } else if (e.t === 'peek'){ bsViewDo(e); BSAU.peek();
         if (BS3.st === 'on'){ BSV.item = {it:'glass', by:e.i === me() ? 'me' : 'op', i:e.i, d:1.5}; BSV.msg = `🔍 ${nm(e.i)} 돋보기로 총을 들여다본다…`; rerender(); await bsWait(700); }
@@ -6014,10 +6014,10 @@ async function bsPlay(ev, done, rerender, after){
       } else if (e.t === 'beer'){ BSAU.beer();
         if (BS3.st === 'on'){ BSV.item = {it:'beer', by:e.i === me() ? 'me' : 'op', i:e.i, d:1.3}; BSV.msg = `🍺 ${nm(e.i)} 맥주를 들이켠다…`; rerender(); await bsWait(1300); BSV.item = null; }
         bsViewDo(e);   // 남은 탄 수는 펌프로 탄이 빠지는 순간에 줄인다 (마시기 전에 줄면 결과가 먼저 보인다)
-        BSAU.rack(0.43 * bsK()); BSAU.drop(0.95 * bsK());
+        BSAU.rack(0.43); BSAU.drop(0.95);
         BSV.rackBy = e.i === me() ? 'me' : e.i; BSV.fx = 'rack'; BSV.eject = e.live; BSV.msg = `🍺 탄을 빼냈다: ${e.live ? '실탄' : '공포탄'}`; rerender(); await bsWait(1400); BSV.fx = ''; BSV.eject = null;
       } else if (e.t === 'cuff'){ bsViewDo(e);
-        if (BS3.st === 'on'){ BSV.item = {it:'cuff', by:e.i === me() ? 'me' : 'op', i:e.i, t:e.target, d:1.2}; BSAU.cuff(0.62 * bsK()); } else BSAU.cuff();
+        if (BS3.st === 'on'){ BSV.item = {it:'cuff', by:e.i === me() ? 'me' : 'op', i:e.i, t:e.target, d:1.2}; BSAU.cuff(0.62); } else BSAU.cuff();
         BSV.msg = `⛓️ ${nm(e.target)}에게 수갑`; rerender(); await bsWait(BS3.st === 'on' ? 1300 : 800); BSV.item = null; }
       else if (e.t === 'saw'){ bsViewDo(e); BSV.sawBy = e.i === me() ? 'me' : 'op'; BSV.sawI = e.i; BSV.fx = 'saw'; BSV.msg = `🪚 ${nm(e.i)} 총신을 자른다…`; rerender(); if (BS3.st === 'on') BSAU.saw(); await bsWait(BS3.st === 'on' ? 1350 : 500); BSV.msg = '🪚 총신을 잘랐다 · 다음 한 발 2배'; rerender(); await bsWait(700); BSV.fx = ''; }
       else if (e.t === 'heal'){
@@ -6886,7 +6886,7 @@ function bs3Eject(live){
    배경: 낮게 깔리는 화이트 노이즈(방 소리). 연출 소리: 총소리, 딸깍, 펌프, 탄 넣기, 탄피 떨어지는 소리, 톱질, 귀울림, 쓰러짐 등.
    브라우저는 사용자가 한 번 누르기 전에는 소리를 낼 수 없어서, 첫 터치 때 소리 장치를 켠다.
    켜고 끄기는 무대 오른쪽 위 스피커 단추 (이 기기에만 저장). */
-const BSA = {ctx:null, on:true, amb:null, vol:0.7};
+const BSA = {ctx:null, on:true, amb:null, vol:0.7, k:1};   // k: 소리 시작 시각 배율 (게임 '빠르게'일 때 < 1)
 try { BSA.on = localStorage.getItem('seed10k.bs.sound') !== '0'; } catch(e){}
 function bsaInit(){
   if (BSA.ctx) return BSA.ctx;
@@ -6925,7 +6925,7 @@ const bsaT = () => BSA.ctx.currentTime;
 function bsaReady(){ return BSA.ctx && BSA.ctx.state === 'running' && BSA.on; }
 // 잡음 한 줄기: 필터 종류·주파수·Q, 크기, 시작 시각, 엔벌로프(올라감·유지·줄어듦)
 function bsaNoise(o){
-  const c = BSA.ctx, t0 = bsaT() + (o.at || 0), s = c.createBufferSource(); s.buffer = o.pink ? BSA.pink : BSA.noise; s.loop = true;
+  const c = BSA.ctx, t0 = bsaT() + (o.at || 0) * BSA.k, s = c.createBufferSource(); s.buffer = o.pink ? BSA.pink : BSA.noise; s.loop = true;
   s.playbackRate.value = o.rate || 1;
   const f = c.createBiquadFilter(); f.type = o.type || 'bandpass'; f.frequency.setValueAtTime(o.f || 1000, t0); f.Q.value = o.q || 1;
   if (o.f2) f.frequency.exponentialRampToValueAtTime(o.f2, t0 + (o.fd || o.d || 0.2));
@@ -6938,7 +6938,7 @@ function bsaNoise(o){
 }
 // 사인·삼각파 한 음: 주파수(끝 주파수로 미끄러짐), 크기, 길이
 function bsaTone(o){
-  const c = BSA.ctx, t0 = bsaT() + (o.at || 0), s = c.createOscillator(); s.type = o.w || 'sine';
+  const c = BSA.ctx, t0 = bsaT() + (o.at || 0) * BSA.k, s = c.createOscillator(); s.type = o.w || 'sine';
   s.frequency.setValueAtTime(o.f, t0); if (o.f2) s.frequency.exponentialRampToValueAtTime(o.f2, t0 + (o.fd || o.d));
   const g = c.createGain(), a = o.a || 0.001;
   g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(o.v || 0.3, t0 + a); g.gain.exponentialRampToValueAtTime(0.0001, t0 + a + o.d);
@@ -7086,6 +7086,17 @@ function bsaToggle(){
   document.querySelectorAll('.bs-snd:not(.bs-spd), .bm-snd').forEach(b => { b.innerHTML = bsaIcon(); b.setAttribute('aria-label', BSA.on ? '소리 끄기' : '소리 켜기'); });
 }
 const bsaIcon = () => `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/>${BSA.on ? '<path d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/>' : '<path d="M16 9l6 6M22 9l-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'}</svg>`;
+
+/* 빠르게: 소리 안의 시각(장전 두 번 철컥, 탄피 튕김 등 여러 소리를 언제 낼지)을 게임 속도에 맞춰 줄인다. 소리 하나하나의 길이(음색)는 그대로.
+   벅샷 소리(BSAU)는 벅샷 빠르게(bsK), 부루마블 소리(BMAU)는 부루마블 빠르게를 따른다 */
+function bsaScaled(obj, kf){
+  for (const key of Object.keys(obj)){
+    const f = obj[key]; if (typeof f !== 'function') continue;
+    obj[key] = function(...a){ const p = BSA.k; BSA.k = kf(); try { return f.apply(this, a); } finally { BSA.k = p; } };
+  }
+}
+bsaScaled(BSAU, () => typeof bsK === 'function' ? bsK() : 1);
+bsaScaled(BMAU, () => typeof bmFast === 'function' && bmFast() ? 0.45 : 1);
 
 /* ───────── 멀티플레이 (방 코드로 같이 하기) ─────────
    빠른 길: 라즈베리파이 심판에 웹소켓으로 바로 붙어 요청을 보내고 방 상태를 받는다 (주소는 Supabase '__ref' 줄의 state.ws).
