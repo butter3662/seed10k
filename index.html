@@ -1319,7 +1319,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.4.4';
+const VERSION = '1.4.5';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -4853,8 +4853,9 @@ function police(k, il, net){
   G.ilAcc = Math.round((ilAcc() + (+net || 0)) * 100) / 100;   // 불법 도박 누적 순이익 (단속 판의 손익까지 넣고 압류)
   if (Math.random() >= polP(k)){ save(); return false; }
   G.bust = (G.bust || 0) + 1; G.bustAt = Date.now();
-  const law = shopUse('lawyer');   // 변호사: 이번 압수액 LAWYER_CUT(30%) 감경
-  const acc = Math.max(0, G.ilAcc), amt = Math.round(acc * GAM.seize * (law ? 1 - LAWYER_CUT : 1) * 100) / 100;
+  const acc = Math.max(0, G.ilAcc);
+  const law = acc > 0 && shopUse('lawyer');   // 변호사: 이번 압수액 LAWYER_CUT(30%) 감경. 압수할 게 없으면 쓰지 않고 남겨 둔다
+  const amt = Math.round(acc * GAM.seize * (law ? 1 - LAWYER_CUT : 1) * 100) / 100;
   G.ilAcc = 0;   // 압류하고 누적은 처음부터
   const od = amt > 0 ? spendUSD(amt) : 0;
   if (amt > 0) altLog('police', `🚨 경찰 단속 (${GAM[k].nm}) 압류`, -amt, 'USD');
@@ -8976,15 +8977,15 @@ function altAssetsHTML(){
 }
 
 /* ───── 상점 (게임 안의 달러로 산다) ─────
-   전과 지우기 $300(순수익으로만) · 변호사 선임 $500 · 잠수 $300 · 선수권 $200 · 닉네임 색 $300 (+ 부루마블 말 스킨 뽑기)
+   전과 지우기 $300(순수익으로만) · 변호사 선임 $500 · 잠수 $450 · 선수권 $200 · 닉네임 색 $300 (+ 부루마블 말 스킨 뽑기)
    - 전과 지우기·닉네임 색은 남들도 보는 것이라 서버 함수(seed10k_shop_redeem)가 준다: 서버는 방금 생긴 돈 기록 'shop:<아이템>'(−가격)이 있어야만 효과를 준다
    - 변호사·잠수·선수권은 내 기록(S.gam.shop.inv)에 개수로 쌓였다가 쓸 때 하나씩 줄어든다
    값은 달러 통장에서 낸다. 달러가 모자라면 원화에서 모자란 만큼 먼저 환전한다(그 환전은 돈 기록에 따로 한 줄). 마이너스통장은 쓰지 않는다 */
 const LAWYER_CUT = 0.3;   // 변호사: 압수액을 이만큼 줄인다 (예전 50% → 30%, 가격 $300 → $500)
 const SHOP = [
   {id:'record', ic:'🧽', nm:'전과 지우기', price:300, d:'경찰 단속 기록(전과)을 1회 지웁니다. 0회가 되면 랭킹의 빨간 줄도 사라지고, 낮아졌던 최고 신용등급과 적발 확률도 되돌아옵니다. 순수익(순자산 − 시작 자금 $10,000)으로만 낼 수 있습니다.', server:true},
-  {id:'lawyer', ic:'⚖️', nm:'변호사 선임', price:500, d:'다음 경찰 단속(불법 모드 단속·도주 적발) 한 번은 압수액이 30% 줄어듭니다.'},
-  {id:'dive', ic:'🤿', nm:'잠수', price:300, d:''},   // 설명은 shopDesc (RUN.p를 쓰므로)
+  {id:'lawyer', ic:'⚖️', nm:'변호사 선임', price:500, d:'다음 경찰 단속(불법 모드 단속·도주 적발) 한 번은 압수액이 30% 줄어듭니다. 압수할 돈이 없는 단속에는 쓰이지 않고 남습니다.'},
+  {id:'dive', ic:'🤿', nm:'잠수', price:450, d:''},   // 설명은 shopDesc (RUN.p를 쓰므로)
   {id:'first', ic:'🥇', nm:'선수권', price:200, d:'혼자 하는 벅샷 룰렛·부루마블을 시작할 때 쓰면 내 차례부터 시작합니다.'},
   {id:'skin', ic:'🎲', nm:'부루마블 말 스킨 뽑기', price:300, d:'말 스킨 10종 중 아직 없는 것 하나가 나옵니다 (헬리콥터·비행기는 날아다닙니다). 도박 탭 부루마블 칸의 🎨 말 스킨 버튼으로 바꿔 씁니다 (게임 밖에서).'},
 ];
