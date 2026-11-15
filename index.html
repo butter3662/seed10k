@@ -1323,7 +1323,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.5.6';
+const VERSION = '1.5.7';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -4235,19 +4235,21 @@ function bmSetup(){
     <div class="acts"><button class="btn" data-close>닫기</button><button class="btn solid" id="bmStart">시작</button></div>`);
   const draw = () => {
     const box = $('#bmSet'); if (!box) return;
-    const max = gamMax('bm');
+    const tz = tzOn(), max = gamMaxT('bm', tz);
     const bet = parseFloat(String(UI.bmBet).replace(/,/g, '')) || 0;
     const mult = BM.pay[UI.bmN + 1];
     const err = max < BM.minBet ? `달러 통장에 ${fmtUSDn(BM.minBet)} 이상 있어야 합니다.` : bet && (bet < BM.minBet || bet > max) ? `판돈은 ${fmtUSDn(BM.minBet, 0)}~${fmtUSDn(max, 0)}입니다.` : '';
     box.innerHTML = `<p style="margin:0 0 8px">컴퓨터 상대 수</p>
       <div class="seg" style="margin-bottom:12px">${[1, 2, 3].map(k => `<button data-bmn="${k}" aria-pressed="${UI.bmN === k}">${k}명</button>`).join('')}</div>
-      <p style="margin:0 0 6px">판돈 (한도 ${fmtUSDn(gamIl() ? GAM.bm.on : GAM.bm.off, 0)}${gamIl() ? ', 🚨 불법 모드' : ''} · 달러 통장 ${fmtUSDn(S.usd)})</p>
+      <p style="margin:0 0 6px">판돈 (한도 ${fmtUSDn(tz ? max : gamIl() ? GAM.bm.on : GAM.bm.off, 0)}${tz ? ', 🃏 타짜' : gamIl() ? ', 🚨 불법 모드' : ''} · 달러 통장 ${fmtUSDn(S.usd)})</p>
       <label class="amt"><span>$</span><input id="bmBetIn" type="text" inputmode="decimal" placeholder="${BM.minBet}~${max}" value="${esc(UI.bmBet)}"></label>
       <div class="quick" style="margin:8px 0">${[10, 50, 100, 500].filter(v => v <= max).map(v => `<button data-bmbet="${v}">$${v}</button>`).join('')}${max >= BM.minBet ? `<button data-bmbet="${max}">최대</button>` : ''}</div>
       <div class="bd">${mult.map((m, k) => `<div><span>${k + 1}위</span><b class="num">${m}배${bet > 0 ? ` = ${fmtUSD(bet * m)}` : ''}</b></div>`).join('')}</div>
       ${shopN('first') ? `<label class="chk" style="margin:0 0 6px"><input type="checkbox" id="bmFirstUse" ${UI.firstChk ? 'checked' : ''}> 🥇 선수권 쓰기 (내 차례부터 시작 · 가진 것 ${shopN('first')}개)</label>` : ''}
+      ${tzChkHTML()}
       <div class="err" role="status">${esc(err)}</div>`;
     { const fu = $('#bmFirstUse'); if (fu) fu.onchange = () => { UI.firstChk = fu.checked; }; }
+    { const tu = $('#tzUse'); if (tu) tu.onchange = () => { UI.tzChk = tu.checked; draw(); }; }
     $('#bmStart').disabled = !!err || !(bet >= BM.minBet && bet <= max);
     const inp = $('#bmBetIn');
     inp.addEventListener('input', () => { UI.bmBet = inp.value.replace(/[^\d.]/g, ''); const pos = inp.selectionStart; draw(); const i2 = $('#bmBetIn'); i2.focus(); try { i2.setSelectionRange(pos, pos); } catch(e){} });
@@ -4256,12 +4258,13 @@ function bmSetup(){
   };
   draw();
   $('#bmStart').onclick = () => {
-    const bet = Math.round((parseFloat(UI.bmBet) || 0) * 100) / 100, max = gamMax('bm');
+    const tz = tzOn(), bet = Math.round((parseFloat(UI.bmBet) || 0) * 100) / 100, max = gamMaxT('bm', tz);
     const b2 = bmToday();
     if (b2.cur || bmLockLeft() || !(bet >= BM.minBet && bet <= max)) return;
     const key = `bm:${Date.now().toString(36)}`;
     gamPay(bet); betPaid(key, bet);
     b2.n++; b2.cur = BME.newGame(UI.bmN + 1, bet, Math.random); b2.cur.il = gamIl();
+    UI.tzNext = tz && shopUse('tazza'); if (UI.tzNext){ UI.tzChk = false; altLog('gamble', `🃏 타짜: 부루마블 판돈 ${fmtUSDn(bet)}`, 0, 'USD'); } gamTz(b2.cur);
     if ($('#bmFirstUse') && $('#bmFirstUse').checked && shopUse('first')){ b2.cur.first = b2.cur.turn = 0; b2.cur.pending = {k:'roll'}; BME.log(b2.cur, '🥇 선수권: 나부터 시작'); BME.rec(b2.cur, '선수권 사용: 나부터 시작'); }   // 선수권: 내 차례부터 (나는 0번)
     UI.bmBet = '';
     commit(); close();
@@ -4442,7 +4445,7 @@ function bmUpdate(){
   });
   // 행동 버튼
   let act = '';
-  if (g.over && !BMV.busy) act = BMV.mp ? mbmOverHTML(g) : `<button class="btn solid bm-roll" id="bmEnd">결과 보기</button>${(BM.pay[g.n][BME.ranking(g).indexOf(0)] || 0) < 1 ? '<button class="btn run-btn" id="bmRun">🏃 도망가기</button>' : ''}`;
+  if (g.over && !BMV.busy) act = BMV.mp ? mbmOverHTML(g) : `<button class="btn solid bm-roll" id="bmEnd">결과 보기</button>${!g.tz && (BM.pay[g.n][BME.ranking(g).indexOf(0)] || 0) < 1 ? '<button class="btn run-btn" id="bmRun">🏃 도망가기</button>' : ''}`;
   else if (!BMV.busy && pd && pd.k === 'sell' && pd.who !== ME) act = `<p class="bm-wait">${esc(g.pl[pd.who].nm)}이(가) 팔 것을 고르는 중…</p>`;
   else if (!BMV.busy && pd && pd.k === 'sell'){
     const need = BME.need(g), cash = g.pl[ME].cash;
@@ -4735,7 +4738,7 @@ function bmFinish(forfeit, run){
   let rank;
   if (forfeit) rank = bmQuitRank(g);
   else { const r = BME.ranking(g); rank = r.indexOf(0) + 1; }
-  const mult0 = BM.pay[g.n][rank - 1] || 0, ran = !!run && !forfeit && mult0 < 1;   // 판돈보다 적게 받는 순위면 도망칠 수 있다
+  const mult0 = BM.pay[g.n][rank - 1] || 0, ran = !!run && !forfeit && !g.tz && mult0 < 1;   // 판돈보다 적게 받는 순위면 도망칠 수 있다
   const loss = Math.round(g.stake * (1 - mult0) * 100) / 100;
   const mult = ran ? 1 : mult0, pay = Math.round(g.stake * mult * 100) / 100;      // 도망치면 판돈을 그대로 돌려받는다
   if (pay > 0) receiveUSD(pay);
@@ -4750,7 +4753,7 @@ function bmFinish(forfeit, run){
   altLog('gamble', `부루마블 ${forfeit ? `기권 (${rank}위)` : rank + '위'}${ran ? ' → 도망' : ''}${g.il ? ' (불법)' : ''}`, pay - g.stake, 'USD');
   commit();
   bmHide();
-  police('bm', g.il, pay - g.stake);
+  police('bm', g.il, pay - g.stake, g.tz);
   runCheck(); if (ran) runAdd('bm', loss);
   const rows = r ? r.map((i, k) => `<div><span>${k + 1}위 ${g.pl[i].nm}</span><b class="num">${g.pl[i].out ? '파산' : '자산 ' + bmW(BME.assets(g, i))}</b></div>`).join('') : '';
   showModal(`<h2 class="${pay > g.stake ? 'up' : ''}">${forfeit ? `기권 · ${rank}위 (${g.n}명 중)` : ran ? `🏃 ${rank}위에서 도망쳤습니다` : `${rank}위 (${g.n}명 중)`}</h2>${ran ? runNote(loss) : ''}
@@ -4819,6 +4822,13 @@ const gamIl = () => !!gamS().il;
 const acNote = () => '<p class="ac-note">🛡️ anticheat 작동 중</p>';
 const gamUsable = () => Math.max(0, S.usd) + Math.max(0, S.krw || 0) / fxRates().buy;
 const gamMax = k => Math.min(gamIl() ? GAM[k].on : GAM[k].off, Math.floor(gamUsable()));
+/* 🃏 타짜 (상점): 혼자 하는 판 하나의 판돈 한도를 없앤다 (가진 돈까지, 대출 제외). 그 판은 불법 판으로 치고 경찰 적발 확률이 TZ_P + 전과 가산.
+   타짜 판에서는 도망칠 수 없고 은신도 안 먹힌다 (지면 도망·은신으로 위험 없이 올인하는 꼼수 방지) */
+const TZ_P = 0.20;
+const tzOn = () => !!UI.tzChk && shopN('tazza') > 0;
+const gamMaxT = (k, tz) => tz ? Math.floor(gamUsable()) : gamMax(k);
+const tzChkHTML = () => shopN('tazza') ? `<label class="chk" style="margin:0 0 6px"><input type="checkbox" id="tzUse" ${UI.tzChk ? 'checked' : ''}> 🃏 타짜 쓰기 (이 판 판돈 한도 없음 · 경찰 적발 ${+((TZ_P + bustAdd()) * 100).toFixed(2)}% · 도망·은신 안 됨 · 가진 것 ${shopN('tazza')}개)</label>` : '';
+function gamTz(g){ if (UI.tzNext){ g.tz = true; g.il = true; UI.tzNext = false; } return g; }   // 판을 만든 직후 부른다
 // 판돈 내기: 달러로 내고, 모자라면 모자란 만큼 원화에서 자동 환전한다. 원화로도 모자라면 예전처럼 마이너스통장
 function gamPay(amt){
   amt = Math.round(+amt * 100) / 100; if (!(amt > 0)) return {od:0, fx:0};
@@ -4863,16 +4873,18 @@ function betDialog(k, title, extraHTML, onStart, noPay){   // noPay: 판돈을 �
     <div class="acts"><button class="btn" data-close>닫기</button><button class="btn solid" id="betGo">${noPay ? '방 만들기' : '시작'}</button></div>`);
   const draw = () => {
     const box = $('#betBox'); if (!box) return;
-    const max = gamMax(k), lim = gamIl() ? G.on : G.off;
+    const tz = !noPay && tzOn(), max = gamMaxT(k, tz), lim = tz ? max : gamIl() ? G.on : G.off;
     const bet = parseFloat(String(UI.betIn[k] || '').replace(/,/g, '')) || 0;
     const err = max < G.min ? `달러·원화 통장을 합쳐 ${fmtUSDn(G.min)} 이상 있어야 합니다.` : bet && (bet < G.min || bet > max) ? `판돈은 ${fmtUSDn(G.min, 0)}~${fmtUSDn(max, 0)}입니다.` : '';
-    box.innerHTML = `<p style="margin:0 0 6px">판돈 (한도 ${fmtUSDn(lim, 0)}${gamIl() ? ', 🚨 불법 모드' : ''} · 달러 통장 ${fmtUSDn(S.usd)}${S.krw > 0 ? ` · 모자라면 원화 ${fmtKRWn(S.krw)}에서 자동 환전` : ''})</p>
+    box.innerHTML = `<p style="margin:0 0 6px">판돈 (한도 ${fmtUSDn(lim, 0)}${tz ? ', 🃏 타짜' : gamIl() ? ', 🚨 불법 모드' : ''} · 달러 통장 ${fmtUSDn(S.usd)}${S.krw > 0 ? ` · 모자라면 원화 ${fmtKRWn(S.krw)}에서 자동 환전` : ''})</p>
       <label class="amt"><span>$</span><input id="betIn" type="text" inputmode="decimal" placeholder="${G.min}~${max}" value="${esc(UI.betIn[k] || '')}"></label>
       <div class="quick" style="margin:8px 0">${[1, 5, 10, 50, 100, 500].filter(v => v >= G.min && v <= max).map(v => `<button data-betq="${v}">$${v}</button>`).join('')}${max >= G.min ? `<button data-betq="${max}">최대</button>` : ''}</div>
       ${gamIl() ? `<p class="muted" style="margin:0 0 6px">불법 모드: 이 판이 끝날 때 ${(polP(k) * 100).toFixed(2).replace(/\.?0+$/, "")}% 확률로 경찰 단속 (불법 도박으로 번 돈(지금 ${fmtUSDn(Math.max(0, ilAcc()))})의 ${GAM.seize * 100}% 압류, 랭킹 이름에 영구 빨간 줄)</p>` : ''}
       ${!noPay && k === 'bs' && shopN('first') ? `<label class="chk" style="margin:0 0 6px"><input type="checkbox" id="firstUse" ${UI.firstChk ? 'checked' : ''}> 🥇 선수권 쓰기 (내 차례부터 시작 · 가진 것 ${shopN('first')}개)</label>` : ''}
+      ${!noPay ? tzChkHTML() : ''}
       <div class="err" role="status">${esc(err)}</div>`;
     { const fu = $('#firstUse'); if (fu) fu.onchange = () => { UI.firstChk = fu.checked; }; }
+    { const tu = $('#tzUse'); if (tu) tu.onchange = () => { UI.tzChk = tu.checked; draw(); }; }
     $('#betGo').disabled = !!err || !(bet >= G.min && bet <= max);
     const inp = $('#betIn');
     inp.addEventListener('input', () => { UI.betIn[k] = inp.value.replace(/[^\d.]/g, ''); const pos = inp.selectionStart; draw(); const i2 = $('#betIn'); i2.focus(); try { i2.setSelectionRange(pos, pos); } catch(e){} });
@@ -4881,11 +4893,14 @@ function betDialog(k, title, extraHTML, onStart, noPay){   // noPay: 판돈을 �
   draw();
   $('#betGo').onclick = () => {
     const bet = Math.round((parseFloat(UI.betIn[k]) || 0) * 100) / 100;
-    if (!(bet >= G.min && bet <= gamMax(k))) return;
+    const tz = !noPay && tzOn();
+    if (!(bet >= G.min && bet <= gamMaxT(k, tz))) return;
     const key = `${k}:${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
     if (!noPay){ gamPay(bet); betPaid(key, bet); }
     UI.betIn[k] = '';
     UI.firstUse = !noPay && k === 'bs' && !!($('#firstUse') && $('#firstUse').checked) && shopUse('first');   // 선수권: 이번 판은 내 차례부터
+    UI.tzNext = tz && shopUse('tazza');   // 타짜: 판을 만들 때 gamTz(g)가 붙인다
+    if (UI.tzNext){ UI.tzChk = false; altLog('gamble', `🃏 타짜: ${G.nm} 판돈 ${fmtUSDn(bet)}`, 0, 'USD'); }
     close();
     setTimeout(() => onStart(bet), 180);
     if (!noPay) setTimeout(() => betAudit(key, bet, G.nm), 180 + BET_AUDIT_MS);   // 같이 하기(noPay)는 시작할 때 따로 확인한다
@@ -4898,12 +4913,12 @@ const BUST_P = 0.0025;
 const bustAdd = () => BUST_P * Math.max(0, +(gamS().bust || 0));
 const polP = k => GAM[k].p + bustAdd();
 const runP = r => (r && r.p !== undefined ? r.p : RUN.p) + bustAdd();
-function police(k, il, net){
+function police(k, il, net, tz){
   if (!il) return false;
   const G = gamS();
   G.ilAcc = Math.round((ilAcc() + (+net || 0)) * 100) / 100;   // 불법 도박 누적 순이익 (단속 판의 손익까지 넣고 압류)
-  if (shopUse('hide')){ save(); toast(`🫥 은신: 이번 판은 경찰 단속을 피했습니다 (남은 은신 ${shopN('hide')}개)`); return false; }   // 은신: 불법 도박 1판 단속 면제 (도주 적발은 그대로)
-  if (Math.random() >= polP(k)){ save(); return false; }
+  if (!tz && shopUse('hide')){ save(); toast(`🫥 은신: 이번 판은 경찰 단속을 피했습니다 (남은 은신 ${shopN('hide')}개)`); return false; }   // 은신: 불법 도박 1판 단속 면제 (도주 적발은 그대로)
+  if (Math.random() >= (tz ? TZ_P + bustAdd() : polP(k))){ save(); return false; }
   G.bust = (G.bust || 0) + 1; G.bustAt = Date.now();
   const acc = Math.max(0, G.ilAcc);
   const law = acc > 0 && shopUse('lawyer');   // 변호사: 이번 압수액 LAWYER_CUT(30%) 감경. 압수할 게 없으면 쓰지 않고 남겨 둔다
@@ -5097,7 +5112,7 @@ function slStart(){
   if (s.cur) return slOpen();
   if (S.over) return toast('파산해서 할 수 없습니다', true);
   betDialog('sl', '🐍 뱀사다리', '<p class="muted" style="margin:0 0 8px">먼저 100칸에 도착하면 판돈의 2배</p>', bet => {
-    s.cur = SLE.newGame(bet, gamIl(), Math.random); commit(); slOpen();
+    s.cur = gamTz(SLE.newGame(bet, gamIl(), Math.random)); commit(); slOpen();
   });
 }
 const SLV = {busy:false, gen:0, tok:null};
@@ -5159,7 +5174,7 @@ function slUpdate(){
   const g = slS().cur; if (!g || !$('#slOv')) return;
   const act = $('#slAct');
   $('#slQuit').hidden = g.over;
-  if (g.over && !SLV.busy) act.innerHTML = `<button class="btn solid bm-roll" id="slEnd">결과 보기</button>${g.win !== 0 ? '<button class="btn run-btn" id="slRun">🏃 도망가기</button>' : ''}`;
+  if (g.over && !SLV.busy) act.innerHTML = `<button class="btn solid bm-roll" id="slEnd">결과 보기</button>${g.win !== 0 && !g.tz ? '<button class="btn run-btn" id="slRun">🏃 도망가기</button>' : ''}`;
   else if (SLV.busy || g.turn !== 0) act.innerHTML = `<p class="bm-wait">${g.turn ? '컴퓨터' : '내'} 차례…</p>`;
   else act.innerHTML = `<button class="btn solid bm-roll" id="slRoll">🎲 주사위 굴리기</button>`;
   slPlace(false);
@@ -5210,13 +5225,13 @@ function slTick(){
 function slHide(){ SLV.gen++; SLV.busy = false; const ov = $('#slOv'); if (ov && !ov.hidden){ ov.hidden = true; document.documentElement.classList.remove('bm-open'); if (UI.tab === 'market') renderInvest(); } }
 function slFinish(forfeit, run){
   const s = slS(), g = s.cur; if (!g) return;
-  const win = !forfeit && g.win === 0, ran = !!run && !win && !forfeit;
+  const win = !forfeit && g.win === 0, ran = !!run && !win && !forfeit && !g.tz;
   const pay = win ? Math.round(g.stake * 2 * 100) / 100 : ran ? g.stake : 0;   // 도망치면 판돈을 돌려받는다
   if (pay > 0) receiveUSD(pay);
   s.hist.unshift({at:Date.now(), stake:g.stake, pay, win, ...(forfeit ? {ff:1} : {})}); s.hist = s.hist.slice(0, 10);
   altLog('gamble', `뱀사다리 ${win ? '승리' : forfeit ? '기권' : ran ? '패배 → 도망' : '패배'}${g.il ? ' (불법)' : ''}`, pay - g.stake, 'USD');
   s.cur = null; commit(); slHide();
-  police('sl', g.il, pay - g.stake);
+  police('sl', g.il, pay - g.stake, g.tz);
   runCheck(); if (ran) runAdd('sl', g.stake);
   showModal(`<h2 class="${win ? 'up' : ''}">${win ? '🏆 이겼습니다' : forfeit ? '기권했습니다' : ran ? '🏃 도망쳤습니다' : '졌습니다'}</h2>${ran ? runNote(g.stake) : ''}<div class="bd"><div><span>판돈</span><b class="num">${fmtUSD(g.stake)}</b></div><div><span>받은 돈</span><b class="num">${fmtUSD(pay)}</b></div><div class="tot"><span>손익</span><b class="num ${cls(pay - g.stake)}">${signUSD(pay - g.stake)}</b></div></div><div class="acts"><button class="btn solid" data-close>확인</button></div>`);
 }
@@ -5287,7 +5302,7 @@ function oeCardHTML(){
     <div class="oe-steps" aria-hidden="true">${steps}</div>
     <div class="oe-hand ${L && OEV.reveal ? 'open' : ''}" id="oeHand">${L && OEV.reveal ? `<div class="oe-marbles">${Array.from({length:L.n}, (_, k) => `<i style="--d:${k * 25}ms"></i>`).join('')}</div><b class="num">${L.n}개 · ${L.n % 2 ? '홀' : '짝'}</b>` : '<span class="fist">✊</span>'}</div>
     ${L && OEV.reveal ? `<p class="oe-res ${L.ok ? 'up' : 'down'}">${L.ok ? (g.k >= OE_MAX ? `${OE_MAX}연속! 상금을 받습니다` : `맞혔다! 상금 ${fmtUSD(pot)}`) : '틀렸다… 상금을 전부 잃었습니다'} (내 선택: ${L.pick === 'odd' ? '홀' : '짝'})</p>` : `<p class="oe-res muted">${OEV.busy ? '…' : '홀일까 짝일까?'}${L && !OEV.busy ? `<small>지난 판: ${L.n}개 ${L.n % 2 ? '홀' : '짝'} · 맞힘</small>` : ''}</p>`}
-    <div class="bm-acts">${over ? `<button class="btn solid" id="oeEnd">결과 보기</button>${lost ? '<button class="btn run-btn" id="oeRun">🏃 도망가기</button>' : ''}`
+    <div class="bm-acts">${over ? `<button class="btn solid" id="oeEnd">결과 보기</button>${lost && !g.tz ? '<button class="btn run-btn" id="oeRun">🏃 도망가기</button>' : ''}`
       : `<button class="btn" data-oe="odd" ${OEV.busy ? 'disabled' : ''}>홀</button><button class="btn" data-oe="even" ${OEV.busy ? 'disabled' : ''}>짝</button>${k ? `<button class="btn solid" id="oeCash" ${OEV.busy ? 'disabled' : ''}>그만하고 ${fmtUSD(pot)} 받기</button>` : ''}`}</div>`;
 }
 const OEV = {busy:false, reveal:false, t:null};
@@ -5296,7 +5311,7 @@ function oeStart(){
   const s = oeS(); if (s.cur) return;
   if (S.over) return toast('파산해서 할 수 없습니다', true);
   betDialog('oe', '✊ 홀짝', `<p class="muted" style="margin:0 0 8px">맞힐 때마다 상금 ${OE_M}배, 틀리면 전부 잃음. 1번 이상 맞힌 뒤 언제든 그만두고 받을 수 있습니다 (최대 ${OE_MAX}번)</p>`, bet => {
-    s.cur = {v:2, stake:bet, il:gamIl(), k:0, last:null, over:false, lost:false}; OEV.reveal = false; commit(); gmOpen('oe'); oeRender();
+    s.cur = gamTz({v:2, stake:bet, il:gamIl(), k:0, last:null, over:false, lost:false}); OEV.reveal = false; commit(); gmOpen('oe'); oeRender();
   });
 }
 function oePick(pick){
@@ -5320,13 +5335,13 @@ function oeFinish(run){
   const s = oeS(), g = s.cur; if (!g || OEV.busy) return;
   if (!g.over && g.k < 1) return;              // 한 번은 해야 그만둘 수 있다
   clearTimeout(OEV.t);
-  const ran = !!run && g.lost;
+  const ran = !!run && g.lost && !g.tz;
   const pay = ran ? g.stake : g.lost ? 0 : oePot(g), win = pay > g.stake;   // 도망치면 판돈을 돌려받는다
   if (pay > 0) receiveUSD(pay);
   s.hist.unshift({at:Date.now(), stake:g.stake, pay, win, k:g.k}); s.hist = s.hist.slice(0, 10);
   altLog('gamble', `홀짝 ${g.lost ? `${g.k + 1}번째에서 틀림${ran ? ' → 도망' : ''}` : `${g.k}연속 맞히고 받음`}${g.il ? ' (불법)' : ''}`, pay - g.stake, 'USD');
   s.cur = null; OEV.reveal = false; OEV.busy = false; commit(); gmHide(); oeRender();
-  police('oe', g.il, pay - g.stake);
+  police('oe', g.il, pay - g.stake, g.tz);
   runCheck(); if (ran) runAdd('oe', g.stake);
   showModal(`<h2 class="${win ? 'up' : ''}">${ran ? '🏃 도망쳤습니다' : g.lost ? `${g.k + 1}번째에서 틀렸습니다` : `🏆 ${g.k}연속 맞힘`}</h2>${ran ? runNote(g.stake) : ''}<div class="bd"><div><span>판돈</span><b class="num">${fmtUSD(g.stake)}</b></div><div><span>받은 돈</span><b class="num">${fmtUSD(pay)}</b></div><div class="tot"><span>손익</span><b class="num ${cls(pay - g.stake)}">${signUSD(pay - g.stake)}</b></div></div><div class="acts"><button class="btn solid" data-close>확인</button></div>`);
 }
@@ -5493,7 +5508,7 @@ function bjCardInnerHTML(){
     </div>
     ${showRes ? `<p class="oe-res ${cls(g.pay - g.cost)}">${g.pay > g.cost ? '이겼다!' : g.pay === g.cost ? '비겼다' : '졌다'} · 받을 돈 ${fmtUSD(g.pay)} (건 돈 ${fmtUSD(g.cost)})</p>`
       : revealing ? '<p class="oe-res muted">딜러 차례…</p>' : `<p class="oe-res muted">${g.hands.length > 1 ? `${g.cur + 1}번째 손 · ` : ''}할 행동을 고르세요</p>`}
-    <div class="bm-acts">${over ? (showRes ? '<button class="btn solid" id="bjEnd">정산하기</button>' + (g.pay < g.cost ? '<button class="btn run-btn" id="bjRun">🏃 도망가기</button>' : '') : '')
+    <div class="bm-acts">${over ? (showRes ? '<button class="btn solid" id="bjEnd">정산하기</button>' + (g.pay < g.cost && !g.tz ? '<button class="btn run-btn" id="bjRun">🏃 도망가기</button>' : '') : '')
       : ['hit', 'stand', 'double', 'split'].map(a => {
           const ok = BJE.can(g, a) && (a === 'hit' || a === 'stand' || rich);
           return `<button class="btn ${a === 'stand' ? 'solid' : ''}" data-bj="${a}" ${ok && !BJV.anim ? '' : 'disabled'}>${BJ_ACT[a]}${(a === 'double' || a === 'split') && BJE.can(g, a) ? ` +${fmtUSD(more)}` : ''}</button>`;
@@ -5505,7 +5520,7 @@ function bjStart(){
   const s = bjS(); if (s.cur) return;
   if (S.over) return toast('파산해서 할 수 없습니다', true);
   betDialog('bj', '🃏 블랙잭', `<p class="muted" style="margin:0 0 8px">블랙잭 ${BJ.bjPay}배, 이기면 2배. 더블·스플릿하면 같은 판돈을 한 번 더 냅니다</p>`, bet => {
-    s.cur = BJE.newRound(bet, Math.random); s.cur.il = gamIl();
+    s.cur = BJE.newRound(bet, Math.random); s.cur.il = gamIl(); gamTz(s.cur);
     BJV.shown = null; BJV.seen = new Set(); commit(); gmOpen('bj');
     if (s.cur.phase === 'over') bjReveal(); else bjRender();
   });
@@ -5534,7 +5549,7 @@ function bjAct(a){
 }
 function bjFinish(run){
   const s = bjS(), g = s.cur; if (!g || g.phase !== 'over' || BJV.anim) return;
-  const ran = !!run && g.pay < g.cost, loss = Math.round((g.cost - g.pay) * 100) / 100;
+  const ran = !!run && !g.tz && g.pay < g.cost, loss = Math.round((g.cost - g.pay) * 100) / 100;
   const got = ran ? g.cost : g.pay;   // 도망치면 건 돈(판돈 + 더블·스플릿)을 모두 돌려받는다
   if (got > 0) receiveUSD(got);
   const net = Math.round((got - g.cost) * 100) / 100;
@@ -5542,7 +5557,7 @@ function bjFinish(run){
   s.hist.unshift({at:Date.now(), stake:g.stake, cost:g.cost, pay:got, res}); s.hist = s.hist.slice(0, 10);
   altLog('gamble', `블랙잭: ${ran ? '패 → 도망' : res}${g.hands.length > 1 ? ` (${g.hands.length}손)` : ''}${g.il ? ' (불법)' : ''}`, net, 'USD');
   s.cur = null; BJV.shown = null; commit(); gmHide(); bjRender();   // 결과를 보면 게임 화면을 닫고 도박 탭으로 (판 없는 화면이 남지 않게)
-  police('bj', g.il, net);
+  police('bj', g.il, net, g.tz);
   runCheck();
   if (!ran) toast(`블랙잭 ${res} ${signUSD(net)}`, net < 0);
   if (ran){ runAdd('bj', loss); showModal(`<h2>🏃 도망쳤습니다</h2><p>잃을 ${fmtUSD(loss)}을 내지 않고 건 돈 ${fmtUSD(g.cost)}을 돌려받았습니다.</p>${runNote(loss)}<div class="acts"><button class="btn solid" data-close>확인</button></div>`); }
@@ -5829,7 +5844,7 @@ function bsTableHTML(g, me, o){
     <div class="bs-ctl">${bsCtlHTML(g, me, myTurn)}</div>
     ${seat(g.pl[me], me, true)}
   </div>
-  <div class="bs-foot">${o.foot || (g.over && !BSV.busy && o.mine ? `<div class="bm-acts"><button class="btn solid" id="bsEnd">결과 보기</button>${g.win !== me && !g.quit ? '<button class="btn run-btn" id="bsRun">🏃 도망가기</button>' : ''}</div>` : '')}</div>
+  <div class="bs-foot">${o.foot || (g.over && !BSV.busy && o.mine ? `<div class="bm-acts"><button class="btn solid" id="bsEnd">결과 보기</button>${g.win !== me && !g.quit && !g.tz ? '<button class="btn run-btn" id="bsRun">🏃 도망가기</button>' : ''}</div>` : '')}</div>
   ${o.solo ? acNote() : ''}`;
 }
 // 위 막대 오른쪽(닫기와 맞은편)의 기권 단추: 6번째 차례까지는 절반 환불 표시
@@ -5853,7 +5868,7 @@ function bsStart(){
   betDialog('bs', '💥 벅샷 룰렛', `<p class="muted" style="margin:0 0 8px">딜러와 1:1, 목숨 ${BS.hpMax}. 마지막까지 버티면 판돈 2배</p>`, bet => {
     const first = UI.firstUse ? 0 : Math.random() < 0.5 ? 0 : 1; UI.firstUse = false;   // 선수권을 썼으면 내 차례부터
     const {g, ev} = BSE.newGame(['나', '딜러'], bet, Math.random, first);
-    g.il = gamIl(); g.tn = 1; g.cx = [0, BS_DLR_CX]; s.cur = g; commit(); gmOpen('bs');
+    g.il = gamIl(); g.tn = 1; g.cx = [0, BS_DLR_CX]; gamTz(g); s.cur = g; commit(); gmOpen('bs');
     BSV.msg = ''; bsRender();
     bsPlay(ev, () => bsTick());
   });
@@ -5989,14 +6004,14 @@ function bsMine(a){
 }
 function bsFinish(run){
   const s = bsS(), g = s.cur; if (!g || !g.over || BSV.busy) return;
-  const win = g.win === 0, ran = !!run && !win;
+  const win = g.win === 0, ran = !!run && !win && !g.tz;
   const half = !win && !ran && g.quit && g.quitHalf;
   const pay = win ? Math.round(g.stake * 2 * 100) / 100 : ran ? g.stake : half ? Math.round(g.stake * 50) / 100 : 0;
   if (pay > 0) receiveUSD(pay);
   s.hist.unshift({at:Date.now(), stake:g.stake, pay, win}); s.hist = s.hist.slice(0, 10);
   altLog('gamble', `벅샷 룰렛 ${win ? '승리' : ran ? '패배 → 도망' : half ? '기권 (절반 환불)' : g.quit ? '기권' : '패배'}${g.il ? ' (불법)' : ''}`, pay - g.stake, 'USD');
   s.cur = null; commit(); gmHide();
-  police('bs', g.il, pay - g.stake);
+  police('bs', g.il, pay - g.stake, g.tz);
   runCheck(); if (ran) runAdd('bs', g.stake);
   showModal(`<h2 class="${win ? 'up' : ''}">${win ? '🏆 WIN!' : ran ? '🏃 도망쳤습니다' : half ? '🏃 기권하고 자리를 떴습니다' : g.quit ? '🏳️ 기권했습니다' : '💀 졌습니다'}</h2>${half ? `<p class="muted">${BS_QUIT_TN}번째 차례 안에 기권해서 판돈의 절반을 돌려받았습니다.</p>` : ''}${ran ? runNote(g.stake) : ''}<div class="bd"><div><span>판돈</span><b class="num">${fmtUSD(g.stake)}</b></div><div><span>받은 돈</span><b class="num">${fmtUSD(pay)}</b></div><div><span>쏜 횟수</span><b class="num">${g.shots}발 · 장전 ${g.load}번</b></div></div><div class="acts"><button class="btn solid" data-close>확인</button></div>`);
 }
@@ -9070,6 +9085,7 @@ const SHOP = [
   {id:'lawyer', ic:'⚖️', nm:'변호사 선임', price:500, d:'다음 경찰 단속(불법 모드 단속·도주 적발) 한 번은 압수액이 30% 줄어듭니다. 압수할 돈이 없는 단속에는 쓰이지 않고 남습니다.'},
   {id:'dive', ic:'🤿', nm:'잠수', price:450, d:''},   // 설명은 shopDesc (RUN.p를 쓰므로)
   {id:'hide', ic:'🫥', nm:'은신', price:65, d:'다음 불법 도박 1판은 경찰에게 단속되지 않습니다 (도망쳤을 때의 적발은 그대로). 여러 개 가지고 있으면 판마다 1개씩 씁니다.'},
+  {id:'tazza', ic:'🃏', nm:'타짜', price:3000, server:true, d:'혼자 하는 도박 한 판의 판돈 한도가 사라집니다 (가진 돈까지, 대출 제외). 대신 그 판은 불법 판이 되어 경찰 적발 확률이 20% + 전과 1회당 0.25%이고, 도망칠 수 없으며 은신도 안 통합니다. 한 달에 1번, 가입 3일차부터 살 수 있습니다. 판돈 창에서 🃏 타짜 쓰기를 고르면 씁니다.'},
   {id:'first', ic:'🥇', nm:'선수권', price:200, d:'혼자 하는 벅샷 룰렛·부루마블을 시작할 때 쓰면 내 차례부터 시작합니다.'},
   {id:'skin', ic:'🎲', nm:'부루마블 말 스킨 뽑기', price:300, d:'말 스킨 10종 중 아직 없는 것 하나가 나옵니다 (헬리콥터·비행기는 날아다닙니다). 도박 탭 부루마블 칸의 🎨 말 스킨 버튼으로 바꿔 씁니다 (게임 밖에서).'},
 ];
@@ -9112,6 +9128,7 @@ async function shopFlush(){
     if (r && r.ok){
       last = r;
       if (job.item === 'record'){ const G = gamS(); G.bust = Math.max(0, (G.bust || 0) - 1); if (ACC.busted instanceof Map){ if (r.left > 0) ACC.busted.set(ACC.user.id, r.left); else ACC.busted.delete(ACC.user.id); } toast(r.left > 0 ? `브로커가 전과를 1회 지웠습니다 (남은 전과 ${r.left}회)` : '브로커가 전과를 모두 지웠습니다. 빨간 줄이 사라졌습니다'); }
+      if (job.item === 'tazza'){ const s2 = shopS(); s2.inv.tazza = shopN('tazza') + 1; TZS.left = 0; toast('🃏 타짜를 샀습니다. 혼자 하는 도박의 판돈 창에서 "타짜 쓰기"를 고르세요'); }
       if (job.item === 'color'){ ACC.ncol = ACC.ncol instanceof Map ? ACC.ncol : new Map(); ACC.ncol.set(ACC.user.id, r.color); toast('닉네임 색을 바꿨습니다'); }
     } else {   // 서버가 거절: 낸 돈을 돌려준다
       const it = shopItem(job.item);
@@ -9144,13 +9161,22 @@ function renderShop(){
   if (!SHOPV.ask) shopDraw();
 }
 const SHOPV = {ask:null, q:1};
+// 타짜 구매 가능 여부는 서버가 정한다 (한 달 1번은 계정 단위라 초기화해도 그대로, 가입 3일차부터). 상점을 열 때 받아 둔다
+const TZS = {left:null, day:null, at:0, busy:false};
+async function tzStatus(force){
+  if (!ACC.sb || !ACC.user || TZS.busy || (!force && Date.now() - TZS.at < 60000)) return;
+  TZS.busy = true;
+  try { const {data, error} = await ACC.sb.rpc('seed10k_tazza_status'); if (!error && data){ TZS.left = +data.left; TZS.day = +data.day; TZS.at = Date.now(); if (UI.tab === 'shop') shopDraw(); } }
+  catch(e){} finally { TZS.busy = false; }
+}
+const tzBlock = () => !ACC.user ? '로그인해야 살 수 있습니다' : ACC.tester ? '' : TZS.day !== null && TZS.day < 3 ? `가입 3일차부터 살 수 있습니다 (지금 ${TZS.day}일차)` : TZS.left !== null && TZS.left < 1 ? '이번 달에는 이미 샀습니다 (다음 달 1일에 다시)' : '';
 function shopListHTML(){
-  const G = gamS();
+  const G = gamS(); tzStatus();
   return `<div class="shop-list">${SHOP.map(it => {
-      const own = it.id === 'record' ? `전과 ${G.bust || 0}회 · 순수익 ${fmtUSDn(shopClean())}` : it.id === 'skin' ? `모은 스킨 ${bmSkinOwn().length}/${BM_SKINS.length}` : shopN(it.id) ? `가진 것 ${shopN(it.id)}개` : '';
-      const off = (it.id === 'record' && (!(G.bust > 0) || !shopCleanOk('record'))) || (it.id === 'skin' && bmSkinOwn().length >= BM_SKINS.length);
+      const own = it.id === 'tazza' ? `이번 달 ${TZS.left === null ? '?' : Math.max(0, TZS.left)}/1${TZS.day !== null ? ` · 가입 ${TZS.day}일차` : ''}${shopN('tazza') ? ` · 가진 것 ${shopN('tazza')}개` : ''}` : it.id === 'record' ? `전과 ${G.bust || 0}회 · 순수익 ${fmtUSDn(shopClean())}` : it.id === 'skin' ? `모은 스킨 ${bmSkinOwn().length}/${BM_SKINS.length}` : shopN(it.id) ? `가진 것 ${shopN(it.id)}개` : '';
+      const off = (it.id === 'tazza' && !!tzBlock()) || (it.id === 'record' && (!(G.bust > 0) || !shopCleanOk('record'))) || (it.id === 'skin' && bmSkinOwn().length >= BM_SKINS.length);
       return `<div class="shop-it"><span class="shop-ic">${it.ic}</span><div class="shop-tx"><b>${it.nm}</b><small>${shopDesc(it)}</small>${own ? `<small class="shop-own">${own}</small>` : ''}</div>
-        <button class="btn solid" data-shop="${it.id}" ${off ? `disabled title="${it.id === 'record' ? (!(G.bust > 0) ? '지울 전과가 없습니다' : '순수익(순자산 − 시작 자금)이 모자랍니다') : '모두 모았습니다'}"` : ''}>${fmtUSDn(it.price, 0)}</button></div>`;
+        <button class="btn solid" data-shop="${it.id}" ${off ? `disabled title="${it.id === 'tazza' ? tzBlock() : it.id === 'record' ? (!(G.bust > 0) ? '지울 전과가 없습니다' : '순수익(순자산 − 시작 자금)이 모자랍니다') : '모두 모았습니다'}"` : ''}>${fmtUSDn(it.price, 0)}</button></div>`;
     }).join('')}</div>
     ${shopS().pend.length ? `<p class="muted" style="margin:6px 0 0">서버 확인을 기다리는 구매 ${shopS().pend.length}건 · 연결되면 자동으로 처리합니다</p>` : ''}
     <p class="muted" style="margin:8px 0 0">달러 통장 ${fmtUSDn(S.usd)}${S.krw > 0 ? ` · 모자라면 원화 ${fmtKRWn(S.krw)}에서 자동 환전` : ''}</p>`;
@@ -9158,7 +9184,7 @@ function shopListHTML(){
 // 한 번에 살 수 있는 최대 개수: 낼 수 있는 돈(달러+원화) 안에서, 브로커는 남은 전과·순수익 안에서. 말 스킨 뽑기는 연출 때문에 1개씩
 function shopMax(id){
   const it = shopItem(id); if (!it) return 0;
-  if (id === 'skin') return 1;
+  if (id === 'skin' || id === 'tazza') return 1;
   let n = ACC.tester ? 99 : Math.min(99, Math.floor((S.usd + S.krw / fxRates().buy + 1e-6) / it.price));
   if (id === 'record') n = Math.min(n, Math.max(0, +(gamS().bust || 0)), Math.floor(shopClean() / it.price + 1e-9));
   return Math.max(0, n);
@@ -9196,6 +9222,7 @@ function shopBuy(id){   // 목록에서 누름 → 같은 창에서 확인 화�
   if (id === 'record' && !(gamS().bust > 0)) return toast('지울 전과가 없습니다', true);
   if (!shopCleanOk(id)) return toast(`전과는 순수익(순자산 − 시작 자금 $10,000)으로만 지울 수 있습니다 · 지금 ${fmtUSDn(shopClean())}`, true);
   if (id === 'skin' && bmSkinOwn().length >= BM_SKINS.length) return toast('스킨을 모두 모았습니다', true);
+  if (id === 'tazza' && tzBlock()) return toast(tzBlock(), true);
   if (it.server && !ACC.user) return toast('로그인해야 살 수 있습니다', true);
   SHOPV.ask = id; SHOPV.q = 1; shopDraw();
 }
@@ -9214,7 +9241,7 @@ async function shopBuyNow(id, q){
   }
   if (!got){ shopDraw(); return; }
   save();
-  if (it.server){ shopDraw(); await shopFlush(); }
+  if (it.server){ shopDraw(); await shopFlush(); if (id === 'tazza') tzStatus(true); }
   else if (id === 'skin'){ await bmSkinDraw(); }   // 뽑기 결과 창으로 바뀐다
   else { commit(); toast(`${it.nm} ${got}개를 샀습니다 (가진 것 ${shopN(id)}개)`); }
   shopDraw(); renderShopCard();

@@ -23,13 +23,22 @@ create policy "seed10k_shop_uses_select" on public.seed10k_shop_uses for select 
 
 create or replace function public.seed10k_shop_redeem(item text, arg text default null) returns jsonb
 language plpgsql security definer set search_path = public as $$
-declare uid uuid := auth.uid(); price numeric; lid bigint; bid bigint; n int; tester boolean;
+declare uid uuid := auth.uid(); price numeric; lid bigint; bid bigint; n int; tester boolean; age int;
 begin
   if uid is null then return jsonb_build_object('ok', false, 'err', '로그인이 필요합니다'); end if;
-  price := case item when 'record' then 300 when 'color' then 300 else null end;
+  price := case item when 'record' then 300 when 'color' then 300 when 'tazza' then 3000 else null end;
   if price is null then return jsonb_build_object('ok', false, 'err', '모르는 아이템입니다'); end if;
   if item = 'color' and (arg is null or arg !~ '^#[0-9A-Fa-f]{6}$') then return jsonb_build_object('ok', false, 'err', '색이 올바르지 않습니다'); end if;
   tester := exists (select 1 from public.seed10k_testers where user_id = uid);
+  -- 타짜: 가입 3일차부터(한국 날짜로 가입일이 1일차), 한국 시간 달마다 1번. 횟수는 계정 단위라 계정 초기화로 되살아나지 않는다
+  if item = 'tazza' and not tester then
+    select ((now() at time zone 'Asia/Seoul')::date - (created_at at time zone 'Asia/Seoul')::date) + 1 into age from auth.users where id = uid;
+    if coalesce(age, 0) < 3 then return jsonb_build_object('ok', false, 'err', '가입 3일차부터 살 수 있습니다'); end if;
+    if exists (select 1 from public.seed10k_shop_uses u where u.user_id = uid and u.item = 'tazza'
+                 and date_trunc('month', u.at at time zone 'Asia/Seoul') = date_trunc('month', now() at time zone 'Asia/Seoul')) then
+      return jsonb_build_object('ok', false, 'err', '이번 달에는 이미 샀습니다');
+    end if;
+  end if;
   if not tester then
     select l.id into lid from public.seed10k_ledger l
       where l.user_id = uid and l.why = 'shop:' || item and l.amt <= -price + 0.01 and l.at > now() - interval '30 minutes'
@@ -45,9 +54,24 @@ begin
     if n = 0 then delete from public.seed10k_busted where user_id = uid; end if;   -- 전과가 하나도 없으면 랭킹의 빨간 줄도 없앤다
     return jsonb_build_object('ok', true, 'left', n);
   end if;
+  if item = 'tazza' then return jsonb_build_object('ok', true, 'left', 0); end if;
   insert into public.seed10k_namecolors (user_id, color, at) values (uid, upper(arg), now())
     on conflict (user_id) do update set color = excluded.color, at = excluded.at;
   return jsonb_build_object('ok', true, 'color', upper(arg));
 end $$;
 revoke all on function public.seed10k_shop_redeem(text, text) from public, anon;
 grant execute on function public.seed10k_shop_redeem(text, text) to authenticated;
+
+-- 타짜를 지금 살 수 있는지: left = 이번 달 남은 횟수(0/1), day = 가입 며칠차(가입일 = 1일차, 한국 날짜)
+create or replace function public.seed10k_tazza_status() returns jsonb
+language plpgsql security definer set search_path = public as $$
+declare uid uuid := auth.uid(); age int; used boolean;
+begin
+  if uid is null then return jsonb_build_object('left', 0, 'day', 0); end if;
+  select ((now() at time zone 'Asia/Seoul')::date - (created_at at time zone 'Asia/Seoul')::date) + 1 into age from auth.users where id = uid;
+  used := exists (select 1 from public.seed10k_shop_uses u where u.user_id = uid and u.item = 'tazza'
+                    and date_trunc('month', u.at at time zone 'Asia/Seoul') = date_trunc('month', now() at time zone 'Asia/Seoul'));
+  return jsonb_build_object('left', case when used then 0 else 1 end, 'day', coalesce(age, 0));
+end $$;
+revoke all on function public.seed10k_tazza_status() from public, anon;
+grant execute on function public.seed10k_tazza_status() to authenticated;
