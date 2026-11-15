@@ -774,7 +774,7 @@ html.gated body{overflow:hidden}
 .bs-ctl .bs-red,.bs-p .bs-red{background:#7a1712;color:#fff;border-color:#c0352a}
 .bs-ctl .bs-big{padding:0 22px;font-size:15px}
 .bs-p.aimable{cursor:pointer;border-color:rgba(255,80,60,.55)}.bs-p.aimed{border-color:#ff4b3a;box-shadow:0 0 0 2px rgba(255,75,58,.4) inset,0 0 16px rgba(255,75,58,.35)}
-.bs-banner{position:absolute;inset:0;z-index:5;display:flex;align-items:center;justify-content:center;font-size:44px;font-weight:900;color:#fff;letter-spacing:.08em;text-shadow:0 0 2px #000,0 4px 0 #000,0 0 24px rgba(0,0,0,.9);background:rgba(10,3,3,.35);animation:bsBanner 1.1s ease-out forwards;pointer-events:none}
+.bs-banner{position:absolute;top:0;right:0;bottom:0;left:0;z-index:5;display:flex;align-items:center;justify-content:center;text-align:center;white-space:nowrap;padding-left:.08em;font-size:min(44px,10.5vw);font-weight:900;color:#fff;letter-spacing:.08em;text-shadow:0 0 2px #000,0 4px 0 #000,0 0 24px rgba(0,0,0,.9);background:rgba(10,3,3,.35);animation:bsBanner 1.1s ease-out forwards;pointer-events:none}
 @keyframes bsBanner{0%{opacity:0;transform:scale(1.3)}20%{opacity:1;transform:scale(1)}80%{opacity:1}100%{opacity:0}}
 .bs-lay{flex-wrap:wrap;align-content:center;padding:0 20px;background:rgba(20,10,8,.55)}
 .bs-lay.mine i{cursor:pointer;width:16px;height:36px}
@@ -1318,7 +1318,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.3.7';
+const VERSION = '1.3.8';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
