@@ -735,6 +735,7 @@ html.gated body{overflow:hidden}
 .shop-ic{font-size:24px;width:32px;text-align:center;flex:none}.shop-svg{width:30px;height:30px;display:block;margin:0 auto}.shop-ic.big .shop-svg{width:52px;height:52px}
 .shop-tx{display:flex;flex-direction:column;gap:2px;flex:1;min-width:0}.shop-tx small{opacity:.72;font-size:12px;line-height:1.35}.shop-tx .shop-own{opacity:1;font-weight:700}
 .shop-it .btn{flex:none;white-space:nowrap}
+.shop-qty{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:center;margin:12px 0 2px;width:100%}.shop-qty input[type=range]{flex:1 1 180px;min-width:140px;accent-color:var(--brass)}.shop-qty .amt{flex:0 0 96px}.shop-qty .amt input{width:100%;text-align:right}
 .shop-ask{display:flex;flex-direction:column;align-items:center;text-align:center;padding:6px 0}.shop-ic.big{font-size:44px;width:auto;margin-bottom:4px}
 #modal .shop-list{max-height:60vh;overflow:auto}
 .ncol-prev{font-size:20px;margin:0 0 12px;text-align:center}
@@ -1322,7 +1323,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.5.5';
+const VERSION = '1.5.6';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -4901,6 +4902,7 @@ function police(k, il, net){
   if (!il) return false;
   const G = gamS();
   G.ilAcc = Math.round((ilAcc() + (+net || 0)) * 100) / 100;   // 불법 도박 누적 순이익 (단속 판의 손익까지 넣고 압류)
+  if (shopUse('hide')){ save(); toast(`🫥 은신: 이번 판은 경찰 단속을 피했습니다 (남은 은신 ${shopN('hide')}개)`); return false; }   // 은신: 불법 도박 1판 단속 면제 (도주 적발은 그대로)
   if (Math.random() >= polP(k)){ save(); return false; }
   G.bust = (G.bust || 0) + 1; G.bustAt = Date.now();
   const acc = Math.max(0, G.ilAcc);
@@ -9067,6 +9069,7 @@ const SHOP = [
   {id:'record', ic:'😎', nm:'브로커', price:300, d:'브로커를 고용해 경찰 단속 기록(전과)을 1회 지웁니다. 랭킹판의 빨간 줄 1스택이 감소하고, 나빠졌던 신용등급(0.25등급)과 적발 확률도 되돌아옵니다. 브로커는 출처가 확실한 돈만 받아서 순수익(순자산 − 시작 자금 $10,000)으로만 낼 수 있습니다.', server:true},
   {id:'lawyer', ic:'⚖️', nm:'변호사 선임', price:500, d:'다음 경찰 단속(불법 모드 단속·도주 적발) 한 번은 압수액이 30% 줄어듭니다. 압수할 돈이 없는 단속에는 쓰이지 않고 남습니다.'},
   {id:'dive', ic:'🤿', nm:'잠수', price:450, d:''},   // 설명은 shopDesc (RUN.p를 쓰므로)
+  {id:'hide', ic:'🫥', nm:'은신', price:65, d:'다음 불법 도박 1판은 경찰에게 단속되지 않습니다 (도망쳤을 때의 적발은 그대로). 여러 개 가지고 있으면 판마다 1개씩 씁니다.'},
   {id:'first', ic:'🥇', nm:'선수권', price:200, d:'혼자 하는 벅샷 룰렛·부루마블을 시작할 때 쓰면 내 차례부터 시작합니다.'},
   {id:'skin', ic:'🎲', nm:'부루마블 말 스킨 뽑기', price:300, d:'말 스킨 10종 중 아직 없는 것 하나가 나옵니다 (헬리콥터·비행기는 날아다닙니다). 도박 탭 부루마블 칸의 🎨 말 스킨 버튼으로 바꿔 씁니다 (게임 밖에서).'},
 ];
@@ -9125,7 +9128,7 @@ async function shopFlush(){
 function shopCardHTML(){
   const n = SHOP.filter(it => it.id !== 'record' && it.id !== 'skin').reduce((a, it) => a + shopN(it.id), 0);
   return `<div class="card-h"><h2>🛒 상점</h2><button class="btn solid" id="shopOpenBtn">상점 열기</button></div>
-    <p class="mg-desc" style="margin:0">브로커 · 변호사 · 잠수 · 선수권 · 말 스킨 뽑기${n ? ` · 가진 아이템 ${n}개` : ''}${shopS().pend.length ? ` · 서버 확인 대기 ${shopS().pend.length}건` : ''}</p>`;
+    <p class="mg-desc" style="margin:0">브로커 · 은신 · 변호사 · 잠수 · 선수권 · 말 스킨 뽑기${n ? ` · 가진 아이템 ${n}개` : ''}${shopS().pend.length ? ` · 서버 확인 대기 ${shopS().pend.length}건` : ''}</p>`;
 }
 // 순수익 = 순자산 − 시작 자금. 전과 지우기는 이 안에서만 낼 수 있다 → 계정 초기화로 받은 시작 자금으로는 못 지운다 (환생해서 지우기 막기)
 // 지우면 순자산이 그만큼 줄어 순수익도 같이 줄어든다. 실제 시세 모드에서 시세를 받기 전에는 순자산을 믿을 수 없어 0으로 본다
@@ -9140,7 +9143,7 @@ function renderShop(){
       <section class="card"><div class="card-h"><h2>🎨 닉네임 색</h2><button class="btn" id="shopNcol">색 바꾸기 · ${fmtUSDn(300, 0)}</button></div><p class="mg-desc" style="margin:0">랭킹에서 내 닉네임이 고른 색으로 보입니다</p></section></div>`; }
   if (!SHOPV.ask) shopDraw();
 }
-const SHOPV = {ask:null};
+const SHOPV = {ask:null, q:1};
 function shopListHTML(){
   const G = gamS();
   return `<div class="shop-list">${SHOP.map(it => {
@@ -9152,15 +9155,35 @@ function shopListHTML(){
     ${shopS().pend.length ? `<p class="muted" style="margin:6px 0 0">서버 확인을 기다리는 구매 ${shopS().pend.length}건 · 연결되면 자동으로 처리합니다</p>` : ''}
     <p class="muted" style="margin:8px 0 0">달러 통장 ${fmtUSDn(S.usd)}${S.krw > 0 ? ` · 모자라면 원화 ${fmtKRWn(S.krw)}에서 자동 환전` : ''}</p>`;
 }
+// 한 번에 살 수 있는 최대 개수: 낼 수 있는 돈(달러+원화) 안에서, 브로커는 남은 전과·순수익 안에서. 말 스킨 뽑기는 연출 때문에 1개씩
+function shopMax(id){
+  const it = shopItem(id); if (!it) return 0;
+  if (id === 'skin') return 1;
+  let n = ACC.tester ? 99 : Math.min(99, Math.floor((S.usd + S.krw / fxRates().buy + 1e-6) / it.price));
+  if (id === 'record') n = Math.min(n, Math.max(0, +(gamS().bust || 0)), Math.floor(shopClean() / it.price + 1e-9));
+  return Math.max(0, n);
+}
 function shopDraw(){
   const box = $('#shopBox'); if (!box) return;
   const it = SHOPV.ask && shopItem(SHOPV.ask);
+  const mx = it ? Math.max(1, shopMax(it.id)) : 1, q = Math.min(mx, Math.max(1, SHOPV.q || 1));
   const h = it ? `<div class="shop-ask"><span class="shop-ic big">${it.ic}</span><b>${it.nm}</b><p class="muted" style="margin:6px 0 0">${shopDesc(it)}</p>
-      <div class="acts"><button class="btn" id="shopBack">뒤로</button><button class="btn solid" id="shopGo">${fmtUSDn(it.price, 0)} 내고 사기</button></div></div>` : shopListHTML();
+      ${mx > 1 ? `<div class="shop-qty"><input type="range" id="shopQr" min="1" max="${mx}" step="1" value="${q}" aria-label="개수"><label class="amt"><input id="shopQn" type="number" inputmode="numeric" min="1" max="${mx}" step="1" value="${q}" aria-label="개수 입력"><span>개</span></label><small class="muted">최대 ${mx}개</small></div>` : ''}
+      <div class="acts"><button class="btn" id="shopBack">뒤로</button><button class="btn solid" id="shopGo">${fmtUSDn(it.price * q, 0)} 내고 ${q > 1 ? `${q}개 ` : ''}사기</button></div></div>` : shopListHTML();
   if (box.dataset.h === h) return;   // 같으면 다시 그리지 않는다 (시세 갱신 때마다 버튼이 바뀌어 누른 것이 씹히지 않게)
   box.dataset.h = h; box.innerHTML = h;
   const bk = $('#shopBack'); if (bk) bk.onclick = () => { SHOPV.ask = null; shopDraw(); };
-  const go = $('#shopGo'); if (go) go.onclick = () => shopBuyNow(SHOPV.ask);
+  const go = $('#shopGo'); if (go) go.onclick = () => shopBuyNow(SHOPV.ask, SHOPV.q || 1);
+  // 개수: 슬라이드바와 숫자 칸이 서로 맞춰진다. 바뀔 때는 버튼 글자만 고친다 (다시 그리면 끌던 슬라이드가 끊긴다)
+  const qr = $('#shopQr'), qn = $('#shopQn');
+  if (qr && qn){
+    const mx = +qr.max, setQ = (v, from) => { v = Math.max(1, Math.min(mx, Math.round(+v) || 1)); SHOPV.q = v; if (from !== qr) qr.value = v; if (from !== qn) qn.value = v;
+      const it2 = shopItem(SHOPV.ask); if (go && it2) go.textContent = `${fmtUSDn(it2.price * v, 0)} 내고 ${v > 1 ? `${v}개 ` : ''}사기`; };
+    qr.oninput = () => setQ(qr.value, qr);
+    qn.oninput = () => { if (qn.value !== '') setQ(qn.value, qn); };
+    qn.onchange = qn.onblur = () => setQ(qn.value, null);
+    qn.onkeydown = e => { if (e.key === 'Enter'){ setQ(qn.value, null); qn.blur(); } };
+  }
 }
 function shopOpen(){
   SHOPV.ask = null;
@@ -9174,16 +9197,26 @@ function shopBuy(id){   // 목록에서 누름 → 같은 창에서 확인 화�
   if (!shopCleanOk(id)) return toast(`전과는 순수익(순자산 − 시작 자금 $10,000)으로만 지울 수 있습니다 · 지금 ${fmtUSDn(shopClean())}`, true);
   if (id === 'skin' && bmSkinOwn().length >= BM_SKINS.length) return toast('스킨을 모두 모았습니다', true);
   if (it.server && !ACC.user) return toast('로그인해야 살 수 있습니다', true);
-  SHOPV.ask = id; shopDraw();
+  SHOPV.ask = id; SHOPV.q = 1; shopDraw();
 }
-async function shopBuyNow(id){
+async function shopBuyNow(id, q){
   const it = shopItem(id); if (!it) return;
-  SHOPV.ask = null;
-  if (!shopCleanOk(id)){ toast(`전과는 순수익으로만 지울 수 있습니다 · 지금 ${fmtUSDn(shopClean())}`, true); shopDraw(); return; }
-  if (!shopPay(id)){ shopDraw(); return; }
-  if (it.server){ shopDraw(); await shopRedeem(id); }
+  SHOPV.ask = null; q = Math.max(1, Math.min(Math.max(1, shopMax(id)), Math.round(+q) || 1));
+  // 1개씩 값을 내고 받는다 (돈 기록도 1개에 한 줄 — 서버가 주는 브로커는 줄마다 확인한다). 중간에 돈·순수익이 모자라면 거기서 멈춘다
+  let got = 0;
+  for (let k = 0; k < q; k++){
+    if (!shopCleanOk(id)){ if (!got) toast(`전과는 순수익으로만 지울 수 있습니다 · 지금 ${fmtUSDn(shopClean())}`, true); break; }
+    if (id === 'record' && !(gamS().bust - shopS().pend.filter(j => j.item === 'record').length > 0)) break;
+    if (!shopPay(id)) break;
+    got++;
+    if (it.server) shopS().pend.push({item:id, arg:null, at:Date.now()});
+    else if (id !== 'skin'){ const s = shopS(); s.inv[id] = shopN(id) + 1; }
+  }
+  if (!got){ shopDraw(); return; }
+  save();
+  if (it.server){ shopDraw(); await shopFlush(); }
   else if (id === 'skin'){ await bmSkinDraw(); }   // 뽑기 결과 창으로 바뀐다
-  else { const s = shopS(); s.inv[id] = shopN(id) + 1; commit(); toast(`${it.nm}을(를) 샀습니다 (가진 것 ${shopN(id)}개)`); }
+  else { commit(); toast(`${it.nm} ${got}개를 샀습니다 (가진 것 ${shopN(id)}개)`); }
   shopDraw(); renderShopCard();
 }
 document.addEventListener('click', e => {
