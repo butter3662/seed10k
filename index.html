@@ -1332,7 +1332,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.6.5';
+const VERSION = '1.6.6';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -7083,7 +7083,7 @@ setInterval(() => { if (!BSA.ctx || BSA.ctx.state !== 'running') return; const s
 function bsaToggle(){
   BSA.on = !BSA.on; try { localStorage.setItem('seed10k.bs.sound', BSA.on ? '1' : '0'); } catch(e){}
   const c = bsaInit(); if (c){ if (c.state !== 'running') c.resume().catch(() => {}); BSA.master.gain.setTargetAtTime(BSA.on ? BSA.vol : 0, c.currentTime, 0.05); }
-  document.querySelectorAll('.bs-snd, .bm-snd').forEach(b => { b.innerHTML = bsaIcon(); b.setAttribute('aria-label', BSA.on ? '소리 끄기' : '소리 켜기'); });
+  document.querySelectorAll('.bs-snd:not(.bs-spd), .bm-snd').forEach(b => { b.innerHTML = bsaIcon(); b.setAttribute('aria-label', BSA.on ? '소리 끄기' : '소리 켜기'); });
 }
 const bsaIcon = () => `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/>${BSA.on ? '<path d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/>' : '<path d="M16 9l6 6M22 9l-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'}</svg>`;
 
