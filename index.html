@@ -1322,7 +1322,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.5.4';
+const VERSION = '1.5.5';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -1593,10 +1593,40 @@ const SB_MEM = new Map();
 // 로그인 진단 기록: 계정이 저절로 바뀌는 문제를 찾으려고, 로그인 정보가 언제 무엇으로 바뀌었는지 최근 40줄을 이 탭 메모리에 남긴다 (규칙·설정 > 계정 전환 아래에서 봄)
 const AUTH_LOG = [], authUid = v => { try { const o = JSON.parse(v); return (o && o.user && (o.user.email || o.user.id)) || '?'; } catch(e){ return '?'; } };
 function authLog(s){ AUTH_LOG.push(`${new Date().toLocaleTimeString('ko-KR', {hour12:false})} ${s}`); if (AUTH_LOG.length > 40) AUTH_LOG.shift(); }
+/* 탭마다 자기 계정: 이 탭이 어느 계정인지 sessionStorage(탭마다 따로)에 적어 두고, 로그인 정보는 계정별 칸(seed10k.auth.u.<id>)에서 읽는다.
+   예전에는 모든 탭이 한 칸을 같이 써서, 다른 탭(같은 브라우저의 SEED 10K)이 다른 계정으로 토큰을 갱신하면 이 탭도 그 계정으로 끌려갔다
+   (진단 기록: 이 탭이 cdef를 저장하고 4초 뒤 저장소가 다른 계정으로 바뀜). 공용 칸(SB_AUTH_KEY)은 '마지막으로 쓴 계정' — 새 탭은 그 계정으로 시작한다.
+   같은 계정을 쓰는 탭끼리는 계정별 칸을 같이 써서 갱신된 토큰을 나눠 쓴다 (만료가 가장 늦은 것 = 가장 새 토큰) */
+const SB_TAB = 'seed10k.tabuid', sbUser = v => { try { const o = JSON.parse(v); return o && o.user ? {id:o.user.id, exp:+o.expires_at || 0} : null; } catch(e){ return null; } };
+const sbTabGet = () => { try { return sessionStorage.getItem(SB_TAB); } catch(e){ return null; } }, sbTabSet = v => { try { v ? sessionStorage.setItem(SB_TAB, v) : sessionStorage.removeItem(SB_TAB); } catch(e){} };
+const sbUKey = id => `seed10k.auth.u.${id}`;
 const SB_STORE = {
-  getItem:k => { if (SB_MEM.has(k)) return SB_MEM.get(k); try { let v = localStorage.getItem(k); if (v === null && k === SB_AUTH_KEY && !localStorage.getItem('seed10k.auth.moved')){ v = localStorage.getItem(SB_OLD_KEY); localStorage.setItem('seed10k.auth.moved', '1'); if (v !== null) lsSet(k, v); } return v; } catch(e){ return null; } },
-  setItem:(k, v) => { const ok = lsSet(k, v); if (k === SB_AUTH_KEY) authLog(`저장 ${authUid(v)} ${ok ? '성공' : '실패(공간 부족) → 메모리'}`); if (ok) SB_MEM.delete(k); else { SB_MEM.set(k, v); try { localStorage.removeItem(k); } catch(e){} } },   // 못 쓰면 옛 값을 지워 다른 탭이 옛 계정을 읽지 않게
-  removeItem:k => { if (k === SB_AUTH_KEY) authLog('지움'); SB_MEM.delete(k); try { localStorage.removeItem(k); } catch(e){} }};
+  getItem:k => {
+    if (k !== SB_AUTH_KEY){ try { return localStorage.getItem(k); } catch(e){ return null; } }
+    let shared = null;
+    try { shared = localStorage.getItem(k); if (shared === null && !localStorage.getItem('seed10k.auth.moved')){ shared = localStorage.getItem(SB_OLD_KEY); localStorage.setItem('seed10k.auth.moved', '1'); if (shared !== null) lsSet(k, shared); } } catch(e){}
+    const tab = sbTabGet();
+    if (tab === '-') return null;   // 이 탭은 로그아웃했다 (다른 탭 계정으로 저절로 들어가지 않게)
+    if (!tab){ const v = SB_MEM.get(k) || shared, u = v && sbUser(v); if (u) sbTabSet(u.id); return v; }   // 새 탭: 마지막으로 쓴 계정
+    let own = null; try { own = localStorage.getItem(sbUKey(tab)); } catch(e){}
+    const c = [SB_MEM.get(k), own, shared].filter(v => { const u = v && sbUser(v); return u && u.id === tab; });
+    return c.length ? c.reduce((a, b) => sbUser(b).exp > sbUser(a).exp ? b : a) : null;
+  },
+  setItem:(k, v) => {
+    if (k !== SB_AUTH_KEY){ lsSet(k, v); return; }
+    const u = sbUser(v); if (u) sbTabSet(u.id);
+    const ok = (u ? lsSet(sbUKey(u.id), v) : true) && lsSet(k, v);
+    authLog(`저장 ${authUid(v)} ${ok ? '성공' : '실패(공간 부족) → 메모리'}`);
+    if (ok) SB_MEM.delete(k); else SB_MEM.set(k, v);
+  },
+  removeItem:k => {
+    if (k !== SB_AUTH_KEY){ try { localStorage.removeItem(k); } catch(e){} return; }
+    const tab = sbTabGet(); authLog('지움 (로그아웃)'); SB_MEM.delete(k);
+    try { if (tab && tab !== '-'){ localStorage.removeItem(sbUKey(tab)); const u = sbUser(localStorage.getItem(k)); if (u && u.id === tab) localStorage.removeItem(k); } } catch(e){}
+    sbTabSet('-');
+  }};
+// 다른 탭의 로그인 알림(supabase가 탭끼리 BroadcastChannel로 보냄)은 이 탭 계정이 아니면 무시한다
+const sbForeign = session => { const tab = sbTabGet(); return session ? !!(tab && tab !== '-' && session.user.id !== tab) : !!(tab && tab !== '-'); };
 // 테스트 계정 (서버 seed10k_testers 표가 정한다): 돈이 줄지 않게 채우고 랭킹에 올리지 않는다
 const TEST_USD = 1e15, TEST_KRW = 1e15;   // 사실상 무한: 저장할 때마다 다시 채운다 (Infinity는 JSON에 저장되지 않아 큰 수를 쓴다)
 function testerFill(){ if (!ACC.tester || !S || S._ph) return; if (!(S.usd >= TEST_USD)) S.usd = TEST_USD; if (!(S.krw >= TEST_KRW)) S.krw = TEST_KRW; }
@@ -10160,7 +10190,7 @@ function initAccount(){
   }
   try { ACC.sb = window.supabase.createClient(SB_URL, SB_KEY, {auth:{storage:SB_STORE, storageKey:SB_AUTH_KEY}}); }
   catch(e){ ACC.err = '로그인 서버 설정이 올바르지 않습니다.'; ACC.ready = true; afterAuthResolved(); return; }
-  ACC.sb.auth.onAuthStateChange((ev, session) => { authLog(`알림 ${ev} ${session ? session.user.email || session.user.id : '-'} (지금 ${ACC.user ? ACC.user.email : '-'})`); if (ev === 'PASSWORD_RECOVERY') setTimeout(pwRecoverDialog, 600); handleSession(session); });
+  ACC.sb.auth.onAuthStateChange((ev, session) => { const fr = sbForeign(session); authLog(`알림 ${ev} ${session ? session.user.email || session.user.id : '-'} (지금 ${ACC.user ? ACC.user.email : '-'})${fr ? ' → 다른 탭 것이라 무시' : ''}`); if (fr) return; if (ev === 'PASSWORD_RECOVERY') setTimeout(pwRecoverDialog, 600); handleSession(session); });
   ACC.sb.auth.getSession().then(({data}) => handleSession(data && data.session)).catch(() => { ACC.ready = true; afterAuthResolved(); });
 }
 async function handleSession(session){
