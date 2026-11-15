@@ -1323,7 +1323,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.5.8';
+const VERSION = '1.5.9';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -9085,7 +9085,7 @@ const SHOP = [
   {id:'lawyer', ic:'⚖️', nm:'변호사 선임', price:500, d:'다음 경찰 단속(불법 모드 단속·도주 적발) 한 번은 압수액이 30% 줄어듭니다. 압수할 돈이 없는 단속에는 쓰이지 않고 남습니다.'},
   {id:'dive', ic:'🤿', nm:'잠수', price:450, d:''},   // 설명은 shopDesc (RUN.p를 쓰므로)
   {id:'hide', ic:'🫥', nm:'은신', price:65, d:'다음 불법 도박 1판은 경찰에게 단속되지 않습니다 (도망쳤을 때의 적발은 그대로). 여러 개 가지고 있으면 판마다 1개씩 씁니다.'},
-  {id:'tazza', ic:'🃏', nm:'타짜', price:3000, server:true, d:'혼자 하는 도박 한 판의 판돈 한도가 사라집니다 (가진 돈까지, 대출 제외). 대신 그 판은 불법 판이 되어 경찰 적발 확률이 20% + 전과 1회당 0.25%이고, 도망칠 수 없으며 은신도 안 통합니다. 한 달에 1번, 가입 3일차부터 살 수 있고, 한 번에 1개만 가질 수 있습니다. 판돈 창에서 🃏 타짜 쓰기를 고르면 씁니다.'},
+  {id:'tazza', ic:'🃏', nm:'타짜', price:3000, server:true, d:'혼자 하는 도박 한 판의 판돈 한도가 사라집니다 (가진 돈까지, 대출 제외). 대신 그 판은 불법 판이 되어 경찰 적발 확률이 20% + 전과 1회당 0.25%이고, 도망칠 수 없으며 은신도 안 통합니다. 한 달에 1번, 가입(또는 마지막 환생) 3일차부터 살 수 있고, 한 번에 1개만 가질 수 있습니다. 판돈 창에서 🃏 타짜 쓰기를 고르면 씁니다.'},
   {id:'first', ic:'🥇', nm:'선수권', price:200, d:'혼자 하는 벅샷 룰렛·부루마블을 시작할 때 쓰면 내 차례부터 시작합니다.'},
   {id:'skin', ic:'🎲', nm:'부루마블 말 스킨 뽑기', price:300, d:'말 스킨 10종 중 아직 없는 것 하나가 나옵니다 (헬리콥터·비행기는 날아다닙니다). 도박 탭 부루마블 칸의 🎨 말 스킨 버튼으로 바꿔 씁니다 (게임 밖에서).'},
 ];
@@ -9169,11 +9169,11 @@ async function tzStatus(force){
   try { const {data, error} = await ACC.sb.rpc('seed10k_tazza_status'); if (!error && data){ TZS.left = +data.left; TZS.day = +data.day; TZS.at = Date.now(); if (UI.tab === 'shop') shopDraw(); } }
   catch(e){} finally { TZS.busy = false; }
 }
-const tzBlock = () => !ACC.user ? '로그인해야 살 수 있습니다' : shopN('tazza') >= 1 ? '이미 1개 가지고 있습니다 (한 번에 1개만 가질 수 있음)' : ACC.tester ? '' : TZS.day !== null && TZS.day < 3 ? `가입 3일차부터 살 수 있습니다 (지금 ${TZS.day}일차)` : TZS.left !== null && TZS.left < 1 ? '이번 달에는 이미 샀습니다 (다음 달 1일에 다시)' : '';
+const tzBlock = () => !ACC.user ? '로그인해야 살 수 있습니다' : shopN('tazza') >= 1 ? '이미 1개 가지고 있습니다 (한 번에 1개만 가질 수 있음)' : ACC.tester ? '' : TZS.day !== null && TZS.day < 3 ? `가입·환생 3일차부터 살 수 있습니다 (지금 ${TZS.day}일차)` : TZS.left !== null && TZS.left < 1 ? '이번 달에는 이미 샀습니다 (다음 달 1일에 다시)' : '';
 function shopListHTML(){
   const G = gamS(); tzStatus();
   return `<div class="shop-list">${SHOP.map(it => {
-      const own = it.id === 'tazza' ? `이번 달 ${TZS.left === null ? '?' : Math.max(0, TZS.left)}/1${TZS.day !== null ? ` · 가입 ${TZS.day}일차` : ''}${shopN('tazza') ? ` · 가진 것 ${shopN('tazza')}개` : ''}` : it.id === 'record' ? `전과 ${G.bust || 0}회 · 순수익 ${fmtUSDn(shopClean())}` : it.id === 'skin' ? `모은 스킨 ${bmSkinOwn().length}/${BM_SKINS.length}` : shopN(it.id) ? `가진 것 ${shopN(it.id)}개` : '';
+      const own = it.id === 'tazza' ? `이번 달 ${TZS.left === null ? '?' : Math.max(0, TZS.left)}/1${TZS.day !== null ? ` · 가입·환생 ${TZS.day}일차` : ''}${shopN('tazza') ? ` · 가진 것 ${shopN('tazza')}개` : ''}` : it.id === 'record' ? `전과 ${G.bust || 0}회 · 순수익 ${fmtUSDn(shopClean())}` : it.id === 'skin' ? `모은 스킨 ${bmSkinOwn().length}/${BM_SKINS.length}` : shopN(it.id) ? `가진 것 ${shopN(it.id)}개` : '';
       const off = (it.id === 'tazza' && !!tzBlock()) || (it.id === 'record' && (!(G.bust > 0) || !shopCleanOk('record'))) || (it.id === 'skin' && bmSkinOwn().length >= BM_SKINS.length);
       return `<div class="shop-it"><span class="shop-ic">${it.ic}</span><div class="shop-tx"><b>${it.nm}</b><small>${shopDesc(it)}</small>${own ? `<small class="shop-own">${own}</small>` : ''}</div>
         <button class="btn solid" data-shop="${it.id}" ${off ? `disabled title="${it.id === 'tazza' ? tzBlock() : it.id === 'record' ? (!(G.bust > 0) ? '지울 전과가 없습니다' : '순수익(순자산 − 시작 자금)이 모자랍니다') : '모두 모았습니다'}"` : ''}>${fmtUSDn(it.price, 0)}</button></div>`;
@@ -10077,6 +10077,7 @@ function resetGame(){
   const keepBase = S.syncBase, was = {usd:S.usd, krw:S.krw}, bust = +(S.gam && S.gam.bust) || 0; S = newGame(S.mode); if (keepBase !== undefined) S.syncBase = keepBase;
   if (bust){ gamS().bust = bust; }   // 전과는 계정에 붙는다: 초기화(환생)해도 그대로 → 신용등급·적발 확률도 그대로
   lgReset('reset', was); save();
+  try { TZS.at = 0; lgFlush().then(() => tzStatus(true)); } catch(e){}   // 환생하면 타짜 '가입·환생 n일차'가 1일차부터 (서버가 'reset' 돈 기록으로 센다)
   if (ACC.user && ACC.testerKnown) bustSync();   // 서버 기록으로 한 번 더 맞춘다
   $('#modal').hidden = true; $('#modal').classList.remove('on');
   if (UI.sheet) closeSheet(); else { $('#scrim').classList.remove('on'); $('#scrim').hidden = true; }

@@ -30,10 +30,11 @@ begin
   if price is null then return jsonb_build_object('ok', false, 'err', '모르는 아이템입니다'); end if;
   if item = 'color' and (arg is null or arg !~ '^#[0-9A-Fa-f]{6}$') then return jsonb_build_object('ok', false, 'err', '색이 올바르지 않습니다'); end if;
   tester := exists (select 1 from public.seed10k_testers where user_id = uid);
-  -- 타짜: 가입 3일차부터(한국 날짜로 가입일이 1일차), 한국 시간 달마다 1번. 횟수는 계정 단위라 계정 초기화로 되살아나지 않는다
+  -- 타짜: 가입(또는 마지막 환생) 3일차부터(한국 날짜로 그날이 1일차), 한국 시간 달마다 1번. 횟수는 계정 단위라 계정 초기화로 되살아나지 않는다
   if item = 'tazza' and not tester then
-    select ((now() at time zone 'Asia/Seoul')::date - (created_at at time zone 'Asia/Seoul')::date) + 1 into age from auth.users where id = uid;
-    if coalesce(age, 0) < 3 then return jsonb_build_object('ok', false, 'err', '가입 3일차부터 살 수 있습니다'); end if;
+    select ((now() at time zone 'Asia/Seoul')::date - (greatest(created_at, coalesce((select max(l.at) from public.seed10k_ledger l where l.user_id = uid and l.why = 'reset'), created_at)) at time zone 'Asia/Seoul')::date) + 1
+      into age from auth.users where id = uid;   -- 가입일 또는 마지막 계정 초기화(환생)일부터 센다
+    if coalesce(age, 0) < 3 then return jsonb_build_object('ok', false, 'err', '가입·환생 3일차부터 살 수 있습니다'); end if;
     if exists (select 1 from public.seed10k_shop_uses u where u.user_id = uid and u.item = 'tazza'
                  and date_trunc('month', u.at at time zone 'Asia/Seoul') = date_trunc('month', now() at time zone 'Asia/Seoul')) then
       return jsonb_build_object('ok', false, 'err', '이번 달에는 이미 샀습니다');
@@ -62,13 +63,14 @@ end $$;
 revoke all on function public.seed10k_shop_redeem(text, text) from public, anon;
 grant execute on function public.seed10k_shop_redeem(text, text) to authenticated;
 
--- 타짜를 지금 살 수 있는지: left = 이번 달 남은 횟수(0/1), day = 가입 며칠차(가입일 = 1일차, 한국 날짜)
+-- 타짜를 지금 살 수 있는지: left = 이번 달 남은 횟수(0/1), day = 가입(또는 마지막 환생) 며칠차(그날 = 1일차, 한국 날짜)
 create or replace function public.seed10k_tazza_status() returns jsonb
 language plpgsql security definer set search_path = public as $$
 declare uid uuid := auth.uid(); age int; used boolean;
 begin
   if uid is null then return jsonb_build_object('left', 0, 'day', 0); end if;
-  select ((now() at time zone 'Asia/Seoul')::date - (created_at at time zone 'Asia/Seoul')::date) + 1 into age from auth.users where id = uid;
+  select ((now() at time zone 'Asia/Seoul')::date - (greatest(created_at, coalesce((select max(l.at) from public.seed10k_ledger l where l.user_id = uid and l.why = 'reset'), created_at)) at time zone 'Asia/Seoul')::date) + 1
+      into age from auth.users where id = uid;   -- 가입일 또는 마지막 계정 초기화(환생)일부터 센다
   used := exists (select 1 from public.seed10k_shop_uses u where u.user_id = uid and u.item = 'tazza'
                     and date_trunc('month', u.at at time zone 'Asia/Seoul') = date_trunc('month', now() at time zone 'Asia/Seoul'));
   return jsonb_build_object('left', case when used then 0 else 1 end, 'day', coalesce(age, 0));
