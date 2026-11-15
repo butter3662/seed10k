@@ -1321,7 +1321,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.5.1';
+const VERSION = '1.5.2';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -1581,7 +1581,13 @@ function lsSet(k, v){
   }
 }
 // Supabase 로그인 정보도 같은 방식으로 쓴다 (공간이 모자라면 정리하고 다시)
-const SB_STORE = {getItem:k => { try { return localStorage.getItem(k); } catch(e){ return null; } }, setItem:(k, v) => { lsSet(k, v); }, removeItem:k => { try { localStorage.removeItem(k); } catch(e){} }};
+// 로그인 정보는 SEED 10K 전용 칸(SB_AUTH_KEY)에 둔다. 예전에는 Supabase 기본 칸(sb-<프로젝트>-auth-token)을 썼는데,
+// 같은 주소(butter3662.github.io)에서 같은 Supabase를 쓰는 MAGI도 그 칸을 써서, MAGI 탭이 다른 계정으로 로그인돼 있으면
+// 토큰을 갱신할 때마다 이 사이트의 로그인이 그 계정으로 바뀌었다('다른 탭에서 계정이 바뀌어…'). 처음 한 번은 기본 칸의 로그인을 옮겨 와 로그인이 유지되게 한다
+const SB_AUTH_KEY = 'seed10k-auth-token', SB_OLD_KEY = 'sb-ictjkqbbcaigdvlysdaw-auth-token';
+const SB_STORE = {
+  getItem:k => { try { let v = localStorage.getItem(k); if (v === null && k === SB_AUTH_KEY && !localStorage.getItem('seed10k.auth.moved')){ v = localStorage.getItem(SB_OLD_KEY); localStorage.setItem('seed10k.auth.moved', '1'); if (v !== null) lsSet(k, v); } return v; } catch(e){ return null; } },
+  setItem:(k, v) => { lsSet(k, v); }, removeItem:k => { try { localStorage.removeItem(k); } catch(e){} }};
 // 테스트 계정 (서버 seed10k_testers 표가 정한다): 돈이 줄지 않게 채우고 랭킹에 올리지 않는다
 const TEST_USD = 1e15, TEST_KRW = 1e15;   // 사실상 무한: 저장할 때마다 다시 채운다 (Infinity는 JSON에 저장되지 않아 큰 수를 쓴다)
 function testerFill(){ if (!ACC.tester || !S || S._ph) return; if (!(S.usd >= TEST_USD)) S.usd = TEST_USD; if (!(S.krw >= TEST_KRW)) S.krw = TEST_KRW; }
@@ -1592,7 +1598,7 @@ async function testerCheck(){
     ACC.testerKnown = true;
     try { onlTrack(); } catch(e){}   // 접속 목록에 올릴지(테스트 계정은 안 올림) 바로 정한다
     bustSync();   // 전과 횟수를 서버 기록(계정 전체)에 맞춘다 → 신용등급·경찰 적발 확률에 반영
-    setTimeout(() => { try { shopFlush(); } catch(e){} }, 3000);   // 서버 확인을 기다리던 상점 구매님)
+    setTimeout(() => { try { shopFlush(); } catch(e){} }, 3000);   // 서버 확인을 기다리던 상점 구매
     try { const {data, error} = await ACC.sb.from('seed10k_rank_bans').select('at,reason').eq('user_id', ACC.user.id).maybeSingle(); if (!error) ACC.rankBan = data || null; } catch(e){}
   }
   if (ACC.tester){
@@ -10141,7 +10147,7 @@ function initAccount(){
     ACC.err = '로그인 서버에 연결하지 못했습니다. 인터넷 연결을 확인하거나 로그인 없이 하세요.';
     ACC.ready = true; afterAuthResolved(); return;
   }
-  try { ACC.sb = window.supabase.createClient(SB_URL, SB_KEY, {auth:{storage:SB_STORE}}); }
+  try { ACC.sb = window.supabase.createClient(SB_URL, SB_KEY, {auth:{storage:SB_STORE, storageKey:SB_AUTH_KEY}}); }
   catch(e){ ACC.err = '로그인 서버 설정이 올바르지 않습니다.'; ACC.ready = true; afterAuthResolved(); return; }
   ACC.sb.auth.onAuthStateChange((ev, session) => { if (ev === 'PASSWORD_RECOVERY') setTimeout(pwRecoverDialog, 600); handleSession(session); });
   ACC.sb.auth.getSession().then(({data}) => handleSession(data && data.session)).catch(() => { ACC.ready = true; afterAuthResolved(); });
