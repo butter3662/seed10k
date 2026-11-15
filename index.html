@@ -1316,7 +1316,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.3.3';
+const VERSION = '1.3.4';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -8887,12 +8887,12 @@ function altAssetsHTML(){
 }
 
 /* ───── 상점 (게임 안의 달러로 산다) ─────
-   전과 지우기 $500 · 변호사 선임 $300 · 잠수 $300 · 선수권 $200 · 닉네임 색 $300 (+ 부루마블 말 스킨 뽑기)
+   전과 지우기 $300(깨끗한 돈으로만) · 변호사 선임 $300 · 잠수 $300 · 선수권 $200 · 닉네임 색 $300 (+ 부루마블 말 스킨 뽑기)
    - 전과 지우기·닉네임 색은 남들도 보는 것이라 서버 함수(seed10k_shop_redeem)가 준다: 서버는 방금 생긴 돈 기록 'shop:<아이템>'(−가격)이 있어야만 효과를 준다
    - 변호사·잠수·선수권은 내 기록(S.gam.shop.inv)에 개수로 쌓였다가 쓸 때 하나씩 줄어든다
    값은 달러 통장에서 낸다. 달러가 모자라면 원화에서 모자란 만큼 먼저 환전한다(그 환전은 돈 기록에 따로 한 줄). 마이너스통장은 쓰지 않는다 */
 const SHOP = [
-  {id:'record', ic:'🧽', nm:'전과 지우기', price:500, d:'경찰 단속 기록(전과)을 1회 지웁니다. 0회가 되면 랭킹의 빨간 줄도 사라지고, 낮아졌던 최고 신용등급과 적발 확률도 되돌아옵니다.', server:true},
+  {id:'record', ic:'🧽', nm:'전과 지우기', price:300, d:'경찰 단속 기록(전과)을 1회 지웁니다. 0회가 되면 랭킹의 빨간 줄도 사라지고, 낮아졌던 최고 신용등급과 적발 확률도 되돌아옵니다. 깨끗한 돈(순자산 중 시작 자금 $10,000을 넘는 번 돈)으로만 낼 수 있습니다.', server:true},
   {id:'lawyer', ic:'⚖️', nm:'변호사 선임', price:300, d:'다음 경찰 단속(불법 모드 단속·도주 적발) 한 번은 압수액이 절반이 됩니다.'},
   {id:'dive', ic:'🤿', nm:'잠수', price:300, d:''},   // 설명은 shopDesc (RUN.p를 쓰므로)
   {id:'first', ic:'🥇', nm:'선수권', price:200, d:'혼자 하는 벅샷 룰렛·부루마블을 시작할 때 쓰면 내 차례부터 시작합니다.'},
@@ -8955,15 +8955,19 @@ function shopCardHTML(){
   return `<div class="card-h"><h2>🛒 상점</h2><button class="btn solid" id="shopOpenBtn">상점 열기</button></div>
     <p class="mg-desc" style="margin:0">전과 지우기 · 변호사 · 잠수 · 선수권 · 말 스킨 뽑기${n ? ` · 가진 아이템 ${n}개` : ''}${shopS().pend.length ? ` · 서버 확인 대기 ${shopS().pend.length}건` : ''}</p>`;
 }
+// 깨끗한 돈 = 순자산 − 시작 자금. 전과 지우기는 이 안에서만 낼 수 있다 → 계정 초기화로 받은 시작 자금으로는 못 지운다 (환생해서 지우기 막기)
+// 지우면 순자산이 그만큼 줄어 깨끗한 돈도 같이 줄어든다. 실제 시세 모드에서 시세를 받기 전에는 순자산을 믿을 수 없어 0으로 본다
+function shopClean(){ if (!S || S._ph || (isLive() && !LIVE.ok)) return 0; return Math.max(0, Math.floor((netWorth() - META.seed) * 100) / 100); }
+function shopCleanOk(id){ const it = shopItem(id); return !it || id !== 'record' || shopClean() >= it.price; }
 function renderShopCard(){ const c = $('#shopCard'); if (c) c.innerHTML = shopCardHTML(); }
 const SHOPV = {ask:null};
 function shopListHTML(){
   const G = gamS();
   return `<div class="shop-list">${SHOP.map(it => {
-      const own = it.id === 'record' ? `전과 ${G.bust || 0}회` : it.id === 'skin' ? `모은 스킨 ${bmSkinOwn().length}/${BM_SKINS.length}` : shopN(it.id) ? `가진 것 ${shopN(it.id)}개` : '';
-      const off = (it.id === 'record' && !(G.bust > 0)) || (it.id === 'skin' && bmSkinOwn().length >= BM_SKINS.length);
+      const own = it.id === 'record' ? `전과 ${G.bust || 0}회 · 깨끗한 돈 ${fmtUSDn(shopClean())}` : it.id === 'skin' ? `모은 스킨 ${bmSkinOwn().length}/${BM_SKINS.length}` : shopN(it.id) ? `가진 것 ${shopN(it.id)}개` : '';
+      const off = (it.id === 'record' && (!(G.bust > 0) || !shopCleanOk('record'))) || (it.id === 'skin' && bmSkinOwn().length >= BM_SKINS.length);
       return `<div class="shop-it"><span class="shop-ic">${it.ic}</span><div class="shop-tx"><b>${it.nm}</b><small>${shopDesc(it)}</small>${own ? `<small class="shop-own">${own}</small>` : ''}</div>
-        <button class="btn solid" data-shop="${it.id}" ${off ? `disabled title="${it.id === 'record' ? '지울 전과가 없습니다' : '모두 모았습니다'}"` : ''}>${fmtUSDn(it.price, 0)}</button></div>`;
+        <button class="btn solid" data-shop="${it.id}" ${off ? `disabled title="${it.id === 'record' ? (!(G.bust > 0) ? '지울 전과가 없습니다' : '깨끗한 돈(시작 자금을 넘는 번 돈)이 모자랍니다') : '모두 모았습니다'}"` : ''}>${fmtUSDn(it.price, 0)}</button></div>`;
     }).join('')}</div>
     ${shopS().pend.length ? `<p class="muted" style="margin:6px 0 0">서버 확인을 기다리는 구매 ${shopS().pend.length}건 · 연결되면 자동으로 처리합니다</p>` : ''}
     <p class="muted" style="margin:8px 0 0">달러 통장 ${fmtUSDn(S.usd)}${S.krw > 0 ? ` · 모자라면 원화 ${fmtKRWn(S.krw)}에서 자동 환전` : ''} · 닉네임 색은 랭킹 아래에서 바꿉니다</p>`;
@@ -8985,6 +8989,7 @@ function shopBuy(id){   // 목록에서 누름 → 같은 창에서 확인 화�
   const it = shopItem(id); if (!it) return;
   if (S.over) return toast('파산해서 살 수 없습니다', true);
   if (id === 'record' && !(gamS().bust > 0)) return toast('지울 전과가 없습니다', true);
+  if (!shopCleanOk(id)) return toast(`전과는 깨끗한 돈(순자산 중 시작 자금 $10,000을 넘는 번 돈)으로만 지울 수 있습니다 · 지금 ${fmtUSDn(shopClean())}`, true);
   if (id === 'skin' && bmSkinOwn().length >= BM_SKINS.length) return toast('스킨을 모두 모았습니다', true);
   if (it.server && !ACC.user) return toast('로그인해야 살 수 있습니다', true);
   SHOPV.ask = id; shopDraw();
@@ -8992,6 +8997,7 @@ function shopBuy(id){   // 목록에서 누름 → 같은 창에서 확인 화�
 async function shopBuyNow(id){
   const it = shopItem(id); if (!it) return;
   SHOPV.ask = null;
+  if (!shopCleanOk(id)){ toast(`전과는 깨끗한 돈으로만 지울 수 있습니다 · 지금 ${fmtUSDn(shopClean())}`, true); shopDraw(); return; }
   if (!shopPay(id)){ shopDraw(); return; }
   if (it.server){ shopDraw(); await shopRedeem(id); }
   else if (id === 'skin'){ await bmSkinDraw(); }   // 뽑기 결과 창으로 바뀐다

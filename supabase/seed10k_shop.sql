@@ -26,7 +26,7 @@ language plpgsql security definer set search_path = public as $$
 declare uid uuid := auth.uid(); price numeric; lid bigint; bid bigint; n int; tester boolean;
 begin
   if uid is null then return jsonb_build_object('ok', false, 'err', '로그인이 필요합니다'); end if;
-  price := case item when 'record' then 500 when 'color' then 300 else null end;
+  price := case item when 'record' then 300 when 'color' then 300 else null end;
   if price is null then return jsonb_build_object('ok', false, 'err', '모르는 아이템입니다'); end if;
   if item = 'color' and (arg is null or arg !~ '^#[0-9A-Fa-f]{6}$') then return jsonb_build_object('ok', false, 'err', '색이 올바르지 않습니다'); end if;
   tester := exists (select 1 from public.seed10k_testers where user_id = uid);
