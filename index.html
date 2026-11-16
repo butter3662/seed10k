@@ -1333,7 +1333,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.7.6';
+const VERSION = '1.7.7';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -3464,9 +3464,9 @@ function renderInfo(){
   INFO.formulas = {t:'계산식', h:`
       <div class="fx-block">
         <div class="fx-item"><h4>순자산과 수익률</h4>
-          <div class="eq multi"><span class="p"><i>N</i> = <i>C</i><sub>$</sub> + <i>C</i><sub>₩</sub> ÷ <i>X</i> + <i>V</i> − (<i>L</i><sub>c</sub> + <i>L</i><sub>m</sub> + <i>L</i><sub>o</sub>),</span><span class="p">수익률 = (<i>F</i> × <i>N</i> ÷ <i>B</i> − 1) × 100 (%)</span></div>
-          <ul class="defs"><li><span class="sym">N</span><span>순자산(달러)</span></li><li><span class="sym">C<sub>$</sub></span><span>달러 통장 잔액(달러)</span></li><li><span class="sym">C<sub>₩</sub></span><span>원화 통장 잔액(원)</span></li><li><span class="sym">X</span><span>매매기준율(1달러당 원). 순자산을 셀 때는 수수료를 빼지 않습니다.</span></li><li><span class="sym">V</span><span>보유 주식 평가액의 합(달러)</span></li><li><span class="sym">L<sub>c</sub></span><span>신용대출 잔액</span></li><li><span class="sym">L<sub>m</sub></span><span>주식담보대출 잔액</span></li><li><span class="sym">L<sub>o</sub></span><span>마이너스통장 사용액</span></li><li><span class="sym">B</span><span>지금 기간이 시작할 때의 순자산. 처음에는 시드 10000, 미니게임 포인트를 받을 때마다 (받기 직전 순자산 + 포인트)로 바뀝니다.</span></li><li><span class="sym">F</span><span>지난 기간들의 (끝 순자산 ÷ 시작 순자산)을 모두 곱한 값. 처음에는 1입니다.</span></li></ul>
-          <p class="prose" style="margin:8px 0 0">포인트가 들어올 때마다 기간을 끊고 기간별 수익률을 곱해 잇는 시간가중수익률입니다. 포인트는 수익이 아니므로 빠지고, 같은 매매를 했다면 포인트를 언제 얼마나 받았든 수익률이 같습니다. 포인트를 한 번도 받지 않았다면 (<i>N</i> − 10000) ÷ 10000 × 100과 같습니다.</p>
+          <div class="eq multi"><span class="p"><i>N</i> = <i>C</i><sub>$</sub> + <i>C</i><sub>₩</sub> ÷ <i>X</i> + <i>V</i> − (<i>L</i><sub>c</sub> + <i>L</i><sub>m</sub> + <i>L</i><sub>o</sub>),</span><span class="p">수익률 = ((<i>N</i> − <i>P</i>) ÷ 10000 − 1) × 100 (%)</span></div>
+          <ul class="defs"><li><span class="sym">N</span><span>순자산(달러)</span></li><li><span class="sym">C<sub>$</sub></span><span>달러 통장 잔액(달러)</span></li><li><span class="sym">C<sub>₩</sub></span><span>원화 통장 잔액(원)</span></li><li><span class="sym">X</span><span>매매기준율(1달러당 원). 순자산을 셀 때는 수수료를 빼지 않습니다.</span></li><li><span class="sym">V</span><span>보유 주식 평가액의 합(달러)</span></li><li><span class="sym">L<sub>c</sub></span><span>신용대출 잔액</span></li><li><span class="sym">L<sub>m</sub></span><span>주식담보대출 잔액</span></li><li><span class="sym">L<sub>o</sub></span><span>마이너스통장 사용액</span></li><li><span class="sym">P</span><span>지금까지 받은 미니게임 포인트 합계(달러)</span></li></ul>
+          <p class="prose" style="margin:8px 0 0">포인트는 수익이 아니므로 순자산에서 뺀 뒤 시드 10000과 비교합니다. 10000은 시작 시드(달러)입니다. 순자산이 마이너스면 −100%보다 더 낮게 나올 수 있습니다.</p>
         </div>
         <div class="fx-item"><h4>한국 주식 평가액(달러 환산)</h4>
           <div class="eq"><i>V</i><sub>i</sub> = <i>q</i><sub>i</sub> × <i>P</i><sub>i</sub> ÷ <i>X</i></div>
@@ -3634,15 +3634,12 @@ function closeSheet(){
   setTimeout(() => { if (!UI.sheet){ sh.hidden = true; if ($('#modal').hidden) sc.hidden = true; } }, 280);
 }
 
-/* ───────── 투자 수익률 (시간가중수익률) ─────────
-   포인트가 들어올 때마다 기간을 끊고, 기간별 수익률을 곱해 이어 붙인다.
-   S.twr.f: 지난 기간들의 (끝 순자산 ÷ 시작 순자산)을 곱한 값
-   S.twr.b: 지금 기간이 시작할 때의 순자산 (방금 들어온 포인트 포함)
-   수익률 = f × N ÷ b − 1. 포인트가 없으면 f = 1, b = 시드라서 N ÷ 시드 − 1과 같다. */
+/* ───────── 투자 수익률 ─────────
+   수익률 = (순자산 − 지금까지 받은 포인트 합계) ÷ 시드 − 1.
+   (S.twr는 예전 시간가중수익률 계산에 쓰던 값으로, 이제 수익률에는 쓰지 않는다) */
 function twrRet(N = netWorth()){
   if (ACC.tester) return Infinity;   // 테스트 계정: 수익률은 ∞로 보여 준다
-  const t = S.twr || {f:1, b:META.seed};
-  return t.b > 0 ? t.f * N / t.b - 1 : -1;
+  return (N - (S.pts || 0)) / META.seed - 1;   // 수익률 = (순자산 − 받은 포인트) ÷ 시드 − 1
 }
 /* 포인트 x달러를 달러 통장에 넣는다 (마이너스통장을 쓰고 있으면 먼저 갚는다) */
 function addPoints(x){
@@ -9010,8 +9007,9 @@ function houseBuy(cls, m2){
   if (!isLive()) return toast('주택은 실제 시세 모드에서만 살 수 있습니다', true);
   if (S.over) return toast('파산해서 거래할 수 없습니다', true);
   const p = hPx(cls); if (p === null) return toast('시세를 아직 받지 못했습니다', true);
+  if (!(m2 > 0)) return toast('전용면적을 넣으세요', true);
   const cost = Math.round(p * m2);
-  if (!payKRW(cost)) return toast('돈이 모자랍니다', true);
+  if (!(cost > 0) || !payKRW(cost)) return toast('돈이 모자랍니다', true);
   (S.houses = S.houses || []).push({id:Math.random().toString(36).slice(2, 9), cls, m2, p0:p, cost, t0:Date.now(), v:cost});
   altLog('house', `${hName(cls)} 아파트 ${m2}㎡ 매수`, -cost, 'KRW');
   commit(); toast(`${hName(cls)} 아파트 ${m2}㎡를 ${fmtKRW(cost)}에 샀습니다`);
@@ -9125,7 +9123,6 @@ document.addEventListener('pointermove', e => {   // 마우스를 올리면 지�
   tip.style.left = Math.min(box.width - tip.offsetWidth - 4, e.clientX - box.left + 12) + 'px'; tip.style.top = (e.clientY - box.top + 14) + 'px';
 });
 const cls2 = c => c > 0.000005 ? 'up' : c < -0.000005 ? 'down' : 'flat';
-const HOUSE_MAXA = 300;   // 한 채 전용면적 최대 (㎡). 넘게 적으면 이 값으로 계산하고 그렇다고 알려 준다
 function houseBuyDialog(cls){
   const p = hPx(cls); if (p === null) return toast('시세를 아직 받지 못했습니다', true);
   UI.hArea = UI.hArea || 84;
@@ -9137,18 +9134,17 @@ function houseBuyDialog(cls){
     <div class="acts"><button class="btn" data-close>닫기</button><button class="btn solid" id="hGo">사기</button></div>`);
   const inp = $('#hAreaIn');
   const upd = () => {
-    const raw = parseFloat(String(inp.value).replace(/,/g, '')) || 0, a = clamp(raw, 0, HOUSE_MAXA);
+    const a = Math.max(0, parseFloat(String(inp.value).replace(/,/g, '')) || 0);   // 전용면적은 0보다 크면 얼마든지
     UI.hArea = a;
     $$('[data-harea]').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.harea === a)));
-    const cost = Math.round(p * a), ok = a >= 10 && canPayKRW(cost);
-    $('#hInfo').innerHTML = `<div><span>가격</span><b class="num">${fmtKRW(cost)}</b></div><div><span>쓸 수 있는 돈 (원화 + 달러 환전)</span><b class="num">${fmtKRW(S.krw + S.usd * fxRates().sell)}</b></div>${a < 10 ? '<div class="tot"><span>면적은 10㎡ 이상</span><b></b></div>' : ok ? '' : '<div class="tot"><span>돈이 모자랍니다</span><b></b></div>'}`;
-    if (raw > HOUSE_MAXA) $('#hInfo').insertAdjacentHTML('beforeend', `<div class="tot"><span>⚠️ 한 채의 전용면적은 ${HOUSE_MAXA}㎡까지입니다. ${HOUSE_MAXA}㎡로 계산했습니다 (더 사려면 한 채씩 더 사세요)</span></div>`);
+    const cost = Math.round(p * a), ok = a > 0 && cost > 0 && canPayKRW(cost);
+    $('#hInfo').innerHTML = `<div><span>가격</span><b class="num">${fmtKRW(cost)}</b></div><div><span>쓸 수 있는 돈 (원화 + 달러 환전)</span><b class="num">${fmtKRW(S.krw + S.usd * fxRates().sell)}</b></div>${!(a > 0) ? '<div class="tot"><span>면적을 넣으세요</span><b></b></div>' : ok ? '' : '<div class="tot"><span>돈이 모자랍니다</span><b></b></div>'}`;
     $('#hGo').disabled = !ok;
   };
   inp.addEventListener('input', upd);
   $$('[data-harea]').forEach(b => b.onclick = () => { inp.value = b.dataset.harea; upd(); });
   upd();
-  $('#hGo').onclick = () => { const a = clamp(parseFloat(String(inp.value).replace(/,/g, '')) || 0, 10, HOUSE_MAXA); close(); houseBuy(cls, a); };
+  $('#hGo').onclick = () => { const a = Math.max(0, parseFloat(String(inp.value).replace(/,/g, '')) || 0); if (!(a > 0)) return; close(); houseBuy(cls, a); };
 }
 
 /* ── 순자산에 더하는 채권·주택 평가액 (달러) ── */
@@ -10776,7 +10772,7 @@ function rankCardHTML(){
   else if (!ACC.nick) foot = `<div class="rank-foot"><label class="amt"><input id="rankNickIn" maxlength="12" placeholder="닉네임 (2~12자)" aria-label="닉네임"></label><button class="btn solid" id="btnRankNick">랭킹 참여</button></div>`;
   else if (ACC.myRank[mode]) foot = `<div class="rank-foot"><span>내 순위 <b>${ACC.myRank[mode]}위</b> (${esc(ACC.nick)})</span></div>`;
   else if (mode !== S.mode) foot = `<div class="rank-foot"><span>이 모드는 아직 플레이 기록이 올라가지 않았습니다.</span></div>`;
-  INFO.rank = {t:'랭킹 기준', h:`<p class="prose">순자산과 수익률 모두 미니게임 포인트를 뺀 값입니다. 수익률은 포인트가 들어올 때마다 기간을 끊어 계산하는 시간가중수익률이라, 같은 매매를 했다면 포인트를 언제 얼마나 받았든 같은 값이 나옵니다.</p><p class="prose">게임 계산이 브라우저에서 이뤄져 조작을 완전히 막을 수는 없으니 재미로 봐주세요.</p>`};
+  INFO.rank = {t:'랭킹 기준', h:`<p class="prose">순자산과 수익률 모두 미니게임 포인트를 뺀 값입니다. 수익률 = (순자산 − 받은 포인트 합계) ÷ 10000 − 1입니다.</p><p class="prose">게임 계산이 브라우저에서 이뤄져 조작을 완전히 막을 수는 없으니 재미로 봐주세요.</p>`};
   if (ACC.user && ACC.nick && !ACC.rankBan) foot += `<div class="rank-ncol"><button class="btn" id="btnNcol">🎨 닉네임 색 변경 (${fmtUSD(300)})</button></div>`;
   return head + body + foot + `<p class="muted" style="margin:8px 0 0">포인트를 뺀 투자 실력 기준입니다. ${infoBtn('rank', '랭킹 기준')}</p>`;
 }
