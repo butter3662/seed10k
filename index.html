@@ -1332,7 +1332,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.7.0';
+const VERSION = '1.7.1';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -8134,6 +8134,7 @@ function admBadge(){ $$('[data-tab="admin"]').forEach(b => b.classList.toggle('w
 function renderAdmin(){
   const v = $('#v-admin'); if (!v) return;
   if (!ADM.on){ v.innerHTML = '<p class="empty">관리자만 볼 수 있습니다.</p>'; return; }
+  setTimeout(admDupLoad, 0);   // 아래에서 화면을 그린 뒤 닉네임 겹침 칸을 채운다
   const al = ADM.alerts.slice(0, 50).map(a => `<li class="adm-al ${a.seen ? 'seen' : ''}"><div><small class="muted">${admT(a.at)} · ${esc(admKind(a.kind))} · ${a.mode === 'live' ? '실제 시세' : '시뮬'}</small><p class="adm-al-who">${a.uid ? `👤 <b>${esc(admNick(a.uid))}</b>` : ''}${a.other ? ` · 상대 <b>${esc(admNick(a.other))}</b>` : ''}</p><p>${esc(a.msg)}</p></div>
       <div class="adm-al-b">${a.uid ? `<button class="btn" data-admu="${a.uid}" title="이 알림의 대상 계정 정보 열기">의심 계정</button>` : ''}${a.other ? `<button class="btn" data-admu="${a.other}" title="같이 걸린 다른 계정 정보 열기">함께 걸린 계정</button>` : ''}${a.seen ? '' : `<button class="btn" data-admseen="${a.id}">확인함</button>`}<button class="btn" data-admdel="${a.id}" title="목록에서 지웁니다 (그 계정 정보 맨 아래 '의심 기록'에는 남음)">삭제</button></div></li>`).join('');
   const us = ADM.users === null ? '' : ADM.users.length ? `<ul class="adm-us">${ADM.users.map(u => { const bn = ADM.bans && ADM.bans.get(u.user_id);
@@ -8145,6 +8146,7 @@ function renderAdmin(){
       ${ADM.unseen ? '<div class="mg-foot"><button class="btn" id="admSeenAll">모두 확인함</button></div>' : ''}</section>
     <section class="card" id="admSrv">${admSrvHTML()}</section>
     <section class="card" id="admBsSt">${admBsHTML()}</section>
+    <section class="card" id="admDup" hidden></section>
     <section class="card"><div class="card-h"><h2>🔎 유저 검색</h2><small>이메일이나 닉네임 일부</small></div>
       <form id="admQF" class="adm-q"><label class="amt"><input id="admQ" type="search" autocomplete="off" placeholder="비우고 검색하면 최근 저장 순 40명" value="${esc(ADM.q)}"></label><button class="btn solid" type="submit">검색</button></form>
       ${us}</section>
@@ -8164,6 +8166,18 @@ function admWinOf(t){   // 도박 내역 한 줄 → [게임, 'w'|'l'|'q'(기권
   if (/^홀짝 \d+연속 맞히고 받음/.test(t)) return ['oe', 'w'];
   if (/^홀짝 \d+번째에서 틀림/.test(t)) return ['oe', 'l'];
   return null;
+}
+// 닉네임이 겹친 계정 (중복 막기 전부터 겹쳐 있던 것). 먼저 랭킹에 올린 사람이 그 이름을 갖고, 나머지는 바꿀 때까지 그대로 둔다
+async function admDupLoad(){
+  const c = $('#admDup'); if (!c) return;
+  try {
+    const {data} = await ACC.sb.from('seed10k_ranks').select('user_id,nickname,updated_at');
+    const g = new Map(); (data || []).forEach(r => { const k = String(r.nickname || '').trim().toLowerCase(); if (!g.has(k)) g.set(k, new Map()); g.get(k).set(r.user_id, r.nickname); });
+    const dup = [...g].filter(([, m]) => m.size > 1);
+    c.hidden = !dup.length;
+    if (dup.length) c.innerHTML = `<div class="card-h"><h2>👯 닉네임 겹침</h2><small>${dup.length}개</small></div><p class="muted" style="margin:0 0 6px">중복 막기 전부터 같은 닉네임을 쓰던 계정입니다. 이름을 바꿀 때까지 그대로 둡니다</p>
+      <ul class="adm-als">${dup.map(([, m]) => `<li class="adm-al seen"><div><p><b>${esc([...m.values()][0])}</b> · ${m.size}명</p><p class="muted">${[...m.keys()].map(id => `<button class="btn" data-admu="${id}">${esc(id.slice(0, 8))}</button>`).join(' ')}</p></div></li>`).join('')}</ul>`;
+  } catch(e){}
 }
 ADM.bs = null;
 async function admBsLoad(){
@@ -10594,7 +10608,9 @@ async function pushRank(){
   try {
     const {error} = await ACC.sb.from('seed10k_ranks').upsert(row);
     if (error) throw error;
-  } catch(e){ /* 랭킹 저장 실패는 조용히 넘긴다 */ }
+  } catch(e){   // 랭킹 저장 실패는 조용히 넘긴다. 단, 닉네임이 다른 사람과 겹쳐 서버가 막은 것은 한 번 알린다
+    if (/nickname_taken/.test(String(e && e.message || '')) && ACC.nickWarned !== ACC.nick){ ACC.nickWarned = ACC.nick; toast('닉네임이 다른 사람과 겹쳐 랭킹에 올라가지 않습니다. 규칙·설정에서 닉네임을 바꾸세요', true); }
+  }
 }
 async function refreshRanks(force){
   const mode = UI.rankMode || S.mode;
@@ -10692,10 +10708,13 @@ document.addEventListener('click', e => {
   if (e.target.closest('.top .brand')){ if ($('#modal').hidden) go('home'); }
 });
 function renderRankCard(){ const c = $('#rankCard'); if (c) c.innerHTML = rankCardHTML(); }
+// 닉네임 중복 확인 (서버: 다른 계정이 랭킹이나 가입 정보에서 쓰는 이름인지, 대소문자·앞뒤 공백 무시). 확인을 못 하면 false (서버 랭킹 규칙이 한 번 더 막는다)
+async function nickTaken(v){ try { const {data, error} = await ACC.sb.rpc('seed10k_nick_taken', {name:v}); return !error && data === true; } catch(e){ return false; } }
 async function saveNickname(v){
   v = String(v || '').trim();
   if (v.length < 2 || v.length > 12) return toast('닉네임은 2~12자로 정하세요', true);
   if (!ACC.user) return;
+  if (v.toLowerCase() !== String(ACC.nick || '').trim().toLowerCase() && await nickTaken(v)) return toast('이미 다른 사람이 쓰는 닉네임입니다', true);
   try {
     const {error} = await ACC.sb.auth.updateUser({data:{nickname:v}});
     if (error) throw error;
@@ -10773,6 +10792,7 @@ async function gateSubmit(){
     if (signup){
       gateMsg('가입하는 중입니다.');
       const nick = $('#gNick').value.trim();
+      if (nick && await nickTaken(nick)) return gateMsg('이미 다른 사람이 쓰는 닉네임입니다. 다른 닉네임을 정하세요.', true);
       const {data, error} = await ACC.sb.auth.signUp({email, password:pw, options:{emailRedirectTo:location.origin + location.pathname, data:nick ? {nickname:nick} : {}}});
       if (error) return gateMsg('가입하지 못했습니다: ' + error.message, true);
       if (!(data && data.session)){   // 이메일 인증을 켜 두면 세션 없이 돌아온다 → 메일의 코드(또는 링크)로 확인

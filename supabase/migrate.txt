@@ -10,3 +10,4 @@ seed10k_rankbans.sql
 seed10k_links.sql
 seed10k_ledger.sql
 seed10k_shop.sql
+seed10k_nick.sql
