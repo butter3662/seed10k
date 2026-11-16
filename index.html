@@ -1336,7 +1336,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.7.3';
+const VERSION = '1.7.4';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -5003,7 +5003,7 @@ function police(k, il, net, tz, ran){
   const G = gamS();
   G.ilAcc = Math.round((ilAcc() + (+net || 0)) * 100) / 100;   // 불법 도박 누적 순이익 (단속 판의 손익까지 넣고 압류)
   const pp = tz ? TZ_P + bustAdd() : polP(k);
-  if (!tz && shopUse('hide')){ save(); lgMark(`il:${k}:hide`); toast(`🫥 은신: 이번 판은 경찰 단속을 피했습니다 (남은 은신 ${shopN('hide')}개)`); return false; }   // 은신: 불법 도박 1판 단속 면제 (도주 적발은 그대로)
+  if (!tz && shopUse('hide')){ save(); lgMark(`il:${k}:hide`); toast(`🫥 은신 보험료 1개를 냈습니다: 이번 판은 불법 도박 혐의가 걸리지 않습니다 (남은 은신 ${shopN('hide')}개)`); return false; }   // 은신: 불법 도박 1판 단속 면제 (도주 적발은 그대로)
   // 불법 판이 끝날 때마다 돈 기록에 표시 줄(금액 0)을 남긴다: 서버가 '단속이 너무 안 걸리는' 계정을 확률로 찾는다 (seed10k_ledger_chain ⑤)
   if (Math.random() >= pp){ save(); lgMark(`il:${k}:p=${pp.toFixed(4)}${tz ? ':tz' : ''}`); return false; }
   if (!ran && mercyTry(k, pp, tz)) return false;   // 이스터에그: 경찰이 연민을 느꼈다 (도망친 판에서는 없다)
@@ -9228,7 +9228,7 @@ const SHOP = [
   {id:'record', ic:'😎', nm:'브로커', price:300, d:'브로커를 고용해 경찰 단속 기록(전과)을 1회 지웁니다. 랭킹판의 빨간 줄 1스택이 감소하고, 나빠졌던 신용등급(0.25등급)과 적발 확률도 되돌아옵니다. 브로커는 출처가 확실한 돈만 받아서 순수익(순자산 − 시작 자금 $10,000)으로만 낼 수 있습니다.', server:true},
   {id:'lawyer', ic:'⚖️', nm:'변호사 선임', price:500, d:'다음 경찰 단속(불법 모드 단속·도주 적발) 한 번은 압수액이 30% 줄어듭니다. 압수할 돈이 없는 단속에는 쓰이지 않고 남습니다.'},
   {id:'dive', ic:'🤿', nm:'잠수', price:450, d:''},   // 설명은 shopDesc (RUN.p를 쓰므로)
-  {id:'hide', ic:'🫥', nm:'은신', price:65, d:'다음 불법 도박 1판은 경찰에게 단속되지 않습니다 (도망쳤을 때의 적발은 그대로). 여러 개 가지고 있으면 판마다 1개씩 씁니다.'},
+  {id:'hide', ic:'🫥', nm:'은신', price:65, d:'불법 도박에 드는 보험입니다. 가지고 있으면 불법 도박을 할 때마다 1판에 1개씩 보험료로 나가고, 그 판에서는 불법 도박 혐의가 걸리지 않습니다. 면제권이 아니라 보험이라, 경찰이 오지 않은 판에도 1개씩 나갑니다.'},
   {id:'first', ic:'🥇', nm:'선수권', price:200, d:'혼자 하는 벅샷 룰렛·부루마블을 시작할 때 쓰면 내 차례부터 시작합니다.'},
   {id:'skin', ic:'🎲', nm:'부루마블 말 스킨 뽑기', price:300, d:'말 스킨 10종 중 아직 없는 것 하나가 나옵니다 (헬리콥터·비행기는 날아다닙니다). 도박 탭 부루마블 칸의 🎨 말 스킨 버튼으로 바꿔 씁니다 (게임 밖에서).'},
 ];
