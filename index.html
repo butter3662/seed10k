@@ -1332,7 +1332,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.6.7';
+const VERSION = '1.6.8';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -1730,8 +1730,11 @@ async function lgFlush(){   // 쌓인 줄을 올린다. 네트워크가 끊겼�
   const rows = q.slice(0, 200).map(r => ({user_id:ACC.user.id, mode:r.mode, amt:r.amt, bal:r.bal, amt_k:r.amt_k, bal_k:r.bal_k, why:r.why, at:r.at}));
   try {
     const {error} = await ACC.sb.from('seed10k_ledger').insert(rows);
-    if (error){ if (/fetch|network/i.test(error.message || '')) return false; console.warn('[ledger]', error.message); if (!/relation|42P01|does not exist/i.test(error.message || '')) return true; }
+    if (error){ if (/fetch|network/i.test(error.message || '')) return false; console.warn('[ledger]', error.message);
+      if (S && !S._ph) S.lgErr = {at:Date.now(), msg:String(error.message || error.code || '').slice(0, 200), code:error.code || '', n:q.length};   // 관리 화면에서 보이게 저장 기록에 남긴다 (진단용)
+      if (!/relation|42P01|does not exist/i.test(error.message || '')) return true; }
     q.splice(0, rows.length); lgKeep(); LG.sent = (LG.sent || 0) + rows.length;
+    if (S && !S._ph){ S.lgOk = Date.now(); if (S.lgErr) S.lgErr.fixed = Date.now(); }
     return q.length ? lgFlush() : true;
   } catch(e){ return !(e instanceof TypeError || /fetch|network/i.test(String(e && e.message || e)) || navigator.onLine === false); }   // 네트워크가 아닌 오류로 저장까지 막지는 않는다 (줄은 남겨 두고 다음에 다시)
 }
@@ -8298,7 +8301,7 @@ function admUserHTML(){
       <div><dt>멀티 판 수</dt><dd class="num">${M.n}판 · ${M.w}승${M.pending ? ` · 안 받은 것 ${M.pending}건` : ''}</dd></div>
       ${d ? `<div><dt>달러 통장</dt><dd class="num">${fmtUSD(+d.usd || 0)}</dd></div><div><dt>원화 통장</dt><dd class="num">${fmtKRW(+d.krw || 0)}</dd></div>
       <div><dt>거래일</dt><dd class="num">${d.day || 0}</dd></div><div><dt>불법 도박 누적 · 단속</dt><dd class="num">${admUSD(+G.ilAcc || 0)} · ${G.bust || 0}회</dd></div>
-      <div><dt>마지막 저장</dt><dd>${admT(sv.updated_at)}</dd></div><div><dt>이 기록 시작 (가입·환생)</dt><dd>${d.started ? admT(new Date(+d.started).toISOString()) : '-'}</dd></div>` : '<div><dt>저장 기록</dt><dd>이 모드 기록 없음</dd></div>'}
+      <div><dt>마지막 저장</dt><dd>${admT(sv.updated_at)}</dd></div><div><dt>이 기록 시작 (가입·환생)</dt><dd>${d.started ? admT(new Date(+d.started).toISOString()) : '-'}</dd></div><div><dt>돈 기록 올리기 (진단)</dt><dd>${d.lgOk ? `마지막 성공 ${admT(new Date(+d.lgOk).toISOString())}` : '성공 기록 없음'} · 저장 때 못 올린 줄 ${+d.lgPend || 0}${d.lgFork ? ' · 기록 갈라짐' : ''}${d.lgErr ? `<br><b class="down">오류${d.lgErr.fixed ? '(그 뒤 해결)' : ''} ${admT(new Date(+d.lgErr.at).toISOString())}: ${esc(d.lgErr.msg)}${d.lgErr.code ? ` [${esc(d.lgErr.code)}]` : ''} · 대기 ${+d.lgErr.n || 0}줄</b>` : ''}</dd></div>` : '<div><dt>저장 기록</dt><dd>이 모드 기록 없음</dd></div>'}
     </dl>
     ${M.net > 0 && d ? `<div class="mg-foot"><button class="btn" id="admClaw">멀티로 딴 ${fmtUSD(M.net)} 회수 SQL 만들기</button></div>` : ''}
     ${admSec('돈 기록 (최근 40줄)', tbl('<th>시각</th><th>무엇 때문에</th><th class="r">바뀐 돈</th><th class="r">바뀐 뒤 잔고</th>', lgRows, '돈 기록이 없습니다.'))}
@@ -10522,6 +10525,7 @@ async function pushCloud(){
   const uid = ACC.user.id, snap = S, mode = snap.mode, base = snap.syncBase ?? null, ver = ACC.ver;
   const token = Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
   const data = JSON.parse(JSON.stringify(snap)); data.syncBase = token; data.dirty = false; delete data._ph;
+  data.lgPend = lgQ().filter(r => r.mode === mode).length; data.lgFork = fork || undefined;   // 진단용: 저장할 때 못 올린 돈 기록 줄 수, 기록이 갈라져 올리지 않았는지
   const row = {data, updated_at:new Date().toISOString()};
   let conflict = false;
   // 이 탭의 로그인 세션이 화면의 계정과 같은지 먼저 확인한다. 다르면 남의 세션으로 이 계정 기록을 쓰려다
