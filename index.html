@@ -736,6 +736,7 @@ html.gated body{overflow:hidden}
 .shop-ic{font-size:24px;width:32px;text-align:center;flex:none}.shop-svg{width:30px;height:30px;display:block;margin:0 auto}.shop-ic.big .shop-svg{width:52px;height:52px}
 .shop-tx{display:flex;flex-direction:column;gap:2px;flex:1;min-width:0}.shop-tx small{opacity:.72;font-size:12px;line-height:1.35}.shop-tx .shop-own{opacity:1;font-weight:700}
 .shop-it .btn{flex:none;white-space:nowrap}
+.sa-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid var(--rule)}.sa-row>span:first-child{min-width:0;display:flex;flex-direction:column;gap:1px}.sa-row small{font-size:12px}.sa-n{display:flex;align-items:center;gap:6px;flex:none}.sa-n input{width:56px;text-align:right;height:34px;border:1px solid var(--rule);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit;padding:0 8px}.sa-row .sw{flex:none}
 .shop-qty{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:center;margin:12px 0 2px;width:100%}.shop-qty input[type=range]{flex:1 1 180px;min-width:140px;accent-color:var(--brass)}.shop-qty .amt{flex:0 0 96px}.shop-qty .amt input{width:100%;text-align:right}
 .shop-ask{display:flex;flex-direction:column;align-items:center;text-align:center;padding:6px 0}.shop-ic.big{font-size:44px;width:auto;margin-bottom:4px}
 #modal .shop-list{max-height:60vh;overflow:auto}
@@ -1335,7 +1336,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.7.2';
+const VERSION = '1.7.3';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -1653,7 +1654,7 @@ async function testerCheck(){
     bustSync();   // 전과 횟수를 서버 기록(계정 전체)에 맞춘다 → 신용등급·경찰 적발 확률에 반영
     mercyLoad();   // 경찰의 연민(이스터에그)을 이번 분기에 이미 받았는지
     frReset(); frLoad(true);   // 친구 목록 (같이 하기의 접속·신청·관전은 친구끼리)
-    setTimeout(() => { try { shopFlush(); } catch(e){} }, 3000);   // 서버 확인을 기다리던 상점 구매
+    setTimeout(() => { try { shopFlush().then(() => shopAutoSoon(500)); } catch(e){} }, 3000);   // 서버 확인을 기다리던 상점 구매 → 자동 구매
     try { const {data, error} = await ACC.sb.from('seed10k_rank_bans').select('at,reason').eq('user_id', ACC.user.id).maybeSingle(); if (!error) ACC.rankBan = data || null; } catch(e){}
   }
   if (ACC.tester){
@@ -4254,7 +4255,7 @@ function bmCardHTML(){
   const h = b.hist.slice(0, 3).map(x => `<span class="${cls(x.pay - x.stake)}">${x.rank}/${x.n}위 ${signUSD(x.pay - x.stake)}</span>`).join(' · ');
   return `<div class="card-h"><h2>🎲 부루마블 ${infoBtn('bm')}</h2><small>${isLive() ? '오늘' : '이번 거래일'} ${b.n}판</small></div>
     ${lock ? `<p class="mg-desc">${ACC.user ? '가입' : '이 기록을 시작'}하고 ${BM.waitDays}일이 지나야 할 수 있습니다.</p>` : g ? `<p class="mg-desc">진행 중: ${g.round}바퀴째, 판돈 ${fmtUSD(g.stake)}</p>` : h ? `<p class="mg-desc">최근 ${h}</p>` : `<p class="mg-desc">판돈을 걸고 컴퓨터와 도시를 사고파는 주사위 보드게임</p>`}
-    <div class="mg-foot"><span class="muted">${g ? '' : `달러 통장 <b class="num">${fmtUSDn(S.usd)}</b>`}</span><span style="display:flex;gap:8px">${g ? '' : `<button class="btn" id="bmSkinBtn">🎨 말 스킨${bmSkinOwn().length ? ` (${bmSkinOwn().length})` : ''}</button>`}<button class="btn solid" id="bmGo" ${!g && (S.over || lock) ? 'disabled' : ''}>${label}</button></span></div>`;
+    <div class="mg-foot"><span class="muted">${g ? '' : `달러 통장 <b class="num">${fmtUSDn(S.usd)}</b>`}</span><span style="display:flex;gap:8px">${g ? '' : `<button class="btn" id="bmSkinBtn">🎨 말 스킨${bmSkinOwn().length ? ` (${bmSkinOwn().length})` : ''}</button>`}${g || lock ? '' : regameBtn('bm', (b.hist.find(x => !x.ff) || {}).stake)}<button class="btn solid" id="bmGo" ${!g && (S.over || lock) ? 'disabled' : ''}>${label}</button></span></div>`;
 }
 function bmSetup(){
   if (BMV.mp && bmOpenNow()) bmHide();
@@ -4794,7 +4795,7 @@ function bmFinish(forfeit, run){
     ${rows ? `<div class="bd" style="margin-bottom:10px">${rows}</div>` : ''}
     <div class="bd"><div><span>판돈</span><b class="num">${fmtUSD(g.stake)}</b></div><div><span>돌려받은 돈 (${mult}배)</span><b class="num">${fmtUSD(pay)}</b></div>
     <div class="tot"><span>손익</span><b class="num ${cls(pay - g.stake)}">${signUSD(pay - g.stake)}</b></div></div>
-    <div class="acts"><button class="btn solid" data-close>확인</button></div>`);
+    <div class="acts">${forfeit ? '' : regameBtn('bm', g.stake, 1)}<button class="btn solid" data-close>확인</button></div>`);
 }
 document.addEventListener('click', e => {
   if (e.target.closest('#bmLastLog')){ bmLastLog(); return; }
@@ -4983,7 +4984,21 @@ function mercyTry(k, pp, tz){
   setTimeout(tryShow, 900);
   return true;
 }
+/* ── 다시 하기 (혼자 하는 판): 같은 판돈을 넣은 판돈 창을 다시 연다 (한도·타짜·선수권은 그 창에서 다시 고른다)
+   결과 창이 닫힌 뒤 경찰·도주 적발 창이 뜰 수 있어서(0.9~1.4초 뒤), 판이 끝나고 1.6초가 지나고 창이 다 닫힌 뒤에 연다 */
+const REGAME = {bs:() => bsStart(), oe:() => oeStart(), bj:() => bjStart(), bm:() => bmSetup()};
+function regameBtn(k, stake, modal){
+  if (!(stake > 0) || !REGAME[k]) return '';
+  return `<button class="btn" data-regame="${k}" data-stake="${stake}"${modal ? ' data-close' : ''}>🔁 다시 하기${modal ? ` · ${fmtUSDn(stake, 0)}` : ''}</button>`;
+}
+function regame(k, stake){
+  if (k === 'bm') UI.bmBet = String(stake); else { UI.betIn = UI.betIn || {}; UI.betIn[k] = String(stake); }
+  const go = () => { if (!$('#modal').hidden) return setTimeout(go, 300); REGAME[k](); };
+  setTimeout(go, Math.max(200, (UI.endAt || 0) + 1600 - Date.now()));
+}
+document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('[data-regame]'); if (b) regame(b.dataset.regame, +b.dataset.stake); });
 function police(k, il, net, tz, ran){
+  UI.endAt = Date.now();
   if (!il) return false;
   const G = gamS();
   G.ilAcc = Math.round((ilAcc() + (+net || 0)) * 100) / 100;   // 불법 도박 누적 순이익 (단속 판의 손익까지 넣고 압류)
@@ -5077,6 +5092,7 @@ async function markBusted(k){
   try { await ACC.sb.from('seed10k_busts').insert({user_id:uid, game:k || null}); } catch(e){}
   ACC.busted = ACC.busted instanceof Map ? ACC.busted : new Map();
   ACC.busted.set(uid, (ACC.busted.get(uid) || 0) + 1);
+  shopAutoSoon(800);   // 자동 구매: 브로커를 켜 뒀으면 단속 줄이 서버에 올라간 뒤 바로 지운다
 }
 
 /* ── 도박 탭 화면 ── */
@@ -5364,7 +5380,7 @@ function oeCardHTML(){
     const h = s.hist.slice(0, 3).map(x => `<span class="${cls(x.pay - x.stake)}">${x.k === undefined ? (x.win ? '승' : '패') : x.pay > x.stake ? `${x.k}연속` : '실패'} ${signUSD(x.pay - x.stake)}</span>`).join(' · ');
     return `<div class="card-h"><h2>✊ 홀짝 ${infoBtn('oe')}</h2><small>맞히면 ${OE_M}배 · 틀리면 전부</small></div>
       <p class="mg-desc">${h ? `최근 ${h}` : '맞힐 때마다 상금 2배, 틀리면 전부 잃습니다. 언제 그만둘지는 내가 정합니다'}</p>
-      <div class="mg-foot"><span class="muted">한도 ${fmtUSDn(gamMax('oe'), 0)}</span><button class="btn solid" id="oeGo" ${S.over ? 'disabled' : ''}>새 게임</button></div>`;
+      <div class="mg-foot"><span class="muted">한도 ${fmtUSDn(gamMax('oe'), 0)}</span><span style="display:flex;gap:6px">${regameBtn('oe', (oeS().hist[0] || {}).stake)}<button class="btn solid" id="oeGo" ${S.over ? 'disabled' : ''}>새 게임</button></span></div>`;
   }
   // 손을 펴기 전(흔드는 중)에는 이번 결과를 숨기고 고르기 전 상태를 보여 준다
   const hide = OEV.busy && !OEV.reveal && g.last;
@@ -5422,7 +5438,7 @@ function oeFinish(run){
   s.cur = null; OEV.reveal = false; OEV.busy = false; commit(); gmHide(); oeRender();
   police('oe', g.il, pay - g.stake, g.tz, ran);
   runCheck(); if (ran) runAdd('oe', g.stake);
-  showModal(`<h2 class="${win ? 'up' : ''}">${ran ? '🏃 도망쳤습니다' : g.lost ? `${g.k + 1}번째에서 틀렸습니다` : `🏆 ${g.k}연속 맞힘`}</h2>${ran ? runNote(g.stake) : ''}<div class="bd"><div><span>판돈</span><b class="num">${fmtUSD(g.stake)}</b></div><div><span>받은 돈</span><b class="num">${fmtUSD(pay)}</b></div><div class="tot"><span>손익</span><b class="num ${cls(pay - g.stake)}">${signUSD(pay - g.stake)}</b></div></div><div class="acts"><button class="btn solid" data-close>확인</button></div>`);
+  showModal(`<h2 class="${win ? 'up' : ''}">${ran ? '🏃 도망쳤습니다' : g.lost ? `${g.k + 1}번째에서 틀렸습니다` : `🏆 ${g.k}연속 맞힘`}</h2>${ran ? runNote(g.stake) : ''}<div class="bd"><div><span>판돈</span><b class="num">${fmtUSD(g.stake)}</b></div><div><span>받은 돈</span><b class="num">${fmtUSD(pay)}</b></div><div class="tot"><span>손익</span><b class="num ${cls(pay - g.stake)}">${signUSD(pay - g.stake)}</b></div></div><div class="acts">${regameBtn('oe', g.stake, 1)}<button class="btn solid" data-close>확인</button></div>`);
 }
 document.addEventListener('click', e => { if (e.target.closest('#oeCash')) oeFinish(); });
 document.addEventListener('click', e => { const t = e.target.closest('#oeEnd'); if (t) oeFinish(); });
@@ -5565,7 +5581,7 @@ function bjCardInnerHTML(){
     const h = s.hist.slice(0, 3).map(x => `<span class="${cls(x.pay - x.cost)}">${x.res} ${signUSD(x.pay - x.cost)}</span>`).join(' · ');
     return `<div class="card-h"><h2>🃏 블랙잭 ${infoBtn('bj')}</h2><small>블랙잭 ${BJ.bjPay}배</small></div>
       <p class="mg-desc">${h ? `최근 ${h}` : '딜러와 21 대결. 히트·스탠드·더블·스플릿을 직접 고릅니다'}</p>
-      <div class="mg-foot"><span class="muted">한도 ${fmtUSDn(gamMax('bj'), 0)}</span><button class="btn solid" id="bjGo" ${S.over ? 'disabled' : ''}>새 게임</button></div>`;
+      <div class="mg-foot"><span class="muted">한도 ${fmtUSDn(gamMax('bj'), 0)}</span><span style="display:flex;gap:6px">${regameBtn('bj', (bjS().hist[0] || {}).stake)}<button class="btn solid" id="bjGo" ${S.over ? 'disabled' : ''}>새 게임</button></span></div>`;
   }
   const over = g.phase === 'over', dn = over && BJV.shown !== null ? Math.min(BJV.shown, g.dealer.length) : g.dealer.length;
   const revealing = over && dn < g.dealer.length, showRes = over && !revealing;
@@ -5639,7 +5655,7 @@ function bjFinish(run){
   police('bj', g.il, net, g.tz, ran);
   runCheck();
   if (!ran) toast(`블랙잭 ${res} ${signUSD(net)}`, net < 0);
-  if (ran){ runAdd('bj', loss); showModal(`<h2>🏃 도망쳤습니다</h2><p>잃을 ${fmtUSD(loss)}을 내지 않고 건 돈 ${fmtUSD(g.cost)}을 돌려받았습니다.</p>${runNote(loss)}<div class="acts"><button class="btn solid" data-close>확인</button></div>`); }
+  if (ran){ runAdd('bj', loss); showModal(`<h2>🏃 도망쳤습니다</h2><p>잃을 ${fmtUSD(loss)}을 내지 않고 건 돈 ${fmtUSD(g.cost)}을 돌려받았습니다.</p>${runNote(loss)}<div class="acts">${regameBtn('bj', g.stake, 1)}<button class="btn solid" data-close>확인</button></div>`); }
 }
 document.addEventListener('click', e => {
   const t = e.target.closest('#bjGo, #bjEnd, #bjRun, [data-bj]'); if (!t) return;
@@ -5879,7 +5895,7 @@ function bsCardHTML(){
     const h = s.hist.slice(0, 3).map(x => `<span class="${cls(x.pay - x.stake)}">${x.win ? '승' : '패'} ${signUSD(x.pay - x.stake)}</span>`).join(' · ');
     return `<div class="card-h"><h2>💥 벅샷 룰렛 ${infoBtn('bs')}</h2><small>이기면 2배</small></div>
       <p class="mg-desc">${h ? `최근 ${h}` : '실탄과 공포탄이 섞인 산탄총으로 딜러와 번갈아 쏩니다. 마지막까지 버티면 판돈 2배'}</p>
-      <div class="mg-foot"><span class="muted">한도 ${fmtUSDn(gamMax('bs'), 0)}</span><button class="btn solid" id="bsGo" ${S.over ? 'disabled' : ''}>새 게임</button></div>`;
+      <div class="mg-foot"><span class="muted">한도 ${fmtUSDn(gamMax('bs'), 0)}</span><span style="display:flex;gap:6px">${regameBtn('bs', (bsS().hist[0] || {}).stake)}<button class="btn solid" id="bsGo" ${S.over ? 'disabled' : ''}>새 게임</button></span></div>`;
   }
   return bsTableHTML(g, 0, {mine:true, solo:true});
 }
@@ -6092,7 +6108,7 @@ function bsFinish(run){
   s.cur = null; commit(); gmHide();
   police('bs', g.il, pay - g.stake, g.tz, ran);
   runCheck(); if (ran) runAdd('bs', g.stake);
-  showModal(`<h2 class="${win ? 'up' : ''}">${win ? '🏆 WIN!' : ran ? '🏃 도망쳤습니다' : half ? '🏃 기권하고 자리를 떴습니다' : g.quit ? '🏳️ 기권했습니다' : '💀 졌습니다'}</h2>${half ? `<p class="muted">${BS_QUIT_TN}번째 차례 안에 기권해서 판돈의 절반을 돌려받았습니다.</p>` : ''}${ran ? runNote(g.stake) : ''}<div class="bd"><div><span>판돈</span><b class="num">${fmtUSD(g.stake)}</b></div><div><span>받은 돈</span><b class="num">${fmtUSD(pay)}</b></div><div><span>쏜 횟수</span><b class="num">${g.shots}발 · 장전 ${g.load}번</b></div></div><div class="acts"><button class="btn solid" data-close>확인</button></div>`);
+  showModal(`<h2 class="${win ? 'up' : ''}">${win ? '🏆 WIN!' : ran ? '🏃 도망쳤습니다' : half ? '🏃 기권하고 자리를 떴습니다' : g.quit ? '🏳️ 기권했습니다' : '💀 졌습니다'}</h2>${half ? `<p class="muted">${BS_QUIT_TN}번째 차례 안에 기권해서 판돈의 절반을 돌려받았습니다.</p>` : ''}${ran ? runNote(g.stake) : ''}<div class="bd"><div><span>판돈</span><b class="num">${fmtUSD(g.stake)}</b></div><div><span>받은 돈</span><b class="num">${fmtUSD(pay)}</b></div><div><span>쏜 횟수</span><b class="num">${g.shots}발 · 장전 ${g.load}번</b></div></div><div class="acts">${regameBtn('bs', g.stake, 1)}<button class="btn solid" data-close>확인</button></div>`);
 }
 // 직접 조작 (혼자·같이 하기 같이): 탄 넣기, 펌프, 총 들기, 겨누기. 방아쇠만 혼자/같이 하기가 따로 보낸다
 document.addEventListener('click', e => {
@@ -9219,7 +9235,7 @@ const SHOP = [
 const DIVE_P = 0.08;
 function shopS(){ const G = gamS(); if (!G.shop || typeof G.shop !== 'object') G.shop = {}; const s = G.shop; if (!s.inv || typeof s.inv !== 'object') s.inv = {}; if (!Array.isArray(s.pend)) s.pend = []; return s; }
 const shopN = id => Math.max(0, +(shopS().inv[id] || 0));
-function shopUse(id){ const s = shopS(); if (!(s.inv[id] > 0)) return false; s.inv[id]--; return true; }
+function shopUse(id){ const s = shopS(); if (!(s.inv[id] > 0)) return false; s.inv[id]--; shopAutoSoon(); return true; }
 const shopItem = id => SHOP.find(x => x.id === id) || (id === 'color' ? {id:'color', ic:'🎨', nm:'닉네임 색 변경', price:300, server:true} : null);
 const shopDesc = it => it.id === 'dive' ? `다음에 진 판에서 도망칠 때, 그 도주가 판마다 적발될 확률이 ${RUN.p * 100}% 대신 ${DIVE_P * 100}%가 됩니다.` : it.d;
 // 값 내기: 다른 돈 변화는 먼저 따로 적고, 환전도 따로 적은 뒤, 상점 결제만 한 줄(why = shop:<id>, 정확히 −가격)로 남긴다
@@ -9263,7 +9279,7 @@ async function shopFlush(){
       toast(`${it ? it.nm : '상점'}: ${(r && r.err) || '처리하지 못했습니다'}${it && !ACC.tester ? ' — 환불했습니다' : ''}`, true);
     }
   }
-  commit(); render();
+  commit(); try { renderTab(); renderHeader(); } catch(e){}
   if (typeof renderRankCard === 'function') renderRankCard();
   shopDraw(); renderShopCard();
   return last;
@@ -9284,8 +9300,10 @@ function renderShop(){
   const v = $('#v-shop'); if (!v) return;
   if (!v.dataset.built){ v.dataset.built = '1';
     v.innerHTML = `<div class="stack"><section class="card"><div class="card-h"><h2>🛒 상점</h2><small>게임 안의 달러로 삽니다</small></div><div id="shopBox"></div></section>
+      <section class="card" id="shopAuto"></section>
       <section class="card"><div class="card-h"><h2>🎨 닉네임 색</h2><button class="btn" id="shopNcol">색 바꾸기 · ${fmtUSDn(300, 0)}</button></div><p class="mg-desc" style="margin:0">랭킹에서 내 닉네임이 고른 색으로 보입니다</p></section></div>`; }
   if (!SHOPV.ask) shopDraw();
+  shopAutoDraw();
 }
 const SHOPV = {ask:null, q:1};
 // 타짜 구매 가능 여부는 서버가 정한다 (한 달 1번은 계정 단위라 초기화해도 그대로, 가입 3일차부터). 상점을 열 때 받아 둔다
@@ -9373,6 +9391,75 @@ async function shopBuyNow(id, q){
   else { commit(); toast(`${it.nm} ${got}개를 샀습니다 (가진 것 ${shopN(id)}개)`); }
   shopDraw(); renderShopCard();
 }
+/* ── 자동 구매 ──
+   브로커: 켜 두면 전과가 생기자마자(서버에 단속 줄이 올라간 뒤) 바로 지운다 (순수익이 모자라면 생길 때까지 기다린다)
+   변호사·잠수·은신·선수권: '최소 보유 개수'를 정하면 쓰고 나서 그 밑으로 내려가면 그만큼 다시 산다
+   타짜: 켜 두면 살 수 있게 되면(한 달 1번·3일차·1개 보유 한도) 산다
+   값은 달러 통장에서만 낸다 (원화를 몰래 환전하지 않도록). 달러가 모자라면 사지 않고 다음 기회에 다시 본다 */
+const SHOP_AUTO_N = ['hide', 'lawyer', 'dive', 'first'];   // 최소 보유 개수를 정하는 아이템
+const SHOPA = {busy:false, t:null, every:null, miss:''};
+function shopAutoCfg(){ const s = shopS(); if (!s.auto || typeof s.auto !== 'object') s.auto = {}; return s.auto; }
+function shopAutoSoon(ms){ clearTimeout(SHOPA.t); SHOPA.t = setTimeout(() => { shopAuto().catch(() => {}); }, ms || 1500); }
+async function shopAuto(){
+  if (SHOPA.busy || !S || S._ph) return;
+  const a = shopAutoCfg(); if (!a.record && !a.tazza && !SHOP_AUTO_N.some(id => a[id] > 0)) return;
+  SHOPA.busy = true; const miss = [];
+  const usdOk = it => ACC.tester || S.usd + 1e-9 >= it.price;
+  try {
+    // 브로커: 지울 전과(서버 확인 대기 중인 것 빼고)가 있고 순수익이 되면
+    if (a.record && ACC.user){
+      const it = shopItem('record'); let got = 0;
+      while (gamS().bust - shopS().pend.filter(j => j.item === 'record').length > 0){
+        if (!shopCleanOk('record')){ miss.push('브로커(순수익 부족)'); break; }
+        if (!usdOk(it)){ miss.push('브로커(달러 부족)'); break; }
+        if (!shopPay('record')) break;
+        shopS().pend.push({item:'record', arg:null, at:Date.now()}); got++;
+      }
+      if (got){ save(); await shopFlush(); }
+    }
+    // 소모품: 최소 보유 개수까지 채운다
+    let bought = [];
+    for (const id of SHOP_AUTO_N){
+      const want = Math.max(0, Math.min(99, Math.floor(+a[id] || 0))), it = shopItem(id); let got = 0;
+      while (shopN(id) < want){
+        if (!usdOk(it)){ miss.push(`${it.nm}(달러 부족)`); break; }
+        if (!shopPay(id)) break;
+        const s = shopS(); s.inv[id] = shopN(id) + 1; got++;
+      }
+      if (got) bought.push(`${it.ic} ${it.nm} ${got}개`);
+    }
+    if (bought.length){ commit(); toast(`🛒 자동 구매: ${bought.join(' · ')}`); }
+    // 타짜: 서버 상태를 알고 있고 지금 살 수 있을 때만
+    if (a.tazza && ACC.user && !shopN('tazza') && !shopS().pend.some(j => j.item === 'tazza')){
+      await tzStatus();
+      const it = shopItem('tazza');
+      if (TZS.left !== null && !tzBlock()){
+        if (!usdOk(it)) miss.push('타짜(달러 부족)');
+        else if (shopPay('tazza')){ shopS().pend.push({item:'tazza', arg:null, at:Date.now()}); save(); await shopFlush(); tzStatus(true); }
+      }
+    }
+  } finally { SHOPA.busy = false; SHOPA.miss = miss.join(' · '); if (UI.tab === 'shop') shopAutoDraw(); }
+}
+function shopAutoHTML(){
+  const a = shopAutoCfg(), G = gamS();
+  const row = id => { const it = shopItem(id); return `<label class="sa-row"><span><span>${it.ic} ${it.nm}</span><small class="muted">가진 것 ${shopN(id)}개</small></span><span class="sa-n"><span class="muted">최소</span><input type="number" inputmode="numeric" min="0" max="99" step="1" data-sa="${id}" value="${Math.max(0, +a[id] || 0)}" aria-label="${it.nm} 최소 보유 개수"><span>개</span></span></label>`; };
+  return `<div class="card-h"><h2>⚙️ 자동 구매</h2><small>달러 통장에서만 냅니다</small></div>
+    <label class="sa-row"><span><span>😎 브로커</span><small class="muted">전과가 생기면 바로 지우기 · 지금 전과 ${G.bust || 0}회</small></span><button class="sw ${a.record ? 'on' : ''}" data-sa-sw="record" role="switch" aria-checked="${!!a.record}" aria-label="브로커 자동"><i></i></button></label>
+    <label class="sa-row"><span><span>🃏 <b style="color:var(--danger)">타짜</b></span><small class="muted">살 수 있게 되면 바로 사기 (한 달 1번)</small></span><button class="sw ${a.tazza ? 'on' : ''}" data-sa-sw="tazza" role="switch" aria-checked="${!!a.tazza}" aria-label="타짜 자동"><i></i></button></label>
+    ${SHOP_AUTO_N.map(row).join('')}
+    <p class="muted" style="margin:6px 0 0">최소 개수를 0으로 두면 자동으로 사지 않습니다. 쓰고 나서 최소 개수 밑으로 내려가면 그만큼 다시 삽니다.</p>
+    ${SHOPA.miss ? `<p class="down" style="margin:4px 0 0;font-size:13px">못 산 것: ${SHOPA.miss}</p>` : ''}`;
+}
+function shopAutoDraw(){
+  const c = $('#shopAuto'); if (!c) return;
+  const ae = document.activeElement; if (ae && c.contains(ae) && ae.tagName === 'INPUT') return;   // 입력 중에는 다시 그리지 않는다
+  c.innerHTML = shopAutoHTML();
+  c.querySelectorAll('[data-sa]').forEach(inp => { inp.onchange = () => { const v = Math.max(0, Math.min(99, Math.floor(+inp.value || 0))); inp.value = v; shopAutoCfg()[inp.dataset.sa] = v; save(); shopAuto(); };
+    inp.onkeydown = e => { if (e.key === 'Enter') inp.blur(); }; inp.onblur = () => setTimeout(shopAutoDraw, 0); });
+  c.querySelectorAll('[data-sa-sw]').forEach(b => { b.onclick = e => { e.preventDefault(); const a = shopAutoCfg(), k = b.dataset.saSw; a[k] = !a[k]; save(); shopAutoDraw(); if (a[k]) shopAuto(); }; });
+}
+// 돈이 생겼을 때도 채우도록 가끔 다시 본다
+SHOPA.every = setInterval(() => { shopAuto().catch(() => {}); }, 30000);
 document.addEventListener('click', e => {
   if (e.target.closest && e.target.closest('#shopOpenBtn')) return go('shop');
   if (e.target.closest && e.target.closest('#shopNcol')) return ncolDialog();
