@@ -12,3 +12,4 @@ seed10k_ledger.sql
 seed10k_shop.sql
 seed10k_nick.sql
 seed10k_friends.sql
+seed10k_ranks_ret.sql

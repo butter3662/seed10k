@@ -1333,7 +1333,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.7.5';
+const VERSION = '1.7.6';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -10687,7 +10687,7 @@ function rankDays(){ return isLive() ? Math.max(0, Math.floor((Date.now() - (S.s
 /* 내 랭킹 값: 이 화면에서 지금 계산한 순자산과 수익률 */
 function myRankValues(){
   const N = netWorth();
-  return {N, ret:clamp(Math.round(twrRet(N) * 10000) / 100, -100, 100000)};
+  return {N, ret:clamp(Math.round(twrRet(N) * 10000) / 100, -1000000, 100000)};   // 순자산이 마이너스면 -100%보다 더 잃은 것으로 그대로 올린다
 }
 async function pushRank(){
   if (!ACC.user || !ACC.sb || !S || S._ph || !ACC.nick || ACC.tester || ACC.rankBan) return;   // 테스트 계정·랭킹 제외 계정은 올리지 않는다
