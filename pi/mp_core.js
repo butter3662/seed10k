@@ -545,10 +545,12 @@ function bsStore(room, priv, g) {
 }
 /* 악용 의심 (부계정에 돈을 넘기려고 일부러 지는지). 직접 쏜 것만 센다 (시간 초과로 대신 둔 것은 빼고). 기록은 숨긴 상태(priv.w)에
    - 한 판에서 직접 쏜 것이 WATCH.bsSelfMin(5)번 이상이고 그중 WATCH.bsSelfPct(80%) 이상이 자기 자신: 판이 끝날 때 한 번
+     (공포탄이 확정인 상황 — 돋보기로 공포탄을 봤거나 남은 탄이 모두 공포탄 — 에서 자기를 쏜 것은 쏜 횟수에도 자기 횟수에도 넣지 않는다)
    - 실탄일 확률이 WATCH.bsRiskP(50%) 이상인데 자기 자신을 쏜 것이 한 판에 WATCH.bsRisk(5)번: 5번째에 (이후 5번마다) */
 function bsCount(room, priv, me, self, risk) {
   const st = room.state, w = priv.w = priv.w || {shot: [], self: [], risky: []}, n = st.seats.length;
   for (const k of ["shot", "self", "risky"]) while (w[k].length < n) w[k].push(0);
+  if (self && risk === 0) return;   // 공포탄이 확정(돋보기로 봤거나 남은 탄이 모두 공포탄)인데 자기를 쏜 것은 정상 플레이라 아예 세지 않는다
   w.shot[me]++;
   if (!self) return;
   w.self[me]++;
