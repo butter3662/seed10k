@@ -105,7 +105,8 @@ async function watch(room0: Room | undefined, room: Room, priv: any, payouts: an
 /* ── 몰아주기 ──
    ① 한도 (블랙잭 제외): 두 계정 사이에 최근 24시간 동안 블랙잭이 아닌 판에서 한쪽으로 넘어간 돈이 WATCH.pairCap($4,000) 이상이면 같은 방에 들어오거나 시작할 수 없다
    ② 승률: 같은 두 사람의 판이 WATCH.pairWinMin(10)판 이상이고, 최근 WATCH.pairWinWin(20)판에서 한쪽이 WATCH.pairWinPct(90%) 이상 앞서면 알림 (같이 한 판이 5판 늘 때마다)
-   ③ 같은 기기·같은 네트워크: 접속할 때 기기 ID(사이트가 만든 무작위 값)와 IP 해시(IP 원문은 저장하지 않는다)를 적어 두고, 같은 방에 겹치는 사람이 있으면 알림 */
+   ③ 같은 기기: 접속할 때 기기 ID(사이트가 만든 무작위 값)를 적어 두고, 같은 방에 겹치는 사람이 있으면 알림
+      (같은 네트워크(IP) 검사는 없앴다: 학교·집 와이파이에서 같이 하는 사람이 많아서. IP는 해시로도 적지 않는다) */
 const DAY = 24 * 3600_000;
 const pairRows = async (a: string, b: string, q: string) => await rest("GET", `seed10k_mp_results?uids=cs.%7B${a},${b}%7D&${q}`) || [];
 async function pairCapHit(uids: string[]): Promise<string> {   // 한도를 넘은 두 사람이 있으면 그 설명
@@ -136,29 +137,23 @@ async function pairWatch(room: Room, res: any) {
       detail: { total, win: k, n: tops.length, moved } });
   }
 }
-async function iphOf(req: Request): Promise<string> {   // 터널(Cloudflare)이 붙여 주는 실제 접속 IP → 해시 (원문은 저장하지 않는다)
-  const ip = (req.headers.get("cf-connecting-ip") || req.headers.get("x-forwarded-for") || "").split(",")[0].trim();
-  if (!ip) return "";
-  const d = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`seed10k|${KEY.slice(-24)}|${ip}`));
-  return Array.from(new Uint8Array(d)).slice(0, 10).map((x) => x.toString(16).padStart(2, "0")).join("");
+async function linkNote(uid: string, dev: string) {   // 이 계정이 쓴 기기를 적어 둔다
+  if (!dev) return;
+  await rest("POST", "seed10k_links?on_conflict=user_id,dev,iph", [{ user_id: uid, dev, iph: "", at: new Date().toISOString() }], "resolution=merge-duplicates,return=minimal").catch(() => {});
 }
-async function linkNote(uid: string, dev: string, iph: string) {   // 이 계정이 쓴 기기·네트워크를 적어 둔다
-  if (!dev && !iph) return;
-  await rest("POST", "seed10k_links?on_conflict=user_id,dev,iph", [{ user_id: uid, dev: dev || "", iph: iph || "", at: new Date().toISOString() }], "resolution=merge-duplicates,return=minimal").catch(() => {});
-}
-async function linkWatch(room: Room) {   // 같은 방 사람들 중 기기·네트워크가 겹치는 두 계정
+async function linkWatch(room: Room) {   // 같은 방 사람들 중 기기가 겹치는 두 계정
   const seats = room.state.seats || []; if (seats.length < 2) return;
   const ids = seats.map((s: any) => s.uid).join(",");
-  const rows: any[] = await rest("GET", `seed10k_links?user_id=in.(${ids})&at=gte.${new Date(Date.now() - 30 * DAY).toISOString()}&select=user_id,dev,iph`).catch(() => []) || [];
+  const rows: any[] = await rest("GET", `seed10k_links?user_id=in.(${ids})&at=gte.${new Date(Date.now() - 30 * DAY).toISOString()}&select=user_id,dev`).catch(() => []) || [];
   const nick = (u: string) => (seats.find((s: any) => s.uid === u) || {}).nick || "?";
   for (let i = 0; i < seats.length; i++) for (let j = i + 1; j < seats.length; j++) {
     const a = seats[i].uid, b = seats[j].uid, A = rows.filter((r) => r.user_id === a), B = rows.filter((r) => r.user_id === b);
-    const dev = A.some((x) => x.dev && B.some((y) => y.dev === x.dev)), net = !dev && A.some((x) => x.iph && B.some((y) => y.iph === x.iph));
-    if (!dev && !net) continue;
-    const kind = dev ? "same_dev" : "same_net";
+    const dev = A.some((x) => x.dev && B.some((y) => y.dev === x.dev));
+    if (!dev) continue;
+    const kind = "same_dev";
     if (!firstTime(`${kind}:${[a, b].sort().join(",")}`)) continue;
     await alert({ kind, game: room.game, code: room.code, mode: room.mode, uid: a, other: b,
-      msg: `${dev ? "같은 기기" : "같은 네트워크(IP)"}를 쓴 두 계정이 같은 방에: ${nick(a)} · ${nick(b)} (방 ${room.code})${dev ? "" : " — 학교·집 와이파이일 수도 있음"}` });
+      msg: `같은 기기를 쓴 두 계정이 같은 방에: ${nick(a)} · ${nick(b)} (방 ${room.code})` });
   }
 }
 async function bjWatch(room: Room, res: any) {   // 블랙잭: 버스트할 수 없는 11 이하에서 직접 스탠드한 판이 이어지면
@@ -202,7 +197,7 @@ async function processReq(q: any, shown?: (r: { ok: boolean; err?: string; res?:
       if (at && Date.now() - at > 60_000) { r = { ok: false, err: "요청이 너무 늦게 도착해 처리하지 않았습니다. 판돈은 곧 돌려받습니다" }; shown?.(r); return r; }
       const why = await banned(q.user_id) ? "부정행위로 멀티플레이가 제한된 계정입니다" : await tester(q.user_id) ? "테스트 계정은 멀티플레이를 할 수 없습니다" : "";
       if (why) { handled++; r = { ok: false, err: why }; shown?.(r); return r; }
-      await linkNote(q.user_id, q.dev || "", q.iph || "");
+      await linkNote(q.user_id, q.dev || "");
     }
     // 몰아주기 한도: 들어올 때(들어올 사람과 이미 앉은 사람들), 시작할 때(앉은 사람 모두) 확인한다
     if ((q.kind === "join" || q.kind === "start") && room0 && room0.status === "lobby" && room0.game !== "bj") {
@@ -267,7 +262,7 @@ function ticks() {
           → {t:'chat', code, id, text, nick}  방 채팅 (앉은 사람과 관전자, 0.6초에 한 번, 60자)
    심판 → {t:'room', row}  구독한 방이 바뀔 때마다 (seed10k_rooms 한 줄과 같은 모양)
         → {t:'chat', code, id, seat, nick, text, v:true}  서버가 보낸 사람을 확인한 채팅 */
-type Sock = { ws: WebSocket; uid: string | null; codes: Set<string>; chatAt?: number; dev?: string; iph?: string };
+type Sock = { ws: WebSocket; uid: string | null; codes: Set<string>; chatAt?: number; dev?: string };
 const socks = new Set<Sock>();
 const roomRow = (room: Room) => ({ code: room.code, game: room.game, mode: room.mode, host: room.host, stake: room.stake, il: room.il, status: room.status, state: room.state, ver: room.ver, updated_at: new Date().toISOString() });
 function broadcast(room: Room) {
@@ -288,8 +283,8 @@ async function whoIs(token: string): Promise<string | null> {   // Supabase 로�
   } catch { return null; }
 }
 let wsReq = 0;
-function onSock(ws: WebSocket, iph = "") {
-  const k: Sock = { ws, uid: null, codes: new Set(), iph };
+function onSock(ws: WebSocket) {
+  const k: Sock = { ws, uid: null, codes: new Set() };
   ws.onopen = () => socks.add(k);
   ws.onclose = () => socks.delete(k);
   ws.onerror = () => socks.delete(k);
@@ -321,7 +316,7 @@ function onSock(ws: WebSocket, iph = "") {
       return;
     }
     if (m.t === "req" && typeof m.code === "string" && typeof m.kind === "string") {
-      const q = { id: `ws${++wsReq}`, user_id: k.uid, code: m.code, kind: m.kind, arg: m.arg && typeof m.arg === "object" ? m.arg : {}, at: new Date().toISOString(), dev: k.dev || "", iph: k.iph || "" };
+      const q = { id: `ws${++wsReq}`, user_id: k.uid, code: m.code, kind: m.kind, arg: m.arg && typeof m.arg === "object" ? m.arg : {}, at: new Date().toISOString(), dev: k.dev || "" };
       k.codes.add(m.code);
       let sent = false;
       const reply = (r: any) => { if (sent) return; sent = true; send(k, { t: "res", id: m.id, ok: r.ok, err: r.err, res: r.res }); };
@@ -337,7 +332,6 @@ Deno.serve({ port: PORT, hostname: "0.0.0.0", onListen: () => console.log(`[seed
   if (u.pathname === "/ws" && req.headers.get("upgrade")?.toLowerCase() === "websocket") {
     const { socket, response } = Deno.upgradeWebSocket(req, { idleTimeout: 60 });
     const k = onSock(socket);
-    iphOf(req).then((h) => { k.iph = h; }).catch(() => {});
     return response;
   }
   return new Response("seed10k referee", { headers: { "access-control-allow-origin": "*" } });
