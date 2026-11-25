@@ -1333,7 +1333,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.8.0';
+const VERSION = '1.8.1';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -7847,7 +7847,12 @@ function onlGot(p){
 }
 
 // 벅샷 룰렛 (2~4명). 판 그림은 혼자 할 때(bs.js)와 같고, 돋보기로 본 탄은 내 요청 결과로만 받는다
-const mbsPeek = g => { const p = MP.view.bsPeek; return p && p.load === g.load && p.left === g.live + g.blank ? p.peek : null; };
+/* 돋보기로 본 탄은 같은 방·같은 판·같은 장전·같은 남은 탄 수·그 뒤로 아무도 안 쏜 때만 보여 준다.
+   예전에는 장전 번호와 남은 탄 수만 봐서, '한 판 더'로 새 판을 시작하면 지난 판에 본 탄(예: 실탄)이 그대로 떠 있었다 */
+const mbsPeek = g => { const p = MP.view.bsPeek, R = MP.room;
+  if (!p || !R) return null;
+  if (R.status !== 'play' || g.over){ MP.view.bsPeek = null; return null; }   // 판이 끝나면 지운다 → 한 판 더에서 다시 뜨지 않는다
+  return p.code === R.code && p.load === g.load && p.left === g.live + g.blank && (p.shots === undefined || p.shots === g.shots) ? p.peek : null; };
 function mbsBody(R){
   const g = R.state.g, me = mpMe(), host = ACC.user && R.host === ACC.user.id;
   const foot = R.status === 'over' && !BSV.busy ? (me < 0 ? `<p class="oe-res">🏆 ${esc(g.pl[g.win] ? g.pl[g.win].nm : '?')} 승리 · ${fmtUSD(R.stake * g.n)}</p>` : `<p class="oe-res ${g.win === me ? 'up' : 'down'}">${g.win === me ? `🏆 WIN! ${fmtUSD(R.stake * g.n)}을 받습니다` : `💀 ${esc(g.pl[g.win] ? g.pl[g.win].nm : '?')} 승리`}</p>
@@ -7872,7 +7877,7 @@ async function mbsSend(a){
   try {
     const r = await mpReq(MP.code, 'act', a);
     if (!r.ok) toast(r.err, true);
-    else if (r.res && r.res.peek !== undefined) MP.view.bsPeek = r.res;
+    else if (r.res && r.res.peek !== undefined){ const g0 = MP.room && MP.room.state.g; MP.view.bsPeek = Object.assign({code:MP.code, shots:g0 ? g0.shots : undefined}, r.res); }
     await mpFetch();
   } finally { MP.busy = false; mbsRer(); }
 }
