@@ -103,7 +103,7 @@ async function watch(room0: Room | undefined, room: Room, priv: any, payouts: an
   }
 }
 /* ── 몰아주기 ──
-   ① 한도 (블랙잭 제외): 두 계정 사이에 최근 24시간 동안 블랙잭이 아닌 판에서 한쪽으로 넘어간 돈이 WATCH.pairCap($4,000) 이상이면 같은 방에 들어오거나 시작할 수 없다
+   ① 한도 (블랙잭 제외): 판이 끝날 때마다, 두 계정 사이에 최근 24시간 동안 블랙잭이 아닌 판에서 한쪽으로 넘어간 돈이 WATCH.pairCap($7,000) 이상이면 알림만 (막지는 않는다, 같은 두 사람은 하루 한 번)
    ② 승률: 같은 두 사람의 판이 WATCH.pairWinMin(10)판 이상이고, 최근 WATCH.pairWinWin(20)판에서 한쪽이 WATCH.pairWinPct(90%) 이상 앞서면 알림 (같이 한 판이 5판 늘 때마다)
    ③ 같은 기기: 접속할 때 기기 ID(사이트가 만든 무작위 값)를 적어 두고, 같은 방에 겹치는 사람이 있으면 알림
       (같은 네트워크(IP) 검사는 없앴다: 학교·집 와이파이에서 같이 하는 사람이 많아서. IP는 해시로도 적지 않는다) */
@@ -122,6 +122,14 @@ const once = new Map<string, number>();   // 같은 알림을 하루에 한 번�
 const firstTime = (k: string) => { const t = once.get(k) || 0; if (Date.now() - t < DAY) return false; once.set(k, Date.now()); if (once.size > 5000) once.clear(); return true; };
 async function pairWatch(room: Room, res: any) {
   const uids: string[] = res.uids, nick = (u: string) => (res.seats.find((s: any) => s.uid === u) || {}).nick || "?";
+  if (room.game !== "bj") {   // ① 한도: 넘으면 알림만 (같이 하는 것은 막지 않는다)
+    const hit = await pairCapHit(uids);
+    if (hit) {
+      const [i, j, f] = hit.split(":"), a = uids[+i], b = uids[+j], to = +f >= 0 ? b : a, from = to === a ? b : a;
+      if (firstTime(`cap:${[a, b].sort().join(",")}`)) await alert({ kind: "pair_cap", game: room.game, code: room.code, mode: room.mode, uid: to, other: from,
+        msg: `몰아주기 한도 넘음: ${nick(from)} → ${nick(to)} 쪽으로 24시간 동안 $${Math.abs(+f).toFixed(2)}가 넘어감 (한도 $${WATCH.pairCap.toLocaleString()}, 방 ${room.code}) — 막지 않고 알림만` });
+    }
+  }
   for (let i = 0; i < uids.length; i++) for (let j = i + 1; j < uids.length; j++) {
     const a = uids[i], b = uids[j];
     const rows = await pairRows(a, b, `order=id.desc&limit=${WATCH.pairWinWin}&select=winner,summary`);
@@ -198,19 +206,6 @@ async function processReq(q: any, shown?: (r: { ok: boolean; err?: string; res?:
       const why = await banned(q.user_id) ? "부정행위로 멀티플레이가 제한된 계정입니다" : await tester(q.user_id) ? "테스트 계정은 멀티플레이를 할 수 없습니다" : "";
       if (why) { handled++; r = { ok: false, err: why }; shown?.(r); return r; }
       await linkNote(q.user_id, q.dev || "");
-    }
-    // 몰아주기 한도: 들어올 때(들어올 사람과 이미 앉은 사람들), 시작할 때(앉은 사람 모두) 확인한다
-    if ((q.kind === "join" || q.kind === "start") && room0 && room0.status === "lobby" && room0.game !== "bj") {
-      const uids = room0.state.seats.map((s: any) => s.uid).filter((u: string) => q.kind === "start" || u !== q.user_id);
-      if (q.kind === "join" && !uids.includes(q.user_id)) uids.push(q.user_id);
-      const hit = await pairCapHit(uids);
-      if (hit) {
-        const [i, j] = hit.split(":").map(Number), nk = (u: string) => (room0.state.seats.find((s: any) => s.uid === u) || {}).nick || "새로 들어온 사람";
-        const a = uids[i], b = uids[j];
-        if (firstTime(`cap:${[a, b].sort().join(",")}`)) await alert({ kind: "pair_cap", game: room0.game, code: room0.code, mode: room0.mode, uid: a, other: b,
-          msg: `몰아주기 한도: ${nk(a)} · ${nk(b)} 사이에 24시간 동안 $${Math.abs(+hit.split(":")[2]).toFixed(2)}가 한쪽으로 넘어가 같은 방을 막음 (한도 $${WATCH.pairCap}, 방 ${room0.code})` });
-        handled++; r = { ok: false, err: `같이 할 수 없습니다: 최근 24시간 동안 두 사람 사이에 넘어간 돈이 한도($${WATCH.pairCap.toLocaleString()})를 넘었습니다` }; shown?.(r); return r;
-      }
     }
     const out = handle(room0 || null, privs.get(q.code) || {}, q, Date.now(), Math.random);
     handled++;
