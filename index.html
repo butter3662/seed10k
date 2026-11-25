@@ -1333,7 +1333,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.7.9';
+const VERSION = '1.8.0';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -1647,6 +1647,7 @@ async function testerCheck(){
   if (ACC.user && ACC.sb){
     try { const {data} = await ACC.sb.from('seed10k_testers').select('user_id').eq('user_id', ACC.user.id).maybeSingle(); ACC.tester = !!data; } catch(e){}
     ACC.testerKnown = true;
+    try { lgStart(); if (!ACC.tester) lgTrack('login'); } catch(e){}   // 확인을 기다리는 동안 바뀐 돈이 있으면 지금 적는다
     try { onlTrack(); } catch(e){}   // 접속 목록에 올릴지(테스트 계정은 안 올림) 바로 정한다
     bustSync();   // 전과 횟수를 서버 기록(계정 전체)에 맞춘다 → 신용등급·경찰 적발 확률에 반영
     mercyLoad();   // 경찰의 연민(이스터에그)을 이번 분기에 이미 받았는지
@@ -1697,17 +1698,26 @@ function lgStack(){
   } catch(e){ return ''; }
 }
 function lgTrack(why){
-  if (!S || S._ph || !ACC.user || ACC.tester || !ACC.testerKnown) return;
+  if (!S || S._ph || !ACC.user) return;
   const k = ACC.user.id + ':' + S.mode, L = LG.m[k], usd = Math.round((+S.usd || 0) * 100) / 100, krw = Math.round(+S.krw || 0);
   if (!L || L.obj !== S){   // 처음 보거나(접속·불러오기) 다른 기록으로 바뀐 때: 지금 잔고를 기준으로 삼는다
+    /* 기준은 테스트 계정인지 확인하기 전에도 바로 잡는다. 예전에는 확인이 끝날 때까지 기준이 없어서,
+       그 사이에 돈이 바뀌면(예: 접속하자마자 같이 하기 상금을 받음) 바뀐 뒤의 잔고를 기준으로 삼아 그 돈이 기록에서 빠졌고,
+       서버가 '돈 기록이 이어지지 않음 (기록 없이 잔고가 바뀜)'으로 알렸다 */
     LG.m[k] = {obj:S, prev:usd, prevK:krw};
-    if (!S.lgOn){ S.lgOn = 1; lgQ().push({mode:S.mode, amt:0, bal:usd, amt_k:0, bal_k:krw, why:'start', at:new Date().toISOString()}); lgKeep(); }
+    lgStart();
     return;
   }
+  if (ACC.tester || !ACC.testerKnown) return;   // 확인 전에 바뀐 돈은 기준(L.prev)에 그대로 남아 있다가 확인 뒤 다음 줄에 적힌다
   const d = Math.round((usd - L.prev) * 100) / 100, dk = krw - L.prevK;
   if (Math.abs(d) < 0.005 && dk === 0) return;
   lgQ().push({mode:S.mode, amt:d, bal:usd, amt_k:dk, bal_k:krw, why:String(why || lgStack() || 'etc').slice(0, 80), at:new Date().toISOString()});
   L.prev = usd; L.prevK = krw; lgKeep();
+}
+function lgStart(){   // 이 모드의 첫 기록 줄('start'): 테스트 계정이 아님을 확인한 뒤, 기준 잔고로 한 번만
+  if (!S || S._ph || !ACC.user || ACC.tester || !ACC.testerKnown || S.lgOn) return;
+  const L = LG.m[ACC.user.id + ':' + S.mode]; if (!L || L.obj !== S) return;
+  S.lgOn = 1; lgQ().push({mode:S.mode, amt:0, bal:L.prev, amt_k:0, bal_k:L.prevK, why:'start', at:new Date().toISOString()}); lgKeep();
 }
 // 금액 0인 표시 줄 (예: 불법 판 결과 'il:bs:p=0.0500'): 먼저 바뀐 돈을 적은 뒤, 지금 잔고 그대로 한 줄 더 남긴다
 function lgMark(why){
