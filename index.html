@@ -1333,7 +1333,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.8.1';
+const VERSION = '1.8.2';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -7679,11 +7679,14 @@ function mbjBody(R){
   V.now = new Set();
   const RES = {win:['승', 'up'], tie:['동점', ''], lose:['패', 'down'], refund:['환불', '']};
   const over = R.status === 'over';
+  const mine = me >= 0 && !over ? mbjMine(R, me) : null;
   const rows = g.order.map(i => {
-    const s = st.seats[i], P = g.players[i], turn = !over && g.turn === i, t = BJE.total(P.cards).t, bj = P.cards.length === 2 && t === 21;
+    const s = st.seats[i], P = g.players[i], turn = !over && g.turn === i;
+    const cards = i === me && mine ? mine : P.cards, hidden = cards.some(c => c < 0);   // 남의 패: 첫 장만 앞면 (-1은 뒷면)
+    const t = hidden ? 0 : BJE.total(cards).t, bj = !hidden && cards.length === 2 && t === 21;
     return `<div class="bj-row mbj-row ${i === me ? 'me' : ''} ${s.left ? 'left' : ''}"><span class="bj-who" data-seatnm="${i}">${esc(i === me ? '나' : s.nick)}${turn ? '<small>차례</small>' : ''}${s.left ? '<small>나감</small>' : ''}</span><div class="bj-hands">
-      <div class="bj-hand ${turn ? 'cur' : ''}"><div class="bj-cards">${P.cards.map((c, j) => bjCardHTML(c, false, j, `p${i}-${j}-${c}`, V)).join('')}</div>
-      <div class="bj-meta"><b class="num">${t > 21 ? `${t} 버스트` : bj ? '블랙잭' : P.done || over ? t : bjTot(P.cards)}</b>${over && P.res ? `<em class="${RES[P.res][1]}">${RES[P.res][0]}${g.pay && g.pay[i] ? ` ${fmtUSD(g.pay[i])}` : ''}</em>` : ''}</div></div></div></div>`;
+      <div class="bj-hand ${turn ? 'cur' : ''}"><div class="bj-cards">${cards.map((c, j) => bjCardHTML(c, c < 0, j, `p${i}-${j}-${P.cards[0]}`, V)).join('')}</div>
+      <div class="bj-meta"><b class="num">${hidden ? `${cards.length}장${P.done ? ' · 끝' : ''}` : t > 21 ? `${t} 버스트` : bj ? '블랙잭' : P.done || over ? t : bjTot(cards)}</b>${over && P.res ? `<em class="${RES[P.res][1]}">${RES[P.res][0]}${g.pay && g.pay[i] ? ` ${fmtUSD(g.pay[i])}` : ''}</em>` : ''}</div></div></div></div>`;
   }).join('');
   let msg, acts = '';
   if (over){
@@ -7693,14 +7696,34 @@ function mbjBody(R){
     acts = host ? `<button class="btn solid" id="mpAgain">한 판 더 (${fmtUSD(R.stake)})</button>` : me < 0 ? '' : '<p class="bm-wait">방장이 한 판 더 열면 다시 참가할 수 있습니다</p>';
   } else if (g.turn === me){
     msg = `<p class="oe-res">할 행동을 고르세요 <span class="muted" id="mpTimer"></span></p>`;
-    acts = ['hit', 'stand'].map(a => `<button class="btn ${a === 'stand' ? 'solid' : ''}" data-mpbj="${a}" ${MP.busy ? 'disabled' : ''}>${BJ_ACT[a]}</button>`).join('');
+    const myBJ = mine && mine.length === 2 && !mine.some(c => c < 0) && BJE.total(mine).t === 21;
+    acts = ['hit', 'stand'].map(a => `<button class="btn ${a === 'stand' ? 'solid' : ''}" data-mpbj="${a}" ${MP.busy || !mine || (a === 'hit' && myBJ) ? 'disabled' : ''}>${BJ_ACT[a]}</button>`).join('');
   } else msg = `<p class="oe-res muted">${g.turn >= 0 ? `${esc(st.seats[g.turn].nick)} 차례…` : ''} <span id="mpTimer"></span></p>`;
   const h = `<div class="bj-table">${rows}</div>${msg}<div class="bm-acts">${acts}</div>
-    <p class="muted" style="margin:6px 0 0;font-size:12px">버스트하지 않은 사람 중 21에 가장 가까운 사람이 ${fmtUSD(g.pot)}을 모두 가져갑니다 (블랙잭이 가장 높음, 동점이면 나눔, 모두 버스트면 환불). 20초 안에 고르지 않으면 스탠드</p>`;
+    <p class="muted" style="margin:6px 0 0;font-size:12px">버스트하지 않은 사람 중 21에 가장 가까운 사람이 ${fmtUSD(g.pot)}을 모두 가져갑니다 (블랙잭이 가장 높음, 동점이면 나눔, 모두 버스트면 환불). 다른 사람 패는 첫 장만 보이고 판이 끝나면 모두 공개합니다. 20초 안에 고르지 않으면 스탠드</p>`;
   V.now.forEach(x => V.seen.add(x));
   return h;
 }
 MP_VIEW.bj = R => `<div class="card-h"><h2>🃏 블랙잭 대결</h2><small>판돈 ${fmtUSD(R.stake)} · ${R.state.seats.length}명 · 1등 ${fmtUSD(R.stake * R.state.seats.length)}${R.il ? ' · 🚨 불법' : ''}</small></div><div id="mbjBody"></div>`;
+/* 내 패: 보이는 상태에는 첫 장만 있으므로, 심판에게 'view'로 따로 받는다 (나만 받음). 첫 장·장수가 맞을 때만 쓴다.
+   예전 판(카드를 숨기지 않는 판, g.hid 없음)은 보이는 패가 곧 내 패 */
+function mbjMine(R, me){
+  const g = R.state.g, pub = g.players[me].cards;
+  if (!g.hid || !pub.some(c => c < 0)) return pub;
+  const m = MP.view.bjMine;
+  if (m && m.code === R.code && m.cards.length === pub.length && m.cards[0] === pub[0]) return m.cards;
+  mbjView(R);
+  return null;
+}
+async function mbjView(R){
+  if (MP.view.bjAsk || R.status !== 'play') return;
+  MP.view.bjAsk = true;
+  try {
+    const r = await mpReq(R.code, 'act', {a:'view'});
+    if (r.ok && r.res && Array.isArray(r.res.cards)) MP.view.bjMine = {code:R.code, cards:r.res.cards};
+  } finally { MP.view.bjAsk = false; }
+  const R2 = MP.room; if (R2 && R2.game === 'bj' && MP.view.bjMine) MP_UPD.bj(R2);
+}
 MP_UPD.bj = R => {
   const b = $('#mbjBody'); if (!b || !R.state.g) return false;
   // 예전 규칙(딜러와 하던 블랙잭 테이블)의 심판이 만든 판이면 그릴 수 없다: 심판을 새로 켠 뒤 새 방을 만들어야 한다
@@ -7712,8 +7735,17 @@ document.addEventListener('click', e => {
   const t = e.target.closest('[data-mpbj]'); if (!t || MP.busy) return;
   const R = MP.room, g = R && R.state.g, a = t.dataset.mpbj;
   if (!g || g.turn !== mpMe() || R.status !== 'play' || (a !== 'hit' && a !== 'stand')) return;
-  mpAct('act', {a});
+  mbjAct(a);
 });
+async function mbjAct(a){   // 히트하면 심판이 새 내 패를 돌려준다
+  if (MP.busy) return; MP.busy = true; mpRender();
+  try {
+    const code = MP.code, r = await mpReq(code, 'act', {a});
+    if (!r.ok) toast(r.err, true);
+    else if (r.res && Array.isArray(r.res.cards)) MP.view.bjMine = {code, cards:r.res.cards};
+    await mpFetch();
+  } finally { MP.busy = false; mpRender(); }
+}
 
 // 부루마블: 혼자 할 때의 보드 화면(bm.js)을 그대로 쓰고, 상태는 심판이 보낸 방 상태(BMV.mp)를 본다
 function mbmOpen(){

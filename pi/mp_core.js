@@ -340,15 +340,22 @@ const bjIsBJ = (cards) => cards.length === 2 && bjTotal(cards).t === 21;
 // 겨루는 점수: 버스트·나감 -1, 블랙잭 22, 그 밖에는 합
 export const bjScore = (P, left) => { const t = bjTotal(P.cards).t; return left || t > 21 ? -1 : bjIsBJ(P.cards) ? 22 : t; };
 const bjDraw = (priv) => priv.shoe[priv.ix++];
+/* 카드 숨기기: 진짜 패는 숨긴 상태(priv.hands)에만 두고, 모두에게 보이는 상태에는 첫 장만 앞면, 나머지는 -1(뒷면)로 둔다.
+   자기 패는 'view' 요청(그리고 히트한 결과)으로 자기만 받는다. 판이 끝나면 모두 공개한다.
+   예전 판(priv.hands가 없는 판)은 보이는 상태의 패가 곧 진짜 패다 */
+const bjHand = (room, priv, i) => (priv.hands ? priv.hands[i] : room.state.g.players[i].cards);
+const bjPubCards = (cards) => cards.map((c, k) => (k === 0 ? c : -1));
+const bjSync = (room, priv, i) => { if (priv.hands) room.state.g.players[i].cards = bjPubCards(priv.hands[i]); };
 GAMES.bj = {
   init(room, priv, now, rnd) {
     const st = room.state, n = st.seats.length, N = 52 * BJM.decks, shoe = Array.from({length: N}, (_, k) => k);
     for (let i = N - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [shoe[i], shoe[j]] = [shoe[j], shoe[i]]; }
     priv.shoe = shoe; priv.ix = 0;
     const a = st.seats.map(() => bjDraw(priv)), b = st.seats.map(() => bjDraw(priv)), first = Math.floor(rnd() * n);
-    const g = st.g = {players: st.seats.map((s, i) => ({cards: [a[i], b[i]], done: false, res: null})), order: Array.from({length: n}, (_, k) => (first + k) % n),
-      step: 0, turn: -1, pot: r2(room.stake * n), low: Array(n).fill(false), log: [`${st.seats[first].nick}부터 시작`]};
-    g.players.forEach((P, i) => { if (bjIsBJ(P.cards)) { P.done = true; g.log.push(`${st.seats[i].nick} 블랙잭`); } });
+    priv.hands = st.seats.map((_, i) => [a[i], b[i]]);
+    st.g = {players: st.seats.map((s, i) => ({cards: bjPubCards(priv.hands[i]), done: false, res: null})), order: Array.from({length: n}, (_, k) => (first + k) % n),
+      step: 0, turn: -1, pot: r2(room.stake * n), low: Array(n).fill(false), hid: 1, log: [`${st.seats[first].nick}부터 시작`]};
+    // 블랙잭(처음 두 장 21)이어도 바로 공개하지 않는다: 차례가 오면 스탠드만 하면 되고, 시간이 지나면 저절로 스탠드
     return GAMES.bj.advance(room, priv, now);
   },
   advance(room, priv, now) {   // 다음으로 고를 사람. 없으면 정산
@@ -357,11 +364,13 @@ GAMES.bj = {
       const i = g.order[g.step];
       if (!st.seats[i].left && !g.players[i].done) { g.turn = i; st.deadline = now + BJM.turnMs; return {}; }
     }
-    return GAMES.bj.settle(room);
+    return GAMES.bj.settle(room, priv);
   },
-  settle(room) {
+  settle(room, priv) {
     const st = room.state, g = st.g, n = st.seats.length;
     g.turn = -1; g.phase = "over";
+    if (priv && priv.hands) g.players.forEach((P, i) => { P.cards = priv.hands[i].slice(); });   // 판이 끝나면 모두 공개
+    g.hid = 0;
     const sc = g.players.map((P, i) => bjScore(P, st.seats[i].left)), best = Math.max(...sc);
     let pays;
     if (best < 0) {   // 모두 버스트: 남은 사람은 판돈을 돌려받고, 나간 사람 판돈은 남은 사람끼리 나눈다
@@ -392,19 +401,23 @@ GAMES.bj = {
   act(room, priv, me, a, now) {
     const g = room.state.g;
     if (!Array.isArray(g.order)) return GAMES.bj.legacy(room);
+    if (a.a === "view") return {res: {cards: bjHand(room, priv, me).slice(), n: bjHand(room, priv, me).length}, noSave: true};   // 내 패 보기 (나만)
     if (me !== g.turn) return {err: "내 차례가 아닙니다"};
     if (a.a !== "hit" && a.a !== "stand") return {err: "히트나 스탠드만 할 수 있습니다"};
+    if (a.a === "hit" && bjIsBJ(bjHand(room, priv, me))) return {err: "블랙잭이면 스탠드만 할 수 있습니다"};
     return GAMES.bj.doAct(room, priv, me, a.a, now, false);
   },
   doAct(room, priv, me, a, now, auto) {
-    const st = room.state, g = st.g, P = g.players[me], t0 = bjTotal(P.cards).t;
-    if (a === "hit") { P.cards.push(bjDraw(priv)); const t = bjTotal(P.cards).t; if (t >= 21) P.done = true; }
+    const st = room.state, g = st.g, P = g.players[me], H = bjHand(room, priv, me), t0 = bjTotal(H).t;
+    if (a === "hit") { H.push(bjDraw(priv)); const t = bjTotal(H).t; if (t >= 21) P.done = true; }
     else { P.done = true; if (!auto && t0 <= 11) g.low[me] = true; }
-    const t = bjTotal(P.cards).t;
-    g.log.push(`${st.seats[me].nick} ${a === "hit" ? `히트 → ${t}${t > 21 ? " 버스트" : ""}` : `스탠드 (${t0})`}${auto ? " (시간 초과)" : ""}`);
+    bjSync(room, priv, me);
+    // 기록에는 점수를 적지 않는다 (남의 패를 숨기므로)
+    g.log.push(`${st.seats[me].nick} ${a === "hit" ? "히트" : "스탠드"}${auto ? " (시간 초과)" : ""}`);
     if (g.log.length > 30) g.log.splice(0, g.log.length - 30);
     bump(room, {t: "bj", who: me, a});
-    return GAMES.bj.advance(room, priv, now) || {};
+    const r = GAMES.bj.advance(room, priv, now) || {};
+    return {...r, res: {cards: H.slice(), n: H.length}};   // 히트한 사람에게 자기 패
   },
   auto(room, priv, now) { const g = room.state.g; if (!Array.isArray(g.order)) return GAMES.bj.legacy(room); return g.turn >= 0 ? GAMES.bj.doAct(room, priv, g.turn, "stand", now, true) : {}; },
   forfeit(room, priv, me, now) {
