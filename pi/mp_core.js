@@ -405,11 +405,12 @@ GAMES.bj = {
     if (me !== g.turn) return {err: "내 차례가 아닙니다"};
     if (a.a !== "hit" && a.a !== "stand") return {err: "히트나 스탠드만 할 수 있습니다"};
     if (a.a === "hit" && bjIsBJ(bjHand(room, priv, me))) return {err: "블랙잭이면 스탠드만 할 수 있습니다"};
+    if (a.a === "hit" && bjTotal(bjHand(room, priv, me)).t >= 21) return {err: "21 이상이면 스탠드만 할 수 있습니다"};
     return GAMES.bj.doAct(room, priv, me, a.a, now, false);
   },
   doAct(room, priv, me, a, now, auto) {
     const st = room.state, g = st.g, P = g.players[me], H = bjHand(room, priv, me), t0 = bjTotal(H).t;
-    if (a === "hit") { H.push(bjDraw(priv)); const t = bjTotal(H).t; if (t >= 21) P.done = true; }
+    if (a === "hit") H.push(bjDraw(priv));   // 21이 되거나 버스트해도 바로 넘기지 않는다: 본인이 스탠드해야(또는 시간이 지나야) 넘어간다 (남들은 모름)
     else { P.done = true; if (!auto && t0 <= 11) g.low[me] = true; }
     bjSync(room, priv, me);
     // 기록에는 점수를 적지 않는다 (남의 패를 숨기므로)

@@ -1333,7 +1333,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.8.2';
+const VERSION = '1.8.3';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -7696,8 +7696,8 @@ function mbjBody(R){
     acts = host ? `<button class="btn solid" id="mpAgain">한 판 더 (${fmtUSD(R.stake)})</button>` : me < 0 ? '' : '<p class="bm-wait">방장이 한 판 더 열면 다시 참가할 수 있습니다</p>';
   } else if (g.turn === me){
     msg = `<p class="oe-res">할 행동을 고르세요 <span class="muted" id="mpTimer"></span></p>`;
-    const myBJ = mine && mine.length === 2 && !mine.some(c => c < 0) && BJE.total(mine).t === 21;
-    acts = ['hit', 'stand'].map(a => `<button class="btn ${a === 'stand' ? 'solid' : ''}" data-mpbj="${a}" ${MP.busy || !mine || (a === 'hit' && myBJ) ? 'disabled' : ''}>${BJ_ACT[a]}</button>`).join('');
+    const my21 = mine && !mine.some(c => c < 0) && BJE.total(mine).t >= 21;   // 블랙잭·21·버스트: 스탠드만 (히트 잠금)
+    acts = ['hit', 'stand'].map(a => `<button class="btn ${a === 'stand' ? 'solid' : ''}" data-mpbj="${a}" ${MP.busy || !mine || (a === 'hit' && my21) ? 'disabled' : ''}>${BJ_ACT[a]}</button>`).join('');
   } else msg = `<p class="oe-res muted">${g.turn >= 0 ? `${esc(st.seats[g.turn].nick)} 차례…` : ''} <span id="mpTimer"></span></p>`;
   const h = `<div class="bj-table">${rows}</div>${msg}<div class="bm-acts">${acts}</div>
     <p class="muted" style="margin:6px 0 0;font-size:12px">버스트하지 않은 사람 중 21에 가장 가까운 사람이 ${fmtUSD(g.pot)}을 모두 가져갑니다 (블랙잭이 가장 높음, 동점이면 나눔, 모두 버스트면 환불). 다른 사람 패는 첫 장만 보이고 판이 끝나면 모두 공개합니다. 20초 안에 고르지 않으면 스탠드</p>`;
