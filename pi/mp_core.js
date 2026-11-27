@@ -287,7 +287,7 @@ GAMES.sl = {
    심판은 판이 끝날 때(play → over) resultOf로 결과 한 줄을 seed10k_mp_results에 적고,
    같은 두 사람의 최근 결과로 연승을 센다(streakOf). 게임 규칙이 판 도중 이상한 행동을 보면
    room.state.flags에 [{kind, seat, n, msg}]를 쌓고, 심판은 새로 생긴 것(newFlags)을 알림으로 보낸다. */
-export const WATCH = {pairCap: 7000, pairWinPct: 0.9, pairWinMin: 10, pairWinWin: 20, oeStreak: 5, bjStand: 5, bmNoBuy: 5, bsSelfPct: 0.8, bsSelfMin: 5, bsRiskP: 0.5, bsRisk: 5};
+export const WATCH = {pairCap: 9000, pairWinPct: 0.9, pairWinMin: 10, pairWinWin: 20, oeStreak: 5, bjStand: 5, bmNoBuy: 5, bsSelfPct: 0.8, bsSelfMin: 5, bsRiskP: 0.5, bsRisk: 5};
 export function resultOf(room) {
   const st = room.state, g = st.g || {}, G = GAMES[room.game];
   const seats = st.seats.map((s) => ({uid: s.uid, nick: s.nick, ...(s.left ? {left: true} : {})})), uids = seats.map((s) => s.uid);
