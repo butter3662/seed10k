@@ -1342,7 +1342,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.9.5';
+const VERSION = '1.9.6';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -8269,11 +8269,12 @@ ADM.bs = null;
 async function admBsLoad(){
   ADM.bs = {busy:true}; admBsDraw();
   const sb = ACC.sb;
-  const [sv, ts, us, rk] = await Promise.all([
+  const [sv, ts, us, rk, ar] = await Promise.all([
     sb.from('seed10k_saves').select('user_id,mode,al:data->altLog'),
     sb.from('seed10k_testers').select('user_id'),
     sb.rpc('seed10k_admin_users', {q:''}),
     sb.from('seed10k_ranks').select('user_id,nickname'),
+    sb.from('seed10k_wr_archive').select('user_id,lines'),
   ]);
   const err = [sv].map(r => r.error && r.error.message).filter(Boolean);
   const tst = new Set(((ts && ts.data) || []).map(r => r.user_id)), nick = new Map(((us && us.data) || []).map(u => [u.user_id, u.nickname || u.email || u.user_id.slice(0, 8)]));
@@ -8282,6 +8283,11 @@ async function admBsLoad(){
   const per = new Map();
   for (const r of (sv.data || [])) for (const x of (Array.isArray(r.al) ? r.al : r.data && Array.isArray(r.data.altLog) ? r.data.altLog : [])){
     const o = admWinOf(x && x.s || ''); if (!o) continue;
+    if (!per.has(r.user_id)) per.set(r.user_id, blank());
+    per.get(r.user_id)[o[0]][o[1]]++;
+  }
+  for (const r of ((ar && ar.data) || [])) for (const t of (Array.isArray(r.lines) ? r.lines : [])){   // 환생하기 전 결과
+    const o = admWinOf(t || ''); if (!o) continue;
     if (!per.has(r.user_id)) per.set(r.user_id, blank());
     per.get(r.user_id)[o[0]][o[1]]++;
   }
@@ -8295,12 +8301,12 @@ function admBsHTML(){
   const pct = (w, n) => n ? `${(w / n * 100).toFixed(1)}%` : '-';
   const add = (a, b) => { for (const [g] of ADM_WG) for (const k of ['w', 'l', 'q', 'd']) a[g][k] += b[g][k]; return a; };
   const blank = () => Object.fromEntries(ADM_WG.map(([g]) => [g, {w:0, l:0, q:0, d:0}]));
-  const tot = c => ADM_WG.reduce((t, [g]) => ({w:t.w + c[g].w, l:t.l + c[g].l, q:t.q + c[g].q, d:t.d + c[g].d}), {w:0, l:0, q:0, d:0});
+  const tot = c => ADM_WG.filter(([g]) => g !== 'sl').reduce((t, [g]) => ({w:t.w + c[g].w, l:t.l + c[g].l, q:t.q + c[g].q, d:t.d + c[g].d}), {w:0, l:0, q:0, d:0});   // 전체에는 뱀사다리를 넣지 않는다
   const sum = keep => { const a = blank(); for (const [id, c] of B.per) if (keep(id)) add(a, c); return a; };
   const table = c => { const T = tot(c);
     return `<table class="trades"><thead><tr><th>게임</th><th class="r">승</th><th class="r">패</th><th class="r">승률</th><th class="r">기권</th></tr></thead><tbody>
       ${ADM_WG.map(([g, nm]) => { const x = c[g]; return `<tr><td>${nm}${x.d ? `<br><small class="muted">무 ${x.d}</small>` : ''}</td><td class="r num">${x.w}</td><td class="r num">${x.l}</td><td class="r num"><b>${pct(x.w, x.w + x.l)}</b></td><td class="r num muted">${x.q}</td></tr>`; }).join('')}
-      <tr><td><b>전체</b></td><td class="r num"><b>${T.w}</b></td><td class="r num"><b>${T.l}</b></td><td class="r num"><b>${pct(T.w, T.w + T.l)}</b></td><td class="r num muted">${T.q}</td></tr></tbody></table>`; };
+      <tr><td><b>전체</b><br><small class="muted">뱀사다리 빼고</small></td><td class="r num"><b>${T.w}</b></td><td class="r num"><b>${T.l}</b></td><td class="r num"><b>${pct(T.w, T.w + T.l)}</b></td><td class="r num muted">${T.q}</td></tr></tbody></table>`; };
   const rows = [...B.per].map(([id, c]) => [id, c, tot(c)]).filter(([, , T]) => T.w + T.l > 0).sort((a, b) => (b[2].w + b[2].l) - (a[2].w + a[2].l))
     .map(([id, c, T]) => `<details class="adm-wr"><summary><b>${esc(B.nick.get(id) || id.slice(0, 8))}</b>${B.tst.has(id) ? ' <small class="muted">🧪</small>' : ''} <span class="muted">· 전체 ${T.w}승 ${T.l}패</span> <b>${pct(T.w, T.w + T.l)}</b></summary>${table(c)}</details>`).join('');
   return head + `<p class="muted" style="margin:0 0 8px">${admT(B.at.toISOString())} 기준 · 기권한 판은 승률에서 뺌(기권 칸은 개수만) · 블랙잭 무승부도 뺌 · 부루마블은 1위만 승 · 계정·모드마다 최근 도박 내역 300줄 안의 판만 셈</p>
@@ -8522,6 +8528,7 @@ if (typeof SLE !== 'undefined'){
 // 홀짝은 고를 때마다 (oePick 안에서 g.last를 정한 뒤)
 glWrap(window, 'oePick', () => { const g = oeS().cur; if (g && g.last) glAdd(g, `${g.last.pick === 'odd' ? '홀' : '짝'} 고름 → 구슬 ${g.last.n}개 ${g.last.ok ? '맞힘' : '틀림'} (연속 ${g.k})`); });
 async function glSend(row){
+  wrArchFlush();
   const q = S.glq = (S.glq || []).concat([row]).slice(-5);   // 못 보낸 것은 다음 판 끝날 때 같이 보낸다 (최근 5판까지)
   if (!ACC.sb || !ACC.user || ACC.tester === undefined) return;
   const send = q.slice();
@@ -8552,6 +8559,13 @@ glFin('bjFinish', 'bj', () => bjS().cur, g => g.gl || []);
 glFin('oeFinish', 'oe', () => oeS().cur, g => g.gl || []);
 glFin('slFinish', 'sl', () => slS().cur, g => g.gl || []);
 glFin('bmFinish', 'bm', () => bmToday().cur, g => (g.rec || []).slice(-3000));
+// 환생 전 도박 결과 올리기 (실패하면 S.wrArch에 남겨 두고 다음 접속·판 끝에 다시)
+async function wrArchFlush(){
+  if (!S || !Array.isArray(S.wrArch) || !S.wrArch.length || !ACC.sb || !ACC.user) return;
+  const send = S.wrArch.slice();
+  try { const {error} = await ACC.sb.from('seed10k_wr_archive').insert(send); if (error) throw error; S.wrArch = S.wrArch.filter(x => !send.includes(x)); save(); }
+  catch(e){ console.warn('[seed10k] 환생 전 기록을 올리지 못함', e); }
+}
 // 관리 탭: 판 기록 보기 (창으로, 최근 것부터 40판, 하나씩 펼쳐 봄)
 const GL_NM = {bs:'💥 벅샷', bj:'🃏 블랙잭', oe:'✊ 홀짝', sl:'🐍 뱀사다리', bm:'🎲 부루마블'};
 async function admGlShow(title, filt, bug){
@@ -10510,10 +10524,13 @@ function commit(){
 }
 function resetGame(){
   stopAuto();
+  const arch = (S.altLog || []).filter(x => x && x.k === 'gamble').map(x => x.s), archMode = S.mode;   // 환생 전 도박 결과 (승률 전체 집계용으로 서버에 남긴다)
   const keepBase = S.syncBase, was = {usd:S.usd, krw:S.krw}, bust = +(S.gam && S.gam.bust) || 0, mq = S.gam && S.gam.mercyQ; S = newGame(S.mode); if (keepBase !== undefined) S.syncBase = keepBase;
   if (bust){ gamS().bust = bust; }
   if (mq) gamS().mercyQ = mq;   // 경찰의 연민은 분기마다 한 번: 환생해도 그대로   // 전과는 계정에 붙는다: 초기화(환생)해도 그대로 → 신용등급·적발 확률도 그대로
-  lgReset('reset', was); save();
+  lgReset('reset', was);
+  if (arch.length){ S.wrArch = [{mode:archMode, lines:arch}]; wrArchFlush(); }
+  save();
   try { TZS.at = 0; lgFlush().then(() => tzStatus(true)); } catch(e){}   // 환생하면 타짜 '가입·환생 n일차'가 1일차부터 (서버가 'reset' 돈 기록으로 센다)
   if (ACC.user && ACC.testerKnown) bustSync();   // 서버 기록으로 한 번 더 맞춘다
   $('#modal').hidden = true; $('#modal').classList.remove('on');
@@ -10724,7 +10741,7 @@ async function handleSession(session){
   mpReset(); if (ACC.user) mpWatchPayouts();
   onlStart();   // 접속 중인 사람 목록 (로그아웃이면 나간다)
   admCheck();   // 관리자 계정이면 관리 탭을 보인다
-  setTimeout(bugReplyCheck, 2500);   // 내 버그 신고에 답변이 왔으면 팝업 (다른 팝업과 겹치지 않게 조금 뒤)
+  setTimeout(bugReplyCheck, 2500); setTimeout(() => { try { wrArchFlush(); } catch(e){} }, 4000);   // 내 버그 신고에 답변이 왔으면 팝업 (다른 팝업과 겹치지 않게 조금 뒤)
   testerCheck();   // 멀티플레이: 계정이 바뀌면 방 화면을 닫고 그 계정의 받을 돈을 확인
 }
 function afterAuthResolved(){

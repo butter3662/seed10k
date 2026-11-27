@@ -16,3 +16,4 @@ seed10k_ranks_ret.sql
 seed10k_links_noip.sql
 seed10k_bugs.sql
 seed10k_gamelogs.sql
+seed10k_wr_archive.sql
