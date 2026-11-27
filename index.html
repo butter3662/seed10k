@@ -1333,7 +1333,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.8.3';
+const VERSION = '1.8.4';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -7208,6 +7208,7 @@ async function mpWs(){
   });
   return MPW.wait;
 }
+const mpWsLive = () => !!(MPW.ok && MPW.ws && MPW.ws.readyState === 1);
 function mpWsSub(code){ if (MPW.ok && MPW.ws && MPW.ws.readyState === 1) try { MPW.ws.send(JSON.stringify({t:'sub', code})); } catch(e){} else mpWs(); }
 // 요청: 웹소켓이 되면 바로 보내고 답을 기다린다 (최대 15초). 안 되면 Supabase 표로
 // 이 브라우저의 무작위 기기 ID (게임 서버가 같은 기기에서 만든 여러 계정이 한 방에 들어오는지 확인하는 데만 쓴다)
@@ -7460,7 +7461,7 @@ async function mpAct(kind, arg, spent){
     const r = await mpReq(MP.code, kind, arg);
     if (pid && (r.ok || !r.timeout)) mpPendDone(pid);
     if (!r.ok){ if (spent && !r.timeout){ receiveUSD(spent); commit(); } toast(r.err, true); }
-    await mpFetch();
+    if (mpWsLive()) mpFetch(); else await mpFetch();   // 웹소켓이면 새 상태가 이미 왔다: 버튼을 데이터베이스 왕복 없이 바로 풀어 준다
   } finally { MP.busy = false; mpRender(); }
 }
 document.addEventListener('click', async e => {
@@ -7743,7 +7744,7 @@ async function mbjAct(a){   // 히트하면 심판이 새 내 패를 돌려준�
     const code = MP.code, r = await mpReq(code, 'act', {a});
     if (!r.ok) toast(r.err, true);
     else if (r.res && Array.isArray(r.res.cards)) MP.view.bjMine = {code, cards:r.res.cards};
-    await mpFetch();
+    if (mpWsLive()) mpFetch(); else await mpFetch();   // 웹소켓이면 새 상태가 이미 왔다: 버튼을 데이터베이스 왕복 없이 바로 풀어 준다
   } finally { MP.busy = false; mpRender(); }
 }
 
@@ -7910,7 +7911,7 @@ async function mbsSend(a){
     const r = await mpReq(MP.code, 'act', a);
     if (!r.ok) toast(r.err, true);
     else if (r.res && r.res.peek !== undefined){ const g0 = MP.room && MP.room.state.g; MP.view.bsPeek = Object.assign({code:MP.code, shots:g0 ? g0.shots : undefined}, r.res); }
-    await mpFetch();
+    if (mpWsLive()) mpFetch(); else await mpFetch();   // 웹소켓이면 새 상태가 이미 왔다: 버튼을 데이터베이스 왕복 없이 바로 풀어 준다
   } finally { MP.busy = false; mbsRer(); }
 }
 document.addEventListener('click', e => {

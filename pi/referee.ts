@@ -42,7 +42,7 @@ async function rest(method: string, path: string, body?: unknown, prefer?: strin
 type Room = { code: string; game: string; mode: string; host: string; stake: number; il: boolean; status: string; state: any; ver?: number };
 const rooms = new Map<string, Room>(), privs = new Map<string, any>();
 async function loadRoom(code: string) {
-  if (rooms.has(code)) return;
+  if (rooms.has(code) || dbq.has(code)) return;   // 저장 대기 중인 방(막 닫힌 방 등)은 데이터베이스의 옛 상태로 되살리지 않는다
   const [r] = await rest("GET", `seed10k_rooms?code=eq.${encodeURIComponent(code)}&select=*`) || [];
   if (!r) return;
   rooms.set(code, r);
@@ -60,10 +60,34 @@ async function save(out: { room: Room; priv: any; payouts?: any[] }, room0: Room
   else { rooms.set(room.code, room); privs.set(room.code, out.priv || {}); }
   broadcast(room); shown?.();
   const row = { code: room.code, game: room.game, mode: room.mode, host: room.host, stake: room.stake, il: room.il, status: room.status, state: room.state, ver: room.ver, updated_at: new Date().toISOString() };
-  await rest("POST", "seed10k_rooms?on_conflict=code", [row], "resolution=merge-duplicates,return=minimal");
-  await rest("POST", "seed10k_room_priv?on_conflict=code", [{ code: room.code, priv: out.priv || {} }], "resolution=merge-duplicates,return=minimal");
+  persist(room.code, row, out.priv || {});   // 데이터베이스 저장은 기다리지 않는다 (다음 요청이 저장 왕복을 기다리느라 늦어지던 것)
   // 기록·알림은 실패해도 게임은 계속된다
   watch(room0, room, out.priv || {}, out.payouts || []).catch((e) => console.error("[seed10k-ref] 기록·알림 실패:", String((e as Error)?.message || e).slice(0, 300)));
+}
+
+/* 방 저장: 방마다 한 줄로, 마지막 상태만 저장한다. 저장하는 동안 새 상태가 오면 그 저장이 끝난 뒤 가장 새 것만 한 번 더 저장한다.
+   요청 처리(serial)는 저장을 기다리지 않는다. 받을 돈(payouts)은 save에서 먼저 기다려 적으므로 돈은 늦지 않는다.
+   저장이 실패하면 3초 뒤 다시 한다 (그동안 메모리가 기준이고, 사이트는 웹소켓으로 상태를 받는다) */
+const dbq = new Map<string, { busy: boolean; next: { row: any; priv: any } | null }>();
+function persist(code: string, row: any, priv: any) {
+  const q = dbq.get(code) || { busy: false, next: null };
+  q.next = { row: JSON.parse(JSON.stringify(row)), priv: JSON.parse(JSON.stringify(priv)) }; dbq.set(code, q);   // 복사: 저장 전에 메모리 상태가 또 바뀌어도 그때 모습대로
+  if (q.busy) return;
+  q.busy = true;
+  (async () => {
+    while (q.next) {
+      const w = q.next; q.next = null;
+      try {
+        await rest("POST", "seed10k_rooms?on_conflict=code", [w.row], "resolution=merge-duplicates,return=minimal");
+        await rest("POST", "seed10k_room_priv?on_conflict=code", [{ code, priv: w.priv }], "resolution=merge-duplicates,return=minimal");
+      } catch (e) {
+        console.error("[seed10k-ref] 방 저장 실패, 3초 뒤 다시:", code, String((e as Error)?.message || e).slice(0, 200));
+        if (!q.next) q.next = w;
+        await new Promise((r) => setTimeout(r, 3000));
+      }
+    }
+    q.busy = false; if (!q.next) dbq.delete(code);
+  })();
 }
 
 /* ── 판 결과 기록과 악용 의심 알림 ── */
