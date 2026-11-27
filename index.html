@@ -1338,7 +1338,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.9.0';
+const VERSION = '1.9.1';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -8453,8 +8453,8 @@ function bugDialog(){
   if (!ACC.user || !ACC.sb) return toast('로그인해야 버그를 신고할 수 있습니다', true);
   const game = bugGame();
   const c = showModal(`<h2>🐞 버그 신고</h2>${game ? `<p class="muted" style="margin:0">${esc(game)} · ${S && S.mode === 'live' ? '실제 시세' : '시뮬레이션'} · v${VERSION}</p>` : ''}
-    <div class="bug-f"><label for="bugWhat">언제 어떤 버그를 발견하셨나요?</label><textarea id="bugWhat" maxlength="2000" placeholder="예: 오늘 오후 3시쯤, 벅샷에서 돋보기를 안 썼는데 '실탄'이라고 떴어요"></textarea>
-    <label for="bugDmg">피해 상황</label><textarea id="bugDmg" maxlength="2000" placeholder="예: 그 판에서 $500을 잃었어요 (피해가 없으면 비워 두세요)"></textarea></div>
+    <div class="bug-f"><label for="bugWhat">언제 어떤 버그를 발견하셨나요? <small class="down">(필수)</small></label><textarea id="bugWhat" maxlength="2000" placeholder="예: 오늘 오후 3시쯤, 벅샷에서 돋보기를 안 썼는데 '실탄'이라고 떴어요"></textarea>
+    <label for="bugDmg">피해 상황 <small class="muted">(선택)</small></label><textarea id="bugDmg" maxlength="2000" placeholder="예: 그 판에서 $500을 잃었어요"></textarea></div>
     <div class="acts"><button class="btn" data-close>취소</button><button class="btn solid" id="bugGo">보내기</button></div>
     <p class="bug-note">확인 후 빠른 조치 하겠습니다</p>`);
   setTimeout(() => { const w = $('#bugWhat'); if (w) w.focus(); }, 50);
