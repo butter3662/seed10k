@@ -1333,7 +1333,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.8.4';
+const VERSION = '1.8.5';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -7681,7 +7681,8 @@ function mbjBody(R){
   const RES = {win:['승', 'up'], tie:['동점', ''], lose:['패', 'down'], refund:['환불', '']};
   const over = R.status === 'over';
   const mine = me >= 0 && !over ? mbjMine(R, me) : null;
-  const rows = g.order.map(i => {
+  const ord = me >= 0 ? g.order.filter(i => i !== me).concat([me]) : g.order;   // 내 패는 늘 맨 아래 (나머지는 차례 순서)
+  const rows = ord.map(i => {
     const s = st.seats[i], P = g.players[i], turn = !over && g.turn === i;
     const cards = i === me && mine ? mine : P.cards, hidden = cards.some(c => c < 0);   // 남의 패: 첫 장만 앞면 (-1은 뒷면)
     const t = hidden ? 0 : BJE.total(cards).t, bj = !hidden && cards.length === 2 && t === 21;
