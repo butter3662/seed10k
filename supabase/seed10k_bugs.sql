@@ -41,3 +41,16 @@ do $$ begin
     alter publication supabase_realtime add table public.seed10k_bugs;
   end if;
 end $$;
+
+-- 답변: 관리자가 적고, 신고한 사람은 자기 신고의 답변을 읽고 '읽음'만 표시할 수 있다 (읽음 표시는 함수로만)
+alter table public.seed10k_bugs add column if not exists reply text check (char_length(coalesce(reply, '')) <= 2000);
+alter table public.seed10k_bugs add column if not exists replied_at timestamptz;
+alter table public.seed10k_bugs add column if not exists reply_seen boolean not null default false;
+drop policy if exists "seed10k_bugs_select_own" on public.seed10k_bugs;
+create policy "seed10k_bugs_select_own" on public.seed10k_bugs for select using (user_id = auth.uid());
+grant update (seen, hidden, reply, replied_at, reply_seen) on public.seed10k_bugs to authenticated;   -- 정책상 관리자만
+create or replace function public.seed10k_bug_reply_seen(p_ids bigint[]) returns void language sql security definer set search_path = public as $$
+  update public.seed10k_bugs set reply_seen = true where id = any(p_ids) and user_id = auth.uid() and reply is not null;
+$$;
+revoke all on function public.seed10k_bug_reply_seen(bigint[]) from public;
+grant execute on function public.seed10k_bug_reply_seen(bigint[]) to authenticated;

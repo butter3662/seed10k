@@ -928,8 +928,10 @@ html.bm-open .top,html.bm-open .tabbar{visibility:hidden}
 .mpc-bub b{font-weight:800;margin-right:6px;color:#8a6a1f}.mpc-bub b:empty{display:none}
 .bug-row{width:min(100%,620px);display:flex;justify-content:center;padding:6px 0 2px}
 .bug-btn{border:1.5px solid color-mix(in srgb,var(--danger) 55%,transparent);color:var(--danger);background:color-mix(in srgb,var(--danger) 9%,var(--paper));font-weight:800;padding:0 16px;height:38px;border-radius:999px}
+.bug-rp{padding:8px 0;border-top:1px solid var(--rule)}.bug-rp:first-of-type{border-top:0}.bug-q{margin:4px 0;color:var(--ink-2);white-space:pre-wrap;word-break:break-word}.bug-a{margin:6px 0 0;padding:8px 10px;border-radius:10px;background:color-mix(in srgb,var(--brass) 10%,var(--surface));white-space:pre-wrap;word-break:break-word}
 .bug-f textarea{width:100%;min-height:84px;resize:vertical;border:1px solid var(--rule);border-radius:10px;background:var(--surface);color:var(--ink);font:inherit;padding:10px;box-sizing:border-box}
 .bug-f label{display:block;margin:10px 0 4px;font-weight:750}.bug-note{margin:12px 0 0;text-align:center;font-weight:700;color:var(--ink-2)}
+.adm-bug-rp{border-left:3px solid var(--brass);padding-left:8px}.adm-bug .bug-f textarea{min-height:60px}
 .adm-bug{padding:10px 0;border-top:1px solid var(--rule)}.adm-bug.seen{opacity:.6}.adm-bug p{margin:4px 0;white-space:pre-wrap;word-break:break-word}.adm-bug .adm-al-b{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
 .bm-ov{position:fixed;inset:0;z-index:70;background:radial-gradient(120% 80% at 50% 0%,color-mix(in srgb,var(--brass) 10%,var(--paper)),var(--paper) 60%);overflow:auto;-webkit-overflow-scrolling:touch;padding:calc(10px + env(safe-area-inset-top)) 8px calc(16px + env(safe-area-inset-bottom));display:flex;flex-direction:column;align-items:center;gap:10px}
 .bm-ov[hidden]{display:none}
@@ -1338,7 +1340,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.9.1';
+const VERSION = '1.9.2';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -8213,6 +8215,7 @@ function admBadge(){ $$('[data-tab="admin"]').forEach(b => b.classList.toggle('w
 function renderAdmin(){
   const v = $('#v-admin'); if (!v) return;
   if (!ADM.on){ v.innerHTML = '<p class="empty">관리자만 볼 수 있습니다.</p>'; return; }
+  const ae = document.activeElement; if (ae && ae.dataset && ae.dataset.bugrp && v.contains(ae)){ ADM.rerender = true; ae.onblur = () => { if (ADM.rerender){ ADM.rerender = false; setTimeout(renderAdmin, 0); } }; return; }   // 답변을 쓰는 중에는 다시 그리지 않는다
   setTimeout(admDupLoad, 0);   // 아래에서 화면을 그린 뒤 닉네임 겹침 칸을 채운다
   const al = ADM.alerts.slice(0, 50).map(a => `<li class="adm-al ${a.seen ? 'seen' : ''}"><div><small class="muted">${admT(a.at)} · ${esc(admKind(a.kind))} · ${a.mode === 'live' ? '실제 시세' : '시뮬'}</small><p class="adm-al-who">${a.uid ? `👤 <b>${esc(admNick(a.uid))}</b>` : ''}${a.other ? ` · 상대 <b>${esc(admNick(a.other))}</b>` : ''}</p><p>${esc(a.msg)}</p></div>
       <div class="adm-al-b">${a.uid ? `<button class="btn" data-admu="${a.uid}" title="이 알림의 대상 계정 정보 열기">의심 계정</button>` : ''}${a.other ? `<button class="btn" data-admu="${a.other}" title="같이 걸린 다른 계정 정보 열기">함께 걸린 계정</button>` : ''}${a.seen ? '' : `<button class="btn" data-admseen="${a.id}">확인함</button>`}<button class="btn" data-admdel="${a.id}" title="목록에서 지웁니다 (그 계정 정보 맨 아래 '의심 기록'에는 남음)">삭제</button></div></li>`).join('');
@@ -8468,6 +8471,20 @@ function bugDialog(){
   };
 }
 document.addEventListener('click', e => { if (e.target.closest && e.target.closest('[data-bug]')) bugDialog(); });
+// 내 신고에 달린 답변: 접속하면 한 번 팝업으로 보여 주고 '읽음'으로 표시한다 (다른 창이 떠 있으면 닫힐 때까지 기다림)
+async function bugReplyCheck(){
+  if (!ACC.user || !ACC.sb) return;
+  let rows;
+  try { const {data, error} = await ACC.sb.from('seed10k_bugs').select('id,at,game,what,reply,replied_at').eq('user_id', ACC.user.id).not('reply', 'is', null).eq('reply_seen', false).order('id').limit(10); if (error) return; rows = data || []; } catch(e){ return; }
+  if (!rows.length) return;
+  const show = () => {
+    if (!$('#modal').hidden) return setTimeout(show, 1500);
+    showModal(`<h2>🐞 버그 신고 답변</h2>${rows.map(r => `<div class="bug-rp"><small class="muted">${new Date(r.at).toLocaleString('ko-KR', {timeZone:'Asia/Seoul', month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit', hour12:false})}${r.game ? ' · ' + esc(r.game) : ''}에 보낸 신고</small>
+      <p class="bug-q">${esc(r.what)}</p><p class="bug-a"><b>답변</b><br>${esc(r.reply)}</p></div>`).join('')}
+      <div class="acts"><button class="btn solid" data-close>확인</button></div>`, () => { ACC.sb.rpc('seed10k_bug_reply_seen', {p_ids:rows.map(r => r.id)}).then(() => {}, () => {}); });
+  };
+  show();
+}
 // 관리 탭: 버그 신고 목록 (지운 것은 빼고 최근 50건)
 ADM.bugs = []; ADM.bugUn = 0;
 async function admLoadBugs(){
@@ -8481,7 +8498,9 @@ function admBugsHTML(){
   const li = ADM.bugs.map(b => `<li class="adm-bug ${b.seen ? 'seen' : ''}"><small class="muted">${admT(b.at)} · ${esc(b.game || '게임 밖')} · ${b.mode === 'live' ? '실제 시세' : '시뮬'}${b.app_ver ? ` · v${esc(b.app_ver)}` : ''}</small>
     <div><b>👤 ${esc(admNick(b.user_id))}</b></div>
     <p><b>언제·어떤 버그:</b> ${esc(b.what)}</p>${b.damage ? `<p><b>피해 상황:</b> ${esc(b.damage)}</p>` : ''}
-    <div class="adm-al-b"><button class="btn" data-admu="${b.user_id}">계정 보기</button>${b.seen ? '' : `<button class="btn" data-bugseen="${b.id}">확인함</button>`}<button class="btn" data-bugdel="${b.id}">삭제</button></div></li>`).join('');
+    ${b.reply ? `<p class="adm-bug-rp"><b>↳ 답변</b> <small class="muted">${admT(b.replied_at)} · ${b.reply_seen ? '읽음' : '아직 안 읽음'}</small><br>${esc(b.reply)}</p>` : ''}
+    <div class="bug-f"><textarea data-bugrp="${b.id}" maxlength="2000" placeholder="${b.reply ? '답변 고치기' : '답변 쓰기 (보내면 이 사람이 다음에 접속할 때 팝업으로 봅니다)'}">${b.reply ? esc(b.reply) : ''}</textarea></div>
+    <div class="adm-al-b"><button class="btn solid" data-bugsend="${b.id}">${b.reply ? '답변 고치기' : '답변 보내기'}</button><button class="btn" data-admu="${b.user_id}">계정 보기</button>${b.seen ? '' : `<button class="btn" data-bugseen="${b.id}">확인함</button>`}<button class="btn" data-bugdel="${b.id}">삭제</button></div></li>`).join('');
   return `<div class="card-h"><h2>🐞 버그 신고</h2><small>${ADM.bugUn ? `<b class="down">확인 안 함 ${ADM.bugUn}건</b>` : '모두 확인함'}</small></div>
     ${li ? `<ul class="adm-als">${li}</ul>` : '<p class="empty">신고가 없습니다.</p>'}`;
 }
@@ -8494,6 +8513,14 @@ document.addEventListener('click', async e => {
     const id = +t.dataset.admseen, {error} = await ACC.sb.from('seed10k_alerts').update({seen:true}).eq('id', id);
     if (error) return toast(error.message, true);
     const a = ADM.alerts.find(x => x.id === id); if (a && !a.seen){ a.seen = true; ADM.unseen--; } admBadge(); return renderAdmin();
+  }
+  if (t.dataset.bugsend){
+    const id = +t.dataset.bugsend, ta = document.querySelector(`[data-bugrp="${id}"]`), reply = ta ? ta.value.trim() : '';
+    if (!reply) return toast('답변을 적어 주세요', true);
+    t.disabled = true;
+    const {error} = await ACC.sb.from('seed10k_bugs').update({reply, replied_at:new Date().toISOString(), reply_seen:false, seen:true}).eq('id', id);
+    if (error){ t.disabled = false; return toast('보내지 못했습니다: ' + error.message, true); }
+    toast('답변을 보냈습니다. 그 사람이 다음에 접속하면 팝업으로 봅니다'); return admLoadBugs();
   }
   if (t.dataset.bugseen || t.dataset.bugdel){
     const id = +(t.dataset.bugseen || t.dataset.bugdel); t.disabled = true;
@@ -10603,6 +10630,7 @@ async function handleSession(session){
   mpReset(); if (ACC.user) mpWatchPayouts();
   onlStart();   // 접속 중인 사람 목록 (로그아웃이면 나간다)
   admCheck();   // 관리자 계정이면 관리 탭을 보인다
+  setTimeout(bugReplyCheck, 2500);   // 내 버그 신고에 답변이 왔으면 팝업 (다른 팝업과 겹치지 않게 조금 뒤)
   testerCheck();   // 멀티플레이: 계정이 바뀌면 방 화면을 닫고 그 계정의 받을 돈을 확인
 }
 function afterAuthResolved(){
