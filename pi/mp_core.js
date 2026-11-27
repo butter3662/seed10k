@@ -353,8 +353,9 @@ GAMES.bj = {
     priv.shoe = shoe; priv.ix = 0;
     const a = st.seats.map(() => bjDraw(priv)), b = st.seats.map(() => bjDraw(priv)), first = Math.floor(rnd() * n);
     priv.hands = st.seats.map((_, i) => [a[i], b[i]]);
-    st.g = {players: st.seats.map((s, i) => ({cards: bjPubCards(priv.hands[i]), done: false, res: null})), order: Array.from({length: n}, (_, k) => (first + k) % n),
-      step: 0, turn: -1, pot: r2(room.stake * n), low: Array(n).fill(false), hid: 1, log: [`${st.seats[first].nick}부터 시작`]};
+    st.g = {players: st.seats.map((s, i) => ({cards: bjPubCards(priv.hands[i]), done: false, res: null})), order: (() => { const o = Array.from({length: n}, (_, k) => k); for (let i = n - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [o[i], o[j]] = [o[j], o[i]]; } return o; })(),   // 순서 전체를 무작위로 섞는다
+      step: 0, turn: -1, pot: r2(room.stake * n), low: Array(n).fill(false), hid: 1, log: []};
+    st.g.log.push(`${st.seats[st.g.order[0]].nick}부터 시작`);
     // 블랙잭(처음 두 장 21)이어도 바로 공개하지 않는다: 차례가 오면 스탠드만 하면 되고, 시간이 지나면 저절로 스탠드
     return GAMES.bj.advance(room, priv, now);
   },
