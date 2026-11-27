@@ -926,6 +926,11 @@ html.bm-open .top,html.bm-open .tabbar{visibility:hidden}
 .mpc-bub.dn::after{bottom:auto;top:-6px;border:6px solid transparent;border-top:0;border-bottom-color:#fff}
 .mpc-bub.free::after{display:none}
 .mpc-bub b{font-weight:800;margin-right:6px;color:#8a6a1f}.mpc-bub b:empty{display:none}
+.bug-row{width:min(100%,620px);display:flex;justify-content:center;padding:6px 0 2px}
+.bug-btn{border:1.5px solid color-mix(in srgb,var(--danger) 55%,transparent);color:var(--danger);background:color-mix(in srgb,var(--danger) 9%,var(--paper));font-weight:800;padding:0 16px;height:38px;border-radius:999px}
+.bug-f textarea{width:100%;min-height:84px;resize:vertical;border:1px solid var(--rule);border-radius:10px;background:var(--surface);color:var(--ink);font:inherit;padding:10px;box-sizing:border-box}
+.bug-f label{display:block;margin:10px 0 4px;font-weight:750}.bug-note{margin:12px 0 0;text-align:center;font-weight:700;color:var(--ink-2)}
+.adm-bug{padding:10px 0;border-top:1px solid var(--rule)}.adm-bug.seen{opacity:.6}.adm-bug p{margin:4px 0;white-space:pre-wrap;word-break:break-word}.adm-bug .adm-al-b{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
 .bm-ov{position:fixed;inset:0;z-index:70;background:radial-gradient(120% 80% at 50% 0%,color-mix(in srgb,var(--brass) 10%,var(--paper)),var(--paper) 60%);overflow:auto;-webkit-overflow-scrolling:touch;padding:calc(10px + env(safe-area-inset-top)) 8px calc(16px + env(safe-area-inset-bottom));display:flex;flex-direction:column;align-items:center;gap:10px}
 .bm-ov[hidden]{display:none}
 .bm-top{width:min(100%,620px);display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:8px}
@@ -1333,7 +1338,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.8.9';
+const VERSION = '1.9.0';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -8179,9 +8184,11 @@ async function admCheck(){
       ADM.alerts.unshift(p.new); ADM.unseen++; admBadge(); admNickLoad([p.new.uid, p.new.other]).then(() => { if (UI.tab === 'admin') renderAdmin(); });
       toast(`🚨 부정행위 의심: ${p.new.msg}`, true);
       if (UI.tab === 'admin') renderAdmin();
+    }).on('postgres_changes', {event:'INSERT', schema:'public', table:'seed10k_bugs'}, p => {
+      if (!p.new) return; toast('🐞 새 버그 신고가 왔습니다'); admLoadBugs();
     }).subscribe();
   } catch(e){}
-  await admLoadAlerts();
+  await admLoadAlerts(); admLoadBugs();
   if (!was && ADM.unseen) toast(`🚨 확인하지 않은 부정행위 의심 알림 ${ADM.unseen}건`, true);
 }
 const ADM_KIND = {oe_streak:'홀짝 연승', bj_stand:'블랙잭 계속 스탠드', bm_nobuy:'부루마블 땅 안 사기', bs_self:'벅샷 자기만 쏘기', bs_risky:'벅샷 위험한데 자기 쏘기', pair_cap:'몰아주기 한도', pair_win:'몰아주기 의심(승률)', same_dev:'같은 기기', same_net:'같은 네트워크', ledger_gap:'돈 기록 끊김', ledger_save:'저장 잔고 불일치', ledger_reset:'환생 위장', gam_over:'한도 초과 도박 수익', tz_big:'타짜 큰 판', il_nobust:'단속이 너무 안 걸림'};
@@ -8201,7 +8208,7 @@ async function admLoadAlerts(){
   admBadge();
   if (UI.tab === 'admin') renderAdmin();
 }
-function admBadge(){ $$('[data-tab="admin"]').forEach(b => b.classList.toggle('warn', ADM.unseen > 0)); }
+function admBadge(){ $$('[data-tab="admin"]').forEach(b => b.classList.toggle('warn', ADM.unseen > 0 || (ADM.bugUn || 0) > 0)); }
 
 function renderAdmin(){
   const v = $('#v-admin'); if (!v) return;
@@ -8216,6 +8223,7 @@ function renderAdmin(){
       <p class="muted" style="margin:0 0 8px">게임 서버가 판이 끝날 때 확인해 적습니다. 몰아주기: 두 계정 사이에 24시간 동안 한쪽으로 넘어간 돈이 $${WATCH_ADM.cap.toLocaleString()} 이상이면 알림만(막지 않음, 블랙잭 제외, 같은 두 사람은 하루 한 번) · 같은 두 사람이 ${WATCH_ADM.pwMin}판 이상 했고 최근 20판에서 한쪽이 ${WATCH_ADM.pwPct}% 이상 앞섬(5판마다) · 같은 기기를 쓴 두 계정이 같은 방에 들어옴. 돈 기록: 기록 없이 잔고가 바뀌었거나(두 기기에서 동시에 하면 생길 수 있음), 저장된 잔고가 마지막 기록과 다름. 홀짝 대결: 같은 상대에게 ${WATCH_ADM.oe}연승(이후 5판마다). 블랙잭 대결: 버스트할 수 없는 11 이하에서 직접 스탠드한 판이 ${WATCH_ADM.bj}판 연속. 부루마블: 돈이 있는데 직접 '안 산다'를 고른 것이 한 판에 ${WATCH_ADM.bm}번(이후 5번마다). 벅샷 룰렛: 한 판에서 직접 쏜 것이 ${WATCH_ADM.bsMin}번 이상이고 그중 ${WATCH_ADM.bsPct}% 이상이 자기 자신(공포탄이 확정인 상황에서 자기를 쏜 것은 세지 않음) · 실탄일 확률이 ${WATCH_ADM.bsP}% 이상인데 자기 자신을 쏜 것이 한 판에 ${WATCH_ADM.bsRisk}번(이후 5번마다, 미스터리 모드에서는 돋보기로 본 때만 셈). 돈 기록 추가: 환생했는데 시작 잔고가 $10,000이 아님 · 타짜 없이 한 판에서 한도보다 많이 받음(타짜 판은 $20,000 이상이면 기록만) · 불법 판이 단속 없이 지나갈 확률이 0.5% 아래 · 사이트에서 관리자 수정으로 위장.</p>
       ${al ? `<ul class="adm-als">${al}</ul>` : '<p class="empty">알림이 없습니다.</p>'}
       ${ADM.unseen ? '<div class="mg-foot"><button class="btn" id="admSeenAll">모두 확인함</button></div>' : ''}</section>
+    <section class="card" id="admBugs">${admBugsHTML()}</section>
     <section class="card" id="admSrv">${admSrvHTML()}</section>
     <section class="card" id="admBsSt">${admBsHTML()}</section>
     <section class="card" id="admDup" hidden></section>
@@ -8431,6 +8439,52 @@ function admClawSQL(uid, mode, amt){
     `update public.seed10k_saves set data = data || jsonb_build_object('usd', round((data->>'usd')::numeric - ${amt.toFixed(2)}, 2), 'syncBase', '${tag}', 'dirty', false), updated_at = now()\n` +
     `where user_id = '${uid}' and mode = '${mode}' returning (data->>'usd')::numeric as usd_after;`;
 }
+/* ───────── 버그 신고 ─────────
+   게임 화면(부루마블·뱀사다리·홀짝·블랙잭·벅샷·같이 하기)의 맨 아래 빈 곳에 🐞 버튼을 붙인다. 화면을 다시 그려도 다시 붙도록 0.7초마다 확인한다.
+   신고는 seed10k_bugs에 적고(로그인한 계정만, 하루 10건), 관리 탭에서만 읽는다 */
+function bugInject(){
+  document.querySelectorAll('.bm-ov:not([hidden])').forEach(ov => {
+    if (!ov.querySelector(':scope > .bug-row')) ov.insertAdjacentHTML('beforeend', '<div class="bug-row"><button class="btn bug-btn" data-bug>🐞 버그 신고</button></div>');
+  });
+}
+setInterval(bugInject, 700);
+function bugGame(){ const ov = [...document.querySelectorAll('.bm-ov:not([hidden])')].pop(), b = ov && ov.querySelector('.bm-ttl b'); return b ? b.textContent.trim().slice(0, 40) : ''; }
+function bugDialog(){
+  if (!ACC.user || !ACC.sb) return toast('로그인해야 버그를 신고할 수 있습니다', true);
+  const game = bugGame();
+  const c = showModal(`<h2>🐞 버그 신고</h2>${game ? `<p class="muted" style="margin:0">${esc(game)} · ${S && S.mode === 'live' ? '실제 시세' : '시뮬레이션'} · v${VERSION}</p>` : ''}
+    <div class="bug-f"><label for="bugWhat">언제 어떤 버그를 발견하셨나요?</label><textarea id="bugWhat" maxlength="2000" placeholder="예: 오늘 오후 3시쯤, 벅샷에서 돋보기를 안 썼는데 '실탄'이라고 떴어요"></textarea>
+    <label for="bugDmg">피해 상황</label><textarea id="bugDmg" maxlength="2000" placeholder="예: 그 판에서 $500을 잃었어요 (피해가 없으면 비워 두세요)"></textarea></div>
+    <div class="acts"><button class="btn" data-close>취소</button><button class="btn solid" id="bugGo">보내기</button></div>
+    <p class="bug-note">확인 후 빠른 조치 하겠습니다</p>`);
+  setTimeout(() => { const w = $('#bugWhat'); if (w) w.focus(); }, 50);
+  $('#bugGo').onclick = async () => {
+    const what = $('#bugWhat').value.trim(), damage = $('#bugDmg').value.trim();
+    if (!what) return toast('어떤 버그인지 적어 주세요', true);
+    const b = $('#bugGo'); b.disabled = true;
+    const {error} = await ACC.sb.from('seed10k_bugs').insert({game:game || null, mode:S && S.mode === 'live' ? 'live' : 'sim', what, damage:damage || null, app_ver:VERSION});
+    if (error){ b.disabled = false; return toast(/하루에 10건/.test(error.message || '') ? '버그 신고는 하루에 10건까지 할 수 있습니다' : `보내지 못했습니다: ${error.message}`, true); }
+    c(); toast('버그 신고를 보냈습니다. 확인 후 빠른 조치 하겠습니다');
+  };
+}
+document.addEventListener('click', e => { if (e.target.closest && e.target.closest('[data-bug]')) bugDialog(); });
+// 관리 탭: 버그 신고 목록 (지운 것은 빼고 최근 50건)
+ADM.bugs = []; ADM.bugUn = 0;
+async function admLoadBugs(){
+  const {data, error} = await ACC.sb.from('seed10k_bugs').select('*').eq('hidden', false).order('id', {ascending:false}).limit(50);
+  if (error) return;
+  ADM.bugs = data || []; ADM.bugUn = ADM.bugs.filter(b => !b.seen).length;
+  await admNickLoad(ADM.bugs.map(b => b.user_id)); admBadge();
+  if (UI.tab === 'admin') renderAdmin();
+}
+function admBugsHTML(){
+  const li = ADM.bugs.map(b => `<li class="adm-bug ${b.seen ? 'seen' : ''}"><small class="muted">${admT(b.at)} · ${esc(b.game || '게임 밖')} · ${b.mode === 'live' ? '실제 시세' : '시뮬'}${b.app_ver ? ` · v${esc(b.app_ver)}` : ''}</small>
+    <div><b>👤 ${esc(admNick(b.user_id))}</b></div>
+    <p><b>언제·어떤 버그:</b> ${esc(b.what)}</p>${b.damage ? `<p><b>피해 상황:</b> ${esc(b.damage)}</p>` : ''}
+    <div class="adm-al-b"><button class="btn" data-admu="${b.user_id}">계정 보기</button>${b.seen ? '' : `<button class="btn" data-bugseen="${b.id}">확인함</button>`}<button class="btn" data-bugdel="${b.id}">삭제</button></div></li>`).join('');
+  return `<div class="card-h"><h2>🐞 버그 신고</h2><small>${ADM.bugUn ? `<b class="down">확인 안 함 ${ADM.bugUn}건</b>` : '모두 확인함'}</small></div>
+    ${li ? `<ul class="adm-als">${li}</ul>` : '<p class="empty">신고가 없습니다.</p>'}`;
+}
 document.addEventListener('submit', e => { if (e.target.id === 'admQF'){ e.preventDefault(); admSearch($('#admQ').value.trim()); } });
 document.addEventListener('click', async e => {
   const t = e.target.closest('button'); if (!t || !ADM.on) return;
@@ -8440,6 +8494,12 @@ document.addEventListener('click', async e => {
     const id = +t.dataset.admseen, {error} = await ACC.sb.from('seed10k_alerts').update({seen:true}).eq('id', id);
     if (error) return toast(error.message, true);
     const a = ADM.alerts.find(x => x.id === id); if (a && !a.seen){ a.seen = true; ADM.unseen--; } admBadge(); return renderAdmin();
+  }
+  if (t.dataset.bugseen || t.dataset.bugdel){
+    const id = +(t.dataset.bugseen || t.dataset.bugdel); t.disabled = true;
+    const {error} = await ACC.sb.from('seed10k_bugs').update(t.dataset.bugdel ? {hidden:true, seen:true} : {seen:true}).eq('id', id);
+    if (error){ t.disabled = false; return toast(error.message, true); }
+    return admLoadBugs();
   }
   if (t.id === 'admBsGo') return admBsLoad();
   if (t.dataset.admdel){
