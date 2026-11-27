@@ -1342,7 +1342,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.9.6';
+const VERSION = '1.9.7';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -8266,15 +8266,18 @@ async function admDupLoad(){
   } catch(e){}
 }
 ADM.bs = null;
+// 같이 하기 부루마블은 심판이 남긴 줄이라 최종 순위(standings)에 rank가 들어 있다 (혼자 하기 줄에는 없음)
+const admBmMp = b => Array.isArray(b.standings) && b.standings.length && b.standings[0] && b.standings[0].rank !== undefined;
 async function admBsLoad(){
   ADM.bs = {busy:true}; admBsDraw();
   const sb = ACC.sb;
-  const [sv, ts, us, rk, ar] = await Promise.all([
+  const [sv, ts, us, rk, ar, bml] = await Promise.all([
     sb.from('seed10k_saves').select('user_id,mode,al:data->altLog'),
     sb.from('seed10k_testers').select('user_id'),
     sb.rpc('seed10k_admin_users', {q:''}),
     sb.from('seed10k_ranks').select('user_id,nickname'),
     sb.from('seed10k_wr_archive').select('user_id,lines'),
+    sb.from('seed10k_bmlog').select('user_id,rank,forfeit,standings').limit(20000),
   ]);
   const err = [sv].map(r => r.error && r.error.message).filter(Boolean);
   const tst = new Set(((ts && ts.data) || []).map(r => r.user_id)), nick = new Map(((us && us.data) || []).map(u => [u.user_id, u.nickname || u.email || u.user_id.slice(0, 8)]));
@@ -8282,14 +8285,20 @@ async function admBsLoad(){
   const blank = () => Object.fromEntries(ADM_WG.map(([g]) => [g, {w:0, l:0, q:0, d:0}]));
   const per = new Map();
   for (const r of (sv.data || [])) for (const x of (Array.isArray(r.al) ? r.al : r.data && Array.isArray(r.data.altLog) ? r.data.altLog : [])){
-    const o = admWinOf(x && x.s || ''); if (!o) continue;
+    const o = admWinOf(x && x.s || ''); if (!o || (o[0] === 'bm' && bml && !bml.error)) continue;   // 부루마블은 아래 서버 기록으로 센다
     if (!per.has(r.user_id)) per.set(r.user_id, blank());
     per.get(r.user_id)[o[0]][o[1]]++;
   }
   for (const r of ((ar && ar.data) || [])) for (const t of (Array.isArray(r.lines) ? r.lines : [])){   // 환생하기 전 결과
-    const o = admWinOf(t || ''); if (!o) continue;
+    const o = admWinOf(t || ''); if (!o || (o[0] === 'bm' && bml && !bml.error)) continue;
     if (!per.has(r.user_id)) per.set(r.user_id, blank());
     per.get(r.user_id)[o[0]][o[1]]++;
+  }
+  // 부루마블: 서버 기록(혼자 하기 판만, 환생 전 판 포함). 1위 = 승, 기권 = 기권, 나머지 = 패
+  for (const b of ((bml && bml.data) || [])){
+    if (admBmMp(b)) continue;
+    if (!per.has(b.user_id)) per.set(b.user_id, blank());
+    per.get(b.user_id).bm[b.forfeit ? 'q' : b.rank === 1 ? 'w' : 'l']++;
   }
   ADM.bs = {per, tst, nick, err, at:new Date()}; admBsDraw();
 }
@@ -8359,7 +8368,7 @@ async function admOpenUser(uid){
     sb.from('seed10k_saves').select('mode,data,updated_at').eq('user_id', uid),
     sb.from('seed10k_payouts').select('id,at,code,game,mode,amount,cost,il,note,claimed_at').eq('user_id', uid).order('id', {ascending:false}).limit(2000),
     sb.from('seed10k_mp_results').select('*').contains('uids', [uid]).order('id', {ascending:false}).limit(30),
-    sb.from('seed10k_bmlog').select('at,mode,n,stake,pay,rank,forfeit,il,rounds').eq('user_id', uid).order('at', {ascending:false}).limit(10),
+    sb.from('seed10k_bmlog').select('at,mode,n,stake,pay,rank,forfeit,il,rounds,standings').eq('user_id', uid).order('at', {ascending:false}).limit(30),
     sb.from('seed10k_mp_bans').select('*').eq('user_id', uid).maybeSingle(),
     sb.from('seed10k_testers').select('user_id').eq('user_id', uid).maybeSingle(),
     ADM.users && ADM.users.find(u => u.user_id === uid) ? Promise.resolve({data:[ADM.users.find(u => u.user_id === uid)]}) : sb.rpc('seed10k_admin_users', {q:''}).then(r => ({data:(r.data || []).filter(u => u.user_id === uid)})),
@@ -8390,14 +8399,16 @@ function admUserHTML(){
   const nm = id => (BY_ID[id] && BY_ID[id].n) || id;
   const money = (v, cur) => cur === 'KRW' ? fmtKRW(v) : fmtUSD(v);
   const trades = d && (d.trades || []).slice(0, 20).map(t => `<tr><td>${esc(String(t.dt || ''))}${t.at ? `<br><span class="muted">${admT(t.at)}</span>` : ''}</td><td><span class="side ${t.side === 'buy' ? 'up' : 'down'}">${t.side === 'buy' ? '매수' : '매도'}</span></td><td>${esc(nm(t.id))}<br><span class="muted">${(+t.q || 0).toLocaleString()}주</span></td><td class="r num">${t.amt !== undefined ? money(+t.amt, t.cur) : fmtUSD(+t.usd || 0)}</td></tr>`).join('');
-  const alt = d && (d.altLog || []).slice(0, 30).map(x => `<tr><td>${esc(x.dt || '')}<br><span class="muted">${admT(x.at)}</span></td><td>${esc(x.s)}</td><td class="r num ${x.amt > 0 ? 'up' : ''}">${x.amt > 0 ? '+' : x.amt < 0 ? MINUS : ''}${money(Math.abs(x.amt), x.cur)}</td></tr>`).join('');
+  // 도박 내역에 부루마블을 합친다: 저장 기록의 부루마블 줄 대신 서버 부루마블 기록(환생 전 판도 남아 있음)을 쓴다
+  const bmRows = (D.bm || []).filter(b => b.mode === mode).map(b => ({at:new Date(b.at).getTime(), dt:'', s:`${admBmMp(b) ? '👥 ' : ''}부루마블 ${b.n}명 · ${b.rank}위${b.forfeit ? ' (기권)' : ''}${b.il ? ' (불법)' : ''}`, amt:admR2(+b.pay - +b.stake), cur:'USD', bm:1}));
+  const alt = d && (d.altLog || []).filter(x => !/^부루마블/.test(x.s || '')).concat(bmRows).sort((a, b) => (b.at || 0) - (a.at || 0)).slice(0, 30)
+    .map(x => `<tr><td>${esc(x.dt || '')}${x.dt ? '<br>' : ''}<span class="muted">${admT(new Date(x.at).toISOString())}</span></td><td>${esc(x.s)}</td><td class="r num ${x.amt > 0 ? 'up' : ''}">${x.amt > 0 ? '+' : x.amt < 0 ? MINUS : ''}${money(Math.abs(x.amt), x.cur)}</td></tr>`).join('');
   const fx = d && (d.fxLog || []).slice(0, 10).map(x => `<tr><td>${esc(String(x.dt || ''))}</td><td>${x.dir === 'u2k' ? '달러 → 원화' : '원화 → 달러'}</td><td class="r num">${x.dir === 'u2k' ? fmtUSD(+x.from) : fmtKRW(+x.from)}</td></tr>`).join('');
   const res = D.res.filter(r => r.mode === mode).map(r => {
     const me = r.uids.indexOf(ADM.uid), others = (r.seats || []).filter(s => s.uid !== ADM.uid).map(s => esc(s.nick)).join(', ');
     return `<tr><td>${admT(r.at)}</td><td>${esc((MP_GAMES[r.game] || {}).nm || r.game)}<br><span class="muted">vs ${others}</span></td><td>${r.win === me ? '<b class="up">승</b>' : r.win === null ? '-' : '패'}${r.why ? `<br><span class="muted">${esc(r.why)}</span>` : ''}</td><td class="r num">${fmtUSD(+r.stake)}${r.il ? '<br><span class="muted">불법</span>' : ''}</td></tr>`;
   }).join('');
   const pays = D.pays.filter(p => p.mode === mode).slice(0, 20).map(p => `<tr><td>${admT(p.at)}</td><td>${esc(p.note || p.game || '')}</td><td class="r num ${(+p.amount - +p.cost) > 0 ? 'up' : ''}">${admUSD(admR2(+p.amount - +p.cost))}<br><span class="muted">${p.claimed_at ? '받음' : '아직 안 받음'}</span></td></tr>`).join('');
-  const bm = D.bm.filter(b => b.mode === mode).map(b => `<tr><td>${admT(b.at)}</td><td>${b.n}명 · ${b.rank}위${b.forfeit ? ' (기권)' : ''}${b.il ? ' · 불법' : ''}</td><td class="r num">${admUSD(admR2(+b.pay - +b.stake))}</td></tr>`).join('');
   // 돈 기록(원장): 줄마다 '앞 줄 잔고 + 금액 = 이번 잔고'가 이어지지 않으면 빨갛게. why: start = 이 기기에서 기록 시작, reset = 계정 초기화, 그 밖에는 돈을 바꾼 함수 이름
   const lgs = (D.lg || []).filter(r => r.mode === mode).slice(0, 40), whyT = w => ({start:'기록 시작(새 기기)', reset:'환생(계정 초기화)', admin:'관리자 수정'})[w] || w || '';
   const lgRows = lgs.map((r, i) => { const nx = lgs[i + 1], gap = nx && r.why !== 'start' && (Math.abs((+r.bal - +r.amt) - +nx.bal) > 0.02 || Math.abs((+r.bal_k - +r.amt_k) - +nx.bal_k) > 2), st = nx && r.why === 'start' && (Math.abs(+r.bal - +nx.bal) > 0.02 || Math.abs(+r.bal_k - +nx.bal_k) > 2);
@@ -8425,7 +8436,6 @@ function admUserHTML(){
     ${admSec('멀티 받은 돈 (최근 20)', tbl('<th>시각</th><th>내용</th><th class="r">순손익</th>', pays, '받은 돈 기록이 없습니다.'))}
     ${admSec('채권·주택·복권·도박 (최근 30)', tbl('<th>날짜</th><th>내용</th><th class="r">금액</th>', alt, '내역이 없습니다.'))}
     ${admSec('주식 거래 (최근 20)', tbl('<th>날짜</th><th>구분</th><th>종목</th><th class="r">금액</th>', trades, '주식 거래 내역이 없습니다.'))}
-    ${admSec('부루마블 (최근 10)', tbl('<th>시각</th><th>결과</th><th class="r">순손익</th>', bm, '기록이 없습니다.'))}
     ${admSec('환전 (최근 10)', tbl('<th>날짜</th><th>방향</th><th class="r">낸 금액</th>', fx, '환전 내역이 없습니다.'))}
     ${admSusHTML(D.als || [], ADM.uid)}`;
 }
