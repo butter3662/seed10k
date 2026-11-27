@@ -1333,7 +1333,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.8.7';
+const VERSION = '1.8.8';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -5465,13 +5465,14 @@ const BJE = {
   shoe(rnd){ const n = 52 * BJ.decks, a = Array.from({length:n}, (_, k) => k); for (let i = n - 1; i > 0; i--){ const j = Math.floor(rnd() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; },
   draw(g){ return g.shoe[g.ix++]; },
   newRound(stake, rnd){
-    const g = {v:1, stake, shoe:BJE.shoe(rnd), ix:0, hands:[], dealer:[], hole:true, phase:'play', cur:0, cost:stake, pay:0, log:[]};
+    // df: 이번 판은 딜러가 먼저 받는다 (반반). 딜러 패는 첫 장만 보이고 나머지는 판이 끝날 때 공개 (딜러도 내 패를 보지 않고 17 규칙대로만 받는다)
+    const g = {v:2, stake, shoe:BJE.shoe(rnd), ix:0, hands:[], dealer:[], hole:true, phase:'play', cur:0, cost:stake, pay:0, log:[], df:rnd() < 0.5};
     const p1 = BJE.draw(g), d1 = BJE.draw(g), p2 = BJE.draw(g), d2 = BJE.draw(g);
     g.hands.push({cards:[p1, p2], bet:stake, done:false, dbl:false, split:false, res:null});
     g.dealer = [d1, d2];
-    const up = BJE.val(d1), pbj = BJE.isBJ(g.hands[0].cards), dbj = BJE.isBJ(g.dealer);
-    if ((up === 1 || up === 10) && dbj){ g.hole = false; g.hands[0].done = true; BJE.settle(g); }   // 딜러 블랙잭 (피크)
-    else if (pbj){ g.hands[0].done = true; g.hole = false; BJE.settle(g); }
+    // 딜러 블랙잭이어도 판을 바로 끝내지 않는다 (피크 없음). 딜러 블랙잭은 21로 치므로 내가 21을 만들면 비긴다
+    if (g.df) while (BJE.total(g.dealer).t < 17) g.dealer.push(BJE.draw(g));
+    if (BJE.isBJ(g.hands[0].cards)){ g.hands[0].done = true; g.hole = false; BJE.settle(g); }   // 내 블랙잭은 바로 정산 (딜러 블랙잭만 비김)
     return g;
   },
   hand: g => g.hands[g.cur],
@@ -5510,7 +5511,7 @@ const BJE = {
   dealerPlay(g){
     g.hole = false;
     const live = g.hands.some(h => BJE.total(h.cards).t <= 21);
-    if (live) while (BJE.total(g.dealer).t < 17) g.dealer.push(BJE.draw(g));   // S17: 소프트 17에서도 선다
+    if (live && !g.df) while (BJE.total(g.dealer).t < 17) g.dealer.push(BJE.draw(g));   // S17: 소프트 17에서도 선다 (딜러가 먼저 받은 판은 이미 받았다)
     BJE.settle(g);
   },
   settle(g){
@@ -5519,8 +5520,9 @@ const BJE = {
     for (const h of g.hands){
       const p = BJE.total(h.cards).t, pbj = !h.split && g.hands.length === 1 && BJE.isBJ(h.cards);
       let m;
-      if (dbj) m = pbj ? 1 : 0;                          // 딜러 블랙잭: 내 블랙잭만 비김
-      else if (pbj) m = BJ.bjPay;
+      if (g.v < 2 && dbj) m = pbj ? 1 : 0;               // 예전 판: 딜러 블랙잭은 내 블랙잭만 비김
+      else if (pbj) m = dbj ? 1 : BJ.bjPay;              // 내 블랙잭: 딜러도 블랙잭이면 비김
+      // 그 밖에는 딜러 블랙잭도 21로 친다 (내가 21이면 비김)
       else if (p > 21) m = 0;
       else if (d > 21 || p > d) m = 2;
       else if (p === d) m = 1;
@@ -5576,7 +5578,7 @@ function bjCardInnerHTML(){
   const s = bjS(), g = s.cur;
   INFO.bj = {t:'블랙잭', h:`<div class="prose"><ul><li>딜러보다 21에 가깝게 만들면 이깁니다. 21을 넘으면 집니다. A는 1이나 11, J·Q·K는 10.</li>
     <li>6벌(312장)을 판마다 새로 섞습니다.</li>
-    <li>딜러가 A나 10을 보이면 먼저 블랙잭인지 확인합니다. 딜러가 블랙잭이면 처음 건 판돈만 잃습니다.</li>
+    <li>판마다 반반 확률로 딜러가 먼저 받거나 내가 먼저 고릅니다. 딜러 패는 첫 장만 보이고 판이 끝날 때 공개되며, 딜러는 내 패와 상관없이 17 이상이 될 때까지만 받습니다.</li><li>딜러가 블랙잭이어도 판이 바로 끝나지 않습니다. 딜러 블랙잭은 21로 쳐서, 내가 21을 만들면 비깁니다 (내 블랙잭과 딜러 블랙잭도 비김).</li>
     <li><b>히트</b> 한 장 더 · <b>스탠드</b> 그만 · <b>더블</b> 처음 두 장일 때 판돈을 두 배로 하고 한 장만 더 · <b>스플릿</b> 같은 숫자 두 장을 두 손으로 나눔(판돈 한 번 더, 최대 4손, A는 한 장씩만).</li>
     <li>받는 돈(판돈 포함): 이기면 2배, 비기면 1배, 처음 두 장이 블랙잭(A+10)이면 <b>${BJ.bjPay}배</b>. 스플릿한 손의 21은 블랙잭이 아닙니다. 보험·서렌더는 없습니다.</li></ul>
     <p>보통 카지노와 같은 지급(블랙잭 3:2)이라, 매번 가장 유리한 행동을 골라도 평균적으로 판돈의 약 0.4%를 잃습니다. 판돈 한도: ${fmtUSDn(GAM.bj.off, 0)} (불법 모드 ${fmtUSDn(GAM.bj.on, 0)}).</p></div>`};
@@ -5588,7 +5590,7 @@ function bjCardInnerHTML(){
   }
   const over = g.phase === 'over', dn = over && BJV.shown !== null ? Math.min(BJV.shown, g.dealer.length) : g.dealer.length;
   const revealing = over && dn < g.dealer.length, showRes = over && !revealing;
-  const dCards = g.dealer.slice(0, Math.max(2, dn)).map((c, k) => bjCardHTML(c, k === 1 && (g.hole || (over && BJV.shown !== null && BJV.shown < 2)), k, `d${k}`)).join('');
+  const dCards = g.dealer.slice(0, Math.max(2, dn)).map((c, k) => bjCardHTML(c, k >= 1 && (g.hole || (k === 1 && over && BJV.shown !== null && BJV.shown < 2)), k, `d${k}`)).join('');   // 진행 중에는 첫 장 말고 모두 뒷면
   const dShown = g.dealer.slice(0, Math.max(2, dn));
   // 딜러는 고를 것이 없으므로 판이 끝나면 "8/18"이 아니라 최종 합(18)만 보인다
   const dTot = g.hole || (over && BJV.shown !== null && BJV.shown < 2) ? bjTot([g.dealer[0]]) : over ? `${BJE.total(dShown).t}` : bjTot(dShown);
@@ -5605,7 +5607,7 @@ function bjCardInnerHTML(){
       <div class="bj-row"><span class="bj-who">나</span><div class="bj-hands">${hands}</div></div>
     </div>
     ${showRes ? `<p class="oe-res ${cls(g.pay - g.cost)}">${g.pay > g.cost ? '이겼다!' : g.pay === g.cost ? '비겼다' : '졌다'} · 받을 돈 ${fmtUSD(g.pay)} (건 돈 ${fmtUSD(g.cost)})</p>`
-      : revealing ? '<p class="oe-res muted">딜러 차례…</p>' : `<p class="oe-res muted">${g.hands.length > 1 ? `${g.cur + 1}번째 손 · ` : ''}할 행동을 고르세요</p>`}
+      : revealing ? '<p class="oe-res muted">딜러 차례…</p>' : `<p class="oe-res muted">${g.df ? `딜러가 먼저 받았다 (${g.dealer.length}장) · ` : ''}${g.hands.length > 1 ? `${g.cur + 1}번째 손 · ` : ''}할 행동을 고르세요</p>`}
     <div class="bm-acts">${over ? (showRes ? '<button class="btn solid" id="bjEnd">정산하기</button>' + (g.pay < g.cost && !g.tz ? '<button class="btn run-btn" id="bjRun">🏃 도망가기</button>' : '') : '')
       : ['hit', 'stand', 'double', 'split'].map(a => {
           const ok = BJE.can(g, a) && (a === 'hit' || a === 'stand' || rich);
