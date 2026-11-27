@@ -932,7 +932,8 @@ html.bm-open .top,html.bm-open .tabbar{visibility:hidden}
 .bug-f textarea{width:100%;min-height:84px;resize:vertical;border:1px solid var(--rule);border-radius:10px;background:var(--surface);color:var(--ink);font:inherit;padding:10px;box-sizing:border-box}
 .bug-f label{display:block;margin:10px 0 4px;font-weight:750}.bug-note{margin:12px 0 0;text-align:center;font-weight:700;color:var(--ink-2)}
 .adm-bug-rp{border-left:3px solid var(--brass);padding-left:8px}.adm-bug .bug-f textarea{min-height:60px}
-.adm-bug{padding:10px 0;border-top:1px solid var(--rule)}.adm-bug.seen{opacity:.6}.adm-bug p{margin:4px 0;white-space:pre-wrap;word-break:break-word}.adm-bug .adm-al-b{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.adm-bug{padding:10px 0;border-top:1px solid var(--rule)}.adm-bug.seen{opacity:.6}.adm-bug p{margin:4px 0;white-space:pre-wrap;word-break:break-word}.adm-bug .adm-al-b{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;justify-content:flex-end;max-width:none;width:100%}
+.gl-it{border-top:1px solid var(--rule);padding:6px 0}.gl-it summary{cursor:pointer;font-weight:700}.gl-it pre{white-space:pre-wrap;word-break:break-all;font-size:12px;max-height:50vh;overflow:auto;background:var(--surface);border-radius:8px;padding:8px;margin:6px 0 0}
 .bm-ov{position:fixed;inset:0;z-index:70;background:radial-gradient(120% 80% at 50% 0%,color-mix(in srgb,var(--brass) 10%,var(--paper)),var(--paper) 60%);overflow:auto;-webkit-overflow-scrolling:touch;padding:calc(10px + env(safe-area-inset-top)) 8px calc(16px + env(safe-area-inset-bottom));display:flex;flex-direction:column;align-items:center;gap:10px}
 .bm-ov[hidden]{display:none}
 .bm-top{width:min(100%,620px);display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:8px}
@@ -1340,7 +1341,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.9.2';
+const VERSION = '1.9.3';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -8411,6 +8412,7 @@ function admUserHTML(){
     </dl>
     ${M.net > 0 && d ? `<div class="mg-foot"><button class="btn" id="admClaw">멀티로 딴 ${fmtUSD(M.net)} 회수 SQL 만들기</button></div>` : ''}
     ${admSec('돈 기록 (최근 40줄)', tbl('<th>시각</th><th>무엇 때문에</th><th class="r">바뀐 돈</th><th class="r">바뀐 뒤 잔고</th>', lgRows, '돈 기록이 없습니다.'))}
+    <div class="mg-foot"><button class="btn" data-gluser="${ADM.uid}">🎮 이 계정의 판 기록 (최근 10일)</button></div>
     ${admSec('멀티 판 결과 (최근 30)', tbl('<th>시각</th><th>게임 · 상대</th><th>결과</th><th class="r">판돈</th>', res, '멀티 판 기록이 없습니다.'))}
     ${admSec('멀티 받은 돈 (최근 20)', tbl('<th>시각</th><th>내용</th><th class="r">순손익</th>', pays, '받은 돈 기록이 없습니다.'))}
     ${admSec('채권·주택·복권·도박 (최근 30)', tbl('<th>날짜</th><th>내용</th><th class="r">금액</th>', alt, '내역이 없습니다.'))}
@@ -8465,7 +8467,8 @@ function bugDialog(){
     const what = $('#bugWhat').value.trim(), damage = $('#bugDmg').value.trim();
     if (!what) return toast('어떤 버그인지 적어 주세요', true);
     const b = $('#bugGo'); b.disabled = true;
-    const {error} = await ACC.sb.from('seed10k_bugs').insert({game:game || null, mode:S && S.mode === 'live' ? 'live' : 'sim', what, damage:damage || null, app_ver:VERSION});
+    const mpOn = !!($('#mpOv') && !$('#mpOv').hidden && MP.code);
+    const {error} = await ACC.sb.from('seed10k_bugs').insert({game:game || null, mode:S && S.mode === 'live' ? 'live' : 'sim', what, damage:damage || null, app_ver:VERSION, ...(mpOn ? {code:MP.code} : {})});
     if (error){ b.disabled = false; return toast(/하루에 10건/.test(error.message || '') ? '버그 신고는 하루에 10건까지 할 수 있습니다' : `보내지 못했습니다: ${error.message}`, true); }
     c(); toast('버그 신고를 보냈습니다. 확인 후 빠른 조치 하겠습니다');
   };
@@ -8485,6 +8488,67 @@ async function bugReplyCheck(){
   };
   show();
 }
+/* ───────── 판 기록 (혼자 하기) ─────────
+   각 판의 상태(g.gl)에 시작 상태와 모든 행동(내 행동·컴퓨터 행동·딜러가 몰래 본 것 등)을 한 줄씩 쌓고, 판이 끝나면 seed10k_gamelogs에 올린다.
+   서버가 10일 보관하고, 버그 신고가 걸린 판은 관리자가 확인할 때까지 보관한다 (같이 하기 판은 심판이 따로 올린다).
+   엔진 함수(BSE.newGame·step, BJE.newRound·act, SLE.newGame·roll)와 끝내기 함수를 감싸서 기록한다 → 게임 코드를 고치지 않아도 된다 */
+const glNow = () => new Date(Date.now() + 9 * 3600e3).toISOString().slice(11, 19);
+const glJ = o => { try { return JSON.stringify(o); } catch(e){ return String(o); } };
+function glAdd(g, line){ if (!g || typeof g !== 'object') return; const L = g.gl = Array.isArray(g.gl) ? g.gl : []; if (L.length < 1500) L.push(`${glNow()} ${String(line).slice(0, 1500)}`); }
+function glWrap(obj, fn, after){ const f = obj && obj[fn]; if (typeof f !== 'function') return; obj[fn] = function(...a){ const r = f.apply(this, a); try { after(r, a); } catch(e){} return r; }; }
+glWrap(BSE, 'newGame', (g) => glAdd(g, `시작 (벅샷): ${glJ(g)}`.slice(0, 1500)));
+glWrap(BSE, 'step', (ev, [g, i, a]) => glAdd(g, `${i === 0 ? '나' : '딜러'} ${glJ(a)} → ${glJ(ev)}`));
+glWrap(BJE, 'newRound', (g) => glAdd(g, `시작 (블랙잭): 내 패 ${glJ(g.hands.map(h => h.cards))} · 딜러 ${glJ(g.dealer)}${g.df ? ' (딜러 먼저 받음)' : ''} · 판돈 ${g.stake}`));
+glWrap(BJE, 'act', (r, [g, a]) => glAdd(g, `${a}${g.hands.length > 1 ? ` (손 ${g.cur + 1})` : ''} → 내 패 ${glJ(g.hands.map(h => h.cards))}${g.phase === 'over' ? ` · 끝: 딜러 ${glJ(g.dealer)} · 결과 ${glJ(g.hands.map(h => h.res))} · 받음 ${g.pay}` : ''}`));
+if (typeof SLE !== 'undefined'){
+  glWrap(SLE, 'newGame', (g) => glAdd(g, `시작 (뱀사다리): ${glJ(g)}`.slice(0, 1500)));
+  glWrap(SLE, 'roll', (ev, [g]) => glAdd(g, `굴림 → ${glJ(ev)} · 위치 ${glJ(g.pos)}`.slice(0, 1500)));
+}
+// 홀짝은 고를 때마다 (oePick 안에서 g.last를 정한 뒤)
+glWrap(window, 'oePick', () => { const g = oeS().cur; if (g && g.last) glAdd(g, `${g.last.pick === 'odd' ? '홀' : '짝'} 고름 → 구슬 ${g.last.n}개 ${g.last.ok ? '맞힘' : '틀림'} (연속 ${g.k})`); });
+async function glSend(row){
+  const q = S.glq = (S.glq || []).concat([row]).slice(-5);   // 못 보낸 것은 다음 판 끝날 때 같이 보낸다 (최근 5판까지)
+  if (!ACC.sb || !ACC.user || ACC.tester === undefined) return;
+  const send = q.slice();
+  try {
+    const {error} = await ACC.sb.from('seed10k_gamelogs').insert(send.map(x => ({user_id:ACC.user.id, ...x})));
+    if (error) throw error;
+    S.glq = (S.glq || []).filter(x => !send.includes(x)); save();
+  } catch(e){ console.warn('[seed10k] 판 기록을 서버에 남기지 못함', e); }
+}
+// 끝내기 함수 감싸기: 끝나기 전 판(g)과 잔고를 잡아 두고, 판이 끝났으면(cur가 바뀜) 기록을 보낸다
+function glFin(name, game, cur, logOf){
+  const f = window[name]; if (typeof f !== 'function') return;
+  window[name] = function(...a){
+    const g = cur(), usd0 = S && S.usd, al0 = S && S.altLog && S.altLog[0];
+    const r = f.apply(this, a);
+    try {
+      if (g && cur() !== g){
+        const al = S.altLog && S.altLog[0] !== al0 ? S.altLog[0] : null;
+        glAdd(g, `끝: ${al ? al.s : ''} · 잔고 변화 ${Math.round((S.usd - usd0) * 100) / 100}`);
+        glSend({mode:S.mode, game, stake:g.stake, pay:Math.round((S.usd - usd0) * 100) / 100, result:al ? String(al.s).slice(0, 300) : null, log:logOf(g), app_ver:VERSION});
+      }
+    } catch(e){}
+    return r;
+  };
+}
+glFin('bsFinish', 'bs', () => bsS().cur, g => g.gl || []);
+glFin('bjFinish', 'bj', () => bjS().cur, g => g.gl || []);
+glFin('oeFinish', 'oe', () => oeS().cur, g => g.gl || []);
+glFin('slFinish', 'sl', () => slS().cur, g => g.gl || []);
+glFin('bmFinish', 'bm', () => bmToday().cur, g => (g.rec || []).slice(-3000));
+// 관리 탭: 판 기록 보기 (창으로, 최근 것부터 40판, 하나씩 펼쳐 봄)
+const GL_NM = {bs:'💥 벅샷', bj:'🃏 블랙잭', oe:'✊ 홀짝', sl:'🐍 뱀사다리', bm:'🎲 부루마블'};
+async function admGlShow(title, filt){
+  const c = showModal(`<h2>🎮 판 기록</h2><p class="muted" style="margin:0">${esc(title)}</p><div id="glBox"><p class="muted">불러오는 중…</p></div><div class="acts"><button class="btn solid" data-close>닫기</button></div>`);
+  const {data, error} = await filt(ACC.sb.from('seed10k_gamelogs').select('*').order('id', {ascending:false}).limit(40));
+  const box = $('#glBox'); if (!box) return;
+  if (error) return box.innerHTML = `<p class="down">${esc(error.message)}</p>`;
+  if (!data || !data.length) return box.innerHTML = '<p class="empty">판 기록이 없습니다. (기록은 v1.9.3부터 남고, 10일이 지나면 지워집니다)</p>';
+  await admNickLoad(data.flatMap(r => [r.user_id, ...(r.uids || [])]));
+  box.innerHTML = data.map(r => `<details class="gl-it"><summary>${admT(r.at)} · ${GL_NM[r.game] || r.game}${r.code ? ` 👥 ${esc(r.code)}` : ''} · ${r.mode === 'live' ? '실제' : '시뮬'} · ${esc((r.user_id ? [r.user_id] : r.uids || []).map(admNick).join(', '))}${r.hold ? ' · 📌 버그 신고로 보관 중' : ''}</summary>
+    <p style="margin:4px 0">${r.stake != null ? `판돈 ${fmtUSD(+r.stake)} · ` : ''}${r.pay != null ? `잔고 변화 ${admUSD(+r.pay)} · ` : ''}${esc(r.result || '')}</p><pre>${esc((r.log || []).join('\n'))}</pre></details>`).join('');
+}
 // 관리 탭: 버그 신고 목록 (지운 것은 빼고 최근 50건)
 ADM.bugs = []; ADM.bugUn = 0;
 async function admLoadBugs(){
@@ -8500,7 +8564,7 @@ function admBugsHTML(){
     <p><b>언제·어떤 버그:</b> ${esc(b.what)}</p>${b.damage ? `<p><b>피해 상황:</b> ${esc(b.damage)}</p>` : ''}
     ${b.reply ? `<p class="adm-bug-rp"><b>↳ 답변</b> <small class="muted">${admT(b.replied_at)} · ${b.reply_seen ? '읽음' : '아직 안 읽음'}</small><br>${esc(b.reply)}</p>` : ''}
     <div class="bug-f"><textarea data-bugrp="${b.id}" maxlength="2000" placeholder="${b.reply ? '답변 고치기' : '답변 쓰기 (보내면 이 사람이 다음에 접속할 때 팝업으로 봅니다)'}">${b.reply ? esc(b.reply) : ''}</textarea></div>
-    <div class="adm-al-b"><button class="btn solid" data-bugsend="${b.id}">${b.reply ? '답변 고치기' : '답변 보내기'}</button><button class="btn" data-admu="${b.user_id}">계정 보기</button>${b.seen ? '' : `<button class="btn" data-bugseen="${b.id}">확인함</button>`}<button class="btn" data-bugdel="${b.id}">삭제</button></div></li>`).join('');
+    <div class="adm-al-b"><button class="btn" data-glbug="${b.id}">🎮 판 기록</button><button class="btn solid" data-bugsend="${b.id}">${b.reply ? '답변 고치기' : '답변 보내기'}</button><button class="btn" data-admu="${b.user_id}">계정 보기</button>${b.seen ? '' : `<button class="btn" data-bugseen="${b.id}">확인함</button>`}<button class="btn" data-bugdel="${b.id}">삭제</button></div></li>`).join('');
   return `<div class="card-h"><h2>🐞 버그 신고</h2><small>${ADM.bugUn ? `<b class="down">확인 안 함 ${ADM.bugUn}건</b>` : '모두 확인함'}</small></div>
     ${li ? `<ul class="adm-als">${li}</ul>` : '<p class="empty">신고가 없습니다.</p>'}`;
 }
@@ -8514,6 +8578,12 @@ document.addEventListener('click', async e => {
     if (error) return toast(error.message, true);
     const a = ADM.alerts.find(x => x.id === id); if (a && !a.seen){ a.seen = true; ADM.unseen--; } admBadge(); return renderAdmin();
   }
+  if (t.dataset.glbug){
+    const b = ADM.bugs.find(x => x.id === +t.dataset.glbug); if (!b) return;
+    const a = new Date(new Date(b.at).getTime() - 3 * 3600e3).toISOString(), z = new Date(new Date(b.at).getTime() + 3 * 3600e3).toISOString();
+    return admGlShow(`버그 신고 앞뒤 3시간 · ${admNick(b.user_id)}`, q => q.or(`user_id.eq.${b.user_id},uids.cs.{${b.user_id}}${b.code ? `,code.eq.${b.code}` : ''}`).gte('at', a).lte('at', z));
+  }
+  if (t.dataset.gluser){ const u = t.dataset.gluser; return admGlShow(`${admNick(u)}의 판 기록`, q => q.or(`user_id.eq.${u},uids.cs.{${u}}`)); }
   if (t.dataset.bugsend){
     const id = +t.dataset.bugsend, ta = document.querySelector(`[data-bugrp="${id}"]`), reply = ta ? ta.value.trim() : '';
     if (!reply) return toast('답변을 적어 주세요', true);

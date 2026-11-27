@@ -29,6 +29,10 @@ const clone = (x) => JSON.parse(JSON.stringify(x));
 const seatOf = (room, uid) => room.state.seats.findIndex((s) => s.uid === uid);
 const nick = (s) => String(s || "").replace(/[<>]/g, "").slice(0, 16) || "플레이어";
 function bump(room, ev) { const st = room.state; st.seq = (st.seq || 0) + 1; if (ev) st.ev = {seq: st.seq, ...ev}; }
+/* 판 기록: 숨긴 상태(priv.glog)에 행동과 결과를 한 줄씩 쌓는다 (KST 시각). 판이 끝나면 심판이 seed10k_gamelogs에 올린다 */
+const glT = (now) => new Date(now + 9 * 3600e3).toISOString().slice(11, 19);
+function glog(priv, now, line) { if (!priv) return; const L = priv.glog = priv.glog || []; if (L.length < 1500) L.push(`${glT(now)} ${line}`); }
+const glJ = (o) => { try { return JSON.stringify(o); } catch { return String(o); } };
 // 판돈을 내는 때: 예전 사이트는 들어갈 때 자기 통장에서 미리 뺐다(pay 없음). 새 사이트(arg.payAtStart)는 시작할 때 서버가 '판돈 냄' 줄로 가져간다(pay:"start")
 // 그래서 대기실에서 나가거나 방이 닫힐 때 돌려주는 것은 미리 낸 사람(예전 방식)뿐이다
 function refundAll(room, note) {
@@ -112,7 +116,10 @@ export function handle(room0, priv0, req, now = Date.now(), rnd = Math.random) {
       if (st.seats.length < L.minP) return {err: `${L.minP}명 이상 있어야 시작할 수 있습니다`};
       room.status = "play";
       const charge = chargeAll(room);                                             // 시작할 때 판돈을 가져간다 (끝난 판의 줄보다 먼저)
+      priv.glog = [];
+      glog(priv, now, `시작: ${room.game} · 판돈 ${room.stake}${room.il ? " · 불법" : ""} · ${st.seats.map((s, i) => `${i}:${s.nick}`).join(", ")}${st.rules ? ` · 규칙 ${glJ(st.rules)}` : ""}`);
       const r = G.init(room, priv, now, rnd);                                     // 블랙잭은 딜러 블랙잭이면 바로 끝난다
+      glog(priv, now, `처음 상태: ${glJ({g: st.g, priv: {...priv, glog: undefined, shoe: undefined}})}`.slice(0, 4000));
       if (room.status === "play") bump(room, {t: "start"});
       return {room, priv, payouts: charge.concat((r && r.payouts) || []), res: {}};
     }
@@ -121,6 +128,8 @@ export function handle(room0, priv0, req, now = Date.now(), rnd = Math.random) {
       if (me < 0) return {err: "이 방의 플레이어가 아닙니다"};
       const r = G.act(room, priv, me, a, now, rnd);
       if (r && r.err) return {err: r.err};
+      if (!(a && a.a === "view")) glog(priv, now, `${me}:${st.seats[me].nick} ${glJ(a)} → ${glJ(st.ev)}${r && r.res && Object.keys(r.res).length ? ` · 본인만: ${glJ(r.res)}` : ""}`.slice(0, 2000));
+      if (room.status === "over") glog(priv, now, `끝: ${glJ({g: st.g, priv: {...priv, glog: undefined, shoe: undefined}})}`.slice(0, 6000));
       return {room, priv, payouts: (r && r.payouts) || [], res: (r && r.res) || {}};
     }
     case "again": {                                                               // 같은 방에서 한 판 더 (방장이 먼저 판돈을 낸다)
@@ -151,6 +160,8 @@ export function tick(room0, priv0, now = Date.now(), rnd = Math.random) {
   if (room0.status === "play" && room0.state.deadline && now >= room0.state.deadline) {
     const room = clone(room0), priv = clone(priv0 || {});
     const r = GAMES[room.game].auto(room, priv, now, rnd);
+    glog(priv, now, `시간 초과 → 자동: ${glJ(room.state.ev)}`.slice(0, 2000));
+    if (room.status === "over") glog(priv, now, `끝: ${glJ({g: room.state.g, priv: {...priv, glog: undefined, shoe: undefined}})}`.slice(0, 6000));
     return {room, priv, payouts: (r && r.payouts) || []};
   }
   return null;

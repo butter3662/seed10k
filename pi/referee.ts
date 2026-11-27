@@ -107,6 +107,13 @@ async function watch(room0: Room | undefined, room: Room, priv: any, payouts: an
   const res = resultOf(room);
   res.summary = { ...(res.summary || {}), net: netOf(payouts) };   // 각자의 손익: 몰아주기(두 계정 사이에 넘어간 돈) 계산용
   await rest("POST", "seed10k_mp_results", [res], "return=minimal");
+  // 판 기록 (10일 보관, 버그 신고가 걸리면 확인할 때까지 보관): 모든 행동·시간 초과·처음과 끝 상태
+  try {
+    const seats = room.state.seats || [], pays = payouts.filter((p: any) => p && p.user_id);
+    await rest("POST", "seed10k_gamelogs", [{ uids: seats.map((s: any) => s.uid).filter(Boolean), mode: room.mode, game: room.game, code: room.code, stake: room.stake,
+      pay: null, result: String(res.winner !== undefined ? `이긴 자리 ${res.winner}` : "").slice(0, 300) + ` · 손익 ${JSON.stringify(res.summary?.net || {})}`.slice(0, 250),
+      log: (priv && priv.glog || []).concat(((room.state.g && room.state.g.log) || []).map((x: string) => `[게임 기록] ${x}`)), app_ver: "ref" }], "return=minimal");
+  } catch (e) { console.error("[seed10k-ref] 판 기록 실패:", String((e as Error)?.message || e).slice(0, 200)); }
   await pairWatch(room, res);
   if (room.game === "bj") await bjWatch(room, res);
   if (room.game === "bm") {   // 부루마블: 혼자 할 때처럼 판 전체 기록을 각자의 seed10k_bmlog에 남긴다
