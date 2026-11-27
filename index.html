@@ -1342,7 +1342,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.9.7';
+const VERSION = '1.9.8';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -8314,8 +8314,8 @@ function admBsHTML(){
   const sum = keep => { const a = blank(); for (const [id, c] of B.per) if (keep(id)) add(a, c); return a; };
   const table = c => { const T = tot(c);
     return `<table class="trades"><thead><tr><th>게임</th><th class="r">승</th><th class="r">패</th><th class="r">승률</th><th class="r">기권</th></tr></thead><tbody>
-      ${ADM_WG.map(([g, nm]) => { const x = c[g]; return `<tr><td>${nm}${x.d ? `<br><small class="muted">무 ${x.d}</small>` : ''}</td><td class="r num">${x.w}</td><td class="r num">${x.l}</td><td class="r num"><b>${pct(x.w, x.w + x.l)}</b></td><td class="r num muted">${x.q}</td></tr>`; }).join('')}
-      <tr><td><b>전체</b><br><small class="muted">뱀사다리 빼고</small></td><td class="r num"><b>${T.w}</b></td><td class="r num"><b>${T.l}</b></td><td class="r num"><b>${pct(T.w, T.w + T.l)}</b></td><td class="r num muted">${T.q}</td></tr></tbody></table>`; };
+      ${ADM_WG.filter(([g]) => g !== 'sl').map(([g, nm]) => { const x = c[g]; return `<tr><td>${nm}${x.d ? `<br><small class="muted">무 ${x.d}</small>` : ''}</td><td class="r num">${x.w}</td><td class="r num">${x.l}</td><td class="r num"><b>${pct(x.w, x.w + x.l)}</b></td><td class="r num muted">${x.q}</td></tr>`; }).join('')}
+      <tr><td><b>전체</b></td><td class="r num"><b>${T.w}</b></td><td class="r num"><b>${T.l}</b></td><td class="r num"><b>${pct(T.w, T.w + T.l)}</b></td><td class="r num muted">${T.q}</td></tr></tbody></table>`; };
   const rows = [...B.per].map(([id, c]) => [id, c, tot(c)]).filter(([, , T]) => T.w + T.l > 0).sort((a, b) => (b[2].w + b[2].l) - (a[2].w + a[2].l))
     .map(([id, c, T]) => `<details class="adm-wr"><summary><b>${esc(B.nick.get(id) || id.slice(0, 8))}</b>${B.tst.has(id) ? ' <small class="muted">🧪</small>' : ''} <span class="muted">· 전체 ${T.w}승 ${T.l}패</span> <b>${pct(T.w, T.w + T.l)}</b></summary>${table(c)}</details>`).join('');
   return head + `<p class="muted" style="margin:0 0 8px">${admT(B.at.toISOString())} 기준 · 기권한 판은 승률에서 뺌(기권 칸은 개수만) · 블랙잭 무승부도 뺌 · 부루마블은 1위만 승 · 계정·모드마다 최근 도박 내역 300줄 안의 판만 셈</p>
