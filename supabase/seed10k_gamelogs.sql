@@ -67,3 +67,25 @@ begin
 end $$;
 drop trigger if exists seed10k_bug_hold on public.seed10k_bugs;
 create trigger seed10k_bug_hold after insert or update of seen on public.seed10k_bugs for each row execute function public.seed10k_bug_hold();
+
+-- '이 판에서 일어난 버그' 체크: 신고에 그때까지의 판 기록(glog)을 붙이고, 그 판이 끝나 올라오는 판 기록에는 bug_id를 단다
+alter table public.seed10k_bugs add column if not exists this_game boolean not null default false;
+alter table public.seed10k_bugs add column if not exists glog jsonb;
+alter table public.seed10k_bugs drop constraint if exists seed10k_bugs_glog_len;
+alter table public.seed10k_bugs add constraint seed10k_bugs_glog_len check (glog is null or char_length(glog::text) <= 400000);
+grant insert (this_game, glog) on public.seed10k_bugs to authenticated;
+alter table public.seed10k_gamelogs add column if not exists bug_id bigint;
+grant insert (bug_id) on public.seed10k_gamelogs to authenticated;
+create or replace function public.seed10k_gl_bugged(l public.seed10k_gamelogs) returns boolean language sql stable security definer set search_path = public as $$
+  select exists (select 1 from public.seed10k_bugs b where not b.seen and (b.id = l.bug_id or (
+    b.at between l.at - interval '3 hours' and l.at + interval '3 hours'
+    and ((l.code is not null and b.code = l.code) or b.user_id = l.user_id or b.user_id = any(l.uids)))));
+$$;
+create or replace function public.seed10k_gl_ins() returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  -- 남의 신고 번호는 달 수 없다
+  if new.bug_id is not null and not exists (select 1 from public.seed10k_bugs b where b.id = new.bug_id and b.user_id = new.user_id) then new.bug_id := null; end if;
+  new.hold := public.seed10k_gl_bugged(new);
+  if char_length(new.log::text) > 400000 then new.log := '["(기록이 너무 길어 잘림)"]'::jsonb; end if;
+  return new;
+end $$;

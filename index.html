@@ -930,6 +930,7 @@ html.bm-open .top,html.bm-open .tabbar{visibility:hidden}
 .bug-btn{border:1.5px solid color-mix(in srgb,var(--danger) 55%,transparent);color:var(--danger);background:color-mix(in srgb,var(--danger) 9%,var(--paper));font-weight:800;padding:0 16px;height:38px;border-radius:999px}
 .bug-rp{padding:8px 0;border-top:1px solid var(--rule)}.bug-rp:first-of-type{border-top:0}.bug-q{margin:4px 0;color:var(--ink-2);white-space:pre-wrap;word-break:break-word}.bug-a{margin:6px 0 0;padding:8px 10px;border-radius:10px;background:color-mix(in srgb,var(--brass) 10%,var(--surface));white-space:pre-wrap;word-break:break-word}
 .bug-f textarea{width:100%;min-height:84px;resize:vertical;border:1px solid var(--rule);border-radius:10px;background:var(--surface);color:var(--ink);font:inherit;padding:10px;box-sizing:border-box}
+.bug-f label.bug-chk{display:flex;align-items:center;gap:8px;font-weight:700;margin-top:12px}.bug-chk input{width:18px;height:18px}
 .bug-f label{display:block;margin:10px 0 4px;font-weight:750}.bug-note{margin:12px 0 0;text-align:center;font-weight:700;color:var(--ink-2)}
 .adm-bug-rp{border-left:3px solid var(--brass);padding-left:8px}.adm-bug .bug-f textarea{min-height:60px}
 .adm-bug{padding:10px 0;border-top:1px solid var(--rule)}.adm-bug.seen{opacity:.6}.adm-bug p{margin:4px 0;white-space:pre-wrap;word-break:break-word}.adm-bug .adm-al-b{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;justify-content:flex-end;max-width:none;width:100%}
@@ -1341,7 +1342,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.9.4';
+const VERSION = '1.9.5';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -8168,6 +8169,7 @@ async function mpBetAudit(room, bk){
    - 멀티플레이 제한/해제, 멀티로 딴 돈 회수 SQL 만들기 (남의 저장 기록은 사이트에서 고치지 않고 SQL 편집기에서 고친다) */
 const ADM = {on:false, alerts:[], unseen:0, q:'', users:null, uid:null, mode:null, data:null, ch:null};
 const admT = at => at ? new Date(at).toLocaleString('ko-KR', {timeZone:'Asia/Seoul', year:'2-digit', month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit', hour12:false}) : '';
+const admTs = at => at ? new Date(at).toLocaleString('ko-KR', {timeZone:'Asia/Seoul', year:'2-digit', month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false}) : '';   // 초까지
 const admUSD = v => `${v < 0 ? MINUS : ''}${fmtUSD(Math.abs(v))}`;
 const admR2 = v => Math.round(v * 100) / 100;
 
@@ -8453,13 +8455,23 @@ function bugInject(){
   });
 }
 setInterval(bugInject, 700);
+// 지금 열린 게임 화면의 판 (혼자 하기: 상태 g와 기록, 같이 하기: 방 코드)
+function bugCtx(){
+  const ov = [...document.querySelectorAll('.bm-ov:not([hidden])')].pop(); if (!ov) return null;
+  if (ov.id === 'mpOv') return MP.code ? {mp:true, code:MP.code} : null;
+  const k = ov.id === 'gmOv' ? ov.dataset.k : ov.id === 'slOv' ? 'sl' : ov.id === 'bmOv' ? 'bm' : null;
+  const cur = {bs:() => bsS().cur, bj:() => bjS().cur, oe:() => oeS().cur, sl:() => slS().cur, bm:() => bmToday().cur}[k];
+  const g = cur && cur(); if (!g) return null;
+  return {k, g, log:() => (k === 'bm' ? (g.rec || []).slice(-3000) : (g.gl || []).slice())};
+}
 function bugGame(){ const ov = [...document.querySelectorAll('.bm-ov:not([hidden])')].pop(), b = ov && ov.querySelector('.bm-ttl b'); return b ? b.textContent.trim().slice(0, 40) : ''; }
 function bugDialog(){
   if (!ACC.user || !ACC.sb) return toast('로그인해야 버그를 신고할 수 있습니다', true);
-  const game = bugGame();
+  const game = bugGame(), ctx = bugCtx();
   const c = showModal(`<h2>🐞 버그 신고</h2>${game ? `<p class="muted" style="margin:0">${esc(game)} · ${S && S.mode === 'live' ? '실제 시세' : '시뮬레이션'} · v${VERSION}</p>` : ''}
     <div class="bug-f"><label for="bugWhat">언제 어떤 버그를 발견하셨나요? <small class="down">(필수)</small></label><textarea id="bugWhat" maxlength="2000" placeholder="예: 오늘 오후 3시쯤, 벅샷에서 돋보기를 안 썼는데 '실탄'이라고 떴어요"></textarea>
-    <label for="bugDmg">피해 상황 <small class="muted">(선택)</small></label><textarea id="bugDmg" maxlength="2000" placeholder="예: 그 판에서 $500을 잃었어요"></textarea></div>
+    <label for="bugDmg">피해 상황 <small class="muted">(선택)</small></label><textarea id="bugDmg" maxlength="2000" placeholder="예: 그 판에서 $500을 잃었어요"></textarea>
+    ${ctx ? '<label class="bug-chk"><input type="checkbox" id="bugThis"> 이 판에서 일어난 버그인가요?</label>' : ''}</div>
     <div class="acts"><button class="btn" data-close>취소</button><button class="btn solid" id="bugGo">보내기</button></div>
     <p class="bug-note">확인 후 빠른 조치 하겠습니다</p>`);
   setTimeout(() => { const w = $('#bugWhat'); if (w) w.focus(); }, 50);
@@ -8467,8 +8479,11 @@ function bugDialog(){
     const what = $('#bugWhat').value.trim(), damage = $('#bugDmg').value.trim();
     if (!what) return toast('어떤 버그인지 적어 주세요', true);
     const b = $('#bugGo'); b.disabled = true;
-    const mpOn = !!($('#mpOv') && !$('#mpOv').hidden && MP.code);
-    const {error} = await ACC.sb.from('seed10k_bugs').insert({game:game || null, mode:S && S.mode === 'live' ? 'live' : 'sim', what, damage:damage || null, app_ver:VERSION, ...(mpOn ? {code:MP.code} : {})});
+    const mpOn = !!($('#mpOv') && !$('#mpOv').hidden && MP.code), thisG = !!(ctx && $('#bugThis') && $('#bugThis').checked);
+    const row = {game:game || null, mode:S && S.mode === 'live' ? 'live' : 'sim', what, damage:damage || null, app_ver:VERSION, ...(mpOn ? {code:MP.code} : {})};
+    if (thisG){ row.this_game = true; if (!ctx.mp) row.glog = ctx.log(); }   // 그때까지의 이 판 기록을 신고에 붙인다 (같이 하기는 심판의 기록을 방 코드로 찾는다)
+    const {data:ins, error} = await ACC.sb.from('seed10k_bugs').insert(row).select('id').single();
+    if (!error && thisG && !ctx.mp && ins && ins.id){ ctx.g.bugId = ins.id; save(); }   // 이 판이 끝나 올라가는 판 기록에 신고 번호를 단다
     if (error){ b.disabled = false; return toast(/하루에 10건/.test(error.message || '') ? '버그 신고는 하루에 10건까지 할 수 있습니다' : `보내지 못했습니다: ${error.message}`, true); }
     c(); toast('버그 신고를 보냈습니다. 확인 후 빠른 조치 하겠습니다');
   };
@@ -8526,7 +8541,7 @@ function glFin(name, game, cur, logOf){
       if (g && cur() !== g){
         const al = S.altLog && S.altLog[0] !== al0 ? S.altLog[0] : null;
         glAdd(g, `끝: ${al ? al.s : ''} · 잔고 변화 ${Math.round((S.usd - usd0) * 100) / 100}`);
-        glSend({mode:S.mode, game, stake:g.stake, pay:Math.round((S.usd - usd0) * 100) / 100, result:al ? String(al.s).slice(0, 300) : null, log:logOf(g), app_ver:VERSION});
+        glSend({...(g.bugId ? {bug_id:g.bugId} : {}), mode:S.mode, game, stake:g.stake, pay:Math.round((S.usd - usd0) * 100) / 100, result:al ? String(al.s).slice(0, 300) : null, log:logOf(g), app_ver:VERSION});
       }
     } catch(e){}
     return r;
@@ -8539,14 +8554,15 @@ glFin('slFinish', 'sl', () => slS().cur, g => g.gl || []);
 glFin('bmFinish', 'bm', () => bmToday().cur, g => (g.rec || []).slice(-3000));
 // 관리 탭: 판 기록 보기 (창으로, 최근 것부터 40판, 하나씩 펼쳐 봄)
 const GL_NM = {bs:'💥 벅샷', bj:'🃏 블랙잭', oe:'✊ 홀짝', sl:'🐍 뱀사다리', bm:'🎲 부루마블'};
-async function admGlShow(title, filt){
+async function admGlShow(title, filt, bug){
   const c = showModal(`<h2>🎮 판 기록</h2><p class="muted" style="margin:0">${esc(title)}</p><div id="glBox"><p class="muted">불러오는 중…</p></div><div class="acts"><button class="btn solid" data-close>닫기</button></div>`);
   const {data, error} = await filt(ACC.sb.from('seed10k_gamelogs').select('*').order('id', {ascending:false}).limit(40));
   const box = $('#glBox'); if (!box) return;
   if (error) return box.innerHTML = `<p class="down">${esc(error.message)}</p>`;
-  if (!data || !data.length) return box.innerHTML = '<p class="empty">판 기록이 없습니다. (기록은 v1.9.3부터 남고, 10일이 지나면 지워집니다)</p>';
+  const snap = bug && bug.glog && bug.glog.length ? `<details class="gl-it" ${data && data.length ? '' : 'open'}><summary>📸 신고할 때까지의 이 판 기록 (${admTs(bug.at)} 신고)</summary><pre>${esc(bug.glog.join('\n'))}</pre></details>` : '';
+  if (!data || !data.length) return box.innerHTML = snap || '<p class="empty">판 기록이 없습니다. (판이 아직 안 끝났거나, 기록은 v1.9.3부터 남고 10일이 지나면 지워집니다)</p>';
   await admNickLoad(data.flatMap(r => [r.user_id, ...(r.uids || [])]));
-  box.innerHTML = data.map(r => `<details class="gl-it"><summary>${admT(r.at)} · ${GL_NM[r.game] || r.game}${r.code ? ` 👥 ${esc(r.code)}` : ''} · ${r.mode === 'live' ? '실제' : '시뮬'} · ${esc((r.user_id ? [r.user_id] : r.uids || []).map(admNick).join(', '))}${r.hold ? ' · 📌 버그 신고로 보관 중' : ''}</summary>
+  box.innerHTML = snap + data.map((r, k) => `<details class="gl-it" ${bug && k === 0 && !snap ? 'open' : ''}><summary>${admTs(r.at)} · ${GL_NM[r.game] || r.game}${r.code ? ` 👥 ${esc(r.code)}` : ''} · ${r.mode === 'live' ? '실제' : '시뮬'} · ${esc((r.user_id ? [r.user_id] : r.uids || []).map(admNick).join(', '))}${r.hold ? ' · 📌 버그 신고로 보관 중' : ''}</summary>
     <p style="margin:4px 0">${r.stake != null ? `판돈 ${fmtUSD(+r.stake)} · ` : ''}${r.pay != null ? `잔고 변화 ${admUSD(+r.pay)} · ` : ''}${esc(r.result || '')}</p><pre>${esc((r.log || []).join('\n'))}</pre></details>`).join('');
 }
 // 관리 탭: 버그 신고 목록 (지운 것은 빼고 최근 50건)
@@ -8560,11 +8576,11 @@ async function admLoadBugs(){
 }
 function admBugsHTML(){
   const li = ADM.bugs.map(b => `<li class="adm-bug ${b.seen ? 'seen' : ''}"><small class="muted">${admT(b.at)} · ${esc(b.game || '게임 밖')} · ${b.mode === 'live' ? '실제 시세' : '시뮬'}${b.app_ver ? ` · v${esc(b.app_ver)}` : ''}</small>
-    <div><b>👤 ${esc(admNick(b.user_id))}</b></div>
+    <div><b>👤 ${esc(admNick(b.user_id))}</b>${b.this_game ? ' <small class="down">· 이 판에서 일어난 버그</small>' : ''}</div>
     <p><b>언제·어떤 버그:</b> ${esc(b.what)}</p>${b.damage ? `<p><b>피해 상황:</b> ${esc(b.damage)}</p>` : ''}
     ${b.reply ? `<p class="adm-bug-rp"><b>↳ 답변</b> <small class="muted">${admT(b.replied_at)} · ${b.reply_seen ? '읽음' : '아직 안 읽음'}</small><br>${esc(b.reply)}</p>` : ''}
     <div class="bug-f"><textarea data-bugrp="${b.id}" maxlength="2000" placeholder="${b.reply ? '답변 고치기' : '답변 쓰기 (보내면 이 사람이 다음에 접속할 때 팝업으로 봅니다)'}">${b.reply ? esc(b.reply) : ''}</textarea></div>
-    <div class="adm-al-b"><button class="btn" data-glbug="${b.id}">🎮 판 기록</button><button class="btn solid" data-bugsend="${b.id}">${b.reply ? '답변 고치기' : '답변 보내기'}</button><button class="btn" data-admu="${b.user_id}">계정 보기</button>${b.seen ? '' : `<button class="btn" data-bugseen="${b.id}">확인함</button>`}<button class="btn" data-bugdel="${b.id}">삭제</button></div></li>`).join('');
+    <div class="adm-al-b">${b.this_game ? `<button class="btn solid" data-glthis="${b.id}">🎮 이 판 기록</button>` : ''}<button class="btn" data-glbug="${b.id}">🎮 ${b.this_game ? '앞뒤 3시간' : '판 기록'}</button><button class="btn solid" data-bugsend="${b.id}">${b.reply ? '답변 고치기' : '답변 보내기'}</button><button class="btn" data-admu="${b.user_id}">계정 보기</button>${b.seen ? '' : `<button class="btn" data-bugseen="${b.id}">확인함</button>`}<button class="btn" data-bugdel="${b.id}">삭제</button></div></li>`).join('');
   return `<div class="card-h"><h2>🐞 버그 신고</h2><small>${ADM.bugUn ? `<b class="down">확인 안 함 ${ADM.bugUn}건</b>` : '모두 확인함'}</small></div>
     ${li ? `<ul class="adm-als">${li}</ul>` : '<p class="empty">신고가 없습니다.</p>'}`;
 }
@@ -8582,6 +8598,14 @@ document.addEventListener('click', async e => {
     const b = ADM.bugs.find(x => x.id === +t.dataset.glbug); if (!b) return;
     const a = new Date(new Date(b.at).getTime() - 3 * 3600e3).toISOString(), z = new Date(new Date(b.at).getTime() + 3 * 3600e3).toISOString();
     return admGlShow(`버그 신고 앞뒤 3시간 · ${admNick(b.user_id)}`, q => q.or(`user_id.eq.${b.user_id},uids.cs.{${b.user_id}}${b.code ? `,code.eq.${b.code}` : ''}`).gte('at', a).lte('at', z));
+  }
+  if (t.dataset.glthis){
+    const b = ADM.bugs.find(x => x.id === +t.dataset.glthis); if (!b) return;
+    if (b.code){   // 같이 하기: 그 방에서 신고 시각과 가장 가까운(신고 뒤에 끝난 것 먼저) 판
+      const a = new Date(new Date(b.at).getTime() - 3600e3).toISOString(), z = new Date(new Date(b.at).getTime() + 3 * 3600e3).toISOString();
+      return admGlShow(`같이 하기 방 ${b.code} · 신고한 판`, q => q.eq('code', b.code).gte('at', a).lte('at', z), b);
+    }
+    return admGlShow(`${admNick(b.user_id)} · 신고한 판`, q => q.eq('bug_id', b.id), b);
   }
   if (t.dataset.gluser){ const u = t.dataset.gluser; return admGlShow(`${admNick(u)}의 판 기록`, q => q.or(`user_id.eq.${u},uids.cs.{${u}}`)); }
   if (t.dataset.bugsend){
