@@ -1342,7 +1342,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.9.8';
+const VERSION = '1.9.9';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -7829,15 +7829,24 @@ function onlTrack(){   // 닉네임·모드가 바뀌었을 때만 다시 알린
     if (ONL.sent !== 'T'){ ONL.sent = 'T'; try { const r = ONL.ch.untrack(); if (r && r.catch) r.catch(() => {}); } catch(e){} }
     return;
   }
-  const me = {uid:ACC.user.id, nick:mpNick(), mode:S.mode}, k = JSON.stringify(me);
+  /* 화면을 안 보고 있으면(앱을 내리거나 다른 탭) 접속 목록에서 뺀다. 폰에서 앱이 뒤에 남아 연결이 안 끊기면 계속 '접속 중'으로 보이던 것.
+     보고 있으면 1분마다 시각(at)을 새로 알리고, 받는 쪽은 3분 넘게 새로 안 알린 사람을 뺀다 */
+  if (document.hidden){
+    if (ONL.sent !== 'H'){ ONL.sent = 'H'; try { const r = ONL.ch.untrack(); if (r && r.catch) r.catch(() => {}); } catch(e){} }
+    return;
+  }
+  const me = {uid:ACC.user.id, nick:mpNick(), mode:S.mode, at:Math.floor(Date.now() / 60000) * 60000}, k = JSON.stringify(me);
   if (k === ONL.sent) return;
   ONL.sent = k;
   try { const r = ONL.ch.track(me); if (r && r.catch) r.catch(() => { ONL.sent = ''; }); } catch(e){ ONL.sent = ''; }
 }
 setInterval(onlTrack, 15000);
+setInterval(() => { if (ONL.ch) try { onlSync(ONL.ch); } catch(e){} }, 30000);   // 오래 안 알린 사람을 목록에서 빼려고 다시 센다
+document.addEventListener('visibilitychange', () => { try { onlTrack(); } catch(e){} });
 function onlSync(ch){
   const st = ch.presenceState() || {}, me = ACC.user ? ACC.user.id : '';
-  ONL.list = Object.values(st).map(a => a[a.length - 1]).filter(p => p && p.uid && p.uid !== me)
+  const now = Date.now();
+  ONL.list = Object.values(st).map(a => a[a.length - 1]).filter(p => p && p.uid && p.uid !== me && +p.at > now - 3 * 60000)
     .sort((a, b) => (b.mode === S.mode) - (a.mode === S.mode) || String(a.nick).localeCompare(String(b.nick), 'ko'));
   onlCount(); if ($('#onlList')) onlDraw();
 }
