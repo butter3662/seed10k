@@ -1342,7 +1342,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '2.0.0';
+const VERSION = '2.0.1';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -7838,7 +7838,7 @@ function onlTrack(){   // 닉네임·모드가 바뀌었을 때만 다시 알린
     if (ONL.sent !== 'H'){ ONL.sent = 'H'; try { const r = ONL.ch.untrack(); if (r && r.catch) r.catch(() => {}); } catch(e){} }
     return;
   }
-  const me = {uid:ACC.user.id, nick:mpNick(), mode:S.mode, at:Math.floor(Date.now() / 60000) * 60000}, k = JSON.stringify(me);
+  const me = {uid:ACC.user.id, nick:mpNick(), mode:S.mode, v:VERSION, at:Math.floor(Date.now() / 60000) * 60000}, k = JSON.stringify(me);
   if (k === ONL.sent) return;
   ONL.sent = k;
   try { const r = ONL.ch.track(me); if (r && r.catch) r.catch(() => { ONL.sent = ''; }); } catch(e){ ONL.sent = ''; }
@@ -7849,7 +7849,7 @@ document.addEventListener('visibilitychange', () => { try { onlTrack(); } catch(
 function onlSync(ch){
   const st = ch.presenceState() || {}, me = ACC.user ? ACC.user.id : '';
   const now = Date.now();
-  ONL.list = Object.values(st).map(a => a[a.length - 1]).filter(p => p && p.uid && p.uid !== me && +p.at > now - 3 * 60000)
+  ONL.list = Object.values(st).map(a => a[a.length - 1]).filter(p => p && p.uid && p.uid !== me && p.v === VERSION && +p.at > now - 3 * 60000)   // 같은 버전끼리만 (다른 버전은 규칙이 다를 수 있다)
     .sort((a, b) => (b.mode === S.mode) - (a.mode === S.mode) || String(a.nick).localeCompare(String(b.nick), 'ko'));
   onlCount(); if ($('#onlList')) onlDraw();
 }
