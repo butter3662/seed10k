@@ -1342,7 +1342,7 @@ const DATA = {"kr":[{"id":"KR:005930","t":"005930","n":"삼성전자","e":"Samsu
    SEED 10K — 한·미 시가총액 상위 300 모의투자
    두 가지 모드: 실제 시세(live) / 시뮬레이션(sim)
    ========================================================= */
-const VERSION = '1.9.9';
+const VERSION = '2.0.0';
 const SAVE_KEYS = {sim:'seed10k.save.v1', live:'seed10k.live.v1'};
 const SET_KEY = 'seed10k.settings.v1';
 const LIVE_URL = 'data/prices.json';
@@ -7823,6 +7823,9 @@ function onlStart(){
     ONL.ch = ch;
   } catch(e){}
 }
+// 마지막으로 화면을 만진 시각 (누르기·키보드·스크롤). 5분 넘게 안 만지면 접속 목록에서 빠지고, 다시 만지면 바로 돌아온다
+const ONL_ACT = {at:Date.now()};
+['pointerdown', 'keydown', 'wheel', 'touchstart'].forEach(ev => document.addEventListener(ev, () => { const idle = Date.now() - ONL_ACT.at > 5 * 60000; ONL_ACT.at = Date.now(); if (idle) try { onlTrack(); } catch(e){} }, {passive:true, capture:true}));
 function onlTrack(){   // 닉네임·모드가 바뀌었을 때만 다시 알린다
   if (!ONL.ch || !ACC.user || !ACC.testerKnown) return;   // 테스트 계정인지 알기 전에는 접속 목록에 올리지 않는다
   if (ACC.tester){   // 테스트 계정은 남의 접속 목록에 안 보인다 (대결 신청을 받을 수 없게)
@@ -7831,7 +7834,7 @@ function onlTrack(){   // 닉네임·모드가 바뀌었을 때만 다시 알린
   }
   /* 화면을 안 보고 있으면(앱을 내리거나 다른 탭) 접속 목록에서 뺀다. 폰에서 앱이 뒤에 남아 연결이 안 끊기면 계속 '접속 중'으로 보이던 것.
      보고 있으면 1분마다 시각(at)을 새로 알리고, 받는 쪽은 3분 넘게 새로 안 알린 사람을 뺀다 */
-  if (document.hidden){
+  if (document.hidden || Date.now() - ONL_ACT.at > 5 * 60000){   // 화면을 안 보거나, 5분 동안 아무것도 안 누름(자리 비움)
     if (ONL.sent !== 'H'){ ONL.sent = 'H'; try { const r = ONL.ch.untrack(); if (r && r.catch) r.catch(() => {}); } catch(e){} }
     return;
   }
